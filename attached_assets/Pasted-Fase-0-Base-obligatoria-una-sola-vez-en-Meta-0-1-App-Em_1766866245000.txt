@@ -1,0 +1,311 @@
+Fase 0 — Base obligatoria (una sola vez en Meta)
+0.1. App + Embedded Signup (Meta)
+
+Meta (tú):
+
+En tu App Dashboard, confirma que tienes el use case de WhatsApp y Embedded Signup disponible. (Tu screenshot ya lo muestra.) 
+Facebook Developers
++1
+
+Ve a Facebook Login for Business → Configurations y crea la configuración “WhatsApp Embedded Signup”. 
+Facebook Developers
++1
+
+Configura:
+
+Valid OAuth redirect URIs (tu callback en Curbe)
+
+App Domains (tu dominio)
+
+En WhatsApp → Webhooks: define tu Callback URL (HTTPS) y un Verify Token (texto secreto que tú eliges). 
+Facebook Developers
++1
+
+Replit (tu backend):
+
+Tener listo:
+
+GET /webhooks/whatsapp (verificación hub.challenge)
+
+POST /webhooks/whatsapp (eventos)
+
+Capturar RAW BODY para validar firma (si no, tu verificación HMAC fallará).
+
+0.2. Token correcto (Meta)
+
+Tú NO quieres tokens “manuales”. Para SaaS multi-tenant necesitas Business Integration System User access tokens (vía Embedded Signup). 
+Facebook Developers
++1
+
+Fase 1 — Función: “Conectar WhatsApp” por cliente (onboarding multi-tenant)
+1.1. Iniciar Embedded Signup
+
+Meta (tú):
+
+Tener lista la configuración de “WhatsApp Embedded Signup” (ya arriba). 
+Facebook Developers
+
+Replit (implementar):
+
+Endpoint: POST /api/tenants/:tenantId/whatsapp/connect/start
+
+Genera state firmado (JWT o HMAC) con tenantId y expiración corta (5–10 min).
+
+Devuelve a frontend los parámetros necesarios para abrir Embedded Signup.
+
+Frontend: botón “Connect WhatsApp”
+
+Abre el flow de Embedded Signup (login/consent). 
+Facebook Developers
++1
+
+1.2. Callback: intercambiar “code” por token y capturar IDs
+
+Replit (implementar):
+
+GET /api/integrations/meta/whatsapp/callback?code=...&state=...
+
+Validar state
+
+Intercambiar code por access token (el doc oficial te guía en tokens para WhatsApp). 
+Facebook Developers
++1
+
+Guardar por tenant (mínimo):
+
+business_id
+
+waba_id
+
+phone_number_id
+
+display_phone_number
+
+Meta / Graph (llamadas que debe hacer Replit):
+
+Obtener números del WABA: GET /{WABA-ID}/phone_numbers 
+Facebook Developers
++1
+
+1.3. Suscribir tu app al WABA del cliente (para que te lleguen webhooks)
+
+Replit (obligatorio):
+
+Llamar: POST /{WABA-ID}/subscribed_apps 
+Facebook Developers
++1
+
+Esto es lo que hace que los eventos de sus phone numbers empiecen a caer a TU webhook.
+
+Dato brutal: si no haces esto por cliente/WABA, tendrás “conectado” en UI pero no recibirás mensajes.
+
+Fase 2 — Función: Webhooks (recibir mensajes + estados) de forma segura y multi-tenant
+2.1. Verificación inicial (GET)
+
+Replit (implementar):
+
+GET /webhooks/whatsapp
+
+lee hub.mode, hub.verify_token, hub.challenge
+
+si el token coincide, responde el hub.challenge (tal cual).
+
+Meta lo describe en su guía de setup webhooks. 
+Facebook Developers
++1
+
+2.2. Validación de firma (POST) — seguridad real
+
+Replit (implementar):
+
+En POST /webhooks/whatsapp:
+
+leer X-Hub-Signature-256
+
+calcular HMAC SHA-256 con el App Secret sobre el raw body
+
+comparar hashes y rechazar si no coincide
+
+Meta lo documenta explícitamente. 
+Facebook Developers
++1
+
+2.3. Ruteo multi-tenant (la parte donde la mayoría la riega)
+
+Replit (implementar):
+
+NO uses tenantId del frontend aquí.
+
+Extrae del payload el phone_number_id y haz:
+
+lookup: phone_number_id → tenant_id
+
+Guarda evento en DB con tenant_id.
+
+Referencia del webhook “messages” y “statuses”: 
+Facebook Developers
++1
+
+Fase 3 — Función: Enviar mensajes (texto, templates, interactivos)
+3.1. Enviar texto (dentro de ventana de 24h)
+
+Regla de negocio (no negociable):
+
+Mensajes libres (no-template) solo dentro de la ventana de servicio de 24 horas desde el último mensaje del usuario. 
+Facebook Developers
++1
+
+Replit (implementar):
+
+Endpoint interno: POST /api/tenants/:tenantId/whatsapp/messages
+
+En backend:
+
+decide si “session message” (libre) o “template” según última actividad del usuario.
+
+Llamada Graph:
+
+POST /{PHONE_NUMBER_ID}/messages 
+Facebook Developers
++1
+
+3.2. Tracking de estados (sent/delivered/read/failed)
+
+Replit (implementar):
+
+Guardar wamid de respuesta al enviar.
+
+Procesar el webhook de status. 
+Facebook Developers
+
+Actualizar tu tabla whatsapp_messages con timestamps y error codes.
+
+Fase 4 — Función: Templates (para outbound real)
+4.1. Crear template
+
+Meta (tú):
+
+Se pueden crear en WhatsApp Manager o por API.
+
+Replit (implementar):
+
+POST /{WABA_ID}/message_templates 
+Facebook Developers
+
+Guardar estado: pending/approved/rejected
+
+4.2. Enviar template
+
+Replit (implementar):
+
+Cuando ventana 24h esté cerrada, envía template por /messages con type template. 
+Facebook Developers
++1
+
+4.3. Billing / Payment method (lo que te sale en tu UI)
+
+Si el WABA del cliente no tiene método de pago, no podrá hacer outbound como esperas (especialmente templates business-initiated). Esto aparece como “Missing valid payment method” en tu pantalla. 
+WhatsApp Business
++1
+
+Replit (implementar):
+
+Detectar error y mostrar en UI del tenant: “Agrega payment method en WhatsApp Manager”.
+
+Fase 5 — Función: Media (imagenes/audio/docs) y mensajes interactivos
+5.1. Subir media
+
+Replit (implementar):
+
+POST /{PHONE_NUMBER_ID}/media para subir archivo y recibir media_id 
+Facebook Developers
+
+Luego envías mensaje referenciando ese media_id por /messages. 
+Facebook Developers
+
+5.2. Interactivos (botones/listas)
+
+Replit (implementar):
+
+Enviar por /messages usando “interactive” según Message API. 
+Facebook Developers
+
+Procesar respuestas en webhooks “messages”. 
+Facebook Developers
+
+Fase 6 — Función: Coexistencia (usar el MISMO número en WhatsApp Business App + API)
+
+Esto NO es magia: se hace con un flujo específico.
+
+Meta (tú):
+
+Configurar Embedded Signup para “onboard WhatsApp Business app users”. 
+Facebook Developers
++1
+
+Replit (implementar):
+
+En el “Connect WhatsApp”, ofrecer 2 caminos:
+
+Número nuevo para API
+
+Usar número existente (Business App users / Coexistence) 
+Facebook Developers
+
+El resto (guardar IDs, suscribir WABA, webhooks) es igual.
+
+Fase 7 — Función: Llamadas por WhatsApp (si de verdad quieres “todo”)
+
+Verdad cruda: esto es otra liga (VoIP, permisos, eventos “calls”), y no lo metas hasta que mensajería esté sólida.
+
+Meta (tú):
+
+Revisar docs de Cloud API Calling y habilitar lo requerido. 
+Facebook Developers
++1
+
+Replit (implementar):
+
+Suscribirse al webhook field calls para recibir eventos de llamadas. 
+Facebook Developers
++1
+
+Implementar el stack WebRTC/VoIP según arquitectura de Calling API. 
+Facebook Developers
+
+Lo que le debes exigir a Replit como “Definition of Done”
+
+Si tu agente es bueno, esto lo entrega y lo pruebas en 1–2 días:
+
+Conectar WhatsApp (Embedded Signup) → se guarda waba_id + phone_number_id por tenant 
+Facebook Developers
++1
+
+POST /{waba_id}/subscribed_apps automático tras conectar 
+Facebook Developers
+
+Webhook GET/POST funcionando con firma validada 
+Facebook Developers
++1
+
+Envío POST /{phone_number_id}/messages + guardado de wamid 
+Facebook Developers
++1
+
+Webhook de status actualiza estados 
+Facebook Developers
+
+Templates CRUD básico por tenant 
+Facebook Developers
+
+Media upload + envío por media_id 
+Facebook Developers
++1
+
+Nota estratégica (porque esto te puede costar el negocio)
+
+Si no implementas cola + retries + rate limiting, vas a tener fallas aleatorias y culparás a Meta (cuando serás tú).
+
+Si no haces ruteo por phone_number_id, vas a mezclar tenants. Eso es un incidente mortal en un CRM.
+
+Si quieres, te dejo también un esqueleto exacto de endpoints + modelos DB + pseudocódigo Node/Express para que se lo pegues a Replit y no “interprete” nada.

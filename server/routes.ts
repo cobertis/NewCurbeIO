@@ -26195,6 +26195,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       );
       const wabaData = await wabaResponse.json() as any;
       
+      let businessId: string | null = null;
       let wabaId: string | null = null;
       let phoneNumberId: string | null = null;
       let phoneNumberE164: string | null = null;
@@ -26204,6 +26205,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (wabaData.data && wabaData.data.length > 0) {
         for (const business of wabaData.data) {
           if (business.owned_whatsapp_business_accounts?.data?.length > 0) {
+            businessId = business.id;
             const waba = business.owned_whatsapp_business_accounts.data[0];
             wabaId = waba.id;
             
@@ -26286,6 +26288,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (existing) {
         await db.update(channelConnections)
           .set({
+            businessId,
             wabaId,
             phoneNumberId,
             phoneNumberE164,
@@ -26301,6 +26304,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .where(eq(channelConnections.id, existing.id));
       } else {
         await db.insert(channelConnections).values({
+          businessId,
           companyId: oauthState.companyId,
           channel: "whatsapp",
           status: "active",
@@ -26315,6 +26319,27 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         });
       }
       
+      // Subscribe app to WABA webhooks - CRITICAL for receiving messages
+      try {
+        const subscribeResponse = await fetch(
+          `https://graph.facebook.com/${META_GRAPH_VERSION}/${wabaId}/subscribed_apps`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: accessToken })
+          }
+        );
+        const subscribeData = await subscribeResponse.json() as any;
+        if (subscribeData.success) {
+          console.log(`[WhatsApp OAuth] Successfully subscribed app to WABA ${wabaId} webhooks`);
+        } else {
+          console.error(`[WhatsApp OAuth] Failed to subscribe app to WABA:`, subscribeData);
+        }
+      } catch (subscribeError) {
+        console.error(`[WhatsApp OAuth] Error subscribing app to WABA:`, subscribeError);
+        // Don't fail the connection - webhook subscription can be retried
+      }
+
       console.log(`[WhatsApp OAuth] Successfully connected WABA ${wabaId} for company ${oauthState.companyId}`);
       return res.redirect(`${frontendUrl}/integrations?whatsapp=connected`);
       

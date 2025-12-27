@@ -4605,6 +4605,7 @@ export const channelConnections = pgTable("channel_connections", {
   status: channelStatusEnum("status").notNull().default("pending"),
   
   // WhatsApp fields
+  businessId: text("business_id"),
   wabaId: text("waba_id"),
   phoneNumberId: text("phone_number_id"),
   phoneNumberE164: text("phone_number_e164"),
