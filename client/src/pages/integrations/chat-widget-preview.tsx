@@ -2642,9 +2642,17 @@ export default function ChatWidgetPreviewPage() {
                 {solvedChatData.messages.map((msg, idx) => (
                   msg.direction === 'outbound' ? (
                     <div key={msg.id || idx} className="flex items-end gap-2">
-                      <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
-                        {solvedChatData.agentName?.[0]?.toUpperCase() || 'SA'}
-                      </div>
+                      {solvedChatData.agentAvatar ? (
+                        <img 
+                          src={solvedChatData.agentAvatar} 
+                          alt={solvedChatData.agentName || 'Agent'}
+                          className="w-7 h-7 rounded-full flex-shrink-0 object-cover"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                          {solvedChatData.agentName?.[0]?.toUpperCase() || 'SA'}
+                        </div>
+                      )}
                       <div className="flex flex-col items-start">
                         <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-700 shadow-sm px-3 py-2 max-w-[85%]">
                           <p className="text-sm text-slate-700 dark:text-slate-200">{msg.text}</p>
@@ -2839,6 +2847,16 @@ export default function ChatWidgetPreviewPage() {
                                   rating: surveyRating,
                                   feedback: surveyFeedback || null,
                                 });
+                                // Update allSessions with the rating to refresh Messages tab
+                                setAllSessions(prev => prev.map(session => 
+                                  session.sessionId === solvedChatData.sessionId 
+                                    ? { ...session, rating: surveyRating, status: 'solved' } 
+                                    : session
+                                ));
+                                // Update existingSession if it matches
+                                if (existingSession?.sessionId === solvedChatData.sessionId) {
+                                  setExistingSession(prev => prev ? { ...prev, rating: surveyRating, status: 'solved' } : null);
+                                }
                               } catch (error) {
                                 console.error('Failed to submit survey:', error);
                               } finally {
