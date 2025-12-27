@@ -101,10 +101,20 @@ app.get('/widget-script.js', (req, res) => {
   // Find the script tag to get the widget code
   var scripts = document.getElementsByTagName('script');
   var currentScript = null;
+  var widgetId = null;
   
   for (var i = 0; i < scripts.length; i++) {
     if (scripts[i].src && scripts[i].src.indexOf('widget-script.js') !== -1) {
       currentScript = scripts[i];
+      // Extract code from query string: widget-script.js?code=WIDGET_ID
+      var match = scripts[i].src.match(/[?&]code=([^&]+)/);
+      if (match) {
+        widgetId = match[1];
+      }
+      // Fallback to data-code attribute for backwards compatibility
+      if (!widgetId) {
+        widgetId = scripts[i].getAttribute('data-code');
+      }
       break;
     }
   }
@@ -114,9 +124,8 @@ app.get('/widget-script.js', (req, res) => {
     return;
   }
   
-  var widgetId = currentScript.getAttribute('data-code');
   if (!widgetId) {
-    console.error('[Curbe Widget] Missing data-code attribute');
+    console.error('[Curbe Widget] Missing code parameter in script URL');
     return;
   }
   
