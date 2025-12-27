@@ -407,6 +407,10 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         5
       );
 
+      console.log(`[Pulse AI Copilot] Company: ${companyId} | Found ${chunks.length} KB chunks | Top similarities:`, 
+        chunks.slice(0, 3).map(c => ({ id: c.id.slice(0, 8), similarity: c.similarity?.toFixed(3) }))
+      );
+
       const relevantChunks = chunks.map((c) => ({
         id: c.id,
         content: c.content,
