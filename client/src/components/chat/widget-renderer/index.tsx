@@ -106,7 +106,7 @@ export function WidgetRenderer({
           {config.welcomeTitle}
         </h3>
         <p className="font-bold text-slate-900 leading-tight" style={{ fontSize: "26px" }}>
-          How can we help?
+          {config.welcomeMessage || "How can we help?"}
         </p>
       </div>
 
