@@ -2360,22 +2360,6 @@ export default function InboxPage() {
                             </span>
                           </div>
                         )}
-                        {selectedConversation.updatedBy && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs text-muted-foreground">Updated by</span>
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-5 w-5">
-                                <AvatarFallback className="text-[10px] bg-primary/10">
-                                  {getUserInitial(selectedConversation.updatedBy)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm font-medium">
-                                {getUserDisplayName(selectedConversation.updatedBy)}
-                                {String(user?.id) === selectedConversation.updatedBy && <span className="text-muted-foreground ml-1">(You)</span>}
-                              </span>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
