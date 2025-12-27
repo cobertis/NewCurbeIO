@@ -26130,7 +26130,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   app.get("/api/integrations/meta/whatsapp/callback", async (req: Request, res: Response) => {
     const frontendUrl = process.env.BASE_URL || "";
     const errorRedirect = (reason: string, errorCode?: string, traceId?: string) => {
-      let redirectUrl = `${frontendUrl}/settings/integrations?whatsapp=error&reason=${encodeURIComponent(reason)}`;
+      let redirectUrl = `${frontendUrl}/settings/whatsapp?whatsapp=error&reason=${encodeURIComponent(reason)}`;
       if (errorCode) redirectUrl += `&code=${encodeURIComponent(errorCode)}`;
       if (traceId) redirectUrl += `&trace=${encodeURIComponent(traceId)}`;
       return res.redirect(redirectUrl);
@@ -26373,7 +26373,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       console.log(`[WhatsApp OAuth] Successfully connected WABA ${wabaId} for company ${oauthState.companyId}`);
-      return res.redirect(`${frontendUrl}/settings/integrations?whatsapp=connected`);
+      return res.redirect(`${frontendUrl}/settings/whatsapp?whatsapp=connected`);
       
     } catch (error) {
       console.error("[WhatsApp OAuth] Callback error:", error);
