@@ -130,6 +130,7 @@ import ChatWidgetPage from "@/pages/integrations/chat-widget-page";
 import ChatWidgetFlow from "@/pages/integrations/chat-widget-flow";
 import ChatWidgetEdit from "@/pages/integrations/chat-widget-edit";
 import ChatWidgetPreview from "@/pages/integrations/chat-widget-preview";
+import ChatWidgetEmbed from "@/pages/public/chat-widget-embed";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -2024,7 +2025,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/data-deletion" component={DataDeletionPage} />
-      <Route path="/widget/:id" component={ChatWidgetPreview} />
+      <Route path="/widget/:id" component={ChatWidgetEmbed} />
       <Route path="/l/:slug" component={PublicLandingPage} />
       <Route path="/consent/:token" component={PublicConsentPage} />
       <Route path="/unsubscribe" component={Unsubscribe} />
