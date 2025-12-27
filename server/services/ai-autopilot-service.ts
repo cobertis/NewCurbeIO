@@ -117,6 +117,11 @@ export class AiAutopilotService {
       let finalResponse: string | undefined;
       let needsHuman = false;
 
+      // Capture text response first (before processing tool calls)
+      if (response.content) {
+        finalResponse = response.content;
+      }
+
       if (response.toolCalls && response.toolCalls.length > 0) {
         for (const toolCall of response.toolCalls) {
           const toolName = toolCall.function.name;
@@ -139,9 +144,11 @@ export class AiAutopilotService {
             continue;
           }
           
+          const args = JSON.parse(toolCall.function.arguments);
+          
           const result = await aiToolRegistry.executeTool(
             toolName,
-            JSON.parse(toolCall.function.arguments),
+            args,
             {
               companyId,
               conversationId,
@@ -160,12 +167,12 @@ export class AiAutopilotService {
           
           if (toolName === "transfer_to_human") {
             needsHuman = true;
+            // Use the transfer reason as fallback response if no text was provided
+            if (!finalResponse && args.reason) {
+              finalResponse = `Te voy a conectar con un agente para ayudarte. Razón: ${args.reason}`;
+            }
           }
         }
-      }
-
-      if (!finalResponse && response.content) {
-        finalResponse = response.content;
       }
 
       const latencyMs = Date.now() - startTime;
