@@ -517,7 +517,6 @@ function SortableChannelItem({
 
   const callSubOptions = [
     { id: "callUsScreen", label: "Call us screen", icon: <Phone className="h-4 w-4" /> },
-    { id: "numberSettings", label: "Phone number", icon: <Phone className="h-4 w-4" /> },
     { id: "numbersAndCountries", label: "Numbers and countries", icon: <Users className="h-4 w-4" /> },
   ];
 

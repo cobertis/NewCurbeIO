@@ -99,24 +99,24 @@ export function WidgetChannelList({ config, onChannelClick, hideLiveChat = false
       )}
 
       {otherChannels.length > 0 && (
-        <div className="pt-2 border-t border-slate-100">
-          <p className="text-xs text-slate-400 mb-1.5">Other ways to reach us</p>
-          <div className="space-y-1.5">
+        <div className="pt-3 border-t border-slate-100">
+          <p className="text-xs text-slate-400 mb-2">Other ways to reach us</p>
+          <div className="space-y-2">
             {otherChannels.map((channel) => (
               <button
                 type="button"
                 key={channel.id}
-                className="w-full flex items-center gap-2 py-2 px-3 bg-slate-50 rounded-lg hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer touch-manipulation"
+                className="w-full flex items-center gap-3 py-3 px-4 bg-slate-50 rounded-xl hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer touch-manipulation"
                 onClick={() => onChannelClick?.(channel.id)}
                 data-testid={`widget-channel-${channel.id}`}
               >
-                <span className="[&>svg]:h-4 [&>svg]:w-4" style={{ color: iconColor }}>
+                <span className="[&>svg]:h-5 [&>svg]:w-5" style={{ color: iconColor }}>
                   {channel.icon}
                 </span>
-                <span className="flex-1 text-left text-xs font-medium text-slate-700">
+                <span className="flex-1 text-left text-sm font-medium text-slate-700">
                   {channel.getLabel(config)}
                 </span>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                <ChevronRight className="h-4 w-4 text-slate-400" />
               </button>
             ))}
           </div>
