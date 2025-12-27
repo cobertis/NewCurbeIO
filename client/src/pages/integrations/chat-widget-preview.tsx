@@ -101,9 +101,6 @@ export default function ChatWidgetPreviewPage() {
   
   // Detect if we're in public mode (URL starts with /widget/)
   const isPublicMode = location.startsWith('/widget/');
-  
-  // Detect if we're in embed mode (embedded in settings page preview)
-  const isEmbedMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === 'true';
 
   // Live chat state
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
@@ -2331,26 +2328,9 @@ export default function ChatWidgetPreviewPage() {
     );
   };
 
-  // Auto-open widget in embed mode
-  useEffect(() => {
-    if (isEmbedMode && !widgetOpen) {
-      setWidgetOpen(true);
-    }
-  }, [isEmbedMode]);
-
-  // Embed mode: just show the widget without page wrapper
-  // The widget content is the same as the regular mode, just with different container
-
-  // Define wrapper classes based on mode
-  const containerClass = isEmbedMode 
-    ? "relative w-full h-full min-h-[600px] bg-transparent" 
-    : "min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-slate-900 dark:to-slate-800";
-
   return (
-    <div className={containerClass} data-testid={isEmbedMode ? "widget-embed-container" : "page-widget-preview"}>
-      {/* Page content - hide in embed mode */}
-      {!isEmbedMode && (
-        <div className="container max-w-4xl mx-auto py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-slate-900 dark:to-slate-800" data-testid="page-widget-preview">
+      <div className="container max-w-4xl mx-auto py-12 px-4">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-4">
               <img src={curbeLogo} alt="Curbe" className="h-8 w-auto" />
@@ -2462,20 +2442,16 @@ export default function ChatWidgetPreviewPage() {
             </div>
           )}
         </div>
-      )}
 
-      {/* Widget - show in both modes, adjust positioning for embed mode */}
+      {/* Only show widget if targeting rules allow */}
       {shouldDisplay !== false && (
         <div 
-          className={isEmbedMode ? "absolute flex flex-col gap-2" : "fixed flex flex-col gap-2"}
+          className="fixed flex flex-col gap-2"
           style={{
-            bottom: isEmbedMode ? '20px' : `${widget.minimizedState?.bottomSpacing || 26}px`,
-            ...(isEmbedMode 
-              ? { right: '20px', alignItems: 'flex-end' }
-              : (widget.minimizedState?.alignTo === "left" 
-                  ? { left: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-start" }
-                  : { right: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-end" }
-                )
+            bottom: `${widget.minimizedState?.bottomSpacing || 26}px`,
+            ...(widget.minimizedState?.alignTo === "left" 
+              ? { left: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-start" }
+              : { right: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-end" }
             )
           }}
         >
@@ -2565,15 +2541,12 @@ export default function ChatWidgetPreviewPage() {
 
         {widgetOpen && (
           <div 
-            className={isEmbedMode ? "absolute w-[360px]" : "fixed w-[360px]"}
+            className="fixed w-[360px]"
             style={{
-              bottom: isEmbedMode ? '90px' : `${(widget.minimizedState?.bottomSpacing || 26) + 70}px`,
-              ...(isEmbedMode 
-                ? { right: '20px' }
-                : (widget.minimizedState?.alignTo === "left" 
-                    ? { left: `${widget.minimizedState?.sideSpacing || 32}px` }
-                    : { right: `${widget.minimizedState?.sideSpacing || 32}px` }
-                  )
+              bottom: `${(widget.minimizedState?.bottomSpacing || 26) + 70}px`,
+              ...(widget.minimizedState?.alignTo === "left" 
+                ? { left: `${widget.minimizedState?.sideSpacing || 32}px` }
+                : { right: `${widget.minimizedState?.sideSpacing || 32}px` }
               )
             }}
           >

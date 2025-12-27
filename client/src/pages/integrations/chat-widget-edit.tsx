@@ -5194,16 +5194,36 @@ export default function ChatWidgetEditPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <iframe
-                      key={`widget-preview-${widgetId}`}
-                      src={`/widget/${widgetId}?embed=true`}
-                      className="w-full h-full border-0"
-                      style={{ minHeight: '600px', background: 'transparent' }}
-                      title="Widget Preview"
-                      allow="clipboard-write"
-                      data-testid="iframe-widget-preview"
+                  <div className="flex flex-col items-end gap-4">
+                    <WidgetRenderer 
+                      config={mapChatWidgetToConfig(widget)}
+                      mode="preview"
+                      activeTab={previewActiveTab}
+                      onTabChange={(tab) => setPreviewActiveTab(tab)}
+                      onClose={handleBackToHome}
+                      onChannelClick={(channel) => {
+                        if (channel === 'liveChat') {
+                          setExpandedChannel('liveChat');
+                          setActiveLiveChatSubSection('welcomeScreen');
+                        } else {
+                          setPreviewActiveChannel(channel);
+                        }
+                      }}
+                      activeChannel={previewActiveChannel}
+                      onBackFromChannel={() => setPreviewActiveChannel(null)}
+                      channelContent={renderPreviewChannelContent()}
                     />
+                    
+                    <div 
+                      className="flex items-center justify-center rounded-full shadow-xl cursor-pointer self-end"
+                      style={{ 
+                        background: currentBackground,
+                        width: "56px",
+                        height: "56px"
+                      }}
+                    >
+                      <ChevronDown className="h-6 w-6 text-white" />
+                    </div>
                   </div>
                 )}
               </CardContent>
