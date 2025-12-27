@@ -29165,6 +29165,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             lastMessageAt: new Date(),
             unreadCount: (conversation.unreadCount || 0) + 1,
             updatedAt: new Date(),
+            status: "open",
           })
           .where(eq(telnyxConversations.id, conversation.id));
       }
@@ -29251,11 +29252,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             lastMediaUrls: uploadedMediaUrls,
             lastMessageAt: new Date(),
             updatedAt: new Date(),
+            status: "open",
           })
           .where(eq(telnyxConversations.id, conversation.id));
       }
       broadcastConversationUpdate(companyId);
       console.log("[Telnyx SMS Webhook] Broadcasted conversation update for company:", companyId);
+      broadcastInboxMessage(companyId, conversation.id);
       
       // AI Autopilot Integration for SMS/MMS - Process message asynchronously
       (async () => {
