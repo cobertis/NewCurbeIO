@@ -2563,9 +2563,9 @@ export default function InboxPage() {
 
             {/* Pulse AI Tab Content */}
             {rightPanelTab === "pulse-ai" && (
-              <div className="flex-1 flex flex-col" data-testid="pulse-ai-panel">
+              <div className="flex-1 flex flex-col overflow-hidden" data-testid="pulse-ai-panel">
                 {/* Messages Area */}
-                <ScrollArea className="flex-1" data-testid="pulse-ai-messages">
+                <ScrollArea className="flex-1 overflow-auto" data-testid="pulse-ai-messages">
                   <div className="p-4 space-y-4">
                     {pulseAiMessages.length === 0 ? (
                       <div className="flex flex-col items-center pt-16">
