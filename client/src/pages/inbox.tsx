@@ -290,6 +290,19 @@ export default function InboxPage() {
         });
       }
     }
+    // Handle visitor ended chat event
+    if (msg.type === 'visitor_ended_chat') {
+      toast({
+        title: "Chat Ended",
+        description: `${msg.displayName || 'Visitor'} has ended the chat session`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      // If the ended conversation is currently selected, clear selection
+      if (selectedConversationId === msg.conversationId) {
+        setSelectedConversationId(null);
+        setActiveView("solved");
+      }
+    }
   });
 
   useEffect(() => {

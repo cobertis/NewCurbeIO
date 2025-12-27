@@ -12,7 +12,7 @@ import { sesService } from "./services/ses-service";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage, broadcastLiveChatEvent } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage, broadcastLiveChatEvent, broadcastVisitorEndedChat } from "./websocket";
 import { createTraceContext, logChatEvent, extractTraceFromRequest, generateTraceId } from "./lib/chat-trace";
 import { chargeCallToWallet } from "./services/pricing-service";
 import { twilioService } from "./twilio";
@@ -29232,10 +29232,14 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         })
         .where(eq(telnyxConversations.id, sessionId));
       
-      // Broadcast conversation update to connected agents
-      broadcastConversationUpdate(conversation.companyId, sessionId);  // FIXED: Was using undefined broadcastToCompany
+      // Broadcast conversation update to connected agents with visitor ended event
+      broadcastConversationUpdate(conversation.companyId, sessionId);
+      
+      // Send specific event to notify agents that visitor ended the chat
+      broadcastVisitorEndedChat(conversation.companyId, sessionId, conversation.displayName || undefined);
       
       console.log(`[LiveChat] Visitor ended chat session: ${sessionId}`);
+      
       
       // Log chat event for finish_session
       logChatEvent(createTraceContext({
@@ -39596,6 +39600,14 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const companyId = (req.user as any).companyId;
     
     try {
+      // Get conversation before update to check if it's a live chat
+      const [conversation] = await db.select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.id, id),
+          eq(telnyxConversations.companyId, companyId)
+        ));
+      
       const updateData: any = { updatedAt: new Date() };
       if (displayName !== undefined) updateData.displayName = displayName || null;
       if (email !== undefined) updateData.email = email || null;
@@ -39609,6 +39621,18 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           eq(telnyxConversations.id, id),
           eq(telnyxConversations.companyId, companyId)
         ));
+      
+      // If status changed to solved and it's a live chat, notify the widget
+      if (status === "solved" && conversation?.channel === "live_chat") {
+        console.log(`[LiveChat] Admin solved chat: ${id}`);
+        broadcastLiveChatEvent(companyId, id, {
+          type: "chat_solved",
+          status: "solved",
+          message: "Chat has been resolved by agent"
+        });
+        // Also broadcast to admin clients
+        broadcastConversationUpdate(companyId, id);
+      }
       
       res.json({ success: true });
     } catch (error: any) {

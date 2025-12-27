@@ -738,6 +738,38 @@ export function broadcastConversationUpdate(companyId?: string) {
   console.log(`[WebSocket] Broadcasting conversation_update to ${sentCount} authenticated clients${companyId ? ` (company: ${companyId})` : ''}`);
 }
 
+// Broadcast visitor ended chat event to tenant-scoped clients
+export function broadcastVisitorEndedChat(companyId: string, conversationId: string, displayName?: string) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'visitor_ended_chat',
+    companyId,
+    conversationId,
+    displayName: displayName || 'Visitor'
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.companyId === companyId || authClient.role === 'superadmin') {
+      client.send(message);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting visitor_ended_chat to ${sentCount} clients (company: ${companyId})`);
+}
+
+
 // Broadcast notification update to tenant-scoped clients only
 export function broadcastNotificationUpdate(companyId?: string) {
   if (!wss) {
