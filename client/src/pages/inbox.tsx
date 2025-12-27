@@ -121,7 +121,6 @@ interface TelnyxConversation {
   channel?: string;
   status?: "open" | "pending" | "solved" | "snoozed" | "archived" | "waiting";
   assignedTo?: string | null;
-  widgetId?: string | null;
   tags?: string[] | null;
   updatedBy?: string | null;
   updatedAt?: string | null;
@@ -190,23 +189,6 @@ interface TelnyxMessage {
 
 type MobileView = "threads" | "messages" | "details";
 
-interface LiveVisitor {
-  id: string;
-  widgetId: string;
-  visitorId: string;
-  firstName: string | null;
-  lastName: string | null;
-  email: string | null;
-  ipAddress: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  currentUrl: string | null;
-  pageTitle: string | null;
-  firstSeenAt: string;
-  lastSeenAt: string;
-}
-
 export default function InboxPage() {
   const { toast } = useToast();
   const [activeView, setActiveView] = useState<MessengerView>("open");
@@ -231,10 +213,6 @@ export default function InboxPage() {
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [visitorTypingPreview, setVisitorTypingPreview] = useState<string | null>(null);
-  const [startChatDialogOpen, setStartChatDialogOpen] = useState(false);
-  const [selectedVisitor, setSelectedVisitor] = useState<LiveVisitor | null>(null);
-  const [startChatMessage, setStartChatMessage] = useState("");
   const [copilotDraft, setCopilotDraft] = useState<string | null>(null);
   const [copilotSource, setCopilotSource] = useState<"knowledge_base" | "general" | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"details" | "pulse-ai">("details");
@@ -276,13 +254,6 @@ export default function InboxPage() {
     staleTime: 30000,
   });
   const conversations = conversationsData?.conversations || [];
-
-  const { data: visitorsData } = useQuery<{ visitors: LiveVisitor[] }>({
-    queryKey: ["/api/live-visitors"],
-    enabled: isAuthenticated,
-    refetchInterval: 15000,
-  });
-  const liveVisitors = visitorsData?.visitors || [];
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
@@ -387,7 +358,6 @@ export default function InboxPage() {
     const msg = message as any;
     if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update') {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/live-visitors"] });
       // Always refresh messages for the selected conversation on any update
       if (selectedConversationId) {
         queryClient.invalidateQueries({ 
@@ -395,45 +365,7 @@ export default function InboxPage() {
         });
       }
     }
-    // Handle visitor ended chat event
-    if (msg.type === 'visitor_ended_chat') {
-      toast({
-        title: "Chat Ended",
-        description: `${msg.displayName || 'Visitor'} has ended the chat session`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
-      // If the ended conversation is currently selected, clear selection
-      if (selectedConversationId === msg.conversationId) {
-        setSelectedConversationId(null);
-        setActiveView("solved");
-      }
-    }
   });
-
-  useEffect(() => {
-    if (!selectedConversationId || selectedConversation?.channel !== "live_chat") {
-      setVisitorTypingPreview(null);
-      return;
-    }
-    
-    const pollPreview = async () => {
-      try {
-        const res = await fetch(`/api/inbox/live-chat/preview/${selectedConversationId}`, {
-          credentials: 'include',
-        });
-        if (res.ok) {
-          const { isTyping, text } = await res.json();
-          setVisitorTypingPreview(isTyping ? text : null);
-        }
-      } catch (error) {
-        console.error('Preview poll error:', error);
-      }
-    };
-    
-    pollPreview();
-    const interval = setInterval(pollPreview, 1000);
-    return () => clearInterval(interval);
-  }, [selectedConversationId, selectedConversation?.channel]);
 
   const previousViewRef = useRef<MessengerView>(activeView);
   
@@ -731,35 +663,6 @@ export default function InboxPage() {
     },
   });
 
-  const startChatWithVisitorMutation = useMutation({
-    mutationFn: async (data: { visitorId: string; message: string; widgetId?: string }) => {
-      const res = await apiRequest("POST", "/api/inbox/start-chat-visitor", data);
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/live-visitors"] });
-      setStartChatDialogOpen(false);
-      setStartChatMessage("");
-      setSelectedVisitor(null);
-      if (data?.conversation?.id) {
-        setSelectedConversationId(data.conversation.id);
-        setActiveView("open");
-      }
-      toast({
-        title: "Chat started",
-        description: "Your message has been sent to the visitor.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to start chat",
-        description: error.message || "Please try again",
-        variant: "destructive",
-      });
-    },
-  });
-
   const copilotDraftMutation = useMutation({
     mutationFn: async ({ conversationId, lastMessages }: { conversationId: string; lastMessages: Array<{ direction: string; text: string }> }) => {
       return apiRequest("POST", "/api/ai/copilot/draft", { conversationId, lastMessages });
@@ -987,7 +890,7 @@ export default function InboxPage() {
         filtered = conversations.filter(c => (c.channel === "sms" || !c.channel) && !isSolvedOrArchived(c));
         break;
       case "live-chat":
-        filtered = conversations.filter(c => (c.channel === "live_chat" || c.channel === "live-chat" || c.channel === "chat-widget") && !isSolvedOrArchived(c));
+        filtered = conversations.filter(c => (c.channel === "live_chat" || c.channel === "live-chat") && !isSolvedOrArchived(c));
         break;
       case "whatsapp":
         filtered = conversations.filter(c => c.channel === "whatsapp" && !isSolvedOrArchived(c));
@@ -1018,7 +921,6 @@ export default function InboxPage() {
       case "assigned": return "Assigned to me";
       case "unassigned": return "Unassigned";
       case "waiting": return "Waiting live chats";
-      case "visitors": return "Live visitors";
       case "solved": return "Solved";
       case "all": return "All chats";
       case "sms": return "SMS";
@@ -1233,172 +1135,9 @@ export default function InboxPage() {
         open: conversations.filter(c => (c.status === "open" || c.status === "pending" || !c.status) && (c as any).status !== "waiting" && c.status !== "solved" && c.status !== "archived").length,
         assigned: conversations.filter(c => c.assignedTo === user?.id && c.status !== "solved" && c.status !== "archived").length,
         unassigned: conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting" && c.status !== "solved" && c.status !== "archived").length,
-        waiting: conversations.filter(c => {
-          if (c.channel !== "live_chat" || (c as any).status !== "waiting") return false;
-          return (c as any).isVisitorActive && (c as any).hasPendingMessage;
-        }).length,
-        visitors: liveVisitors.length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
       }}
     >
-      {/* Live Visitors Panel - shown when visitors view is active */}
-      {activeView === "visitors" ? (
-        (() => {
-          const animalColors = ['Red', 'Blue', 'Golden', 'Silver', 'Purple', 'Green', 'Orange', 'Pink', 'White', 'Black', 'Brown', 'Gray', 'Coral', 'Teal', 'Crimson', 'Azure', 'Jade', 'Ruby', 'Amber', 'Ivory'];
-          const animals = ['Dolphin', 'Fox', 'Eagle', 'Wolf', 'Owl', 'Tiger', 'Panda', 'Falcon', 'Hawk', 'Bear', 'Lion', 'Shark', 'Whale', 'Panther', 'Jaguar', 'Raven', 'Phoenix', 'Dragon', 'Lynx', 'Otter', 'Badger', 'Cobra', 'Viper', 'Crane', 'Heron'];
-          
-          const getAnimalName = (visitorId: string) => {
-            let hash = 0;
-            for (let i = 0; i < visitorId.length; i++) {
-              hash = ((hash << 5) - hash) + visitorId.charCodeAt(i);
-              hash = hash & hash;
-            }
-            const colorIndex = Math.abs(hash) % animalColors.length;
-            const animalIndex = Math.abs(hash >> 8) % animals.length;
-            return `${animalColors[colorIndex]} ${animals[animalIndex]}`;
-          };
-          
-          const getAvatarColor = (visitorId: string) => {
-            const colors = ['bg-red-100 text-red-600', 'bg-blue-100 text-blue-600', 'bg-green-100 text-green-600', 'bg-purple-100 text-purple-600', 'bg-orange-100 text-orange-600', 'bg-pink-100 text-pink-600', 'bg-teal-100 text-teal-600', 'bg-amber-100 text-amber-600'];
-            let hash = 0;
-            for (let i = 0; i < visitorId.length; i++) {
-              hash = ((hash << 5) - hash) + visitorId.charCodeAt(i);
-            }
-            return colors[Math.abs(hash) % colors.length];
-          };
-          
-          return (
-            <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
-              <div className="h-[49px] px-6 border-b flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h2 className="font-semibold text-lg">Live Visitors</h2>
-                  <span className="text-muted-foreground text-sm">{liveVisitors.length}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" className="h-8 gap-1.5">
-                    <Filter className="h-3.5 w-3.5" />
-                    <span className="text-xs">Filter</span>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-8 gap-1.5">
-                    <Search className="h-3.5 w-3.5" />
-                    <span className="text-xs">Search</span>
-                  </Button>
-                </div>
-              </div>
-              
-              {liveVisitors.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-                  <Eye className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                  <p className="text-base text-muted-foreground font-medium">No visitors online</p>
-                  <p className="text-sm text-muted-foreground mt-1">Visitors will appear here when they view your chat widget</p>
-                </div>
-              ) : (
-                <div className="flex-1 overflow-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/30 sticky top-0">
-                      <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        <th className="px-6 py-3">Name</th>
-                        <th className="px-6 py-3">Current URL</th>
-                        <th className="px-6 py-3">Location</th>
-                        <th className="px-6 py-3">Time on Site</th>
-                        <th className="px-6 py-3 text-right"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {liveVisitors.map((visitor) => {
-                        const timeOnSite = Math.round((Date.now() - new Date(visitor.firstSeenAt).getTime()) / 1000);
-                        const minutes = Math.floor(timeOnSite / 60);
-                        const seconds = timeOnSite % 60;
-                        const duration = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-                        const realName = visitor.firstName 
-                          ? `${visitor.firstName}${visitor.lastName ? ' ' + visitor.lastName : ''}`
-                          : null;
-                        const displayName = realName || getAnimalName(visitor.visitorId);
-                        const avatarColors = getAvatarColor(visitor.visitorId);
-                        const initials = displayName.split(' ').map(w => w[0]).join('');
-                        
-                        return (
-                          <tr
-                            key={visitor.id}
-                            className="hover:bg-muted/30 transition-colors"
-                            data-testid={`visitor-${visitor.id}`}
-                          >
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="relative shrink-0">
-                                  <div className={cn("h-10 w-10 rounded-full flex items-center justify-center font-medium text-sm", avatarColors)}>
-                                    {initials}
-                                  </div>
-                                  <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-white" />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-sm">{displayName}</p>
-                                  <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(visitor.firstSeenAt), { addSuffix: true })}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <a 
-                                href={visitor.currentUrl || '#'} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-sm text-primary hover:underline truncate block max-w-xs"
-                                title={visitor.currentUrl || undefined}
-                              >
-                                {visitor.currentUrl || 'Unknown page'}
-                              </a>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                {visitor.country && (
-                                  <span className="text-lg" title={visitor.country}>
-                                    {visitor.country === 'United States' ? '🇺🇸' : 
-                                     visitor.country === 'Mexico' ? '🇲🇽' : 
-                                     visitor.country === 'Canada' ? '🇨🇦' : 
-                                     visitor.country === 'United Kingdom' ? '🇬🇧' : 
-                                     visitor.country === 'Spain' ? '🇪🇸' : 
-                                     visitor.country === 'Local' ? '🏠' : '🌍'}
-                                  </span>
-                                )}
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-medium">
-                                    {visitor.city || 'Unknown City'}{visitor.state ? `, ${visitor.state}` : ''}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {visitor.country || 'Unknown Country'}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-sm text-green-600 font-medium">{duration}</span>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <Button 
-                                size="sm" 
-                                className="h-8 gap-1.5"
-                                data-testid={`btn-start-chat-${visitor.id}`}
-                                onClick={() => {
-                                  setSelectedVisitor(visitor);
-                                  setStartChatDialogOpen(true);
-                                }}
-                              >
-                                <MessageSquare className="h-3.5 w-3.5" />
-                                Start Chat
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        })()
-      ) : (
-        <>
       {/* Conversation List Panel */}
       <div className={cn(
         "w-80 border-r flex flex-col bg-white dark:bg-gray-900",
@@ -1805,25 +1544,6 @@ export default function InboxPage() {
                       </div>
                     );
                   })}
-                  {/* Visitor typing preview for live_chat */}
-                  {selectedConversation?.channel === "live_chat" && visitorTypingPreview && (
-                    <div className="flex justify-start">
-                      <div className="max-w-[70%] rounded-2xl px-4 py-2 bg-white dark:bg-gray-800 shadow-sm rounded-tl-sm border border-dashed border-gray-300 dark:border-gray-600">
-                        <p className="text-sm text-gray-500 dark:text-gray-400 italic whitespace-pre-wrap">
-                          {visitorTypingPreview}
-                        </p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="text-[10px] text-gray-400">Typing...</span>
-                          <span className="flex gap-0.5">
-                            <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                            <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                            <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
                   {/* Satisfaction Rating Display for Solved Chats */}
                   {(selectedConversation as any).status === "solved" && (selectedConversation as any).satisfactionRating && (
                     <div className="flex justify-center my-4">
@@ -3182,53 +2902,6 @@ export default function InboxPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Start Chat with Visitor Dialog */}
-      <AlertDialog open={startChatDialogOpen} onOpenChange={setStartChatDialogOpen}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Start Chat with Visitor</AlertDialogTitle>
-            <AlertDialogDescription>
-              Send a proactive message to this visitor. They will see your message in the chat widget on their screen.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder="Type your message..."
-              value={startChatMessage}
-              onChange={(e) => setStartChatMessage(e.target.value)}
-              className="min-h-[100px] resize-none"
-              data-testid="input-start-chat-message"
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel 
-              data-testid="btn-cancel-start-chat"
-              onClick={() => {
-                setStartChatMessage("");
-                setSelectedVisitor(null);
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <Button
-              onClick={() => {
-                if (selectedVisitor && startChatMessage.trim()) {
-                  startChatWithVisitorMutation.mutate({
-                    visitorId: selectedVisitor.visitorId,
-                    message: startChatMessage.trim(),
-                    widgetId: selectedVisitor.widgetId,
-                  });
-                }
-              }}
-              disabled={!startChatMessage.trim() || startChatWithVisitorMutation.isPending}
-              data-testid="btn-confirm-start-chat"
-            >
-              {startChatWithVisitorMutation.isPending ? "Sending..." : "Send Message"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Thread Summary Dialog */}
       <Dialog open={threadSummaryOpen} onOpenChange={setThreadSummaryOpen}>
         <DialogContent className="max-w-lg" data-testid="dialog-thread-summary">
@@ -3336,8 +3009,6 @@ export default function InboxPage() {
           ) : null}
         </DialogContent>
       </Dialog>
-      </>
-      )}
     </MessengerLayout>
   );
 }
