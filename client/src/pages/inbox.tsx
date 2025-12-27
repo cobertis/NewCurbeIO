@@ -658,7 +658,7 @@ export default function InboxPage() {
   const threadSummaryMutation = useMutation({
     mutationFn: async (conversationId: string) => {
       const res = await apiRequest("POST", "/api/ai/thread-summary", { conversationId });
-      return res.json();
+      return res;
     },
     onSuccess: (data: { summary: string; suggestions: Array<{ type: string; text: string }> }) => {
       setThreadSummaryData(data);
