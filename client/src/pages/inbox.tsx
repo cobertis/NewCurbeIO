@@ -893,19 +893,22 @@ export default function InboxPage() {
   const filteredConversations = useMemo(() => {
     let filtered = conversations;
     
+    // Helper to check if a conversation is solved/archived
+    const isSolvedOrArchived = (c: any) => c.status === "solved" || c.status === "archived";
+    
     switch (activeView) {
       case "open":
-        // Exclude waiting live chats from Open view
-        filtered = conversations.filter(c => (c.status === "open" || c.status === "pending" || !c.status) && (c as any).status !== "waiting");
+        // Exclude waiting live chats and solved chats from Open view
+        filtered = conversations.filter(c => (c.status === "open" || c.status === "pending" || !c.status) && (c as any).status !== "waiting" && !isSolvedOrArchived(c));
         break;
       case "unread":
-        filtered = conversations.filter(c => c.unreadCount > 0 && (c as any).status !== "waiting");
+        filtered = conversations.filter(c => c.unreadCount > 0 && (c as any).status !== "waiting" && !isSolvedOrArchived(c));
         break;
       case "assigned":
-        filtered = conversations.filter(c => c.assignedTo === user?.id);
+        filtered = conversations.filter(c => c.assignedTo === user?.id && !isSolvedOrArchived(c));
         break;
       case "unassigned":
-        filtered = conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting");
+        filtered = conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting" && !isSolvedOrArchived(c));
         break;
       case "waiting":
         // Show all live chats with status "waiting" - visitors waiting for an agent to accept
@@ -916,28 +919,29 @@ export default function InboxPage() {
         });
         break;
       case "solved":
-        filtered = conversations.filter(c => c.status === "solved" || c.status === "archived");
+        filtered = conversations.filter(c => isSolvedOrArchived(c));
         break;
       case "all":
-        filtered = conversations;
+        // Exclude solved/archived from "All chats" - they should only show in Solved view
+        filtered = conversations.filter(c => !isSolvedOrArchived(c));
         break;
       case "sms":
-        filtered = conversations.filter(c => c.channel === "sms" || !c.channel);
+        filtered = conversations.filter(c => (c.channel === "sms" || !c.channel) && !isSolvedOrArchived(c));
         break;
       case "live-chat":
-        filtered = conversations.filter(c => c.channel === "live_chat" || c.channel === "live-chat" || c.channel === "chat-widget");
+        filtered = conversations.filter(c => (c.channel === "live_chat" || c.channel === "live-chat" || c.channel === "chat-widget") && !isSolvedOrArchived(c));
         break;
       case "whatsapp":
-        filtered = conversations.filter(c => c.channel === "whatsapp");
+        filtered = conversations.filter(c => c.channel === "whatsapp" && !isSolvedOrArchived(c));
         break;
       case "facebook":
-        filtered = conversations.filter(c => c.channel === "facebook");
+        filtered = conversations.filter(c => c.channel === "facebook" && !isSolvedOrArchived(c));
         break;
       case "instagram":
-        filtered = conversations.filter(c => c.channel === "instagram");
+        filtered = conversations.filter(c => c.channel === "instagram" && !isSolvedOrArchived(c));
         break;
       default:
-        filtered = conversations;
+        filtered = conversations.filter(c => !isSolvedOrArchived(c));
     }
     
     if (!searchQuery) return filtered;
@@ -1178,7 +1182,7 @@ export default function InboxPage() {
         }).length,
         visitors: liveVisitors.length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
-        all: conversations.length,
+        all: conversations.filter(c => c.status !== "solved" && c.status !== "archived").length,
       }}
     >
       {/* Live Visitors Panel - shown when visitors view is active */}
