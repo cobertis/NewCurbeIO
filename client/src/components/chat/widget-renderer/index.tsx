@@ -346,7 +346,6 @@ export function WidgetRenderer({
       <div className="p-4">
         <WidgetHeader 
           config={config} 
-          onClose={onClose} 
           showBackButton={!!activeChannel && !!channelContent}
           onBack={onBackFromChannel}
         />

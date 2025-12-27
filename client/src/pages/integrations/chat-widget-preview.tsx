@@ -2,7 +2,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, ChevronDown, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown, User, Bug } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, ChevronDown, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown, User, Bug, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
@@ -178,6 +178,7 @@ export default function ChatWidgetPreviewPage() {
   const [chatStatus, setChatStatus] = useState<string | null>(null);
   const [showSatisfactionSurvey, setShowSatisfactionSurvey] = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
+  const [showChatMenu, setShowChatMenu] = useState(false);
   const [surveyRating, setSurveyRating] = useState<number | null>(null);
   const [surveyFeedback, setSurveyFeedback] = useState('');
   const [surveySubmitting, setSurveySubmitting] = useState(false);
@@ -2602,34 +2603,18 @@ export default function ChatWidgetPreviewPage() {
                 </div>
                 
                 {/* Agent photo */}
-                <div className="flex items-center gap-3">
-                  <div className="flex -space-x-2">
-                    {solvedChatData.agentAvatar ? (
-                      <img 
-                        src={solvedChatData.agentAvatar} 
-                        alt={solvedChatData.agentName || 'Agent'}
-                        className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
-                      />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
-                        {solvedChatData.agentName?.[0]?.toUpperCase() || 'A'}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
-                    onClick={() => {
-                      setViewingSolvedChat(false);
-                      setSolvedChatData(null);
-                      setChatSessionId(null);
-                      setActiveChannel(null);
-                      setChatFlowState('idle');
-                      setActiveWidgetTab('messages');
-                    }}
-                    data-testid="widget-close-button"
-                  >
-                    <ChevronDown className="h-6 w-6 text-slate-500" />
-                  </button>
+                <div className="flex -space-x-2">
+                  {solvedChatData.agentAvatar ? (
+                    <img 
+                      src={solvedChatData.agentAvatar} 
+                      alt={solvedChatData.agentName || 'Agent'}
+                      className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                      {solvedChatData.agentName?.[0]?.toUpperCase() || 'A'}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -2936,7 +2921,7 @@ export default function ChatWidgetPreviewPage() {
                   )}
                 </div>
                 
-                {/* Agent photos */}
+                {/* Agent photos + menu */}
                 <div className="flex items-center gap-3">
                   <div className="flex -space-x-2">
                     {connectedAgent?.profileImageUrl ? (
@@ -2972,28 +2957,33 @@ export default function ChatWidgetPreviewPage() {
                     )}
                   </div>
                   
-                  {/* Close/Finish button */}
-                  {chatStatus !== 'solved' ? (
-                    <button
-                      onClick={() => setShowFinishConfirm(true)}
-                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
-                      title="End chat"
-                      data-testid="button-finish-chat"
-                    >
-                      <ChevronDown className="h-6 w-6 text-slate-500" />
-                    </button>
-                  ) : (
-                    <button
-                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
-                      onClick={() => {
-                        resetChatSession();
-                        setChatFlowState('idle');
-                        setActiveWidgetTab('home');
-                      }}
-                      data-testid="widget-close-button"
-                    >
-                      <ChevronDown className="h-6 w-6 text-slate-500" />
-                    </button>
+                  {/* Three dots menu - only show when chat is active */}
+                  {chatStatus !== 'solved' && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowChatMenu(!showChatMenu)}
+                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
+                        title="Options"
+                        data-testid="button-chat-menu"
+                      >
+                        <MoreVertical className="h-5 w-5 text-slate-500" />
+                      </button>
+                      {showChatMenu && (
+                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 min-w-[140px] z-50">
+                          <button
+                            onClick={() => {
+                              setShowChatMenu(false);
+                              setShowFinishConfirm(true);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                            data-testid="menu-finish-chat"
+                          >
+                            <X className="h-4 w-4" />
+                            Finish chat
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -3554,44 +3544,33 @@ export default function ChatWidgetPreviewPage() {
                       )}
                     </div>
                     
-                    {/* Agent photos + close button - same as WidgetHeader */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex -space-x-2">
-                        {(widget as any).teamMembers && (widget as any).teamMembers.length > 0 ? (
-                          (widget as any).teamMembers.slice(0, 3).map((member: any, i: number) => (
-                            <div 
-                              key={i} 
-                              className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200"
-                              title={member.name}
-                            >
-                              {member.avatarUrl ? (
-                                <img 
-                                  src={member.avatarUrl} 
-                                  alt={member.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-xs font-medium text-slate-600">
-                                  {member.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
-                                </span>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200">
-                            <User className="w-5 h-5 text-slate-500" />
+                    {/* Agent photos - same as WidgetHeader */}
+                    <div className="flex -space-x-2">
+                      {(widget as any).teamMembers && (widget as any).teamMembers.length > 0 ? (
+                        (widget as any).teamMembers.slice(0, 3).map((member: any, i: number) => (
+                          <div 
+                            key={i} 
+                            className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200"
+                            title={member.name}
+                          >
+                            {member.avatarUrl ? (
+                              <img 
+                                src={member.avatarUrl} 
+                                alt={member.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs font-medium text-slate-600">
+                                {member.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                              </span>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => { 
-                          resetChatSession();
-                        }}
-                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
-                        data-testid="button-close-prechat"
-                      >
-                        <ChevronDown className="h-6 w-6 text-slate-500" />
-                      </button>
+                        ))
+                      ) : (
+                        <div className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200">
+                          <User className="w-5 h-5 text-slate-500" />
+                        </div>
+                      )}
                     </div>
                   </div>
                   
