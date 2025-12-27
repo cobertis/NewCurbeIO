@@ -640,8 +640,6 @@ export default function InboxPage() {
 
   const handleInsertPulseAiMessage = (content: string) => {
     setNewMessage(content);
-    setRightPanelTab("details");
-    toast({ title: "Inserted", description: "AI response has been inserted into the message composer." });
   };
 
   const handleTextSelection = () => {
