@@ -1055,7 +1055,17 @@ export default function ChatWidgetPreviewPage() {
   const viewSolvedChat = async () => {
     if (!existingSession?.sessionId || !widgetId) return;
     
-    setChatLoading(true);
+    // Set viewing state immediately to show the solved chat view with loading spinner inside
+    setViewingSolvedChat(true);
+    setSolvedChatData({
+      sessionId: existingSession.sessionId,
+      messages: [],
+      rating: null,
+      feedback: null,
+      agentName: null,
+      status: 'solved',
+    });
+    
     try {
       const msgRes = await fetch(`/api/public/live-chat/messages/${existingSession.sessionId}`);
       if (msgRes.ok) {
@@ -1075,7 +1085,6 @@ export default function ChatWidgetPreviewPage() {
           agentName: agent?.fullName || null,
           status: status || existingSession.status || 'solved',
         });
-        setViewingSolvedChat(true);
         
         // Store the sessionId for survey submission
         setChatSessionId(existingSession.sessionId);
@@ -1092,8 +1101,9 @@ export default function ChatWidgetPreviewPage() {
     } catch (error) {
       console.error('[Chat] Failed to load solved chat:', error);
       toast({ title: "Error", description: "Failed to load chat history", variant: "destructive" });
-    } finally {
-      setChatLoading(false);
+      // Reset on error
+      setViewingSolvedChat(false);
+      setSolvedChatData(null);
     }
   };
 
@@ -1101,7 +1111,17 @@ export default function ChatWidgetPreviewPage() {
   const loadAndViewSolvedChat = async (sessionId: string) => {
     if (!widgetId) return;
     
-    setChatLoading(true);
+    // Set viewing state immediately to show the solved chat view with loading spinner inside
+    setViewingSolvedChat(true);
+    setSolvedChatData({
+      sessionId,
+      messages: [],
+      rating: null,
+      feedback: null,
+      agentName: null,
+      status: 'solved',
+    });
+    
     try {
       const msgRes = await fetch(`/api/public/live-chat/messages/${sessionId}`);
       if (msgRes.ok) {
@@ -1118,7 +1138,6 @@ export default function ChatWidgetPreviewPage() {
           agentName: agent?.fullName || null,
           status: status || 'solved',
         });
-        setViewingSolvedChat(true);
         
         // Store the sessionId for survey submission (consistent with viewSolvedChat)
         setChatSessionId(sessionId);
@@ -1134,8 +1153,9 @@ export default function ChatWidgetPreviewPage() {
     } catch (error) {
       console.error('[Chat] Failed to load solved chat:', error);
       toast({ title: "Error", description: "Failed to load chat history", variant: "destructive" });
-    } finally {
-      setChatLoading(false);
+      // Reset on error
+      setViewingSolvedChat(false);
+      setSolvedChatData(null);
     }
   };
 
@@ -2617,6 +2637,16 @@ export default function ChatWidgetPreviewPage() {
               
               {/* Messages Area for Solved Chat */}
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-slate-50 dark:bg-slate-800/50">
+                {/* Loading indicator while fetching messages */}
+                {solvedChatData.messages.length === 0 && !solvedChatData.agentName && (
+                  <div className="flex-1 flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-slate-400" />
+                      <p className="text-sm text-slate-500">Loading chat history...</p>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Agent joined message */}
                 {solvedChatData.agentName && (
                   <div className="text-center py-2">
