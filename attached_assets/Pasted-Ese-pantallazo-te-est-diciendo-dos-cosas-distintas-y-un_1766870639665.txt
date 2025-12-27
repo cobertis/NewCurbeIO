@@ -1,0 +1,145 @@
+Ese pantallazo te está diciendo dos cosas distintas, y una te está distrayendo de la otra:
+
+1. **404** porque te están redirigiendo a una ruta que no existe:
+   `/integrations?whatsapp=error...` → tu frontend **no tiene** `/integrations`.
+
+2. El problema real: **`token_exchange_failed`** = en el callback, el backend **falló intercambiando el `code` por un access token** contra Graph.
+
+Vamos por partes, en “idioma Replit” (spec + tareas + criterios).
+
+---
+
+## A) Arreglar el 404 (cosmético pero necesario)
+
+**Qué debe hacer Replit**
+
+* En el callback, cambiar el redirect de error a una ruta que SÍ exista en tu app (ej: `/settings/integrations` o donde tengas el UI real).
+* O crear la página `/integrations` en el frontend.
+
+**Ejemplo (backend):**
+
+```ts
+const UI_INTEGRATIONS_URL = `${APP_URL}/settings/integrations`; // o la ruta real
+
+return res.redirect(`${UI_INTEGRATIONS_URL}?whatsapp=error&reason=token_exchange_failed`);
+```
+
+**Criterio de aceptación**
+
+* Al fallar o tener éxito, nunca más cae en 404.
+
+---
+
+## B) Arreglar el `token_exchange_failed` (esto sí importa)
+
+### 1) Instrumentación: mostrar el error real (ahora lo están escondiendo)
+
+**Qué debe hacer Replit**
+
+* En el `catch` del callback, loguear el error de Graph *con detalles* (sin exponer secretos).
+* Guardar el error en DB o incluir un `error_code` / `fbtrace_id` en la URL de redirect para debug.
+
+**Ejemplo (Node/Axios):**
+
+```ts
+try {
+  // exchange code -> token
+} catch (e:any) {
+  const status = e?.response?.status;
+  const data = e?.response?.data; // aquí viene { error: { message, type, code, fbtrace_id } }
+  console.error("WA_TOKEN_EXCHANGE_FAILED", { status, data });
+
+  return res.redirect(`${UI_INTEGRATIONS_URL}?whatsapp=error&reason=token_exchange_failed&code=${encodeURIComponent(data?.error?.code || "")}&trace=${encodeURIComponent(data?.error?.fbtrace_id || "")}`);
+}
+```
+
+**Criterio de aceptación**
+
+* En logs se ve el error exacto de Meta (message/type/code/fbtrace_id).
+
+---
+
+### 2) Causa #1 más común: **redirect_uri mismatch**
+
+El token exchange exige que `redirect_uri` sea **idéntico** al que usaste al iniciar el OAuth y al que está configurado en Meta. Una diferencia mínima (slash, http vs https, dominio, path) lo rompe.
+
+**Qué debe hacer Replit**
+
+* Dejar de “inventar” redirect_uri desde headers.
+* Usar un valor fijo de env:
+  `META_OAUTH_REDIRECT_URI=https://app.curbe.io/api/integrations/meta/whatsapp/callback`
+
+**En el start (auth url) y en el callback (exchange) usar EXACTAMENTE el mismo string.**
+
+**Checklist para ti en Meta**
+
+* Meta Dashboard → **Facebook Login for Business** → settings → **Valid OAuth Redirect URIs**
+  Debe contener EXACTO:
+  `https://app.curbe.io/api/integrations/meta/whatsapp/callback`
+
+**Criterio de aceptación**
+
+* En logs del callback se imprime el redirect_uri usado, y coincide 1:1 con Meta.
+
+---
+
+### 3) Causa #2 común: **App Secret/ID no están llegando en producción**
+
+Tú mismo lo insinuaste antes: dev funciona, prod no. Esto huele a **credentialsProvider** vacío o mal configurado.
+
+**Qué debe hacer Replit**
+
+* Al arrancar el servicio, log “presence flags” (NO el valor):
+
+```ts
+console.log("META_CREDS_PRESENT", {
+  appId: !!process.env.META_APP_ID,
+  appSecret: !!process.env.META_APP_SECRET,
+  redirectUri: process.env.META_OAUTH_REDIRECT_URI,
+});
+```
+
+**Criterio de aceptación**
+
+* En producción: `appId=true`, `appSecret=true`, `redirectUri` correcto.
+
+---
+
+### 4) Causa #3: **code usado dos veces / callback pegándole doble**
+
+Facebook/Meta a veces dispara doble navegación; o tu frontend hace retry. Si intercambias el mismo `code` dos veces: falla.
+
+**Qué debe hacer Replit**
+
+* Guardar `state` en DB con `used_at`.
+* En callback:
+
+  * si `state.used_at` ya está seteado → **NO re-exchange**, solo redirect success.
+  * si no → marcar `used_at` y hacer exchange una sola vez.
+
+**Criterio de aceptación**
+
+* Si refrescas la página del callback o se dispara doble request, no rompe.
+
+---
+
+## C) Lo que debes decirle a Replit (mensaje listo para pegar)
+
+**“Cuando el usuario finaliza el onboarding, nos redirige a `/integrations?...` y da 404. Además el callback está devolviendo `token_exchange_failed`. Hagan lo siguiente:**
+
+1. Cambiar el redirect del callback (success y error) a una ruta UI existente (`/settings/integrations`).
+2. En el callback, cuando falle el token exchange, loguear el error completo de Graph (`message/type/code/fbtrace_id`) y agregar `code` y `trace` al redirect de error para debug.
+3. Fijar `META_OAUTH_REDIRECT_URI` como env y usar el mismo valor exacto tanto en el start OAuth como en `oauth/access_token` exchange. No derivarlo del request/headers.
+4. Log de arranque: `META_CREDS_PRESENT` (flags booleanos) para validar que appId/appSecret están presentes en prod.
+5. Proteger contra doble exchange: persistir `state` con `used_at` y hacer el exchange solo una vez por state.
+
+**Aceptación:** al conectar WhatsApp, el flujo termina en UI sin 404 y el token exchange completa; si falla, veo en logs el error exacto con fbtrace_id.”**
+
+---
+
+### Lo más probable (por señales)
+
+* **Primero**: estás redirigiendo a una ruta que no existe (404).
+* **Segundo**: el exchange está fallando por **redirect_uri mismatch** o **App Secret faltante en prod**.
+
+Cuando tengas el log con `data.error` (message/code/fbtrace_id), lo diagnosticamos en 30 segundos sin adivinar.
