@@ -50,7 +50,10 @@ import {
   Sparkles,
   RotateCcw,
   Activity,
-  Settings
+  Settings,
+  Gift,
+  Heart,
+  Lightbulb
 } from "lucide-react";
 import { Link } from "wouter";
 import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
@@ -84,6 +87,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -237,6 +246,11 @@ export default function InboxPage() {
   const [pulseAiInput, setPulseAiInput] = useState("");
   const [selectedText, setSelectedText] = useState<string | null>(null);
   const [selectionPopupPosition, setSelectionPopupPosition] = useState<{ x: number, y: number } | null>(null);
+  const [threadSummaryOpen, setThreadSummaryOpen] = useState(false);
+  const [threadSummaryData, setThreadSummaryData] = useState<{
+    summary: string;
+    suggestions: Array<{ type: string; text: string }>;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pulseAiMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -620,6 +634,24 @@ export default function InboxPage() {
       }
       toast({
         title: "Failed to solve conversation",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const threadSummaryMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      const res = await apiRequest("POST", "/api/ai/thread-summary", { conversationId });
+      return res.json();
+    },
+    onSuccess: (data: { summary: string; suggestions: Array<{ type: string; text: string }> }) => {
+      setThreadSummaryData(data);
+      setThreadSummaryOpen(true);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to generate summary",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -1467,6 +1499,17 @@ export default function InboxPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden sm:flex items-center gap-1.5 text-purple-600 border-purple-200 hover:bg-purple-50 hover:text-purple-700"
+                  onClick={() => selectedConversation && threadSummaryMutation.mutate(selectedConversation.id)}
+                  disabled={threadSummaryMutation.isPending || !selectedConversation}
+                  data-testid="btn-thread-summary"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {threadSummaryMutation.isPending ? "Summarizing..." : "Thread Summary"}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -3086,6 +3129,114 @@ export default function InboxPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Thread Summary Dialog */}
+      <Dialog open={threadSummaryOpen} onOpenChange={setThreadSummaryOpen}>
+        <DialogContent className="max-w-lg" data-testid="dialog-thread-summary">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              Thread Summary
+            </DialogTitle>
+          </DialogHeader>
+          
+          {threadSummaryMutation.isPending ? (
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner message="Generating summary..." fullScreen={false} />
+            </div>
+          ) : threadSummaryData ? (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Summary</h4>
+                <p className="text-sm" data-testid="text-thread-summary">
+                  {threadSummaryData.summary}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Quick Responses</h4>
+                {threadSummaryData.suggestions.map((suggestion, index) => {
+                  const getSuggestionIcon = (type: string) => {
+                    switch (type.toLowerCase()) {
+                      case "offer":
+                        return <Gift className="h-4 w-4 text-green-600" />;
+                      case "encourage":
+                        return <Heart className="h-4 w-4 text-pink-600" />;
+                      case "suggest":
+                        return <Lightbulb className="h-4 w-4 text-amber-600" />;
+                      default:
+                        return <MessageSquare className="h-4 w-4 text-blue-600" />;
+                    }
+                  };
+                  
+                  const getSuggestionLabel = (type: string) => {
+                    switch (type.toLowerCase()) {
+                      case "offer":
+                        return "Offer";
+                      case "encourage":
+                        return "Encourage";
+                      case "suggest":
+                        return "Suggest";
+                      default:
+                        return type;
+                    }
+                  };
+                  
+                  const getSuggestionBgColor = (type: string) => {
+                    switch (type.toLowerCase()) {
+                      case "offer":
+                        return "hover:bg-green-50 border-green-200";
+                      case "encourage":
+                        return "hover:bg-pink-50 border-pink-200";
+                      case "suggest":
+                        return "hover:bg-amber-50 border-amber-200";
+                      default:
+                        return "hover:bg-blue-50 border-blue-200";
+                    }
+                  };
+                  
+                  return (
+                    <button
+                      key={index}
+                      className={cn(
+                        "w-full text-left p-3 rounded-lg border transition-colors",
+                        getSuggestionBgColor(suggestion.type)
+                      )}
+                      onClick={() => {
+                        setNewMessage(suggestion.text);
+                        setThreadSummaryOpen(false);
+                        toast({
+                          title: "Response added",
+                          description: "The suggestion has been added to your message composer.",
+                        });
+                      }}
+                      data-testid={`btn-suggestion-${suggestion.type}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0 mt-0.5">
+                          {getSuggestionIcon(suggestion.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">
+                            {getSuggestionLabel(suggestion.type)}
+                          </p>
+                          <p className="text-sm line-clamp-2">
+                            {suggestion.text}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <p className="text-xs text-muted-foreground text-center">
+                Click a suggestion to add it to your message composer
+              </p>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
       </>
       )}
     </MessengerLayout>

@@ -640,4 +640,109 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
       res.status(500).json({ error: error.message });
     }
   });
+
+  // =====================================================
+  // Thread Summary - Generate AI summary and suggestions
+  // =====================================================
+
+  app.post("/api/ai/thread-summary", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const schema = z.object({
+        conversationId: z.string().min(1),
+      });
+
+      const { conversationId } = schema.parse(req.body);
+
+      const { db } = await import("./db");
+      const { eq, asc } = await import("drizzle-orm");
+      const { telnyxMessages, telnyxConversations } = await import("@shared/schema");
+
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(eq(telnyxConversations.id, conversationId))
+        .limit(1);
+
+      if (!conversation || conversation.companyId !== companyId) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      const messagesResult = await db
+        .select()
+        .from(telnyxMessages)
+        .where(eq(telnyxMessages.conversationId, conversationId))
+        .orderBy(asc(telnyxMessages.createdAt));
+
+      if (messagesResult.length === 0) {
+        return res.json({
+          summary: "No messages in this conversation yet.",
+          suggestions: [],
+        });
+      }
+
+      const messageHistory = messagesResult
+        .filter((m) => !m.isInternalNote && m.text)
+        .map((m) => {
+          const role = m.direction === "inbound" ? "Customer" : "Agent";
+          return `${role}: ${m.text}`;
+        })
+        .join("\n");
+
+      const systemPrompt = `You are an AI assistant helping customer service agents understand conversations and craft responses.
+
+Analyze the following conversation and provide:
+1. A concise summary (2-3 sentences) of the key points discussed
+2. Three response suggestions for the agent to use:
+   - Offer: A proactive offer to help or provide additional value
+   - Encourage: A supportive/positive response to keep the customer engaged  
+   - Suggest: A specific next step or recommendation
+
+Respond in valid JSON format:
+{
+  "summary": "Brief summary of the conversation...",
+  "suggestions": [
+    { "type": "offer", "text": "Response text..." },
+    { "type": "encourage", "text": "Response text..." },
+    { "type": "suggest", "text": "Response text..." }
+  ]
+}
+
+Keep each suggestion under 150 characters. Be professional and helpful.`;
+
+      const result = await aiOpenAIService.chat(
+        [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Conversation:\n${messageHistory}` },
+        ],
+        { temperature: 0.3, maxTokens: 800 }
+      );
+
+      let parsed: { summary: string; suggestions: Array<{ type: string; text: string }> };
+      try {
+        const jsonMatch = result.content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON found");
+        parsed = JSON.parse(jsonMatch[0]);
+        
+        if (!parsed.summary || !Array.isArray(parsed.suggestions)) {
+          throw new Error("Invalid response structure");
+        }
+      } catch (e) {
+        parsed = {
+          summary: "Unable to generate summary. Please try again.",
+          suggestions: [
+            { type: "offer", text: "How can I help you further today?" },
+            { type: "encourage", text: "Thank you for reaching out to us!" },
+            { type: "suggest", text: "Would you like me to provide more information?" },
+          ],
+        };
+      }
+
+      res.json(parsed);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
