@@ -101,6 +101,9 @@ export default function ChatWidgetPreviewPage() {
   
   // Detect if we're in public mode (URL starts with /widget/)
   const isPublicMode = location.startsWith('/widget/');
+  
+  // Detect if we're in embed mode (embedded in settings page preview)
+  const isEmbedMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === 'true';
 
   // Live chat state
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
@@ -2328,130 +2331,151 @@ export default function ChatWidgetPreviewPage() {
     );
   };
 
+  // Auto-open widget in embed mode
+  useEffect(() => {
+    if (isEmbedMode && !widgetOpen) {
+      setWidgetOpen(true);
+    }
+  }, [isEmbedMode]);
+
+  // Embed mode: just show the widget without page wrapper
+  // The widget content is the same as the regular mode, just with different container
+
+  // Define wrapper classes based on mode
+  const containerClass = isEmbedMode 
+    ? "relative w-full h-full min-h-[600px] bg-transparent" 
+    : "min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-slate-900 dark:to-slate-800";
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-slate-900 dark:to-slate-800" data-testid="page-widget-preview">
-      <div className="container max-w-4xl mx-auto py-12 px-4">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <img src={curbeLogo} alt="Curbe" className="h-8 w-auto" />
+    <div className={containerClass} data-testid={isEmbedMode ? "widget-embed-container" : "page-widget-preview"}>
+      {/* Page content - hide in embed mode */}
+      {!isEmbedMode && (
+        <div className="container max-w-4xl mx-auto py-12 px-4">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <img src={curbeLogo} alt="Curbe" className="h-8 w-auto" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+              Welcome to the Curbe widget test page
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Here you can test the Curbe widget and see how it looks.
+            </p>
           </div>
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-            Welcome to the Curbe widget test page
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Here you can test the Curbe widget and see how it looks.
-          </p>
+
+          {!isPublicMode && (
+            <Card className="border-slate-200 dark:border-slate-800 mb-8">
+              <CardContent className="p-6">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                  Install Curbe code to your website
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                  Copy the code below and add it to your website before the closing <code className="text-blue-600">&lt;/body&gt;</code> tag.
+                </p>
+                
+                <div className="relative mb-4">
+                  <pre className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs overflow-x-auto border">
+                    <code className="text-slate-700 dark:text-slate-300">{embedCode}</code>
+                  </pre>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleCopyCode}
+                    data-testid="button-copy-code"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    {copied ? "Copied" : "Copy code"}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    data-testid="button-send-instructions"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Send instructions via email
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Targeting status banner - only show for admins */}
+          {!isPublicMode && getTargetingBanner()}
+          
+          {/* Schedule status banner - only show for admins */}
+          {!isPublicMode && getScheduleBanner()}
+          
+          {/* Device type status banner - only show for admins */}
+          {!isPublicMode && getDeviceTypeBanner()}
+          
+          {/* Widget hidden message - only show for admins */}
+          {!isPublicMode && shouldDisplay === false && (
+            <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 mb-8">
+              <CardContent className="p-6 text-center">
+                <X className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
+                  Widget Hidden by Targeting Rules
+                </h3>
+                {deviceInfo && !deviceInfo.matches ? (
+                  <>
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      This widget is configured to show on {deviceInfo.widgetDeviceType === "desktop" ? "desktop" : "mobile"} devices only.
+                    </p>
+                    <p className="text-xs text-red-500 dark:text-red-500 mt-2">
+                      You are viewing from a {deviceInfo.visitorDeviceType} device.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      Based on your current location ({visitorCountry || "Unknown"}), this widget is configured to not display.
+                    </p>
+                    <p className="text-xs text-red-500 dark:text-red-500 mt-2">
+                      The targeting rules are set to {widget.targeting?.countries === "selected" ? "only show in" : "hide in"}: {(widget.targeting?.selectedCountries || []).join(", ") || "No countries specified"}
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {!isPublicMode && (
+            <div className="flex items-center justify-center gap-4 text-sm">
+              <Link 
+                href={`/settings/chat-widget/${widgetId}/settings`}
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Go back to widget settings
+              </Link>
+              <a 
+                href="https://support.curbe.io" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              >
+                Visit help center
+              </a>
+            </div>
+          )}
         </div>
+      )}
 
-        {!isPublicMode && (
-          <Card className="border-slate-200 dark:border-slate-800 mb-8">
-            <CardContent className="p-6">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                Install Curbe code to your website
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                Copy the code below and add it to your website before the closing <code className="text-blue-600">&lt;/body&gt;</code> tag.
-              </p>
-              
-              <div className="relative mb-4">
-                <pre className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs overflow-x-auto border">
-                  <code className="text-slate-700 dark:text-slate-300">{embedCode}</code>
-                </pre>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleCopyCode}
-                  data-testid="button-copy-code"
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  {copied ? "Copied" : "Copy code"}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  data-testid="button-send-instructions"
-                >
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send instructions via email
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Targeting status banner - only show for admins */}
-        {!isPublicMode && getTargetingBanner()}
-        
-        {/* Schedule status banner - only show for admins */}
-        {!isPublicMode && getScheduleBanner()}
-        
-        {/* Device type status banner - only show for admins */}
-        {!isPublicMode && getDeviceTypeBanner()}
-        
-        {/* Widget hidden message - only show for admins */}
-        {!isPublicMode && shouldDisplay === false && (
-          <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 mb-8">
-            <CardContent className="p-6 text-center">
-              <X className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
-                Widget Hidden by Targeting Rules
-              </h3>
-              {deviceInfo && !deviceInfo.matches ? (
-                <>
-                  <p className="text-sm text-red-600 dark:text-red-400">
-                    This widget is configured to show on {deviceInfo.widgetDeviceType === "desktop" ? "desktop" : "mobile"} devices only.
-                  </p>
-                  <p className="text-xs text-red-500 dark:text-red-500 mt-2">
-                    You are viewing from a {deviceInfo.visitorDeviceType} device.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-red-600 dark:text-red-400">
-                    Based on your current location ({visitorCountry || "Unknown"}), this widget is configured to not display.
-                  </p>
-                  <p className="text-xs text-red-500 dark:text-red-500 mt-2">
-                    The targeting rules are set to {widget.targeting?.countries === "selected" ? "only show in" : "hide in"}: {(widget.targeting?.selectedCountries || []).join(", ") || "No countries specified"}
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {!isPublicMode && (
-          <div className="flex items-center justify-center gap-4 text-sm">
-            <Link 
-              href={`/settings/chat-widget/${widgetId}/settings`}
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Go back to widget settings
-            </Link>
-            <a 
-              href="https://support.curbe.io" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
-            >
-              Visit help center
-            </a>
-          </div>
-        )}
-      </div>
-
-      {/* Only show widget if targeting rules allow */}
+      {/* Widget - show in both modes, adjust positioning for embed mode */}
       {shouldDisplay !== false && (
         <div 
-          className="fixed flex flex-col gap-2"
+          className={isEmbedMode ? "absolute flex flex-col gap-2" : "fixed flex flex-col gap-2"}
           style={{
-            bottom: `${widget.minimizedState?.bottomSpacing || 26}px`,
-            ...(widget.minimizedState?.alignTo === "left" 
-              ? { left: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-start" }
-              : { right: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-end" }
+            bottom: isEmbedMode ? '20px' : `${widget.minimizedState?.bottomSpacing || 26}px`,
+            ...(isEmbedMode 
+              ? { right: '20px', alignItems: 'flex-end' }
+              : (widget.minimizedState?.alignTo === "left" 
+                  ? { left: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-start" }
+                  : { right: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-end" }
+                )
             )
           }}
         >
@@ -2541,12 +2565,15 @@ export default function ChatWidgetPreviewPage() {
 
         {widgetOpen && (
           <div 
-            className="fixed w-[360px]"
+            className={isEmbedMode ? "absolute w-[360px]" : "fixed w-[360px]"}
             style={{
-              bottom: `${(widget.minimizedState?.bottomSpacing || 26) + 70}px`,
-              ...(widget.minimizedState?.alignTo === "left" 
-                ? { left: `${widget.minimizedState?.sideSpacing || 32}px` }
-                : { right: `${widget.minimizedState?.sideSpacing || 32}px` }
+              bottom: isEmbedMode ? '90px' : `${(widget.minimizedState?.bottomSpacing || 26) + 70}px`,
+              ...(isEmbedMode 
+                ? { right: '20px' }
+                : (widget.minimizedState?.alignTo === "left" 
+                    ? { left: `${widget.minimizedState?.sideSpacing || 32}px` }
+                    : { right: `${widget.minimizedState?.sideSpacing || 32}px` }
+                  )
               )
             }}
           >
