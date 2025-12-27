@@ -307,6 +307,21 @@ export default function InboxPage() {
   });
   const companyUsers = companyUsersData?.users || [];
 
+  const getUserDisplayName = (userId: string | null | undefined): string => {
+    if (!userId) return "Unknown";
+    const foundUser = companyUsers.find(u => String(u.id) === userId);
+    if (!foundUser) return "Unknown";
+    const name = [foundUser.firstName, foundUser.lastName].filter(Boolean).join(" ");
+    return name || foundUser.email || "Unknown";
+  };
+
+  const getUserInitial = (userId: string | null | undefined): string => {
+    if (!userId) return "?";
+    const foundUser = companyUsers.find(u => String(u.id) === userId);
+    if (!foundUser) return "?";
+    return foundUser.firstName?.charAt(0) || foundUser.lastName?.charAt(0) || foundUser.email?.charAt(0) || "?";
+  };
+
   const { data: chatWidgetsData } = useQuery<{ widgets: ChatWidget[] }>({
     queryKey: ["/api/integrations/chat-widget/list"],
     enabled: isAuthenticated,
@@ -2235,11 +2250,11 @@ export default function InboxPage() {
                             <div className="flex items-center gap-2">
                               <Avatar className="h-5 w-5">
                                 <AvatarFallback className="text-[10px] bg-primary/10">
-                                  {companyUsers.find(u => String(u.id) === selectedConversation.assignedTo)?.displayName?.charAt(0) || "?"}
+                                  {getUserInitial(selectedConversation.assignedTo)}
                                 </AvatarFallback>
                               </Avatar>
                               <span className="text-sm font-medium">
-                                {companyUsers.find(u => String(u.id) === selectedConversation.assignedTo)?.displayName || "Unknown"}
+                                {getUserDisplayName(selectedConversation.assignedTo)}
                                 {String(user?.id) === selectedConversation.assignedTo && <span className="text-muted-foreground ml-1">(You)</span>}
                               </span>
                             </div>
@@ -2351,11 +2366,11 @@ export default function InboxPage() {
                             <div className="flex items-center gap-2">
                               <Avatar className="h-5 w-5">
                                 <AvatarFallback className="text-[10px] bg-primary/10">
-                                  {companyUsers.find(u => String(u.id) === selectedConversation.updatedBy)?.displayName?.charAt(0) || "?"}
+                                  {getUserInitial(selectedConversation.updatedBy)}
                                 </AvatarFallback>
                               </Avatar>
                               <span className="text-sm font-medium">
-                                {companyUsers.find(u => String(u.id) === selectedConversation.updatedBy)?.displayName || "Unknown"}
+                                {getUserDisplayName(selectedConversation.updatedBy)}
                                 {String(user?.id) === selectedConversation.updatedBy && <span className="text-muted-foreground ml-1">(You)</span>}
                               </span>
                             </div>
