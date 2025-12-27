@@ -7495,3 +7495,27 @@ export const insertAiOutboxMessageSchema = createInsertSchema(aiOutboxMessages).
 
 export type AiOutboxMessage = typeof aiOutboxMessages.$inferSelect;
 export type InsertAiOutboxMessage = z.infer<typeof insertAiOutboxMessageSchema>;
+
+// =====================================================
+// AI DESK MODULE - Pulse AI Chat Messages (per conversation)
+// =====================================================
+
+export const pulseAiChatMessages = pgTable("pulse_ai_chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  conversationId: varchar("conversation_id").notNull().references(() => telnyxConversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // 'user' | 'assistant'
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("pulse_ai_chat_messages_company_id_idx").on(table.companyId),
+  conversationIdIdx: index("pulse_ai_chat_messages_conversation_id_idx").on(table.conversationId),
+}));
+
+export const insertPulseAiChatMessageSchema = createInsertSchema(pulseAiChatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PulseAiChatMessage = typeof pulseAiChatMessages.$inferSelect;
+export type InsertPulseAiChatMessage = z.infer<typeof insertPulseAiChatMessageSchema>;
