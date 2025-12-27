@@ -44,7 +44,6 @@ import { useExtensionCall } from "@/hooks/useExtensionCall";
 import type { User } from "@shared/schema";
 import defaultLogo from "@assets/logo no fondo_1760457183587.png";
 import Login from "@/pages/login";
-import WidgetFramePage from "@/pages/widget-frame";
 import Register from "@/pages/register";
 import VerifyOTP from "@/pages/verify-otp";
 import ActivateAccount from "@/pages/activate-account";
@@ -127,10 +126,6 @@ import InstagramPage from "@/pages/integrations/instagram-page";
 import InstagramFlow from "@/pages/integrations/instagram-flow";
 import TelegramPage from "@/pages/integrations/telegram-page";
 import TelegramFlow from "@/pages/integrations/telegram-flow";
-import ChatWidgetPage from "@/pages/integrations/chat-widget-page";
-import ChatWidgetFlow from "@/pages/integrations/chat-widget-flow";
-import ChatWidgetEdit from "@/pages/integrations/chat-widget-edit";
-import ChatWidgetPreview from "@/pages/integrations/chat-widget-preview";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1452,7 +1447,6 @@ function Router() {
       <Route path="/">
         <Redirect to="/dashboard" />
       </Route>
-      <Route path="/widget-frame/:id" component={WidgetFramePage} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/verify-otp" component={VerifyOTP} />
@@ -1809,46 +1803,6 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/settings/chat-widget/flow">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <ChatWidgetFlow />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/chat-widget/:id/edit">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <ChatWidgetEdit />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/chat-widget/:id/settings">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <ChatWidgetEdit />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/chat-widget/:id/embed">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <ChatWidgetEdit />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/chat-widget/:id/preview">
-        <ProtectedRoute>
-          <ChatWidgetPreview />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/chat-widget">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <ChatWidgetPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
       {/* Wildcard settings route - catches all other /settings/* paths */}
       <Route path="/settings/:tab*">
         <ProtectedRoute>
@@ -2026,7 +1980,6 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/data-deletion" component={DataDeletionPage} />
-      <Route path="/widget/:id" component={ChatWidgetPreview} />
       <Route path="/l/:slug" component={PublicLandingPage} />
       <Route path="/consent/:token" component={PublicConsentPage} />
       <Route path="/unsubscribe" component={Unsubscribe} />
