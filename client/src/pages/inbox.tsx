@@ -2499,8 +2499,8 @@ export default function InboxPage() {
                   </div>
                 )}
 
-                {/* Pulse AI Controls - Only for live_chat channel */}
-                {selectedConversation.channel === "live_chat" && (
+                {/* Pulse AI Controls - For live_chat and SMS/MMS channels */}
+                {(selectedConversation.channel === "live_chat" || selectedConversation.channel === "sms" || selectedConversation.channel === "mms") && (
                   <div className="space-y-4">
                     <button 
                       onClick={() => setPulseAiSettingsOpen(!pulseAiSettingsOpen)}
