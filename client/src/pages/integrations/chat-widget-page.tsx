@@ -152,20 +152,22 @@ export default function ChatWidgetPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-      case "published":
-        return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100" data-testid="badge-status-active">Active</Badge>;
+  const getStatusBadge = (widget: ChatWidgetConfig) => {
+    const hasDomain = widget.domain && widget.domain.trim() !== '';
+    
+    if (hasDomain || widget.status === 'active' || widget.status === 'published') {
+      return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100" data-testid="badge-status-active">Active</Badge>;
+    }
+    
+    switch (widget.status) {
       case "pending":
         return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-100" data-testid="badge-status-pending">Pending</Badge>;
-      case "draft":
-        return <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100" data-testid="badge-status-draft">Draft</Badge>;
       case "inactive":
       case "disabled":
         return <Badge className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-100" data-testid="badge-status-inactive">Inactive</Badge>;
+      case "draft":
       default:
-        return <Badge variant="outline" data-testid="badge-status-unknown">{status || "Unknown"}</Badge>;
+        return <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100" data-testid="badge-status-draft">Draft</Badge>;
     }
   };
 
@@ -422,7 +424,7 @@ export default function ChatWidgetPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-slate-500">{widget.domain}</TableCell>
-                    <TableCell>{getStatusBadge(widget.status)}</TableCell>
+                    <TableCell>{getStatusBadge(widget)}</TableCell>
                     <TableCell className="text-slate-500">
                       {widget.createdAt ? format(new Date(widget.createdAt), "MMM d, h:mm a") : "-"}
                     </TableCell>
