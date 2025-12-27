@@ -26076,7 +26076,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       // Read redirect URI dynamically at request time (not at startup)
-      const redirectUri = process.env.META_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback`;
+      // Use hardcoded fallback for production (app.curbe.io) if env vars not available
+      const redirectUri = process.env.META_REDIRECT_URI || 
+        (process.env.BASE_URL ? `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback` : 
+        'https://app.curbe.io/api/integrations/meta/whatsapp/callback');
       
       if (!redirectUri || redirectUri.includes('undefined')) {
         console.error("[WhatsApp OAuth] Invalid redirect URI:", { redirectUri, BASE_URL: process.env.BASE_URL, META_REDIRECT_URI: process.env.META_REDIRECT_URI });
@@ -26181,7 +26184,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       // Read redirect URI dynamically at request time
-      const redirectUri = process.env.META_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback`;
+      // Use hardcoded fallback for production (app.curbe.io) if env vars not available
+      const redirectUri = process.env.META_REDIRECT_URI || 
+        (process.env.BASE_URL ? `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback` : 
+        'https://app.curbe.io/api/integrations/meta/whatsapp/callback');
       
       const tokenResponse = await fetch(
         `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
