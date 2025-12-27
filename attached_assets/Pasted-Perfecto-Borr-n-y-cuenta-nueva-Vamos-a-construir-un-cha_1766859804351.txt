@@ -1,0 +1,380 @@
+Perfecto. Borrón y cuenta nueva. Vamos a construir **un chat widget embebible** desde cero, de la forma más robusta y “tipo Intercom”: **loader script + iframe** (sí, Intercom usa iframe; lo que se ve “asqueroso” es cuando lo implementas sin wrapper, sin recorte, sin transparencia y sin headers correctos).
+
+Te dejo el blueprint completo con instrucciones específicas. Si sigues estos pasos, el widget **sí o sí** se ve en cualquier sitio web.
+
+---
+
+# Objetivo: “Pego 1 `<script>` y aparece el botón flotante”
+
+### Contrato de integración (lo único que el cliente pega)
+
+```html
+<script defer src="https://app.curbe.io/widget.js" data-widget="WIDGET_ID_AQUI"></script>
+```
+
+Regla de oro: **el cliente no hace fetch, no pasa JSON, no decide nada**. El loader hace todo.
+
+---
+
+# Paso 1 — Crea 2 endpoints en tu backend
+
+## 1A) Endpoint público de configuración
+
+**GET** `/api/public/widgets/:id/config`
+
+Respuesta mínima:
+
+```json
+{
+  "shouldDisplay": true,
+  "settings": {
+    "position": "br",
+    "launcherSize": 56,
+    "panelWidth": 380,
+    "panelHeight": 560
+  }
+}
+```
+
+✅ Debe ser **público**, sin auth, sin redirect.
+✅ Debe tener CORS al menos para GET:
+
+* `Access-Control-Allow-Origin: *` (o whitelist)
+* `Access-Control-Allow-Methods: GET, OPTIONS`
+
+## 1B) Página del widget dentro del iframe
+
+**GET** `/widget-frame/:id`
+
+✅ Debe ser **pública**.
+✅ Debe renderizar **solo UI del widget** (sin layout del dashboard, sin navbar, sin “test page”).
+✅ Debe mandar `postMessage` al parent cuando abre/cierra.
+
+---
+
+# Paso 2 — Headers de producción (si no haces esto, “dev sí / prod no” vuelve)
+
+La ruta `/widget-frame/*` debe permitir ser embebida en dominios externos.
+
+### Requisito:
+
+* **NO** `X-Frame-Options: DENY` ni `SAMEORIGIN`
+* CSP debe permitir frame-ancestors
+
+Ejemplo de CSP permisivo (apagar incendio):
+
+* `Content-Security-Policy: frame-ancestors *;`
+
+Mejor (allowlist por dominios):
+
+* `Content-Security-Policy: frame-ancestors https://*.tusclientes.com https://tudominio.com;`
+
+Si usas Caddy, una regla típica para SOLO esa ruta sería:
+
+```caddy
+@widgetFrame path /widget-frame/*
+handle @widgetFrame {
+  header {
+    -X-Frame-Options
+    Content-Security-Policy "frame-ancestors *"
+  }
+  reverse_proxy 127.0.0.1:8888
+}
+
+handle {
+  reverse_proxy 127.0.0.1:8888
+}
+```
+
+---
+
+# Paso 3 — Implementa el loader `widget.js` (esto es lo que el cliente carga)
+
+Crea `https://app.curbe.io/widget.js` con este código (loader completo):
+
+```js
+(function () {
+  "use strict";
+
+  // 1) Detectar el script tag correcto
+  var script = document.currentScript;
+  if (!script) {
+    var scripts = document.getElementsByTagName("script");
+    for (var i = scripts.length - 1; i >= 0; i--) {
+      if (scripts[i].src && scripts[i].src.indexOf("/widget.js") !== -1) {
+        script = scripts[i];
+        break;
+      }
+    }
+  }
+  if (!script) {
+    console.error("[CurbeWidget] script tag not found");
+    return;
+  }
+
+  // 2) Leer widget id
+  var widgetId = script.getAttribute("data-widget");
+  if (!widgetId) {
+    console.error("[CurbeWidget] missing data-widget");
+    return;
+  }
+
+  // 3) Evitar doble init por widgetId
+  window.__curbeWidgetInit = window.__curbeWidgetInit || {};
+  if (window.__curbeWidgetInit[widgetId]) return;
+  window.__curbeWidgetInit[widgetId] = true;
+
+  var API_BASE = "https://app.curbe.io";
+
+  // 4) UI defaults (por si config falla)
+  var config = {
+    shouldDisplay: true,
+    settings: {
+      position: "br",
+      launcherSize: 56,
+      panelWidth: 380,
+      panelHeight: 560
+    }
+  };
+
+  // 5) Crear wrapper fijo (recorta el iframe para que NO se vea cuadrado feo)
+  var wrapper = document.createElement("div");
+  wrapper.id = "curbe-widget-wrapper-" + widgetId;
+  wrapper.style.cssText =
+    "position:fixed; z-index:2147483647; background:transparent; " +
+    "right:24px; bottom:24px; width:56px; height:56px; " +
+    "border-radius:9999px; overflow:hidden; box-shadow:none;";
+
+  // 6) Crear iframe
+  var iframe = document.createElement("iframe");
+  iframe.id = "curbe-widget-iframe-" + widgetId;
+  iframe.src = API_BASE + "/widget-frame/" + encodeURIComponent(widgetId);
+  iframe.style.cssText = "width:100%; height:100%; border:0; background:transparent;";
+  iframe.allow = "microphone; camera; geolocation";
+  iframe.setAttribute("title", "Curbe Chat Widget");
+
+  wrapper.appendChild(iframe);
+  document.body.appendChild(wrapper);
+
+  function applyClosedState() {
+    var s = config.settings;
+    wrapper.style.width = s.launcherSize + "px";
+    wrapper.style.height = s.launcherSize + "px";
+    wrapper.style.borderRadius = "9999px";
+    wrapper.style.boxShadow = "none";
+    wrapper.style.right = "24px";
+    wrapper.style.bottom = "24px";
+  }
+
+  function applyOpenState() {
+    var s = config.settings;
+    var isMobile = window.innerWidth < 480;
+
+    if (isMobile) {
+      wrapper.style.width = "100vw";
+      wrapper.style.height = "100vh";
+      wrapper.style.right = "0";
+      wrapper.style.bottom = "0";
+      wrapper.style.borderRadius = "0px";
+    } else {
+      wrapper.style.width = s.panelWidth + "px";
+      wrapper.style.height = s.panelHeight + "px";
+      wrapper.style.right = "24px";
+      wrapper.style.bottom = "24px";
+      wrapper.style.borderRadius = "16px";
+      wrapper.style.boxShadow = "0 18px 60px rgba(0,0,0,0.25)";
+    }
+  }
+
+  // 7) Escuchar mensajes del iframe
+  window.addEventListener("message", function (event) {
+    // seguridad: solo aceptar mensajes desde tu dominio
+    if (event.origin !== API_BASE) return;
+
+    var d = event.data;
+    if (!d || d.widgetId !== widgetId) return;
+
+    if (d.type === "curbe-widget-open") applyOpenState();
+    if (d.type === "curbe-widget-close") applyClosedState();
+  });
+
+  // 8) Cargar config (público)
+  fetch(API_BASE + "/api/public/widgets/" + encodeURIComponent(widgetId) + "/config", {
+    method: "GET",
+    credentials: "omit"
+  })
+    .then(function (r) { return r.ok ? r.json() : Promise.reject({ status: r.status }); })
+    .then(function (json) {
+      config = json || config;
+      if (!config.shouldDisplay) {
+        wrapper.remove();
+        return;
+      }
+      // aplicar sizes reales
+      applyClosedState();
+      console.log("[CurbeWidget] loaded", widgetId);
+    })
+    .catch(function (err) {
+      console.error("[CurbeWidget] config fetch failed", err);
+      // aun así, mostrar launcher default
+      applyClosedState();
+    });
+
+  // estado inicial
+  applyClosedState();
+})();
+```
+
+**Esto ya soluciona lo principal:**
+
+* El widget **aparece** (porque el iframe se crea siempre)
+* Se ve **redondo**, no un cuadrado raro (wrapper con overflow hidden)
+* Abre/cierra por postMessage (paso 4)
+
+---
+
+# Paso 4 — Implementa la UI dentro del iframe (`/widget-frame/:id`)
+
+Esto es HTML mínimo (puede ser React/Next, pero el comportamiento debe ser igual).
+
+```html
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { margin:0; padding:0; width:100%; height:100%; background:transparent; font-family: system-ui, -apple-system, Arial; }
+    .root { width:100%; height:100%; position:relative; }
+    .launcher {
+      position:absolute; inset:0;
+      border-radius:9999px;
+      background:#111; color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; user-select:none;
+    }
+    .panel {
+      position:absolute; inset:0;
+      border-radius:16px;
+      background:#fff;
+      display:flex; flex-direction:column;
+      overflow:hidden;
+    }
+    .header {
+      padding:12px 14px;
+      border-bottom:1px solid #eee;
+      display:flex; align-items:center; justify-content:space-between;
+      font-weight:600;
+    }
+    .body { flex:1; padding:12px 14px; }
+    .close { cursor:pointer; border:none; background:transparent; font-size:18px; line-height:1; }
+  </style>
+</head>
+<body>
+  <div class="root" id="root"></div>
+
+  <script>
+    (function(){
+      var widgetId = location.pathname.split("/").pop();
+      var root = document.getElementById("root");
+      var open = false;
+
+      function post(type){
+        parent.postMessage({ type: type, widgetId: widgetId }, "https://app.curbe.io");
+      }
+
+      function render(){
+        root.innerHTML = "";
+        if (!open) {
+          var b = document.createElement("div");
+          b.className = "launcher";
+          b.textContent = "💬";
+          b.onclick = function(){
+            open = true;
+            post("curbe-widget-open");
+            render();
+          };
+          root.appendChild(b);
+        } else {
+          var p = document.createElement("div");
+          p.className = "panel";
+
+          var h = document.createElement("div");
+          h.className = "header";
+          h.innerHTML = "<span>Curbe Support</span>";
+
+          var x = document.createElement("button");
+          x.className = "close";
+          x.innerHTML = "&times;";
+          x.onclick = function(){
+            open = false;
+            post("curbe-widget-close");
+            render();
+          };
+
+          h.appendChild(x);
+
+          var body = document.createElement("div");
+          body.className = "body";
+          body.textContent = "Chat UI aquí…";
+
+          p.appendChild(h);
+          p.appendChild(body);
+          root.appendChild(p);
+        }
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>
+```
+
+Con esto, el loader recibirá `curbe-widget-open/close` y hará resize perfecto.
+
+---
+
+# Paso 5 — Verificación (sin fe, con evidencia)
+
+### 5A) ¿Tu página del iframe es pública y embebible?
+
+En tu terminal:
+
+```bash
+W="42003b93-3945-498c-bc93-81184b143c4f"
+curl -s -D - "https://app.curbe.io/widget-frame/$W" -o /dev/null | sed -n '1,60p'
+```
+
+Debe decir:
+
+* `HTTP/2 200`
+* **NO** `location: /login`
+* **NO** `x-frame-options: deny/sameorigin`
+* CSP frame-ancestors permite embed
+
+### 5B) ¿El loader devuelve 200?
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" "https://app.curbe.io/widget.js"
+```
+
+Debe ser `200`.
+
+### 5C) Prueba final
+
+Pega el snippet en cualquier web externa (o tu HTML test) → debe aparecer el botón.
+
+---
+
+# Lo brutalmente importante (para que no vuelvas al infierno)
+
+1. **/widget-frame/:id nunca debe tener auth**. Si le cae auth en prod, se rompe todo.
+2. **headers de iframe en prod** deben estar bien. Esto es el clásico “dev sí, prod no”.
+3. El loader debe ser el “cerebro”. El cliente solo pega el script.
+
+---
+
+Si implementas exactamente lo de arriba, el widget funciona. Punto. Luego, si quieres hacerlo “más Intercom” (animaciones, estado persistente, etc.), ya es estética y UX, no supervivencia.
+
+Cuando lo montes, el siguiente salto lógico es meter un test E2E (Playwright) que abra una página con el snippet y verifique “launcher visible” y “panel abre”. Eso evita recaídas.

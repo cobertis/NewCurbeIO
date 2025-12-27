@@ -1,3 +1,4 @@
+import express from "express";
 import type { Express, Request, Response, NextFunction } from "express";
 import fs from "fs";
 import path from "path";
@@ -189,6 +190,9 @@ function detectStopKeyword(messageBody: string): boolean {
   return stopKeywords.some(keyword => normalizedBody === keyword || normalizedBody.startsWith(keyword + " "));
 }
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
+  // Serve static files from public folder (for widget.js)
+  app.use(express.static(path.join(process.cwd(), 'public')));
+  
   // Initialize Stripe for type safety
   const logger = new LoggingService(storage);
   // Initialize email campaign service
@@ -28444,6 +28448,48 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Chat Widget] Delete error:", error);
       return res.status(500).json({ error: "Failed to delete widget" });
     }
+  });
+
+
+  // PUBLIC: GET /api/public/widgets/:id/config - Minimal config for widget loader
+  app.get("/api/public/widgets/:id/config", async (req: Request, res: Response) => {
+    const { id } = req.params;
+    
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+    
+    try {
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, id)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ shouldDisplay: false, error: "Widget not found" });
+      }
+      
+      return res.json({
+        shouldDisplay: true,
+        settings: {
+          position: widget.position || "br",
+          launcherSize: widget.buttonSize || 56,
+          panelWidth: 380,
+          panelHeight: 560,
+          primaryColor: widget.primaryColor || "#111"
+        }
+      });
+    } catch (error: any) {
+      console.error("[Widget Config] Error:", error);
+      return res.status(500).json({ shouldDisplay: false, error: "Failed to get config" });
+    }
+  });
+
+  // OPTIONS handler for CORS preflight
+  app.options("/api/public/widgets/:id/config", (req, res) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+    res.sendStatus(204);
   });
 
   // PUBLIC: GET /api/public/chat-widget/:id - Get widget config for embed (with geolocation)

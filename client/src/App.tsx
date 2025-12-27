@@ -44,6 +44,7 @@ import { useExtensionCall } from "@/hooks/useExtensionCall";
 import type { User } from "@shared/schema";
 import defaultLogo from "@assets/logo no fondo_1760457183587.png";
 import Login from "@/pages/login";
+import WidgetFramePage from "@/pages/widget-frame";
 import Register from "@/pages/register";
 import VerifyOTP from "@/pages/verify-otp";
 import ActivateAccount from "@/pages/activate-account";
@@ -1451,6 +1452,7 @@ function Router() {
       <Route path="/">
         <Redirect to="/dashboard" />
       </Route>
+      <Route path="/widget-frame/:id" component={WidgetFramePage} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/verify-otp" component={VerifyOTP} />
