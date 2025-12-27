@@ -26075,6 +26075,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
       }
       
+      // Read redirect URI dynamically at request time (not at startup)
+      const redirectUri = process.env.META_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback`;
+      
+      if (!redirectUri || redirectUri.includes('undefined')) {
+        console.error("[WhatsApp OAuth] Invalid redirect URI:", { redirectUri, BASE_URL: process.env.BASE_URL, META_REDIRECT_URI: process.env.META_REDIRECT_URI });
+        return res.status(500).json({ error: "OAuth redirect URI not configured. Contact administrator." });
+      }
+      
+      console.log("[WhatsApp OAuth] Starting OAuth with redirect_uri:", redirectUri);
+      
       // Generate cryptographically secure nonce
       const nonce = randomBytes(32).toString("hex");
       
@@ -26096,7 +26106,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Using response_type=code for server-side flow
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
       authUrl.searchParams.set("client_id", appId);
-      authUrl.searchParams.set("redirect_uri", META_REDIRECT_URI);
+      authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_WHATSAPP_SCOPES);
       authUrl.searchParams.set("state", nonce);
@@ -26170,11 +26180,14 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return errorRedirect("server_config_error");
       }
       
+      // Read redirect URI dynamically at request time
+      const redirectUri = process.env.META_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback`;
+      
       const tokenResponse = await fetch(
         `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
         `client_id=${appId}&` +
         `client_secret=${appSecret}&` +
-        `redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `code=${code}`
       );
       
