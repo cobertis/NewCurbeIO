@@ -1242,17 +1242,15 @@ export default function InboxPage() {
       activeView={activeView} 
       onViewChange={setActiveView}
       counts={{
-        open: conversations.filter(c => (c.status === "open" || c.status === "pending" || !c.status) && (c as any).status !== "waiting").length,
-        unread: conversations.filter(c => c.unreadCount > 0 && (c as any).status !== "waiting").length,
-        assigned: conversations.filter(c => c.assignedTo === user?.id).length,
-        unassigned: conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting").length,
+        open: conversations.filter(c => (c.status === "open" || c.status === "pending" || !c.status) && (c as any).status !== "waiting" && c.status !== "solved" && c.status !== "archived").length,
+        assigned: conversations.filter(c => c.assignedTo === user?.id && c.status !== "solved" && c.status !== "archived").length,
+        unassigned: conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting" && c.status !== "solved" && c.status !== "archived").length,
         waiting: conversations.filter(c => {
           if (c.channel !== "live_chat" || (c as any).status !== "waiting") return false;
           return (c as any).isVisitorActive && (c as any).hasPendingMessage;
         }).length,
         visitors: liveVisitors.length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
-        all: conversations.filter(c => c.status !== "solved" && c.status !== "archived").length,
       }}
     >
       {/* Live Visitors Panel - shown when visitors view is active */}

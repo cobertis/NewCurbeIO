@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { 
   MessageSquare,
-  Mail,
   User,
   UserMinus,
   Clock,
@@ -20,13 +19,11 @@ import { Button } from "@/components/ui/button";
 
 export type MessengerView = 
   | "open" 
-  | "unread" 
   | "assigned" 
   | "unassigned" 
   | "waiting" 
   | "visitors"
   | "solved" 
-  | "all"
   | "sms"
   | "live-chat"
   | "whatsapp"
@@ -39,25 +36,21 @@ interface MessengerLayoutProps {
   onViewChange: (view: MessengerView) => void;
   counts?: {
     open?: number;
-    unread?: number;
     assigned?: number;
     unassigned?: number;
     waiting?: number;
     visitors?: number;
     solved?: number;
-    all?: number;
   };
 }
 
 const viewItems = [
   { id: "open" as const, label: "Open", icon: Inbox },
-  { id: "unread" as const, label: "Unread", icon: Mail },
   { id: "assigned" as const, label: "Assigned to me", icon: User },
   { id: "unassigned" as const, label: "Unassigned", icon: UserMinus },
   { id: "waiting" as const, label: "Waiting live chats", icon: Clock },
   { id: "visitors" as const, label: "Live visitors", icon: Eye },
   { id: "solved" as const, label: "Solved", icon: CheckCircle2 },
-  { id: "all" as const, label: "All chats", icon: MessageSquare },
 ];
 
 const channelItems = [
@@ -115,10 +108,6 @@ export function MessengerLayout({
                 {counts[item.id as keyof typeof counts] !== undefined && counts[item.id as keyof typeof counts]! > 0 && (
                   item.id === "waiting" ? (
                     <span className="min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-semibold bg-red-500 text-white rounded-full px-1">
-                      {counts[item.id as keyof typeof counts]}
-                    </span>
-                  ) : item.id === "unread" ? (
-                    <span className="min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-semibold bg-blue-500 text-white rounded-full px-1">
                       {counts[item.id as keyof typeof counts]}
                     </span>
                   ) : item.id === "visitors" ? (
