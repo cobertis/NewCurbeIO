@@ -26349,6 +26349,334 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+  // =====================================================
+  // META WHATSAPP WEBHOOKS - Receive messages and status updates
+  // =====================================================
+
+  // HMAC validation function for Meta webhook signature
+  function validateMetaWebhookSignature(rawBody: Buffer, signature: string, appSecret: string): boolean {
+    try {
+      const expectedSig = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+      if (signature.length !== expectedSig.length) {
+        return false;
+      }
+      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig));
+    } catch (error) {
+      console.error("[Meta Webhook] Signature validation error:", error);
+      return false;
+    }
+  }
+
+  // GET /api/webhooks/meta/whatsapp - Webhook verification (Meta challenge)
+  app.get("/api/webhooks/meta/whatsapp", async (req: Request, res: Response) => {
+    try {
+      const mode = req.query["hub.mode"] as string;
+      const token = req.query["hub.verify_token"] as string;
+      const challenge = req.query["hub.challenge"] as string;
+
+      // Get verify token from env or credential provider
+      const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN || 
+                          await credentialProvider.get("meta", "webhook_verify_token");
+
+      if (!verifyToken) {
+        console.error("[Meta Webhook] META_WEBHOOK_VERIFY_TOKEN not configured");
+        return res.status(500).send("Webhook verify token not configured");
+      }
+
+      if (mode === "subscribe" && token === verifyToken) {
+        console.log("[Meta Webhook] Verification successful");
+        return res.status(200).send(challenge);
+      } else {
+        console.error("[Meta Webhook] Verification failed - mode:", mode, "token match:", token === verifyToken);
+        return res.status(403).send("Forbidden");
+      }
+    } catch (error) {
+      console.error("[Meta Webhook] Verification error:", error);
+      return res.status(500).send("Internal server error");
+    }
+  });
+
+  // POST /api/webhooks/meta/whatsapp - Receive webhook events
+  app.post("/api/webhooks/meta/whatsapp", async (req: Request, res: Response) => {
+    // CRITICAL: Always return 200 OK quickly to avoid Meta retries
+    // Process asynchronously after responding
+    res.status(200).send("EVENT_RECEIVED");
+
+    try {
+      const rawBody = req.body as Buffer;
+      const signature = req.headers["x-hub-signature-256"] as string;
+
+      // Validate signature
+      const { appSecret } = await credentialProvider.getMeta();
+      if (!appSecret) {
+        console.error("[Meta Webhook] App secret not configured");
+        return;
+      }
+
+      if (!signature) {
+        console.error("[Meta Webhook] Missing X-Hub-Signature-256 header");
+        return;
+      }
+
+      if (!validateMetaWebhookSignature(rawBody, signature, appSecret)) {
+        console.error("[Meta Webhook] Invalid signature");
+        return;
+      }
+
+      // Parse the payload
+      const payload = JSON.parse(rawBody.toString());
+      console.log("[Meta Webhook] Received event:", JSON.stringify(payload, null, 2));
+
+      // Process entries
+      if (!payload.entry || !Array.isArray(payload.entry)) {
+        console.log("[Meta Webhook] No entries in payload");
+        return;
+      }
+
+      for (const entry of payload.entry) {
+        if (!entry.changes || !Array.isArray(entry.changes)) continue;
+
+        for (const change of entry.changes) {
+          if (change.field !== "messages") continue;
+
+          const value = change.value;
+          if (!value) continue;
+
+          const phoneNumberId = value.metadata?.phone_number_id;
+          if (!phoneNumberId) {
+            console.error("[Meta Webhook] Missing phone_number_id in metadata");
+            continue;
+          }
+
+          // Find the channel connection for this phone number
+          const connection = await db.query.channelConnections.findFirst({
+            where: and(
+              eq(channelConnections.phoneNumberId, phoneNumberId),
+              eq(channelConnections.channel, "whatsapp")
+            )
+          });
+
+          if (!connection) {
+            console.error("[Meta Webhook] No connection found for phoneNumberId:", phoneNumberId);
+            // Still log the webhook for debugging
+            await db.insert(waWebhookLogs).values({
+              eventType: "unknown_connection",
+              phoneNumberId,
+              payload,
+              processed: false,
+              error: "No connection found for phoneNumberId",
+            });
+            continue;
+          }
+
+          const companyId = connection.companyId;
+          const connectionId = connection.id;
+
+          // Handle messages
+          if (value.messages && Array.isArray(value.messages)) {
+            for (const message of value.messages) {
+              try {
+                // Log the webhook event
+                const webhookLog = await db.insert(waWebhookLogs).values({
+                  companyId,
+                  connectionId,
+                  eventType: "message",
+                  eventId: message.id,
+                  phoneNumberId,
+                  payload: message,
+                  processed: false,
+                }).returning();
+
+                const contact = value.contacts?.[0];
+                const contactWaId = message.from;
+                const contactName = contact?.profile?.name || contactWaId;
+
+                // Find or create conversation
+                let conversation = await db.query.waConversations.findFirst({
+                  where: and(
+                    eq(waConversations.connectionId, connectionId),
+                    eq(waConversations.contactWaId, contactWaId)
+                  )
+                });
+
+                if (!conversation) {
+                  const [newConversation] = await db.insert(waConversations).values({
+                    companyId,
+                    connectionId,
+                    externalThreadId: contactWaId,
+                    contactWaId,
+                    contactName,
+                    contactE164: contactWaId.startsWith("+") ? contactWaId : `+${contactWaId}`,
+                    unreadCount: 1,
+                    lastMessageAt: new Date(),
+                    lastMessagePreview: message.text?.body || message.type || "Media message",
+                  }).returning();
+                  conversation = newConversation;
+                } else {
+                  // Update conversation
+                  await db.update(waConversations)
+                    .set({
+                      contactName,
+                      unreadCount: (conversation.unreadCount || 0) + 1,
+                      lastMessageAt: new Date(),
+                      lastMessagePreview: message.text?.body || message.type || "Media message",
+                      updatedAt: new Date(),
+                    })
+                    .where(eq(waConversations.id, conversation.id));
+                }
+
+                // Determine message type and content
+                let messageType = message.type || "text";
+                let textBody: string | null = null;
+                let mediaUrl: string | null = null;
+                let mediaMimeType: string | null = null;
+
+                if (message.text) {
+                  textBody = message.text.body;
+                } else if (message.image) {
+                  mediaUrl = message.image.id; // This is a media ID, needs to be downloaded
+                  mediaMimeType = message.image.mime_type;
+                  textBody = message.image.caption || null;
+                } else if (message.video) {
+                  mediaUrl = message.video.id;
+                  mediaMimeType = message.video.mime_type;
+                  textBody = message.video.caption || null;
+                } else if (message.audio) {
+                  mediaUrl = message.audio.id;
+                  mediaMimeType = message.audio.mime_type;
+                } else if (message.document) {
+                  mediaUrl = message.document.id;
+                  mediaMimeType = message.document.mime_type;
+                  textBody = message.document.filename || null;
+                } else if (message.sticker) {
+                  mediaUrl = message.sticker.id;
+                  mediaMimeType = message.sticker.mime_type;
+                  messageType = "sticker";
+                } else if (message.location) {
+                  messageType = "location";
+                  textBody = `Location: ${message.location.latitude}, ${message.location.longitude}`;
+                } else if (message.contacts) {
+                  messageType = "contacts";
+                  textBody = JSON.stringify(message.contacts);
+                } else if (message.interactive) {
+                  messageType = "interactive";
+                  textBody = JSON.stringify(message.interactive);
+                } else if (message.button) {
+                  messageType = "button";
+                  textBody = message.button.text;
+                }
+
+                // Insert message into waMessages
+                const [insertedMessage] = await db.insert(waMessages).values({
+                  companyId,
+                  connectionId,
+                  conversationId: conversation.id,
+                  providerMessageId: message.id,
+                  direction: "inbound",
+                  status: "delivered",
+                  messageType,
+                  textBody,
+                  mediaUrl,
+                  mediaMimeType,
+                  payload: message,
+                  deliveredAt: new Date(),
+                  timestamp: new Date(parseInt(message.timestamp) * 1000),
+                }).returning();
+
+                // Mark webhook as processed
+                if (webhookLog[0]) {
+                  await db.update(waWebhookLogs)
+                    .set({ processed: true })
+                    .where(eq(waWebhookLogs.id, webhookLog[0].id));
+                }
+
+                // Broadcast via WebSocket
+                broadcastWhatsAppMessage(companyId, contactWaId, message.id, false);
+                broadcastWhatsAppChatUpdate(companyId);
+
+                console.log(`[Meta Webhook] Processed inbound message ${message.id} for company ${companyId}`);
+              } catch (msgError) {
+                console.error("[Meta Webhook] Error processing message:", msgError);
+                await db.insert(waWebhookLogs).values({
+                  companyId,
+                  connectionId,
+                  eventType: "message_error",
+                  eventId: message.id,
+                  phoneNumberId,
+                  payload: message,
+                  processed: false,
+                  error: msgError instanceof Error ? msgError.message : String(msgError),
+                });
+              }
+            }
+          }
+
+          // Handle statuses
+          if (value.statuses && Array.isArray(value.statuses)) {
+            for (const status of value.statuses) {
+              try {
+                // Log the webhook event
+                await db.insert(waWebhookLogs).values({
+                  companyId,
+                  connectionId,
+                  eventType: "status",
+                  eventId: status.id,
+                  phoneNumberId,
+                  payload: status,
+                  processed: false,
+                });
+
+                const wamid = status.id;
+                const statusValue = status.status; // sent, delivered, read, failed
+
+                // Find message by providerMessageId
+                const existingMessage = await db.query.waMessages.findFirst({
+                  where: and(
+                    eq(waMessages.connectionId, connectionId),
+                    eq(waMessages.providerMessageId, wamid)
+                  )
+                });
+
+                if (existingMessage) {
+                  const updates: Record<string, any> = {
+                    status: statusValue,
+                  };
+
+                  // Set appropriate timestamp based on status
+                  if (statusValue === "sent") {
+                    updates.sentAt = new Date(parseInt(status.timestamp) * 1000);
+                  } else if (statusValue === "delivered") {
+                    updates.deliveredAt = new Date(parseInt(status.timestamp) * 1000);
+                  } else if (statusValue === "read") {
+                    updates.readAt = new Date(parseInt(status.timestamp) * 1000);
+                  } else if (statusValue === "failed") {
+                    updates.errorMessage = status.errors?.[0]?.message || "Delivery failed";
+                  }
+
+                  await db.update(waMessages)
+                    .set(updates)
+                    .where(eq(waMessages.id, existingMessage.id));
+
+                  // Broadcast status update
+                  broadcastWhatsAppMessageStatus(companyId, status.recipient_id, wamid, statusValue);
+
+                  console.log(`[Meta Webhook] Updated message ${wamid} status to ${statusValue}`);
+                } else {
+                  console.log(`[Meta Webhook] Message ${wamid} not found for status update`);
+                }
+              } catch (statusError) {
+                console.error("[Meta Webhook] Error processing status:", statusError);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[Meta Webhook] Error processing webhook:", error);
+    }
+  });
+
+
   // GET /api/integrations/whatsapp/status - Get WhatsApp connection status
   app.get("/api/integrations/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
     

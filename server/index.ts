@@ -63,7 +63,7 @@ app.set('trust proxy', true);
 // Webhooks need raw body for signature verification
 // We parse all other routes as JSON
 app.use((req, res, next) => {
-  if (req.originalUrl === '/api/webhooks/stripe' || req.originalUrl === '/webhooks/telnyx') {
+  if (req.originalUrl === '/api/webhooks/stripe' || req.originalUrl === '/webhooks/telnyx' || req.originalUrl === '/api/webhooks/meta/whatsapp') {
     next();
   } else {
     express.json({ limit: '10mb' })(req, res, next);
@@ -73,6 +73,7 @@ app.use((req, res, next) => {
 // Raw body for webhook signature verification
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 app.use('/webhooks/telnyx', express.raw({ type: 'application/json' }));
+app.use('/api/webhooks/meta/whatsapp', express.raw({ type: 'application/json' }));
 
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser()); // Required to read cookies like 'trusted_device'
