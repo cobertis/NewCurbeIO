@@ -32,8 +32,8 @@ export async function getFullGeolocationFromIP(ip: string): Promise<FullGeolocat
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    // Using IPWho.org - completely free, unlimited, no API key required
-    const response = await fetch(`https://ipwho.is/${cleanIP}`, {
+    // Using ip-api.com - free, 45 req/min, no API key required
+    const response = await fetch(`http://ip-api.com/json/${cleanIP}?fields=status,message,country,countryCode,region,regionName,city`, {
       signal: controller.signal,
     });
     
@@ -45,20 +45,21 @@ export async function getFullGeolocationFromIP(ip: string): Promise<FullGeolocat
     }
 
     const data = await response.json() as { 
-      success: boolean; 
+      status: string; 
       message?: string;
       country?: string; 
-      country_code?: string;
+      countryCode?: string;
       region?: string;
+      regionName?: string;
       city?: string;
     };
     
-    if (data.success) {
+    if (data.status === "success") {
       const result: FullGeolocationResult = {
         city: data.city || null,
-        region: data.region || null,
+        region: data.regionName || null,
         country: data.country || null,
-        countryCode: data.country_code || null,
+        countryCode: data.countryCode || null,
         success: true,
       };
       fullCache.set(cleanIP, { result, timestamp: Date.now() });
