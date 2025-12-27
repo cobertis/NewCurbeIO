@@ -822,11 +822,11 @@ export default function InboxPage() {
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages]);
 
   useEffect(() => {
-    pulseAiMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    pulseAiMessagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [pulseAiMessages]);
 
   useEffect(() => {
