@@ -2,7 +2,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, ChevronDown, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown, User, Bug, MoreVertical } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, ChevronDown, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown, User, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
@@ -2122,7 +2122,7 @@ export default function ChatWidgetPreviewPage() {
     if (!config) return null;
 
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg overflow-hidden">
         <div className="p-4 text-white" style={{ background: currentBackground }}>
           <div className="flex items-center gap-2">
             <button onClick={() => setActiveChannel(null)} className="hover:opacity-80">
@@ -2551,7 +2551,7 @@ export default function ChatWidgetPreviewPage() {
           >
           {chatLoading ? (
             /* Loading state during transition */
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg overflow-hidden flex flex-col items-center justify-center" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
               <div className="px-4 py-3 text-white w-full" style={{ background: currentBackground }}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
@@ -2572,7 +2572,7 @@ export default function ChatWidgetPreviewPage() {
             </div>
           ) : viewingSolvedChat && solvedChatData ? (
             /* Solved Chat View - Textmagic style */
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg overflow-hidden flex flex-col" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
               {/* Header - same style as Home (WidgetHeader) */}
               <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
                 {/* Back button + Logo */}
@@ -2733,25 +2733,7 @@ export default function ChatWidgetPreviewPage() {
               </div>
               
               {/* Footer */}
-              <div className="py-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between px-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-[10px] text-muted-foreground h-auto py-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => {
-                    const info = {
-                      ...debugInfo,
-                      timestamp: new Date().toISOString(),
-                      userAgent: navigator.userAgent,
-                      url: window.location.href,
-                    };
-                    navigator.clipboard.writeText(JSON.stringify(info, null, 2));
-                    toast({ title: "Debug info copied", description: "Paste this to support for troubleshooting" });
-                  }}
-                  data-testid="button-copy-debug-solved"
-                >
-                  <Bug className="h-3 w-3 mr-1" /> Debug
-                </Button>
+              <div className="py-2 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center px-3">
                 <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
                   Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
                 </a>
@@ -2891,7 +2873,7 @@ export default function ChatWidgetPreviewPage() {
             </div>
           ) : (chatFlowState === 'activeChat' || chatFlowState === 'postChatSurvey') ? (
             /* Active Live Chat View or Post-Chat Survey - Professional Design */
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg overflow-hidden flex flex-col" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
               {/* Header - same style as Home (WidgetHeader) */}
               <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
                 {/* Back button + Logo */}
@@ -3491,25 +3473,7 @@ export default function ChatWidgetPreviewPage() {
               )}
               
               {/* Footer */}
-              <div className="py-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between px-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-[10px] text-muted-foreground h-auto py-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => {
-                    const info = {
-                      ...debugInfo,
-                      timestamp: new Date().toISOString(),
-                      userAgent: navigator.userAgent,
-                      url: window.location.href,
-                    };
-                    navigator.clipboard.writeText(JSON.stringify(info, null, 2));
-                    toast({ title: "Debug info copied", description: "Paste this to support for troubleshooting" });
-                  }}
-                  data-testid="button-copy-debug-active"
-                >
-                  <Bug className="h-3 w-3 mr-1" /> Debug
-                </Button>
+              <div className="py-2 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center px-3">
                 <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
                   Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
                 </a>
@@ -3520,7 +3484,7 @@ export default function ChatWidgetPreviewPage() {
               {/* State machine controlled rendering - only one view at a time */}
               {chatFlowState === 'preChatForm' ? (
                 /* Pre-chat form - controlled by state machine */
-                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg overflow-hidden h-full">
                   {/* Header - same style as Home (WidgetHeader) */}
                   <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
                     {/* Back button + Logo */}
@@ -3631,25 +3595,7 @@ export default function ChatWidgetPreviewPage() {
                   </div>
                   
                   {/* Footer */}
-                  <div className="absolute bottom-0 left-0 right-0 py-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between px-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-[10px] text-muted-foreground h-auto py-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-700"
-                      onClick={() => {
-                        const info = {
-                          ...debugInfo,
-                          timestamp: new Date().toISOString(),
-                          userAgent: navigator.userAgent,
-                          url: window.location.href,
-                        };
-                        navigator.clipboard.writeText(JSON.stringify(info, null, 2));
-                        toast({ title: "Debug info copied", description: "Paste this to support for troubleshooting" });
-                      }}
-                      data-testid="button-copy-debug"
-                    >
-                      <Bug className="h-3 w-3 mr-1" /> Debug
-                    </Button>
+                  <div className="absolute bottom-0 left-0 right-0 py-2 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center px-3">
                     <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
                       Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
                     </a>
@@ -3721,7 +3667,7 @@ export default function ChatWidgetPreviewPage() {
                   }}
                 />
               ) : (
-                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg overflow-hidden flex flex-col items-center justify-center" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
                   <div className="text-center">
                     <div className="animate-spin h-8 w-8 border-4 border-slate-300 border-t-slate-600 rounded-full mx-auto mb-3"></div>
                     <p className="text-sm text-slate-500">Loading...</p>
