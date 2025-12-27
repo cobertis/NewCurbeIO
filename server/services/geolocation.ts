@@ -32,8 +32,8 @@ export async function getFullGeolocationFromIP(ip: string): Promise<FullGeolocat
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    // Using ip-api.com - free, 45 req/min, no API key required
-    const response = await fetch(`http://ip-api.com/json/${cleanIP}?fields=status,message,country,countryCode,region,regionName,city`, {
+    // Using FreeIPAPI.com - free, 60 req/min, commercial use allowed
+    const response = await fetch(`https://freeipapi.com/api/json/${cleanIP}`, {
       signal: controller.signal,
     });
     
@@ -45,20 +45,18 @@ export async function getFullGeolocationFromIP(ip: string): Promise<FullGeolocat
     }
 
     const data = await response.json() as { 
-      status: string; 
-      message?: string;
-      country?: string; 
-      countryCode?: string;
-      region?: string;
+      ipAddress?: string;
+      cityName?: string;
       regionName?: string;
-      city?: string;
+      countryName?: string;
+      countryCode?: string;
     };
     
-    if (data.status === "success") {
+    if (data.ipAddress) {
       const result: FullGeolocationResult = {
-        city: data.city || null,
+        city: data.cityName || null,
         region: data.regionName || null,
-        country: data.country || null,
+        country: data.countryName || null,
         countryCode: data.countryCode || null,
         success: true,
       };
@@ -67,7 +65,7 @@ export async function getFullGeolocationFromIP(ip: string): Promise<FullGeolocat
       return result;
     }
     
-    console.error(`[Geolocation] API returned failure for IP ${cleanIP}: ${data.message}`);
+    console.error(`[Geolocation] API returned no data for IP ${cleanIP}`);
     return { city: null, region: null, country: null, countryCode: null, success: false };
   } catch (error) {
     console.error(`[Geolocation] Error fetching location for IP ${cleanIP}:`, error);
