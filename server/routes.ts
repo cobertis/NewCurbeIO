@@ -26116,7 +26116,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/meta/whatsapp/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/whatsapp/callback", async (req: Request, res: Response) => {
     const frontendUrl = process.env.BASE_URL || "";
-    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?whatsapp=error&reason=${encodeURIComponent(reason)}`);
+    const errorRedirect = (reason: string, errorCode?: string, traceId?: string) => {
+      let redirectUrl = `${frontendUrl}/settings/integrations?whatsapp=error&reason=${encodeURIComponent(reason)}`;
+      if (errorCode) redirectUrl += `&code=${encodeURIComponent(errorCode)}`;
+      if (traceId) redirectUrl += `&trace=${encodeURIComponent(traceId)}`;
+      return res.redirect(redirectUrl);
+    };
     
     try {
       const { code, state } = req.query;
@@ -26176,8 +26181,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const tokenData = await tokenResponse.json() as any;
       
       if (tokenData.error || !tokenData.access_token) {
-        console.error("[WhatsApp OAuth] Token exchange failed:", tokenData.error);
-        return errorRedirect("token_exchange_failed");
+        const metaError = tokenData.error || {};
+        console.error("[WhatsApp OAuth] Token exchange failed:", {
+          status: tokenResponse.status,
+          message: metaError.message,
+          type: metaError.type,
+          code: metaError.code,
+          fbtrace_id: metaError.fbtrace_id,
+          redirect_uri_used: META_REDIRECT_URI
+        });
+        return errorRedirect("token_exchange_failed", String(metaError.code || ""), metaError.fbtrace_id || "");
       }
       
       const accessToken = tokenData.access_token;
@@ -26341,7 +26354,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       console.log(`[WhatsApp OAuth] Successfully connected WABA ${wabaId} for company ${oauthState.companyId}`);
-      return res.redirect(`${frontendUrl}/integrations?whatsapp=connected`);
+      return res.redirect(`${frontendUrl}/settings/integrations?whatsapp=connected`);
       
     } catch (error) {
       console.error("[WhatsApp OAuth] Callback error:", error);
