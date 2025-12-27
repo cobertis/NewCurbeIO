@@ -258,61 +258,83 @@ function getPrimaryColor(widget: ChatWidget): string {
   return colorOption.hex;
 }
 
+// Shared helper to normalize channels from any format to clean boolean flags
+// Handles: array format, object format, numeric-only object format, and mixed format
+// Exported for use in both mapChatWidgetToConfig and the edit page
+export function normalizeChannelsToBoolean(channels: any): WidgetChannels {
+  // WidgetChannels uses 'messenger' not 'facebook' - we need to handle both
+  const result: WidgetChannels = {
+    liveChat: false,
+    sms: false,
+    phone: false,
+    whatsapp: false,
+    email: false,
+    telegram: false,
+    messenger: false,
+    instagram: false,
+  };
+  
+  if (!channels || typeof channels !== 'object') {
+    return result;
+  }
+  
+  // Helper to normalize channel type names
+  const normalizeType = (type: string): keyof WidgetChannels | null => {
+    if (type === 'live_chat') return 'liveChat';
+    if (type === 'facebook') return 'messenger'; // facebook -> messenger
+    if (type === 'liveChat' || type === 'sms' || type === 'phone' || 
+        type === 'whatsapp' || type === 'email' || type === 'telegram' || 
+        type === 'messenger' || type === 'instagram') {
+      return type as keyof WidgetChannels;
+    }
+    return null;
+  };
+  
+  // Handle pure array format: [{type: "liveChat", enabled: true}, ...]
+  if (Array.isArray(channels)) {
+    for (const item of channels) {
+      if (item && typeof item === 'object' && item.type) {
+        const normalizedType = normalizeType(item.type);
+        if (normalizedType) {
+          // Default to true if enabled flag is missing (legacy data where presence implied enabled)
+          result[normalizedType] = item.enabled !== false;
+        }
+      }
+    }
+    return result;
+  }
+  
+  // Handle object format - iterate all entries
+  for (const [key, value] of Object.entries(channels)) {
+    const normalizedKey = normalizeType(key);
+    
+    // Direct boolean flag: {liveChat: true, phone: false, facebook: true, ...}
+    if (normalizedKey && typeof value === 'boolean') {
+      result[normalizedKey] = value;
+    }
+    // Numeric key with nested object: {"0": {type: "live_chat", enabled: true}, ...}
+    // If `enabled` is missing, presence implies enabled=true (legacy behavior)
+    else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const nestedObj = value as { type?: string; enabled?: boolean };
+      if (nestedObj.type) {
+        const normalizedType = normalizeType(nestedObj.type);
+        if (normalizedType) {
+          // Default to true if enabled flag is missing
+          result[normalizedType] = nestedObj.enabled !== false;
+        }
+      }
+    }
+  }
+  
+  return result;
+}
+
 export function mapChatWidgetToConfig(widget: ChatWidget): WidgetConfig {
   const primaryColor = getPrimaryColor(widget);
   const headerBackground = getBackgroundColor(widget);
 
-  // Handle multiple formats:
-  // 1. Array format: [{ type: "liveChat", enabled: true }, ...]
-  // 2. Object format: { liveChat: true, email: false, ... }
-  // 3. Mixed format (from legacy data): { "0": {type: "live_chat"}, "phone": true, ... }
-  const rawChannels = widget.channels as any;
-  let channelsConfig: WidgetChannels;
-  
-  if (Array.isArray(rawChannels)) {
-    // Pure array format: [{ type: "liveChat", enabled: true }, ...]
-    const channels = rawChannels as Array<{ type: string; enabled: boolean }>;
-    channelsConfig = {
-      liveChat: channels.find(c => c.type === "liveChat" || c.type === "live_chat")?.enabled ?? false,
-      sms: channels.find(c => c.type === "sms")?.enabled ?? false,
-      phone: channels.find(c => c.type === "phone")?.enabled ?? false,
-      whatsapp: channels.find(c => c.type === "whatsapp")?.enabled ?? false,
-      email: channels.find(c => c.type === "email")?.enabled ?? false,
-      telegram: channels.find(c => c.type === "telegram")?.enabled ?? false,
-      messenger: channels.find(c => c.type === "facebook")?.enabled ?? false,
-      instagram: channels.find(c => c.type === "instagram")?.enabled ?? false,
-    };
-  } else if (rawChannels && typeof rawChannels === 'object') {
-    // Object format - could be clean boolean flags or mixed format with numbered keys
-    // Extract only the known channel keys, handling both camelCase and snake_case
-    const getBoolValue = (key: string): boolean => {
-      const val = rawChannels[key];
-      return typeof val === 'boolean' ? val : false;
-    };
-    
-    channelsConfig = {
-      liveChat: getBoolValue('liveChat'),
-      sms: getBoolValue('sms'),
-      phone: getBoolValue('phone'),
-      whatsapp: getBoolValue('whatsapp'),
-      email: getBoolValue('email'),
-      telegram: getBoolValue('telegram'),
-      messenger: getBoolValue('facebook'),
-      instagram: getBoolValue('instagram'),
-    };
-  } else {
-    // Default: all disabled
-    channelsConfig = {
-      liveChat: false,
-      sms: false,
-      phone: false,
-      whatsapp: false,
-      email: false,
-      telegram: false,
-      messenger: false,
-      instagram: false,
-    };
-  }
+  // Use shared normalization for consistent channel handling
+  const channelsConfig = normalizeChannelsToBoolean(widget.channels);
 
   const minimizedStateData = widget.minimizedState as {
     icon?: string;
@@ -373,7 +395,7 @@ export function mapChatWidgetToConfig(widget: ChatWidget): WidgetConfig {
     messengerSettings: widget.messengerSettings as MessengerSettings | undefined,
     instagramSettings: widget.instagramSettings as InstagramSettings | undefined,
     telegramSettings: widget.telegramSettings as TelegramSettings | undefined,
-    channelOrder: widget.channelOrder || ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram", "telegram"],
+    channelOrder: widget.channelOrder || ["liveChat", "email", "sms", "phone", "whatsapp", "messenger", "instagram", "telegram"],
     teamMembers: (widget as any).teamMembers as TeamMember[] | undefined,
   };
 }

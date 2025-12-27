@@ -70,7 +70,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { allCountries, getCountryByName } from "@/lib/countries";
 import { WidgetRenderer } from "@/components/chat/widget-renderer";
-import { mapChatWidgetToConfig } from "@shared/widget-config";
+import { mapChatWidgetToConfig, normalizeChannelsToBoolean } from "@shared/widget-config";
 
 function QRCodeDisplay({ value, size = 128 }: { value: string; size?: number }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -166,7 +166,7 @@ interface WidgetConfig {
     sms: boolean;
     phone: boolean;
     whatsapp: boolean;
-    facebook: boolean;
+    messenger: boolean;
     instagram: boolean;
     telegram: boolean;
   };
@@ -385,7 +385,7 @@ const channelConfigs: ChannelConfig[] = [
   { id: "sms", key: "sms", label: "Text message", icon: <Send className="h-5 w-5" />, iconColor: "text-green-500" },
   { id: "phone", key: "phone", label: "Call", icon: <Phone className="h-5 w-5" />, iconColor: "text-blue-600" },
   { id: "whatsapp", key: "whatsapp", label: "WhatsApp", icon: <SiWhatsapp className="h-5 w-5" />, iconColor: "text-[#25D366]" },
-  { id: "facebook", key: "facebook", label: "Facebook", icon: <SiFacebook className="h-5 w-5" />, iconColor: "text-[#1877F2]" },
+  { id: "messenger", key: "messenger", label: "Facebook Messenger", icon: <SiFacebook className="h-5 w-5" />, iconColor: "text-[#1877F2]" },
   { id: "instagram", key: "instagram", label: "Instagram", icon: <SiInstagram className="h-5 w-5" />, iconColor: "text-[#E4405F]" },
   { id: "telegram", key: "telegram", label: "Telegram", icon: <SiTelegram className="h-5 w-5" />, iconColor: "text-[#0088CC]" },
 ];
@@ -1669,7 +1669,7 @@ function SortableChannelItem({
           )}
         </div>
       )}
-      {isExpanded && channel.id === "facebook" && messengerSettings && onMessengerSettingsChange && (
+      {isExpanded && channel.id === "messenger" && messengerSettings && onMessengerSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeMessengerSubSection === null ? (
             <div className="space-y-1">
@@ -2243,11 +2243,11 @@ export default function ChatWidgetEditPage() {
       sms: true,
       phone: true,
       whatsapp: false,
-      facebook: false,
+      messenger: false,
       instagram: false,
       telegram: false,
     },
-    channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram", "telegram"],
+    channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "messenger", "instagram", "telegram"],
     liveChatSettings: {
       welcomeScreen: {
         fieldLabel: "How can we help you today?",
@@ -2429,10 +2429,16 @@ export default function ChatWidgetEditPage() {
     },
   };
   
+  // Use shared normalization to clean API channels (handles all legacy formats)
+  const cleanedApiChannels = normalizeChannelsToBoolean(widgetData?.widget?.channels);
+  const cleanedLocalChannels = normalizeChannelsToBoolean(localWidget?.channels);
+  
   const widget = { 
     ...defaultWidget, 
     ...widgetData?.widget, 
     ...localWidget,
+    // Explicitly merge channels with cleaned data to remove legacy numbered keys
+    channels: { ...defaultWidget.channels, ...cleanedApiChannels, ...cleanedLocalChannels },
     targeting: { ...defaultWidget.targeting, ...widgetData?.widget?.targeting, ...localWidget?.targeting },
     branding: { ...defaultWidget.branding, ...widgetData?.widget?.branding, ...localWidget?.branding },
     minimizedState: { ...defaultWidget.minimizedState, ...widgetData?.widget?.minimizedState, ...localWidget?.minimizedState },
@@ -2636,7 +2642,7 @@ export default function ChatWidgetEditPage() {
       phone: widget.callSettings?.callUsScreen?.title || "Speak with an agent",
       whatsapp: widget.whatsappSettings?.messageScreen?.title || "Message us on WhatsApp",
       email: widget.emailSettings?.formFields?.title || "Get response via email",
-      facebook: widget.messengerSettings?.messageUsScreen?.title || "Message us on Facebook",
+      messenger: widget.messengerSettings?.messageUsScreen?.title || "Message us on Facebook",
       instagram: widget.instagramSettings?.messageUsScreen?.title || "Message us on Instagram",
       telegram: widget.telegramSettings?.messageUsScreen?.title || "Message us on Telegram",
     };
@@ -2646,7 +2652,7 @@ export default function ChatWidgetEditPage() {
       phone: widget.callSettings?.callUsScreen?.description || "Call us for urgent matters.",
       whatsapp: widget.whatsappSettings?.messageScreen?.description || "Click the button below or scan the QR code.",
       email: widget.emailSettings?.formFields?.description || "Fill the details and we will reply.",
-      facebook: widget.messengerSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
+      messenger: widget.messengerSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
       instagram: widget.instagramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
       telegram: widget.telegramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
     };
@@ -2656,7 +2662,7 @@ export default function ChatWidgetEditPage() {
       phone: widget.callSettings?.callUsScreen?.buttonLabel || "Call now",
       whatsapp: widget.whatsappSettings?.messageScreen?.buttonLabel || "Open chat",
       email: widget.emailSettings?.formFields?.buttonLabel || "Send email",
-      facebook: widget.messengerSettings?.messageUsScreen?.buttonLabel || "Open Facebook",
+      messenger: widget.messengerSettings?.messageUsScreen?.buttonLabel || "Open Facebook",
       instagram: widget.instagramSettings?.messageUsScreen?.buttonLabel || "Open Instagram",
       telegram: widget.telegramSettings?.messageUsScreen?.buttonLabel || "Open Telegram",
     };
@@ -4972,7 +4978,7 @@ export default function ChatWidgetEditPage() {
                       </div>
                     </div>
                   </div>
-                ) : expandedChannel === "facebook" ? (
+                ) : expandedChannel === "messenger" ? (
                   <div className="relative">
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
