@@ -83,7 +83,7 @@ export function WidgetChannelList({ config, onChannelClick, hideLiveChat = false
   const otherChannels = orderedChannels.filter((c) => c.id !== "liveChat");
 
   return (
-    <div className="space-y-2" data-testid="widget-channel-list">
+    <div className="space-y-1" data-testid="widget-channel-list">
       {!hideLiveChat && liveChatChannel && (
         <button
           type="button"
@@ -99,8 +99,8 @@ export function WidgetChannelList({ config, onChannelClick, hideLiveChat = false
       )}
 
       {otherChannels.length > 0 && (
-        <div className="pt-3 mt-2 border-t border-slate-100">
-          <p className="text-xs text-slate-400 mb-2">Other ways to reach us</p>
+        <div className="pt-2 border-t border-slate-100">
+          <p className="text-xs text-slate-400 mb-1.5">Other ways to reach us</p>
           <div className="space-y-1.5">
             {otherChannels.map((channel) => (
               <button
