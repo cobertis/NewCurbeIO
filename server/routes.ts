@@ -26840,6 +26840,213 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     return res.json({ success: true });
   });
 
+  // POST /api/whatsapp/meta/send - Send WhatsApp message via Meta Cloud API
+  app.post("/api/whatsapp/meta/send", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      const { conversationId, text, templateName, templateParams, mediaUrl, mediaType } = req.body;
+
+      if (!conversationId) {
+        return res.status(400).json({ error: "conversationId is required" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected. Please connect your WhatsApp Business account first." });
+      }
+
+      if (!connection.accessTokenEnc || !connection.phoneNumberId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete. Please reconnect your account." });
+      }
+
+      // Get conversation to find recipient
+      const conversation = await db.query.waConversations.findFirst({
+        where: and(
+          eq(waConversations.id, conversationId),
+          eq(waConversations.companyId, user.companyId)
+        )
+      });
+
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      const contactWaId = conversation.contactWaId;
+      if (!contactWaId) {
+        return res.status(400).json({ error: "Contact WhatsApp ID not found" });
+      }
+
+      // Decrypt access token
+      const accessToken = decryptToken(connection.accessTokenEnc);
+
+      // Check 24-hour window by finding last INBOUND message from this contact
+      const lastInboundMessage = await db.query.waMessages.findFirst({
+        where: and(
+          eq(waMessages.conversationId, conversationId),
+          eq(waMessages.direction, "inbound")
+        ),
+        orderBy: [desc(waMessages.timestamp)]
+      });
+
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const isWithin24Hours = lastInboundMessage?.timestamp && 
+        new Date(lastInboundMessage.timestamp) > twentyFourHoursAgo;
+
+      // Determine message type and validate
+      let messagePayload: any;
+      let messageText: string | null = null;
+      let usedTemplate: string | null = null;
+
+      if (templateName) {
+        // Template message - always allowed
+        usedTemplate = templateName;
+        messagePayload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: contactWaId,
+          type: "template",
+          template: {
+            name: templateName,
+            language: { code: templateParams?.language || "en" },
+            components: templateParams?.components || []
+          }
+        };
+        messageText = `[Template: ${templateName}]`;
+      } else if (text) {
+        // Text message - only allowed within 24h window
+        if (!isWithin24Hours) {
+          return res.status(400).json({ 
+            error: "Cannot send free-form messages outside the 24-hour window. Please use a template message.",
+            code: "OUTSIDE_24H_WINDOW"
+          });
+        }
+        messageText = text;
+        messagePayload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: contactWaId,
+          type: "text",
+          text: { body: text }
+        };
+      } else if (mediaUrl && mediaType) {
+        // Media message - only allowed within 24h window
+        if (!isWithin24Hours) {
+          return res.status(400).json({ 
+            error: "Cannot send media messages outside the 24-hour window. Please use a template message.",
+            code: "OUTSIDE_24H_WINDOW"
+          });
+        }
+        messageText = `[${mediaType}]`;
+        messagePayload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: contactWaId,
+          type: mediaType,
+          [mediaType]: {
+            link: mediaUrl
+          }
+        };
+      } else {
+        return res.status(400).json({ error: "Either text, templateName, or mediaUrl with mediaType is required" });
+      }
+
+      // Send message via Meta Graph API
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${connection.phoneNumberId}/messages`;
+
+      console.log(`[WhatsApp Send] Sending to ${contactWaId} via ${connection.phoneNumberId}`);
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(messagePayload)
+      });
+
+      const responseData = await response.json() as any;
+
+      if (!response.ok) {
+        console.error("[WhatsApp Send] Meta API error:", responseData);
+        
+        // Handle rate limiting
+        if (response.status === 429) {
+          return res.status(429).json({ 
+            error: "Rate limit exceeded. Please wait before sending more messages.",
+            code: "RATE_LIMITED"
+          });
+        }
+
+        // Parse Meta error
+        const metaError = responseData?.error;
+        return res.status(response.status).json({ 
+          error: metaError?.message || "Failed to send message",
+          code: metaError?.code || "META_API_ERROR",
+          details: metaError
+        });
+      }
+
+      // Get message ID from response
+      const providerMessageId = responseData.messages?.[0]?.id;
+
+      // Insert message into database
+      const [insertedMessage] = await db.insert(waMessages).values({
+        companyId: user.companyId,
+        connectionId: connection.id,
+        conversationId: conversationId,
+        providerMessageId,
+        direction: "outbound",
+        status: "sent",
+        messageType: usedTemplate ? "template" : (mediaUrl ? mediaType : "text"),
+        textBody: messageText,
+        templateName: usedTemplate,
+        mediaUrl: mediaUrl || null,
+        mediaMimeType: mediaType || null,
+        sentAt: new Date(),
+        timestamp: new Date()
+      }).returning();
+
+      // Update conversation
+      await db.update(waConversations)
+        .set({
+          lastMessageAt: new Date(),
+          lastMessagePreview: messageText?.substring(0, 100) || null,
+          updatedAt: new Date()
+        })
+        .where(eq(waConversations.id, conversationId));
+
+      // Broadcast via WebSocket for real-time UI update
+      broadcastWhatsAppMessage(user.companyId, contactWaId, insertedMessage.id, true);
+      broadcastWhatsAppChatUpdate(user.companyId);
+
+      console.log(`[WhatsApp Send] Message sent successfully: ${providerMessageId}`);
+
+      return res.json({
+        success: true,
+        messageId: insertedMessage.id,
+        providerMessageId,
+        status: "sent"
+      });
+
+    } catch (error) {
+      console.error("[WhatsApp Send] Error:", error);
+      return res.status(500).json({ error: "Failed to send message" });
+    }
+  });
 
   // =====================================================
   // INSTAGRAM DIRECT OAUTH INTEGRATION
