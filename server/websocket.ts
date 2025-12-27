@@ -3,7 +3,6 @@ import { Server } from 'http';
 import type { IncomingMessage } from 'http';
 import signature from 'cookie-signature';
 import { extensionCallService } from './services/extension-call-service';
-import { createTraceContext, logChatEvent } from './lib/chat-trace';
 import { db } from './db';
 import { telnyxMessages } from '@shared/schema';
 import { eq, gt, and } from 'drizzle-orm';
@@ -71,18 +70,8 @@ interface AuthenticatedWebSocket extends WebSocket {
   isAuthenticated: boolean;
 }
 
-// Extended WebSocket type for live chat widget connections (public, unauthenticated)
-interface LiveChatWidgetWebSocket extends WebSocket {
-  sessionId: string;
-  companyId: string;
-  widgetId: string;
-}
-
 let wss: WebSocketServer | null = null;
 let sessionStore: any = null;
-
-// Track live chat widget connections by sessionId for real-time event broadcasting
-const liveChatWidgetConnections = new Map<string, Set<LiveChatWidgetWebSocket>>();
 
 export function setupWebSocket(server: Server, pgSessionStore?: any) {
   sessionStore = pgSessionStore;
@@ -93,17 +82,6 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
   // Handle HTTP upgrade events manually - only for our specific paths
   server.on('upgrade', (request, socket, head) => {
     const pathname = request.url || '';
-    
-    // Handle live chat widget connections (public, no auth required)
-    // Path format: /ws/live-chat/:sessionId?widgetId=xxx&companyId=xxx
-    if (pathname.startsWith('/ws/live-chat/')) {
-      if (wss) {
-        wss.handleUpgrade(request, socket, head, (ws) => {
-          handleLiveChatWidgetConnection(ws as LiveChatWidgetWebSocket, request);
-        });
-      }
-      return;
-    }
     
     // Only handle our specific authenticated WebSocket paths
     if (!pathname.startsWith('/ws/sip') && !pathname.startsWith('/ws/chat') && !pathname.startsWith('/ws/pbx')) {
@@ -455,214 +433,6 @@ async function handlePbxConnection(ws: AuthenticatedWebSocket, req: IncomingMess
   });
 }
 
-// Live Chat Widget WebSocket Handler (public, no authentication required)
-// SECURITY FIX: companyId is now derived from widgetId lookup, NOT from query params
-async function handleLiveChatWidgetConnection(ws: LiveChatWidgetWebSocket, req: IncomingMessage) {
-  const url = new URL(req.url || '', `http://${req.headers.host}`);
-  const pathParts = url.pathname.split('/');
-  const sessionId = pathParts[pathParts.length - 1]; // Extract sessionId from path
-  const widgetId = url.searchParams.get('widgetId') || '';
-  // NOTE: companyId from query param is IGNORED for security - we derive it from widgetId
-  
-  if (!sessionId || !widgetId) {
-    console.log('[LiveChat WebSocket] Missing required params (sessionId or widgetId) - closing');
-    ws.close(1008, 'Missing required parameters');
-    return;
-  }
-  
-  // SECURITY: Derive companyId from widgetId via database lookup
-  // This prevents tenant isolation bypass attacks
-  let companyId: string;
-  try {
-    const { db } = await import('./db');
-    const { chatWidgets } = await import('@shared/schema');
-    const { eq } = await import('drizzle-orm');
-    
-    const widget = await db.query.chatWidgets.findFirst({
-      where: eq(chatWidgets.id, widgetId),
-      columns: { companyId: true }
-    });
-    
-    if (!widget) {
-      console.log(`[LiveChat WebSocket] Widget not found: ${widgetId} - closing`);
-      ws.close(1008, 'Invalid widget');
-      return;
-    }
-    
-    companyId = widget.companyId;
-    console.log(`[LiveChat WebSocket] Resolved companyId=${companyId} from widgetId=${widgetId}`);
-  } catch (error) {
-    console.error('[LiveChat WebSocket] Failed to resolve companyId:', error);
-    ws.close(1011, 'Internal error');
-    return;
-  }
-  
-  // Set connection properties with validated companyId
-  ws.sessionId = sessionId;
-  ws.widgetId = widgetId;
-  ws.companyId = companyId;
-  
-  // Register connection
-  if (!liveChatWidgetConnections.has(sessionId)) {
-    liveChatWidgetConnections.set(sessionId, new Set());
-  }
-  liveChatWidgetConnections.get(sessionId)!.add(ws);
-  
-  console.log(`[LiveChat WebSocket] Widget connected: sessionId=${sessionId}, widgetId=${widgetId}, companyId=${companyId}`);
-  
-  // Log WebSocket connection event
-  logChatEvent(createTraceContext({
-    action: "ws_connect",
-    companyId,
-    widgetId,
-    deviceId: url.searchParams.get('deviceId') || '',
-    contactId: null,
-    conversationId: sessionId,
-    sessionId,
-    status: "connected",
-    lastMessageId: null,
-    unreadCount: null,
-  }));
-  
-  // Send connection acknowledgment with companyId for frontend reference
-  ws.send(JSON.stringify({ type: 'connected', sessionId, companyId }));
-  
-  ws.on('error', (err) => {
-    console.error('[LiveChat WebSocket] Error:', err.message);
-  });
-  
-  ws.on('close', () => {
-    const connections = liveChatWidgetConnections.get(sessionId);
-    if (connections) {
-      connections.delete(ws);
-      if (connections.size === 0) {
-        liveChatWidgetConnections.delete(sessionId);
-      }
-    }
-    console.log(`[LiveChat WebSocket] Widget disconnected: sessionId=${sessionId}`);
-    
-    // Log WebSocket disconnect event
-    logChatEvent(createTraceContext({
-      action: "ws_disconnect",
-      companyId: ws.companyId,
-      widgetId: ws.widgetId,
-      deviceId: '',
-      contactId: null,
-      conversationId: ws.sessionId,
-      sessionId: ws.sessionId,
-      status: "disconnected",
-      lastMessageId: null,
-      unreadCount: null,
-    }));
-  });
-  
-  // Handle ping/pong for keepalive and resync
-  ws.on('message', async (data) => {
-    try {
-      const msg = JSON.parse(data.toString());
-      if (msg.type === 'ping') {
-        ws.send(JSON.stringify({ type: 'pong' }));
-      } else if (msg.type === 'resync') {
-        // INVARIANT E: Safe WebSocket reconnect with resync
-        // Client sends lastSeenMessageId to get messages they missed
-        const { lastSeenMessageId } = msg;
-        
-        if (!sessionId) {
-          ws.send(JSON.stringify({ type: 'resync_error', error: 'No session' }));
-          return;
-        }
-        
-        try {
-          let missedMessages;
-          if (lastSeenMessageId) {
-            // Get the timestamp of the last seen message
-            const [lastSeen] = await db.select({ createdAt: telnyxMessages.createdAt })
-              .from(telnyxMessages)
-              .where(eq(telnyxMessages.id, lastSeenMessageId));
-            
-            if (lastSeen) {
-              // Get all messages after the last seen one
-              missedMessages = await db.select({
-                id: telnyxMessages.id,
-                text: telnyxMessages.text,
-                direction: telnyxMessages.direction,
-                createdAt: telnyxMessages.createdAt,
-                sentBy: telnyxMessages.sentBy,
-              })
-              .from(telnyxMessages)
-              .where(and(
-                eq(telnyxMessages.conversationId, sessionId),
-                gt(telnyxMessages.createdAt, lastSeen.createdAt)
-              ))
-              .orderBy(telnyxMessages.createdAt);
-            }
-          }
-          
-          // Log resync event
-          logChatEvent(createTraceContext({
-            action: "ws_resync",
-            companyId: ws.companyId,
-            widgetId: ws.widgetId,
-            deviceId: '',
-            contactId: null,
-            conversationId: sessionId,
-            sessionId: sessionId,
-            status: "resyncing",
-            lastMessageId: lastSeenMessageId || null,
-            unreadCount: missedMessages?.length || 0,
-          }));
-          
-          ws.send(JSON.stringify({ 
-            type: 'resync_complete', 
-            missedMessages: missedMessages || [],
-            lastSeenMessageId,
-          }));
-          
-          console.log(`[LiveChat WebSocket] Resync complete: ${missedMessages?.length || 0} missed messages for session ${sessionId}`);
-        } catch (err) {
-          console.error('[LiveChat WebSocket] Resync error:', err);
-          ws.send(JSON.stringify({ type: 'resync_error', error: 'Failed to resync' }));
-        }
-      }
-    } catch (e) {
-      // Ignore parse errors
-    }
-  });
-}
-
-// Broadcast live chat event to widget connections by sessionId
-export function broadcastLiveChatEvent(companyId: string, sessionId: string, event: {
-  type: string;
-  agentName?: string;
-  agentId?: string;
-  message?: any;
-  [key: string]: any;
-}) {
-  const connections = liveChatWidgetConnections.get(sessionId);
-  
-  if (!connections || connections.size === 0) {
-    console.log(`[LiveChat WebSocket] No widget connections for session: ${sessionId}`);
-    return;
-  }
-  
-  const payload = JSON.stringify({
-    ...event,
-    sessionId,
-    companyId,
-    timestamp: new Date().toISOString()
-  });
-  
-  let sentCount = 0;
-  connections.forEach((ws) => {
-    if (ws.readyState === WebSocket.OPEN && ws.companyId === companyId) {
-      ws.send(payload);
-      sentCount++;
-    }
-  });
-  
-  console.log(`[LiveChat WebSocket] Broadcast ${event.type} to ${sentCount} widget connection(s) for session: ${sessionId}`);
-}
-
 // Broadcast new message to tenant-scoped clients only
 // NOTE: companyId should be passed based on the conversation/phone number owner
 export function broadcastNewMessage(phoneNumber: string, messageData: any, companyId?: string) {
@@ -738,36 +508,6 @@ export function broadcastConversationUpdate(companyId?: string) {
   console.log(`[WebSocket] Broadcasting conversation_update to ${sentCount} authenticated clients${companyId ? ` (company: ${companyId})` : ''}`);
 }
 
-// Broadcast visitor ended chat event to tenant-scoped clients
-export function broadcastVisitorEndedChat(companyId: string, conversationId: string, displayName?: string) {
-  if (!wss) {
-    console.warn('[WebSocket] Server not initialized');
-    return;
-  }
-
-  const message = JSON.stringify({
-    type: 'visitor_ended_chat',
-    companyId,
-    conversationId,
-    displayName: displayName || 'Visitor'
-  });
-
-  let sentCount = 0;
-  wss.clients.forEach((client) => {
-    const authClient = client as AuthenticatedWebSocket;
-    
-    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
-      return;
-    }
-    
-    if (authClient.companyId === companyId || authClient.role === 'superadmin') {
-      client.send(message);
-      sentCount++;
-    }
-  });
-
-  console.log(`[WebSocket] Broadcasting visitor_ended_chat to ${sentCount} clients (company: ${companyId})`);
-}
 
 
 // Broadcast notification update to tenant-scoped clients only

@@ -13,8 +13,7 @@ import { sesService } from "./services/ses-service";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage, broadcastLiveChatEvent, broadcastVisitorEndedChat } from "./websocket";
-import { createTraceContext, logChatEvent, extractTraceFromRequest, generateTraceId } from "./lib/chat-trace";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage } from "./websocket";
 import { chargeCallToWallet } from "./services/pricing-service";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
@@ -37939,17 +37938,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           eq(telnyxConversations.companyId, companyId)
         ));
       
-      // If status changed to solved and it's a live chat, notify the widget
-      if (status === "solved" && conversation?.channel === "live_chat") {
-        console.log(`[LiveChat] Admin solved chat: ${id}`);
-        broadcastLiveChatEvent(companyId, id, {
-          type: "chat_solved",
-          status: "solved",
-          message: "Chat has been resolved by agent"
-        });
-        // Also broadcast to admin clients
-        broadcastConversationUpdate(companyId, id);
-      }
       
       res.json({ success: true });
     } catch (error: any) {
@@ -38066,15 +38054,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Broadcast to inbox UI
       broadcastConversationUpdate(companyId);
       
-      // Broadcast to live chat widget via WebSocket
-      // The sessionId for live_chat is the conversation.id (also used as phoneNumber field)
-      const sessionId = conversation.id;
-      broadcastLiveChatEvent(companyId, sessionId, {
-        type: 'chat_accepted',
-        agentName,
-        agentId: userId,
-        agentAvatar: agent?.avatar || null,
-      });
       
       console.log(`[LiveChat] Agent ${userId} (${agentName}) accepted chat ${id}`);
       res.json({ 

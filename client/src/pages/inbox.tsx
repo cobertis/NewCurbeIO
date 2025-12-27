@@ -137,12 +137,6 @@ interface TelnyxConversation {
   visitorOs?: string | null;
 }
 
-interface ChatWidget {
-  id: string;
-  name: string;
-  domain?: string | null;
-}
-
 const getChannelIcon = (channel?: string) => {
   switch (channel) {
     case "imessage":
@@ -343,12 +337,6 @@ export default function InboxPage() {
     if (!foundUser) return "?";
     return foundUser.firstName?.charAt(0) || foundUser.lastName?.charAt(0) || foundUser.email?.charAt(0) || "?";
   };
-
-  const { data: chatWidgetsData } = useQuery<{ widgets: ChatWidget[] }>({
-    queryKey: ["/api/integrations/chat-widget/list"],
-    enabled: isAuthenticated,
-  });
-  const chatWidgets = chatWidgetsData?.widgets || [];
 
   const updateAiSettingsMutation = useMutation({
     mutationFn: async ({ conversationId, autopilotEnabled, copilotEnabled }: { 
@@ -2400,11 +2388,7 @@ export default function InboxPage() {
                           <span className="text-xs text-muted-foreground">Channel</span>
                           <div className="flex items-center gap-2">
                             <Globe className="h-3.5 w-3.5 text-orange-500" />
-                            <span className="text-sm font-medium">
-                              {selectedConversation.widgetId 
-                                ? (chatWidgets.find(w => w.id === selectedConversation.widgetId)?.name || "Live Chat")
-                                : "Live Chat"}
-                            </span>
+                            <span className="text-sm font-medium">Live Chat</span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center">

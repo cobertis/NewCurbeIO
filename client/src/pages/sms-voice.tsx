@@ -234,7 +234,6 @@ export default function SmsVoice() {
     channels: [
       { label: "SMS & voice", href: "/settings/sms-voice", icon: Phone, active: true, hasWarning: true },
       { label: "Email", href: "/settings/email", icon: Mail },
-      { label: "Chat widget", href: "/settings/chat-widget", icon: MessageSquare },
       { label: "WhatsApp", href: "/settings/whatsapp", icon: SiWhatsapp },
       { label: "Facebook", href: "/settings/facebook", icon: SiFacebook },
       { label: "Instagram", href: "/settings/instagram", icon: SiInstagram },

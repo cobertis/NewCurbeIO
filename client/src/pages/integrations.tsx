@@ -1815,7 +1815,6 @@ export default function IntegrationsPage() {
     if (location.startsWith("/settings/facebook")) return "facebook";
     if (location.startsWith("/settings/instagram")) return "instagram";
     if (location.startsWith("/settings/telegram")) return "telegram";
-    if (location.startsWith("/settings/chat-widget")) return "chat-widget";
     if (location.startsWith("/settings/white-label")) return "white-label";
     if (location.startsWith("/settings/pulse-ai")) return "pulse-ai";
     return "profile";
@@ -1839,7 +1838,6 @@ export default function IntegrationsPage() {
       { label: "Facebook", href: "/settings/facebook", icon: SiFacebook, active: activeView === "facebook" },
       { label: "Instagram", href: "/settings/instagram", icon: SiInstagram, active: activeView === "instagram" },
       { label: "Telegram", href: "/settings/telegram", icon: SiTelegram, active: activeView === "telegram" },
-      { label: "Chat Widget", href: "/settings/chat-widget", icon: MessageCircle, active: activeView === "chat-widget" },
     ],
     features: [
       { label: "Automations", href: "/settings/automations", icon: Zap, active: activeView === "automations" },
