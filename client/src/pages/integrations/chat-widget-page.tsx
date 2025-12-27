@@ -423,7 +423,16 @@ export default function ChatWidgetPage() {
                         <span className="font-medium">{widget.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-slate-500">{widget.domain}</TableCell>
+                    <TableCell>
+                      {widget.domain ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500" title="Connected" />
+                          <span className="text-slate-700 dark:text-slate-300">{widget.domain}</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">Not connected</span>
+                      )}
+                    </TableCell>
                     <TableCell>{getStatusBadge(widget)}</TableCell>
                     <TableCell className="text-slate-500">
                       {widget.createdAt ? format(new Date(widget.createdAt), "MMM d, h:mm a") : "-"}
