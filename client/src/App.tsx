@@ -1802,6 +1802,13 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/settings">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/wallet-analytics">
         <ProtectedRoute>
           <DashboardLayout>
