@@ -205,30 +205,30 @@ export function WidgetRenderer({
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm text-slate-900 truncate">
-                      {session.agent?.fullName || session.displayName || 'Support'}
-                    </span>
-                    <span className="text-xs text-slate-400 flex-shrink-0 ml-2">
-                      {formatSessionDate(session.lastMessageAt || session.createdAt)}
-                    </span>
-                  </div>
+                  <span className="font-medium text-sm text-slate-900 truncate block">
+                    {session.agent?.fullName || session.displayName || 'Support'}
+                  </span>
                   <p className="text-sm text-slate-500 truncate mt-0.5">
                     {session.lastMessage || 'No messages yet'}
                   </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      session.status === 'solved' || session.status === 'archived'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {session.status === 'solved' || session.status === 'archived' ? 'Resolved' : 'Active'}
-                    </span>
-                    {session.rating && (
-                      <span className="text-xs text-amber-500">
-                        {'★'.repeat(session.rating)}
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        session.status === 'solved' || session.status === 'archived'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {session.status === 'solved' || session.status === 'archived' ? 'Resolved' : 'Active'}
                       </span>
-                    )}
+                      {session.rating && (
+                        <span className="text-xs text-amber-500">
+                          {'★'.repeat(session.rating)}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-slate-400 flex-shrink-0">
+                      {formatSessionDate(session.lastMessageAt || session.createdAt)}
+                    </span>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0 mt-3" />
