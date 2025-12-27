@@ -6658,6 +6658,14 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   agentLastReadAt: timestamp("agent_last_read_at"), // When agent last read the conversation
   agentSeenAt: timestamp("agent_seen_at"), // When agent started typing/responded (Intercom-style "seen")
   
+  // Tracking who made changes
+  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }), // User who last updated
+  tags: text("tags").array(), // Conversation tags
+  
+  // AI settings per conversation
+  autopilotEnabled: boolean("autopilot_enabled"), // Override company autopilot setting for this conversation
+  copilotEnabled: boolean("copilot_enabled"), // Override company copilot setting for this conversation
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({

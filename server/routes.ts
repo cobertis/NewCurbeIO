@@ -39641,6 +39641,60 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+
+  // PATCH /api/conversations/:id/ai-settings - Update conversation AI settings
+  app.patch("/api/conversations/:id/ai-settings", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const { autopilotEnabled, copilotEnabled } = req.body;
+    const companyId = (req.user as any).companyId;
+    const userId = (req.user as any).id;
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db.select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.id, id),
+          eq(telnyxConversations.companyId, companyId)
+        ));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      const updateData: any = { 
+        updatedAt: new Date(),
+        updatedBy: userId 
+      };
+      
+      if (autopilotEnabled !== undefined) {
+        updateData.autopilotEnabled = autopilotEnabled;
+      }
+      if (copilotEnabled !== undefined) {
+        updateData.copilotEnabled = copilotEnabled;
+      }
+      
+      const [updated] = await db.update(telnyxConversations)
+        .set(updateData)
+        .where(and(
+          eq(telnyxConversations.id, id),
+          eq(telnyxConversations.companyId, companyId)
+        ))
+        .returning();
+      
+      // Broadcast update to clients
+      broadcastConversationUpdate(companyId, id);
+      
+      res.json({ conversation: updated });
+    } catch (error: any) {
+      console.error("[Inbox] Error updating conversation AI settings:", error);
+      res.status(500).json({ message: "Failed to update AI settings" });
+    }
+  });
+
   // POST /api/inbox/conversations/:id/accept - Accept a waiting live chat
   console.log("[LiveChat] Accept endpoint registered");
   app.post("/api/inbox/conversations/:id/accept", requireActiveCompany, async (req: Request, res: Response) => {

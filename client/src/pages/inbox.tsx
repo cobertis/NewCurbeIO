@@ -108,8 +108,28 @@ interface TelnyxConversation {
   unreadCount: number;
   companyPhoneNumber: string;
   channel?: string;
-  status?: "open" | "pending" | "solved" | "snoozed" | "archived";
+  status?: "open" | "pending" | "solved" | "snoozed" | "archived" | "waiting";
   assignedTo?: string | null;
+  widgetId?: string | null;
+  tags?: string[] | null;
+  updatedBy?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+  autopilotEnabled?: boolean | null;
+  copilotEnabled?: boolean | null;
+  visitorIpAddress?: string | null;
+  visitorCity?: string | null;
+  visitorState?: string | null;
+  visitorCountry?: string | null;
+  visitorCurrentUrl?: string | null;
+  visitorBrowser?: string | null;
+  visitorOs?: string | null;
+}
+
+interface ChatWidget {
+  id: string;
+  name: string;
+  domain?: string | null;
 }
 
 const getChannelIcon = (channel?: string) => {
@@ -195,6 +215,7 @@ export default function InboxPage() {
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [contactInfoOpen, setContactInfoOpen] = useState(true);
   const [insightsOpen, setInsightsOpen] = useState(true);
+  const [pulseAiSettingsOpen, setPulseAiSettingsOpen] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -264,6 +285,45 @@ export default function InboxPage() {
   const { data: pulseAiMessagesData } = useQuery<Array<{id: string, role: string, content: string, createdAt: string}>>({
     queryKey: ['/api/ai/conversations', selectedConversationId, 'chat-messages'],
     enabled: !!selectedConversationId,
+  });
+
+  const { data: companyUsersData } = useQuery<{ users: UserType[] }>({
+    queryKey: ["/api/users"],
+    enabled: isAuthenticated,
+  });
+  const companyUsers = companyUsersData?.users || [];
+
+  const { data: chatWidgetsData } = useQuery<{ widgets: ChatWidget[] }>({
+    queryKey: ["/api/integrations/chat-widget/list"],
+    enabled: isAuthenticated,
+  });
+  const chatWidgets = chatWidgetsData?.widgets || [];
+
+  const updateAiSettingsMutation = useMutation({
+    mutationFn: async ({ conversationId, autopilotEnabled, copilotEnabled }: { 
+      conversationId: string; 
+      autopilotEnabled?: boolean; 
+      copilotEnabled?: boolean 
+    }) => {
+      return apiRequest("PATCH", `/api/conversations/${conversationId}/ai-settings`, {
+        autopilotEnabled,
+        copilotEnabled,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      toast({
+        title: "AI Settings Updated",
+        description: "Conversation AI settings have been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update AI settings",
+        variant: "destructive",
+      });
+    },
   });
 
   const matchedContact = useMemo(() => {
@@ -2116,87 +2176,209 @@ export default function InboxPage() {
                             variant="secondary" 
                             className={cn(
                               "text-xs",
-                              (selectedConversation as any).status === "waiting" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-                              (selectedConversation as any).status === "open" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-                              (selectedConversation as any).status === "solved" && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                              selectedConversation.status === "waiting" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                              selectedConversation.status === "open" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                              selectedConversation.status === "solved" && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
                             )}
                           >
-                            {(selectedConversation as any).status === "waiting" ? "Waiting" : 
-                             (selectedConversation as any).status === "open" ? "Open" : 
-                             (selectedConversation as any).status?.charAt(0).toUpperCase() + (selectedConversation as any).status?.slice(1)}
+                            {selectedConversation.status === "waiting" ? "Waiting" : 
+                             selectedConversation.status === "open" ? "Open" : 
+                             selectedConversation.status?.charAt(0).toUpperCase() + selectedConversation.status?.slice(1)}
                           </Badge>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center">
                           <span className="text-xs text-muted-foreground">Assignee</span>
-                          <span className="text-sm font-medium">
-                            {selectedConversation.assignedTo ? "Assigned" : "Unassigned"}
-                          </span>
+                          {selectedConversation.assignedTo ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-5 w-5">
+                                <AvatarFallback className="text-[10px] bg-primary/10">
+                                  {companyUsers.find(u => String(u.id) === selectedConversation.assignedTo)?.displayName?.charAt(0) || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm font-medium">
+                                {companyUsers.find(u => String(u.id) === selectedConversation.assignedTo)?.displayName || "Unknown"}
+                                {String(user?.id) === selectedConversation.assignedTo && <span className="text-muted-foreground ml-1">(You)</span>}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Unassigned</span>
+                          )}
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Channel</span>
+                          <div className="flex items-center gap-2">
+                            <Globe className="h-3.5 w-3.5 text-orange-500" />
+                            <span className="text-sm font-medium">
+                              {selectedConversation.widgetId 
+                                ? (chatWidgets.find(w => w.id === selectedConversation.widgetId)?.name || "Live Chat")
+                                : "Live Chat"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Tags</span>
+                          <div className="flex items-center gap-1 flex-wrap justify-end max-w-[180px]">
+                            {selectedConversation.tags && selectedConversation.tags.length > 0 ? (
+                              selectedConversation.tags.map((tag, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs py-0 px-1.5">
+                                  {tag}
+                                </Badge>
+                              ))
+                            ) : (
+                              <button className="text-xs text-blue-600 hover:underline">Add Tags</button>
+                            )}
+                          </div>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-xs text-muted-foreground">Location</span>
                           <span className="text-sm font-medium flex items-center gap-1">
-                            {(selectedConversation as any).visitorCountry === "United States" ? "🇺🇸 " : 
-                             (selectedConversation as any).visitorCountry === "Mexico" ? "🇲🇽 " :
-                             (selectedConversation as any).visitorCountry === "Canada" ? "🇨🇦 " :
-                             (selectedConversation as any).visitorCountry === "Spain" ? "🇪🇸 " :
-                             (selectedConversation as any).visitorCountry === "United Kingdom" ? "🇬🇧 " : ""}
-                            {(selectedConversation as any).visitorCity || (selectedConversation as any).visitorState || (selectedConversation as any).visitorCountry ? (
+                            {selectedConversation.visitorCountry === "United States" ? "🇺🇸 " : 
+                             selectedConversation.visitorCountry === "Mexico" ? "🇲🇽 " :
+                             selectedConversation.visitorCountry === "Canada" ? "🇨🇦 " :
+                             selectedConversation.visitorCountry === "Spain" ? "🇪🇸 " :
+                             selectedConversation.visitorCountry === "United Kingdom" ? "🇬🇧 " : ""}
+                            {selectedConversation.visitorCity || selectedConversation.visitorState || selectedConversation.visitorCountry ? (
                               <>
-                                {(selectedConversation as any).visitorCity && `${(selectedConversation as any).visitorCity}, `}
-                                {(selectedConversation as any).visitorState && `${(selectedConversation as any).visitorState}, `}
-                                {(selectedConversation as any).visitorCountry || ""}
+                                {selectedConversation.visitorCity && `${selectedConversation.visitorCity}, `}
+                                {selectedConversation.visitorState && `${selectedConversation.visitorState}, `}
+                                {selectedConversation.visitorCountry || ""}
                               </>
                             ) : (
                               "Unknown"
                             )}
                           </span>
                         </div>
-                        {(selectedConversation as any).visitorIpAddress && (
+                        {selectedConversation.visitorIpAddress && (
                           <div className="flex justify-between">
                             <span className="text-xs text-muted-foreground">IP address</span>
                             <span className="text-sm font-medium font-mono text-xs">
-                              {(selectedConversation as any).visitorIpAddress}
+                              {selectedConversation.visitorIpAddress}
                             </span>
                           </div>
                         )}
-                        {(selectedConversation as any).visitorCurrentUrl && (
+                        {selectedConversation.visitorCurrentUrl && (
                           <div className="flex justify-between">
                             <span className="text-xs text-muted-foreground">URL</span>
                             <a 
-                              href={(selectedConversation as any).visitorCurrentUrl}
+                              href={selectedConversation.visitorCurrentUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm text-blue-600 hover:underline truncate max-w-[200px]"
-                              title={(selectedConversation as any).visitorCurrentUrl}
+                              title={selectedConversation.visitorCurrentUrl}
                             >
-                              {(selectedConversation as any).visitorCurrentUrl.replace(/^https?:\/\//, '').substring(0, 30)}...
+                              {selectedConversation.visitorCurrentUrl.replace(/^https?:\/\//, '').substring(0, 30)}...
                             </a>
                           </div>
                         )}
-                        {(selectedConversation as any).visitorBrowser && (
+                        {selectedConversation.visitorBrowser && (
                           <div className="flex justify-between">
                             <span className="text-xs text-muted-foreground">Browser</span>
-                            <span className="text-sm font-medium">{(selectedConversation as any).visitorBrowser}</span>
+                            <span className="text-sm font-medium">{selectedConversation.visitorBrowser}</span>
                           </div>
                         )}
-                        {(selectedConversation as any).visitorOs && (
+                        {selectedConversation.visitorOs && (
                           <div className="flex justify-between">
                             <span className="text-xs text-muted-foreground">OS</span>
-                            <span className="text-sm font-medium">{(selectedConversation as any).visitorOs}</span>
+                            <span className="text-sm font-medium">{selectedConversation.visitorOs}</span>
                           </div>
                         )}
                         <div className="flex justify-between">
                           <span className="text-xs text-muted-foreground">Chat ID</span>
                           <span className="text-sm font-medium font-mono">{selectedConversation.id.substring(0, 8)}</span>
                         </div>
-                        {(selectedConversation as any).createdAt && (
+                        {selectedConversation.createdAt && (
                           <div className="flex justify-between">
                             <span className="text-xs text-muted-foreground">Created</span>
                             <span className="text-sm font-medium">
-                              {format(new Date((selectedConversation as any).createdAt), "MMM d, yyyy h:mm a")}
+                              {format(new Date(selectedConversation.createdAt), "MMM d, yyyy h:mm a")}
                             </span>
                           </div>
                         )}
+                        {selectedConversation.updatedAt && (
+                          <div className="flex justify-between">
+                            <span className="text-xs text-muted-foreground">Last updated</span>
+                            <span className="text-sm font-medium">
+                              {format(new Date(selectedConversation.updatedAt), "MMM d, yyyy h:mm a")}
+                            </span>
+                          </div>
+                        )}
+                        {selectedConversation.updatedBy && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">Updated by</span>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-5 w-5">
+                                <AvatarFallback className="text-[10px] bg-primary/10">
+                                  {companyUsers.find(u => String(u.id) === selectedConversation.updatedBy)?.displayName?.charAt(0) || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm font-medium">
+                                {companyUsers.find(u => String(u.id) === selectedConversation.updatedBy)?.displayName || "Unknown"}
+                                {String(user?.id) === selectedConversation.updatedBy && <span className="text-muted-foreground ml-1">(You)</span>}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Pulse AI Controls - Only for live_chat channel */}
+                {selectedConversation.channel === "live_chat" && (
+                  <div className="space-y-4">
+                    <button 
+                      onClick={() => setPulseAiSettingsOpen(!pulseAiSettingsOpen)}
+                      className="flex items-center justify-between w-full text-left"
+                      data-testid="btn-toggle-pulse-ai-settings"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-violet-500" />
+                        <h4 className="text-sm font-medium text-muted-foreground">Pulse AI</h4>
+                      </div>
+                      {pulseAiSettingsOpen ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+                    {pulseAiSettingsOpen && (
+                      <div className="space-y-4 pl-6" data-testid="section-pulse-ai-settings">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="copilot-switch" className="text-sm font-medium">Copilot</Label>
+                            <p className="text-xs text-muted-foreground">Get AI suggestions for responses</p>
+                          </div>
+                          <Switch
+                            id="copilot-switch"
+                            checked={selectedConversation.copilotEnabled ?? false}
+                            onCheckedChange={(checked) => {
+                              updateAiSettingsMutation.mutate({
+                                conversationId: selectedConversation.id,
+                                copilotEnabled: checked,
+                              });
+                            }}
+                            disabled={updateAiSettingsMutation.isPending}
+                            data-testid="switch-copilot"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="autopilot-switch" className="text-sm font-medium">Autopilot</Label>
+                            <p className="text-xs text-muted-foreground">Let AI respond automatically</p>
+                          </div>
+                          <Switch
+                            id="autopilot-switch"
+                            checked={selectedConversation.autopilotEnabled ?? false}
+                            onCheckedChange={(checked) => {
+                              updateAiSettingsMutation.mutate({
+                                conversationId: selectedConversation.id,
+                                autopilotEnabled: checked,
+                              });
+                            }}
+                            disabled={updateAiSettingsMutation.isPending}
+                            data-testid="switch-autopilot"
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
