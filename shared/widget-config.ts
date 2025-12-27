@@ -262,15 +262,18 @@ export function mapChatWidgetToConfig(widget: ChatWidget): WidgetConfig {
   const primaryColor = getPrimaryColor(widget);
   const headerBackground = getBackgroundColor(widget);
 
-  // Handle both array format [{ type: "liveChat", enabled: true }] and object format { liveChat: true }
-  const rawChannels = widget.channels;
+  // Handle multiple formats:
+  // 1. Array format: [{ type: "liveChat", enabled: true }, ...]
+  // 2. Object format: { liveChat: true, email: false, ... }
+  // 3. Mixed format (from legacy data): { "0": {type: "live_chat"}, "phone": true, ... }
+  const rawChannels = widget.channels as any;
   let channelsConfig: WidgetChannels;
   
   if (Array.isArray(rawChannels)) {
-    // Array format: [{ type: "liveChat", enabled: true }, ...]
+    // Pure array format: [{ type: "liveChat", enabled: true }, ...]
     const channels = rawChannels as Array<{ type: string; enabled: boolean }>;
     channelsConfig = {
-      liveChat: channels.find(c => c.type === "liveChat")?.enabled ?? false,
+      liveChat: channels.find(c => c.type === "liveChat" || c.type === "live_chat")?.enabled ?? false,
       sms: channels.find(c => c.type === "sms")?.enabled ?? false,
       phone: channels.find(c => c.type === "phone")?.enabled ?? false,
       whatsapp: channels.find(c => c.type === "whatsapp")?.enabled ?? false,
@@ -280,17 +283,22 @@ export function mapChatWidgetToConfig(widget: ChatWidget): WidgetConfig {
       instagram: channels.find(c => c.type === "instagram")?.enabled ?? false,
     };
   } else if (rawChannels && typeof rawChannels === 'object') {
-    // Object format: { liveChat: true, email: false, ... }
-    const channels = rawChannels as Record<string, boolean>;
+    // Object format - could be clean boolean flags or mixed format with numbered keys
+    // Extract only the known channel keys, handling both camelCase and snake_case
+    const getBoolValue = (key: string): boolean => {
+      const val = rawChannels[key];
+      return typeof val === 'boolean' ? val : false;
+    };
+    
     channelsConfig = {
-      liveChat: channels.liveChat ?? false,
-      sms: channels.sms ?? false,
-      phone: channels.phone ?? false,
-      whatsapp: channels.whatsapp ?? false,
-      email: channels.email ?? false,
-      telegram: channels.telegram ?? false,
-      messenger: channels.facebook ?? false,
-      instagram: channels.instagram ?? false,
+      liveChat: getBoolValue('liveChat'),
+      sms: getBoolValue('sms'),
+      phone: getBoolValue('phone'),
+      whatsapp: getBoolValue('whatsapp'),
+      email: getBoolValue('email'),
+      telegram: getBoolValue('telegram'),
+      messenger: getBoolValue('facebook'),
+      instagram: getBoolValue('instagram'),
     };
   } else {
     // Default: all disabled

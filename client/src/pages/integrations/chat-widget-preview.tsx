@@ -1772,7 +1772,6 @@ export default function ChatWidgetPreviewPage() {
   const widget = { 
     ...defaultWidget, 
     ...effectiveWidgetData?.widget,
-    channels: { ...defaultWidget.channels, ...effectiveWidgetData?.widget?.channels },
     channelOrder: effectiveWidgetData?.widget?.channelOrder || defaultWidget.channelOrder,
   };
   
