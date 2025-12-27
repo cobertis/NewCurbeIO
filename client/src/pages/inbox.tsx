@@ -261,6 +261,11 @@ export default function InboxPage() {
   });
   const messages = messagesData?.messages || [];
 
+  const { data: pulseAiMessagesData } = useQuery<Array<{id: string, role: string, content: string, createdAt: string}>>({
+    queryKey: ['/api/ai/conversations', selectedConversationId, 'chat-messages'],
+    enabled: !!selectedConversationId,
+  });
+
   const matchedContact = useMemo(() => {
     if (!selectedConversation) return null;
     return contacts.find(c => c.phone === selectedConversation.phoneNumber);
@@ -349,9 +354,22 @@ export default function InboxPage() {
   // Reset right panel tab to details when conversation changes
   useEffect(() => {
     setRightPanelTab("details");
-    setPulseAiMessages([]);
     setPulseAiInput("");
   }, [selectedConversationId]);
+
+  // Sync local Pulse AI messages with database data
+  useEffect(() => {
+    if (pulseAiMessagesData) {
+      setPulseAiMessages(
+        pulseAiMessagesData.map(m => ({
+          role: m.role as "user" | "assistant",
+          content: m.content
+        }))
+      );
+    } else {
+      setPulseAiMessages([]);
+    }
+  }, [pulseAiMessagesData]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ conversationId, text, isInternalNote, files, optimisticId }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[]; optimisticId: string }) => {
@@ -604,8 +622,30 @@ export default function InboxPage() {
     },
   });
 
+  const savePulseAiMessage = async (conversationId: string, role: "user" | "assistant", content: string) => {
+    try {
+      await apiRequest("POST", `/api/ai/conversations/${conversationId}/chat-messages`, { role, content });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/conversations', conversationId, 'chat-messages'] });
+    } catch (error) {
+      console.error("[PulseAI] Failed to persist message:", error);
+    }
+  };
+
+  const clearPulseAiHistoryMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return apiRequest("DELETE", `/api/ai/conversations/${conversationId}/chat-messages`);
+    },
+    onSuccess: () => {
+      if (selectedConversationId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/ai/conversations', selectedConversationId, 'chat-messages'] });
+      }
+      setPulseAiMessages([]);
+    }
+  });
+
   const pulseAiAskMutation = useMutation({
     mutationFn: async ({ question, conversationId }: { question: string; conversationId: string }) => {
+      savePulseAiMessage(conversationId, "user", question);
       const lastMsgs = messages?.slice(-10).map(m => ({
         direction: m.direction,
         text: m.text,
@@ -617,9 +657,11 @@ export default function InboxPage() {
         question 
       });
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any, variables) => {
+      const assistantContent = data.draft || data.draftReply || "I couldn't find relevant information.";
+      savePulseAiMessage(variables.conversationId, "assistant", assistantContent);
       setPulseAiMessages(prev => prev.map(m => 
-        m.isLoading ? { role: "assistant" as const, content: data.draft || data.draftReply || "I couldn't find relevant information." } : m
+        m.isLoading ? { role: "assistant" as const, content: assistantContent } : m
       ));
     },
     onError: () => {
@@ -2687,20 +2729,22 @@ export default function InboxPage() {
                     </Button>
                   </div>
                   
-                  {/* Start New Conversation Button */}
+                  {/* Clear History Button */}
                   {pulseAiMessages.length > 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="w-full text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => {
-                        setPulseAiMessages([]);
-                        setPulseAiInput("");
+                        if (selectedConversationId) {
+                          clearPulseAiHistoryMutation.mutate(selectedConversationId);
+                        }
                       }}
-                      data-testid="btn-pulse-ai-new-conversation"
+                      disabled={clearPulseAiHistoryMutation.isPending}
+                      data-testid="btn-pulse-ai-clear-history"
                     >
                       <RotateCcw className="h-3 w-3 mr-1" />
-                      Start new conversation
+                      Clear history
                     </Button>
                   )}
                 </div>
