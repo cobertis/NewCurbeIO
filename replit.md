@@ -60,16 +60,6 @@ AI-powered operational engine with knowledge base management and intelligent res
 - **Settings UI:** Located at `/pulse-ai` with tabs for Settings (Copilot/Autopilot toggles), Knowledge Base (source management), Usage (metrics dashboard), and Activity (audit logs).
 - **Key Services:** `ai-desk-service.ts`, `ai-openai-service.ts`, `ai-ingestion-service.ts`, `ai-tool-registry.ts`, `ai-autopilot-service.ts`.
 
-**Chat Widget System (Intercom-style):**
-Multi-tenant embeddable live chat widget with comprehensive instrumentation and Intercom-style invariants:
-- **Device Identity:** Persistent `deviceId` in localStorage scoped per company (`curbe_chat_device_{companyId}`), with migration from legacy keys.
-- **TraceContext Logging:** Structured logging with `[ChatWidget]` prefix for actions: bootstrap, identify, create_session, finish_session, list_messages, send_message, ws_connect, ws_disconnect, ws_resync.
-- **Invariant A (Single Open Conversation):** Partial unique index `telnyx_conversations_device_open_livechat_unique` ensures one open/waiting conversation per device.
-- **Invariant D (Message Idempotency):** Uses `clientMessageId` with partial unique index `telnyx_messages_client_msg_conv_unique`. Server returns `{ idempotent: true }` for duplicate sends.
-- **Invariant E (Safe WS Resync):** On reconnection, client sends `{ type: 'resync', lastSeenMessageId }`, server returns missed messages.
-- **Debug Button:** "Copy Debug Info" button on widget preview copies full TraceContext JSON for debugging.
-- **Documentation:** See `docs/CHAT_WIDGET_STATE_MACHINE.md` for state transitions and `docs/CHAT_WIDGET_QA_HARNESS.md` for QA test scenarios.
-
 **Security Architecture:**
 Includes session security, webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, iMessage webhook secret isolation, multi-tenant WhatsApp session isolation, and token encryption for sensitive data.
 
@@ -103,34 +93,3 @@ Implements per-tenant BYO (Bring Your Own) domain email sending via AWS SES. Key
 - **Security:** Bcrypt.
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
-## Embeddable Chat Widget
-
-The chat widget can be embedded on any external website using a simple script tag.
-
-### Integration (Client-Side)
-
-Customers can embed the widget by adding this single line to their website:
-
-```html
-<script defer src="https://app.curbe.io/widget.js" data-widget="WIDGET_ID"></script>
-```
-
-### Architecture
-
-- **Loader Script** (`/widget.js`): Injects a wrapper div + iframe, handles open/close states via postMessage, exposes `window.CurbeWidget[widgetId]` API
-- **Widget Frame** (`/widget-frame/:id`): Public page that renders only the widget UI (no dashboard layout)
-- **Config Endpoint** (`/api/public/widgets/:id/config`): Returns minimal config for the loader (position, launcherSize, panelWidth, panelHeight, primaryColor)
-
-### PostMessage Contract
-
-- Parent listens for: `curbe-widget-open`, `curbe-widget-close`, `curbe-widget-ready`
-- Iframe listens for: `curbe-widget-toggle`, `curbe-widget-open-command`, `curbe-widget-close-command`
-
-### API
-
-The loader exposes a control API:
-```javascript
-window.CurbeWidget[widgetId].open();   // Open the widget
-window.CurbeWidget[widgetId].close();  // Close the widget
-window.CurbeWidget[widgetId].toggle(); // Toggle open/close
-```
