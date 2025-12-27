@@ -28403,14 +28403,21 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       // Get team members (agents) for the company - up to 3 with avatars
-      const teamMembers = await db
+      const teamMembersRaw = await db
         .select({
-          name: users.name,
-          avatarUrl: users.avatarUrl,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          avatar: users.avatar,
         })
         .from(users)
         .where(eq(users.companyId, widget.companyId))
         .limit(3);
+      
+      const teamMembers = teamMembersRaw.map(u => ({
+        name: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Agent",
+        avatarUrl: u.avatar || null,
+      }));
+
 
 
       const clientIP = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() 
