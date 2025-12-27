@@ -214,6 +214,8 @@ export default function InboxPage() {
   const [rightPanelTab, setRightPanelTab] = useState<"details" | "pulse-ai">("details");
   const [pulseAiMessages, setPulseAiMessages] = useState<Array<{role: "user" | "assistant", content: string, isLoading?: boolean}>>([]);
   const [pulseAiInput, setPulseAiInput] = useState("");
+  const [selectedText, setSelectedText] = useState<string | null>(null);
+  const [selectionPopupPosition, setSelectionPopupPosition] = useState<{ x: number, y: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -629,6 +631,37 @@ export default function InboxPage() {
     toast({ title: "Inserted", description: "AI response has been inserted into the message composer." });
   };
 
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      setSelectedText(selection.toString().trim());
+      setSelectionPopupPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.top - 10
+      });
+    } else {
+      setSelectedText(null);
+      setSelectionPopupPosition(null);
+    }
+  };
+
+  const handleAskPulseAI = () => {
+    if (!selectedText || !selectedConversationId) return;
+    const question = selectedText;
+    setSelectedText(null);
+    setSelectionPopupPosition(null);
+    window.getSelection()?.removeAllRanges();
+    setRightPanelTab("pulse-ai");
+    setPulseAiMessages(prev => [
+      ...prev,
+      { role: "user", content: question },
+      { role: "assistant", content: "", isLoading: true }
+    ]);
+    pulseAiAskMutation.mutate({ question, conversationId: selectedConversationId });
+  };
+
   const handleAiCopilotClick = () => {
     if (copilotDraft) {
       setCopilotDraft(null);
@@ -675,6 +708,22 @@ export default function InboxPage() {
       setSelectedFromNumber(companyNumbers[0].phoneNumber);
     }
   }, [companyNumbers, selectedFromNumber]);
+
+  // Click-away listener to clear text selection popup
+  useEffect(() => {
+    if (!selectedText) return;
+    
+    const handleClickAway = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-testid="ask-pulse-ai-popup"]')) {
+        setSelectedText(null);
+        setSelectionPopupPosition(null);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickAway);
+    return () => document.removeEventListener('mousedown', handleClickAway);
+  }, [selectedText]);
 
   const filteredConversations = useMemo(() => {
     let filtered = conversations;
@@ -1361,7 +1410,7 @@ export default function InboxPage() {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4 pb-36 bg-[#efeae2] dark:bg-[#0b141a]">
+            <ScrollArea className="flex-1 p-4 pb-36 bg-[#efeae2] dark:bg-[#0b141a]" onMouseUp={handleTextSelection}>
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
                   <LoadingSpinner message="Loading messages..." fullScreen={false} />
@@ -1578,6 +1627,29 @@ export default function InboxPage() {
                 </div>
               )}
             </ScrollArea>
+
+            {/* Text Selection Popup for Ask Pulse AI */}
+            {selectedText && selectionPopupPosition && (
+              <div
+                className="fixed z-50 transform -translate-x-1/2 -translate-y-full"
+                style={{
+                  left: selectionPopupPosition.x,
+                  top: selectionPopupPosition.y,
+                }}
+                data-testid="ask-pulse-ai-popup"
+              >
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="bg-white dark:bg-gray-800 shadow-lg border rounded-full px-3 py-1.5 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  onClick={handleAskPulseAI}
+                  data-testid="btn-ask-pulse-ai"
+                >
+                  <Activity className="h-4 w-4 text-purple-600" />
+                  <span className="text-sm font-medium">Ask Pulse AI</span>
+                </Button>
+              </div>
+            )}
 
             {/* Message Input / Composer - Floating */}
             {/* Show Accept Chat button for waiting live chats */}
