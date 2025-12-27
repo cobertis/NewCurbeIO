@@ -357,10 +357,11 @@ export default function InboxPage() {
   useWebSocket((message) => {
     const msg = message as any;
     if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update') {
-      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      // Force immediate refetch for real-time updates
+      queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });
       // Always refresh messages for the selected conversation on any update
       if (selectedConversationId) {
-        queryClient.invalidateQueries({ 
+        queryClient.refetchQueries({ 
           queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
         });
       }
