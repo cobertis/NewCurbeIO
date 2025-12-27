@@ -28467,6 +28467,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const { id } = req.params;
     const forceCountry = req.query.country as string | undefined;
     
+    // CORS headers must be sent on ALL responses (success, 404, and errors)
+    res.set({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
     try {
       const widget = await db.query.chatWidgets.findFirst({
         where: eq(chatWidgets.id, id)
