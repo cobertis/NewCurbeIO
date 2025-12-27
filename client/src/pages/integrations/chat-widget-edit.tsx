@@ -2488,7 +2488,7 @@ export default function ChatWidgetEditPage() {
     },
   };
 
-  const embedCode = `<script defer src="https://app.curbe.io/widget.js" data-widget="${widgetId}"></script>`;
+  const embedCode = `<script defer src="${window.location.origin}/widget.js" data-widget="${widgetId}"></script>`;
 
   const updateLocalWidget = (updates: Partial<WidgetConfig>) => {
     setLocalWidget(prev => ({ ...prev, ...updates }));
