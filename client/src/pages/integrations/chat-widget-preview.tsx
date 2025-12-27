@@ -694,6 +694,12 @@ export default function ChatWidgetPreviewPage() {
               case 'chat_closed':
               case 'status_changed':
                 // Update session status in allSessions
+                console.log('[LiveChat WS] Status event received:', {
+                  type: data.type,
+                  status: data.status,
+                  rating: data.rating,
+                  surveyEnabled: effectiveWidgetData?.widget?.liveChatSettings?.satisfactionSurvey?.enabled,
+                });
                 if (data.status) {
                   setChatStatus(data.status);
                   setAllSessions(prev => prev.map(session => {
@@ -710,7 +716,12 @@ export default function ChatWidgetPreviewPage() {
                   // Show survey modal if chat was solved
                   if ((data.status === 'solved' || data.status === 'closed') && !data.rating) {
                     const widget = effectiveWidgetData?.widget;
+                    console.log('[LiveChat WS] Survey check:', {
+                      surveyEnabled: widget?.liveChatSettings?.satisfactionSurvey?.enabled,
+                      willShowSurvey: widget?.liveChatSettings?.satisfactionSurvey?.enabled === true,
+                    });
                     if (widget?.liveChatSettings?.satisfactionSurvey?.enabled) {
+                      console.log('[LiveChat WS] Showing survey modal');
                       setShowSurveyModal(true);
                       setSurveyModalStep('rating');
                     }
@@ -1643,11 +1654,20 @@ export default function ChatWidgetPreviewPage() {
           }
           
           // Detect when chat is solved and transition to survey via state machine
+          console.log('[LiveChat Poll] Status check:', {
+            status,
+            currentChatStatus: chatStatus,
+            surveySubmitted,
+            surveyEnabled: effectiveWidgetData?.widget?.liveChatSettings?.satisfactionSurvey?.enabled,
+          });
           if (status === 'solved' && chatStatus !== 'solved' && !surveySubmitted) {
+            console.log('[LiveChat Poll] Chat solved detected, transitioning to survey');
             setChatStatus('solved');
             // Only show survey if enabled in widget settings
             const surveyEnabled = effectiveWidgetData?.widget?.liveChatSettings?.satisfactionSurvey?.enabled;
+            console.log('[LiveChat Poll] Survey enabled:', surveyEnabled);
             if (surveyEnabled) {
+              console.log('[LiveChat Poll] Showing satisfaction survey');
               setChatFlowState('postChatSurvey');
               setShowSatisfactionSurvey(true);
             }
