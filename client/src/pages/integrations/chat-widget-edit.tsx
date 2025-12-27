@@ -906,11 +906,29 @@ function SortableChannelItem({
                         onChange={(e) => onCallSettingsChange({
                           callUsScreen: { ...callSettings.callUsScreen, title: e.target.value }
                         })}
+                        className="pr-9"
                         data-testid="input-call-title"
                       />
-                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
-                        <Smile className="h-4 w-4 text-slate-400" />
-                      </Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" data-testid="button-call-title-emoji">
+                            <Smile className="h-4 w-4" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 z-50" align="end" side="top">
+                          <Picker 
+                            data={data} 
+                            onEmojiSelect={(emoji: { native: string }) => {
+                              onCallSettingsChange({
+                                callUsScreen: { ...callSettings.callUsScreen, title: (callSettings.callUsScreen.title || "") + emoji.native }
+                              });
+                            }}
+                            theme="light"
+                            previewPosition="none"
+                            skinTonePosition="none"
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                   
