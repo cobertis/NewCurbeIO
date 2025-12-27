@@ -1736,7 +1736,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
 
               {/* Company Information - Admin Only */}
               {isAdmin && (view === 'company' || view === 'all') && (
-              <Card>
+              <Card key={`company-info-${companyData?.company?.id || 'loading'}`}>
                   <CardHeader className="pb-2">
                     <CardTitle>Company Information</CardTitle>
                     <CardDescription>
