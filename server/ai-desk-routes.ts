@@ -373,14 +373,34 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
       if (!companyId) return res.status(400).json({ error: "No company" });
 
       const schema = z.object({
-        message: z.string().min(1),
+        message: z.string().min(1).optional(),
         conversationId: z.string().optional(),
+        lastMessages: z.array(z.object({
+          direction: z.string(),
+          text: z.string(),
+          createdAt: z.string().optional(),
+        })).optional(),
+        question: z.string().optional(),
       });
 
       const data = schema.parse(req.body);
       const startTime = Date.now();
 
-      const { embedding } = await aiOpenAIService.createEmbedding(data.message);
+      let messageToProcess = data.message || "";
+      if (data.lastMessages && data.lastMessages.length > 0) {
+        const conversationContext = data.lastMessages.map(m => 
+          `${m.direction === 'inbound' ? 'Customer' : 'Agent'}: ${m.text}`
+        ).join('\n');
+        messageToProcess = data.question 
+          ? `Conversation:\n${conversationContext}\n\nQuestion: ${data.question}`
+          : `Based on this conversation, suggest a helpful reply:\n${conversationContext}`;
+      }
+
+      if (!messageToProcess) {
+        return res.status(400).json({ error: "Either message or lastMessages is required" });
+      }
+
+      const { embedding } = await aiOpenAIService.createEmbedding(messageToProcess);
       const chunks = await aiDeskService.searchChunksByEmbedding(
         companyId,
         JSON.stringify(embedding),
@@ -393,7 +413,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         meta: c.meta as any,
       }));
 
-      const result = await aiOpenAIService.generateDraftReply(data.message, relevantChunks);
+      const result = await aiOpenAIService.generateDraftReply(messageToProcess, relevantChunks);
       const latencyMs = Date.now() - startTime;
 
       const run = await aiDeskService.createRun({
@@ -405,7 +425,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         confidence: String(result.confidence),
         needsHuman: result.needsHuman,
         missingFields: result.missingFields,
-        inputText: data.message,
+        inputText: messageToProcess,
         outputText: result.draftReply,
         citations: result.citations,
         model: "gpt-4o-mini",
@@ -417,8 +437,11 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
       });
 
       res.json({
+        success: true,
         runId: run.id,
+        draft: result.draftReply,
         draftReply: result.draftReply,
+        source: "knowledge_base",
         intent: result.intent,
         confidence: result.confidence,
         needsHuman: result.needsHuman,
