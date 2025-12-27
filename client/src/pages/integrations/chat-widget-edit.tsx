@@ -4291,15 +4291,15 @@ export default function ChatWidgetEditPage() {
                           />
                         )}
                         <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
-                          <div>Hi there 👋</div>
-                          <div>How can we help?</div>
+                          <div>{widget.welcomeTitle || "Hi there 👋"}</div>
+                          <div>{widget.welcomeMessage || "How can we help?"}</div>
                         </div>
                       </div>
                       
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
                         <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border-2 border-blue-400 ring-2 ring-blue-100">
                           <h5 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">
-                            How can we help you today?
+                            {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "How can we help you today?"}
                           </h5>
                           <div className="space-y-3">
                             <div>
@@ -4535,8 +4535,8 @@ export default function ChatWidgetEditPage() {
                           />
                         )}
                         <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
-                          <div>Hi there 👋</div>
-                          <div>How can we help?</div>
+                          <div>{widget.welcomeTitle || "Hi there 👋"}</div>
+                          <div>{widget.welcomeMessage || "How can we help?"}</div>
                         </div>
                       </div>
                       
@@ -4607,8 +4607,8 @@ export default function ChatWidgetEditPage() {
                       <div className="p-5">
                         {/* Welcome text in BLACK */}
                         <div className="mb-6">
-                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Hi there 👋</h3>
-                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">How can we help?</h3>
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{widget.welcomeTitle || "Hi there 👋"}</h3>
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">{widget.welcomeMessage || "How can we help?"}</h3>
                         </div>
                         
                         {/* Send us a message button */}
