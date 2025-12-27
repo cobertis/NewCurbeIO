@@ -380,7 +380,7 @@ interface ChannelConfig {
 }
 
 const channelConfigs: ChannelConfig[] = [
-  { id: "liveChat", key: "liveChat", label: "Live chat", icon: <MessageSquare className="h-5 w-5" />, iconColor: "text-blue-500" },
+  // Live chat is enabled by default and configured separately - not shown as a toggleable channel
   { id: "email", key: "email", label: "Email", icon: <Mail className="h-5 w-5" />, iconColor: "text-orange-500" },
   { id: "sms", key: "sms", label: "Text message", icon: <Send className="h-5 w-5" />, iconColor: "text-green-500" },
   { id: "phone", key: "phone", label: "Call", icon: <Phone className="h-5 w-5" />, iconColor: "text-blue-600" },
