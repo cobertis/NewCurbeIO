@@ -14,6 +14,7 @@ import { startMonthlyBillingScheduler } from "./monthly-billing-scheduler";
 import { startPaymentReminderScheduler } from "./payment-reminder-scheduler";
 import { seedCampaignStudioData } from "./scripts/seedCampaignStudio";
 import { startSesQueueScheduler } from "./ses-queue-scheduler";
+import { startAllWorkers as startWhatsAppWorkers } from "./services/whatsapp-workers";
 
 // Handle unhandled promise rejections to prevent server crashes
 process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
@@ -208,6 +209,9 @@ app.use((req, res, next) => {
     startPaymentReminderScheduler();
     // Start the SES email queue scheduler
     startSesQueueScheduler();
+    
+    // Start WhatsApp webhook and send workers for async processing
+    startWhatsAppWorkers();
     
     // Test email service on startup
     import("./email").then(({ emailService }) => {
