@@ -1,0 +1,141 @@
+1) Inbox real (conversaciones + asignación) — P0
+
+Qué integras: un modelo de conversación tipo Intercom, no “mensajes sueltos”.
+
+Replit debe implementar:
+
+Tabla conversations por tenant: (tenant_id, phone_number_id, contact_wa_id, status, last_message_at, assigned_user_id)
+
+En cada inbound webhook: upsert conversación + linkear mensaje a conversation_id
+
+Endpoints:
+
+GET /api/whatsapp/conversations
+
+GET /api/whatsapp/conversations/:id/messages
+
+POST /api/whatsapp/conversations/:id/assign
+
+POST /api/whatsapp/conversations/:id/close|open
+
+Por qué primero: sin esto, WhatsApp no es canal de soporte/ventas; es un log.
+
+2) Contactos + CRM sync — P0
+
+Qué integras: crear/actualizar contacto automáticamente cuando llega un WhatsApp.
+
+Replit debe:
+
+Resolver contact por (tenant_id, wa_id) y crear si no existe
+
+Mapear a tu CRM: pipeline/lead, tags, dueño, notas
+
+Endpoint: POST /api/whatsapp/contact/merge (por si el agente quiere unir contactos)
+
+Por qué: el cliente no paga por “mensajes”; paga por “leads y cierres”.
+
+3) Templates “ventas” + variables + compliance — P0
+
+Tu CRUD de templates existe. Falta productizarlo.
+
+Replit debe:
+
+UI para:
+
+crear template con componentes (header/body/buttons)
+
+validar variables ({{1}}, {{2}}) y previsualizar
+
+mostrar estado (pending/approved/rejected) + razón
+
+Motor de render:
+
+renderTemplate(template, params[]) con validación estricta
+
+Reglas:
+
+si ventana 24h cerrada → bloquear texto libre y forzar template (ya lo haces), pero ahora con mensajes claros en UI.
+
+Por qué: el outbound rentable vive aquí.
+
+4) Automations (workflows) disparadas por WhatsApp — P1
+
+Qué integras: cuando entra un mensaje, disparas acciones.
+
+Replit debe:
+
+“Triggers”:
+
+inbound message
+
+keyword match
+
+first-time contact
+
+no respuesta en X minutos
+
+“Actions”:
+
+asignar conversación
+
+enviar template
+
+crear tarea/cita
+
+notificar por email/SMS/iMessage (sí, tu stack ya tiene eso)
+
+Por qué: esto es el multiplicador de valor de Curbe.
+
+5) Opt-in / Consent ledger (si vas a escalar outbound) — P1
+
+No es glamour, pero evita bloqueos y dramas.
+
+Replit debe:
+
+Tabla messaging_consents:
+
+tenant_id, contact_wa_id, source, timestamp, proof
+
+UI: “estado de consentimiento” por contacto
+
+En outbound template: si no hay consentimiento → advertir / bloquear según tu política
+
+Por qué: esto te protege cuando un cliente hace estupideces.
+
+6) Storage de media “de verdad” — P1
+
+Ahora solo obtienes URL/manda media. Falta persistencia.
+
+Replit debe:
+
+Cuando recibes media:
+
+descargar archivo desde Meta
+
+guardar en S3/R2
+
+guardar URL estable en DB
+
+Manejar expiración de URL de Meta (no depender de ella)
+
+Por qué: historial e informes.
+
+7) Multi-number & routing (IVR/colas dentro de WhatsApp) — P2
+
+Cuando un tenant tenga 2+ números, necesitas reglas.
+
+Replit debe:
+
+Selección de phone_number_id por:
+
+campaña
+
+equipo
+
+país
+
+disponibilidad
+
+UI: reglas de enrutamiento
+
+Por qué: escala con equipos.

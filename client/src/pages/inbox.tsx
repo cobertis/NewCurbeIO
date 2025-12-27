@@ -58,7 +58,7 @@ import {
   Check
 } from "lucide-react";
 import { Link } from "wouter";
-import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
+import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp } from "react-icons/si";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -148,6 +148,8 @@ const getChannelIcon = (channel?: string) => {
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
     case "live_chat":
       return <Globe className="h-2.5 w-2.5 text-white" />;
+    case "whatsapp":
+      return <SiWhatsapp className="h-2.5 w-2.5 text-white" />;
     default:
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
   }
@@ -165,6 +167,8 @@ const getChannelColor = (channel?: string) => {
       return "bg-green-500";
     case "live_chat":
       return "bg-orange-500";
+    case "whatsapp":
+      return "bg-emerald-500";
     default:
       return "bg-green-500";
   }

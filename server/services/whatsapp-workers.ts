@@ -6,6 +6,8 @@ import {
   waMessages,
   waConversations,
   channelConnections,
+  telnyxConversations,
+  telnyxMessages,
 } from "@shared/schema";
 import { eq, and, lte, sql } from "drizzle-orm";
 import { decryptToken } from "../crypto";
@@ -96,38 +98,46 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
 
           const contactWaId = msg.from;
           const contactName = value.contacts?.[0]?.profile?.name || contactWaId;
-          const externalThreadId = contactWaId;
+          
+          // Format phone number for inbox (E.164 format with + prefix)
+          const customerPhone = contactWaId.startsWith("+") ? contactWaId : `+${contactWaId}`;
+          const companyPhone = connection.phoneNumberE164 || phoneNumberId;
 
-          let conversation = await db.query.waConversations.findFirst({
+          // Upsert conversation in telnyxConversations for unified inbox
+          let inboxConversation = await db.query.telnyxConversations.findFirst({
             where: and(
-              eq(waConversations.connectionId, connection.id),
-              eq(waConversations.externalThreadId, externalThreadId)
+              eq(telnyxConversations.companyId, companyId),
+              eq(telnyxConversations.phoneNumber, customerPhone),
+              eq(telnyxConversations.companyPhoneNumber, companyPhone),
+              eq(telnyxConversations.channel, "whatsapp")
             ),
           });
 
-          if (!conversation) {
-            const [newConv] = await db.insert(waConversations).values({
+          if (!inboxConversation) {
+            const [newConv] = await db.insert(telnyxConversations).values({
               companyId,
-              connectionId: connection.id,
-              externalThreadId,
-              contactWaId,
-              contactName,
+              phoneNumber: customerPhone,
+              companyPhoneNumber: companyPhone,
+              displayName: contactName !== contactWaId ? contactName : null,
+              channel: "whatsapp",
+              status: "open",
               unreadCount: 1,
+              lastMessage: msg.text?.body || `[${msg.type}]`,
               lastMessageAt: new Date(),
-              lastMessagePreview: msg.text?.body || msg.type,
             }).returning();
-            conversation = newConv;
-            console.log(`[WhatsApp Webhook Worker] Created conversation: ${conversation.id}`);
+            inboxConversation = newConv;
+            console.log(`[WhatsApp Webhook Worker] Created inbox conversation: ${inboxConversation.id}`);
           } else {
-            await db.update(waConversations)
+            await db.update(telnyxConversations)
               .set({
-                unreadCount: sql`${waConversations.unreadCount} + 1`,
+                unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
                 lastMessageAt: new Date(),
-                lastMessagePreview: msg.text?.body || msg.type,
-                contactName: contactName || conversation.contactName,
+                lastMessage: msg.text?.body || `[${msg.type}]`,
+                displayName: (contactName !== contactWaId ? contactName : null) || inboxConversation.displayName,
+                status: inboxConversation.status === "solved" ? "open" : inboxConversation.status,
                 updatedAt: new Date(),
               })
-              .where(eq(waConversations.id, conversation.id));
+              .where(eq(telnyxConversations.id, inboxConversation.id));
           }
 
           const messageType = msg.type || "text";
@@ -161,22 +171,24 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             textBody = `Contact: ${msg.contacts[0]?.name?.formatted_name || "Unknown"}`;
           }
 
-          await db.insert(waMessages).values({
-            companyId,
-            connectionId: connection.id,
-            conversationId: conversation.id,
-            providerMessageId: msg.id,
+          // Store in telnyxMessages for unified inbox
+          const messageText = textBody || (mediaUrl ? `[${messageType}]` : "[message]");
+          const messageMediaUrls = mediaUrl ? [mediaUrl] : null;
+          
+          await db.insert(telnyxMessages).values({
+            conversationId: inboxConversation.id,
             direction: "inbound",
+            messageType: "incoming",
+            channel: "whatsapp",
+            text: messageText,
+            contentType: mediaUrl ? "media" : "text",
+            mediaUrls: messageMediaUrls,
             status: "delivered",
-            messageType,
-            textBody,
-            mediaUrl,
-            mediaMimeType,
-            payload: msg,
-            timestamp: new Date(parseInt(msg.timestamp) * 1000),
+            telnyxMessageId: msg.id,
+            deliveredAt: new Date(parseInt(msg.timestamp) * 1000),
           });
 
-          console.log(`[WhatsApp Webhook Worker] Saved inbound message: ${msg.id}`);
+          console.log(`[WhatsApp Webhook Worker] Saved inbound message to inbox: ${msg.id}`);
         }
       }
 
@@ -220,15 +232,11 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
           }
 
           if (Object.keys(updateData).length > 0) {
-            await db.update(waMessages)
+            // Update status in telnyxMessages (unified inbox)
+            await db.update(telnyxMessages)
               .set(updateData)
-              .where(
-                and(
-                  eq(waMessages.connectionId, connection.id),
-                  eq(waMessages.providerMessageId, providerMessageId)
-                )
-              );
-            console.log(`[WhatsApp Webhook Worker] Updated message status: ${providerMessageId} -> ${newStatus}`);
+              .where(eq(telnyxMessages.telnyxMessageId, providerMessageId));
+            console.log(`[WhatsApp Webhook Worker] Updated inbox message status: ${providerMessageId} -> ${newStatus}`);
           }
         }
       }

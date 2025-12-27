@@ -38854,6 +38854,131 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           }
         }
         // === END TELEGRAM CHANNEL ROUTING ===
+        
+        // === WHATSAPP CHANNEL ROUTING ===
+        if (conversation.channel === "whatsapp") {
+          try {
+            // 1. Get connection, decrypt token
+            const waConnection = await db.query.channelConnections.findFirst({
+              where: and(
+                eq(channelConnections.companyId, companyId),
+                eq(channelConnections.channel, "whatsapp"),
+                eq(channelConnections.status, "active")
+              ),
+            });
+            
+            if (!waConnection) {
+              return res.status(400).json({ message: "WhatsApp not connected. Please connect WhatsApp in Settings > Channels." });
+            }
+            
+            if (!waConnection.accessTokenEnc) {
+              return res.status(400).json({ message: "WhatsApp access token not configured." });
+            }
+            
+            const accessToken = decryptToken(waConnection.accessTokenEnc);
+            const phoneNumberId = waConnection.phoneNumberId;
+            const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
+            
+            // Extract recipient WhatsApp ID (remove + prefix)
+            const recipientWaId = conversation.phoneNumber.replace(/^\+/, "");
+            
+            // 2. Check 24-hour window by finding last INBOUND message
+            const lastInboundMessage = await db.query.telnyxMessages.findFirst({
+              where: and(
+                eq(telnyxMessages.conversationId, id),
+                eq(telnyxMessages.direction, "inbound")
+              ),
+              orderBy: [desc(telnyxMessages.createdAt)]
+            });
+            
+            const now = new Date();
+            const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            const isWithin24Hours = lastInboundMessage?.createdAt && 
+              new Date(lastInboundMessage.createdAt) > twentyFourHoursAgo;
+            
+            // 3. If outside 24h window, return error with clear message
+            if (!isWithin24Hours) {
+              return res.status(400).json({ 
+                message: "This conversation is outside the 24-hour window. To message this contact, go to Settings > Channels > WhatsApp Templates to send a template message.",
+                code: "OUTSIDE_24H_WINDOW"
+              });
+            }
+            
+            // 4. Build message payload
+            const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}/messages`;
+            
+            const messagePayload = {
+              messaging_product: "whatsapp",
+              recipient_type: "individual",
+              to: recipientWaId,
+              type: "text",
+              text: { body: text || (mediaUrls.length > 0 ? "[Media attachment]" : "") },
+            };
+            
+            // 5. Call Meta API
+            const metaResponse = await fetch(sendUrl, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(messagePayload),
+            });
+            
+            const metaData = await metaResponse.json() as any;
+            
+            // 6. If Meta API fails, return error immediately (don't save to DB)
+            if (!metaResponse.ok || metaData.error) {
+              const errorMessage = metaData.error?.message || "Failed to send WhatsApp message";
+              console.error("[Inbox WhatsApp] Send error:", metaData);
+              return res.status(metaResponse.status >= 400 && metaResponse.status < 500 ? 400 : 500).json({ 
+                message: errorMessage,
+                code: metaData.error?.code || "WHATSAPP_SEND_FAILED"
+              });
+            }
+            
+            // 7. Meta API succeeded - save message to database
+            const telnyxMessageId = metaData.messages?.[0]?.id || null;
+            console.log("[Inbox WhatsApp] Message sent:", telnyxMessageId);
+            
+            const [message] = await db
+              .insert(telnyxMessages)
+              .values({
+                conversationId: id,
+                direction: "outbound",
+                messageType: "outgoing",
+                channel: "whatsapp",
+                text: text || "(attachment)",
+                contentType: mediaUrls.length > 0 ? "media" : "text",
+                status: "sent",
+                telnyxMessageId,
+                sentBy: userId,
+                sentAt: new Date(),
+                errorMessage: null,
+                mediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
+              })
+              .returning();
+            
+            // Update conversation
+            await db
+              .update(telnyxConversations)
+              .set({
+                lastMessage: (text || "(attachment)").substring(0, 100),
+                lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
+                lastMessageAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(telnyxConversations.id, id));
+            
+            // 8. Return success
+            return res.status(201).json(message);
+          } catch (waError: any) {
+            console.error("[Inbox WhatsApp] Send error:", waError);
+            return res.status(500).json({ message: "Failed to send WhatsApp message" });
+          }
+        }
+        // === END WHATSAPP CHANNEL ROUTING ===
+        
         // === LIVE CHAT CHANNEL ROUTING ===
         if (conversation.channel === "live_chat") {
           try {
