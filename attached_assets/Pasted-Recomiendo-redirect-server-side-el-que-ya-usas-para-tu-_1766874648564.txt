@@ -1,0 +1,53 @@
+Recomiendo **redirect server-side** (el que ya usas) para tu caso. El **popup con Facebook JS SDK** suena moderno, pero en un SaaS multi-tenant que quiere **máxima tasa de éxito**, es más frágil y te mete bugs “fantasma”.
+
+### Por qué redirect gana (en tu escenario)
+
+* **Menos bloqueos**: popups mueren por ad-blockers, Safari/ITP, políticas de terceros, “prevent cross-site tracking”, y settings corporativos. Redirect casi siempre pasa.
+* **Mejor seguridad y control**: el backend controla `state`, `redirect_uri` fijo, y el intercambio del `code` sin exponer nada al browser.
+* **Menos superficie multi-tenant**: con popup/SDK terminas manejando `window.opener`, postMessage, callbacks y race conditions; en multi-tenant eso es una fábrica de tickets.
+* **Embedded Signup / Business Login**: tu flujo ya está alineado al patrón de **Business Login config_id + redirect**. Mantén eso.
+
+### Cuándo usaría popup/JS SDK
+
+Solo si cumples estas 3 condiciones:
+
+1. Tu app es **SPA súper controlada** y ya tienes un sistema robusto de postMessage/callbacks.
+2. Tu audiencia no es corporativa/IT restrictiva.
+3. Estás dispuesto a mantener una matriz de compatibilidad (Safari/Firefox/Brave/Edge) y a lidiar con bloqueos.
+
+Tú no quieres eso. Tú quieres **que el cliente conecte a la primera**.
+
+---
+
+## Lo que le dices a Replit (claro y ejecutable)
+
+**Decisión:** mantener **redirect server-side** como método principal.
+
+**Implementación:**
+
+1. Backend genera el URL de OAuth con:
+
+   * `client_id`
+   * `redirect_uri` fijo
+   * `state` (persistido)
+   * `config_id=1586148692802125`
+2. Frontend hace `window.location.href = authUrl` (no popup).
+3. Callback intercambia `code` → token en backend.
+
+**Opcional “nice to have”:**
+
+* Agregar popup como **fallback** solo si el usuario lo prefiere, pero no como default.
+
+---
+
+## Anti-bugs (cosas que exijo sí o sí)
+
+* `redirect_uri` fijo en env (no derivado de headers).
+* `state` guardado y marcado `used_at` para evitar doble callback.
+* Si el usuario cierra el flujo, mostrar “Conexión cancelada” limpio, no error genérico.
+
+---
+
+### Resumen brutal
+
+Popup/SDK es la ruta del ego (“más slick”). Redirect es la ruta del negocio (“más conversion”). En Curbe, **elige conversion**.

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,11 +13,37 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { SettingsLayout } from "@/components/settings-layout";
 import type { ChannelConnection } from "@shared/schema";
 
+declare global {
+  interface Window {
+    fbAsyncInit: () => void;
+    FB: {
+      init: (params: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
+      login: (callback: (response: FBLoginResponse) => void, options: { config_id: string; response_type: string; override_default_response_type: boolean; extras: object }) => void;
+    };
+  }
+}
+
+interface FBLoginResponse {
+  authResponse?: {
+    code?: string;
+    accessToken?: string;
+    userID?: string;
+    expiresIn?: number;
+  };
+  status: string;
+}
+
+const FB_APP_ID = import.meta.env.VITE_META_APP_ID || "775292408902612";
+const FB_CONFIG_ID = import.meta.env.VITE_META_BUSINESS_LOGIN_CONFIG_ID || "1586148692802125";
+const FB_SDK_VERSION = "v21.0";
+
 export default function WhatsAppFlow() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
+  const [fbSdkLoaded, setFbSdkLoaded] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/whatsapp/status"],
@@ -26,6 +52,39 @@ export default function WhatsAppFlow() {
   const connection = connectionData?.connection;
   const isConnected = connection?.status === "active";
   const isPending = connection?.status === "pending";
+
+  useEffect(() => {
+    if (document.getElementById("facebook-jssdk")) {
+      if (window.FB) {
+        setFbSdkLoaded(true);
+      }
+      return;
+    }
+
+    window.fbAsyncInit = function() {
+      window.FB.init({
+        appId: FB_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: FB_SDK_VERSION,
+      });
+      setFbSdkLoaded(true);
+    };
+
+    const script = document.createElement("script");
+    script.id = "facebook-jssdk";
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    return () => {
+      const existingScript = document.getElementById("facebook-jssdk");
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isConnected) {
@@ -62,27 +121,74 @@ export default function WhatsAppFlow() {
     }
   }, [toast]);
 
-  const oauthStartMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/integrations/meta/whatsapp/start");
+  const exchangeCodeMutation = useMutation({
+    mutationFn: async (code: string) => {
+      return apiRequest("POST", "/api/integrations/meta/whatsapp/exchange-code", { code });
     },
-    onSuccess: (data: { authUrl: string; state: string }) => {
-      if (data.authUrl) {
-        window.open(data.authUrl, "_blank");
-      }
+    onSuccess: () => {
+      toast({
+        title: "WhatsApp Connected",
+        description: "Your WhatsApp Business account has been connected successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
+      setCurrentStep(3);
+      setIsConnecting(false);
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
         title: "Connection failed",
-        description: error.message || "We couldn't start the connection process. Please try again.",
+        description: error.message || "We couldn't complete the connection. Please try again.",
       });
+      setIsConnecting(false);
     },
   });
 
-  const handleLoginWithFacebook = () => {
-    oauthStartMutation.mutate();
-  };
+  const handleLoginWithFacebook = useCallback(() => {
+    if (!fbSdkLoaded || !window.FB) {
+      toast({
+        variant: "destructive",
+        title: "Loading...",
+        description: "Facebook SDK is still loading. Please try again in a moment.",
+      });
+      return;
+    }
+
+    setIsConnecting(true);
+
+    window.FB.login(
+      (response: FBLoginResponse) => {
+        if (response.authResponse?.code) {
+          exchangeCodeMutation.mutate(response.authResponse.code);
+        } else {
+          setIsConnecting(false);
+          if (response.status === "unknown") {
+            toast({
+              variant: "destructive",
+              title: "Connection cancelled",
+              description: "You closed the login window without completing the setup.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Connection failed",
+              description: "Could not get authorization from Facebook. Please try again.",
+            });
+          }
+        }
+      },
+      {
+        config_id: FB_CONFIG_ID,
+        response_type: "code",
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+          featureType: "",
+          version: "v3",
+        },
+      }
+    );
+  }, [fbSdkLoaded, toast, exchangeCodeMutation]);
 
   const handleDiscard = () => {
     setLocation("/settings/whatsapp");
@@ -209,11 +315,11 @@ export default function WhatsAppFlow() {
                       <Button 
                         className="bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2"
                         onClick={handleLoginWithFacebook}
-                        disabled={oauthStartMutation.isPending}
+                        disabled={isConnecting || !fbSdkLoaded}
                         data-testid="button-login-facebook"
                       >
                         <SiFacebook className="h-4 w-4" />
-                        {oauthStartMutation.isPending ? "Connecting..." : "Login with Facebook"}
+                        {isConnecting ? "Connecting..." : !fbSdkLoaded ? "Loading..." : "Login with Facebook"}
                       </Button>
                     </>
                   ) : (

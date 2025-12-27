@@ -3,7 +3,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import fs from "fs";
 import path from "path";
 import { createServer, type Server } from "http";
-import { randomBytes, randomUUID } from "crypto";
+import { randomBytes, randomUUID, createCipheriv } from "crypto";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { storage } from "./storage";
@@ -26121,6 +26121,159 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     } catch (error) {
       console.error("[WhatsApp OAuth] Start error:", error);
       return res.status(500).json({ error: "Failed to start OAuth flow" });
+    }
+  });
+
+
+  // POST /api/integrations/meta/whatsapp/exchange-code - Exchange code from FB SDK popup
+  app.post("/api/integrations/meta/whatsapp/exchange-code", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
+      
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ error: "Authorization code is required" });
+
+      // Get Meta credentials
+      const { appId, appSecret } = await credentialProvider.getMeta();
+      if (!appId || !appSecret) {
+        return res.status(500).json({ error: "Meta credentials not configured" });
+      }
+
+      console.log("[WhatsApp OAuth] Exchanging code from FB SDK popup");
+
+      // Exchange code for access token (no redirect_uri needed for FB SDK popup)
+      const tokenResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
+        `client_id=${appId}&` +
+        `client_secret=${appSecret}&` +
+        `code=${code}`
+      );
+      
+      const tokenData = await tokenResponse.json() as any;
+      
+      if (tokenData.error || !tokenData.access_token) {
+        console.error("[WhatsApp OAuth] Token exchange failed:", tokenData.error);
+        return res.status(400).json({ error: tokenData.error?.message || "Token exchange failed" });
+      }
+      
+      const accessToken = tokenData.access_token;
+      
+      // Get WABA info
+      const wabaResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/me/businesses?fields=owned_whatsapp_business_accounts{id,name,timezone_id,message_template_namespace}&access_token=${accessToken}`
+      );
+      const wabaData = await wabaResponse.json() as any;
+      
+      let businessId: string | null = null;
+      let wabaId: string | null = null;
+      let phoneNumberId: string | null = null;
+      let phoneNumberE164: string | null = null;
+      let displayName: string | null = null;
+      
+      if (wabaData.data && wabaData.data.length > 0) {
+        for (const business of wabaData.data) {
+          if (business.owned_whatsapp_business_accounts?.data?.length > 0) {
+            businessId = business.id;
+            const wabaInfo = business.owned_whatsapp_business_accounts.data[0];
+            wabaId = wabaInfo.id;
+            displayName = wabaInfo.name || "WhatsApp Business";
+            break;
+          }
+        }
+      }
+      
+      if (!wabaId) {
+        // Try shared WABAs
+        const sharedWabaResponse = await fetch(
+          `https://graph.facebook.com/${META_GRAPH_VERSION}/me/whatsapp_shared_business_accounts?fields=id,name&access_token=${accessToken}`
+        );
+        const sharedWabaData = await sharedWabaResponse.json() as any;
+        if (sharedWabaData.data?.length > 0) {
+          wabaId = sharedWabaData.data[0].id;
+          displayName = sharedWabaData.data[0].name || "WhatsApp Business";
+        }
+      }
+      
+      if (!wabaId) {
+        return res.status(400).json({ error: "No WhatsApp Business Account found" });
+      }
+      
+      // Get phone numbers
+      const phoneResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating&access_token=${accessToken}`
+      );
+      const phoneData = await phoneResponse.json() as any;
+      
+      if (phoneData.data?.length > 0) {
+        const phone = phoneData.data[0];
+        phoneNumberId = phone.id;
+        phoneNumberE164 = phone.display_phone_number?.replace(/[^+\d]/g, "") || null;
+        if (phone.verified_name) displayName = phone.verified_name;
+      }
+      
+      // Subscribe to webhooks
+      if (wabaId) {
+        await fetch(
+          `https://graph.facebook.com/${META_GRAPH_VERSION}/${wabaId}/subscribed_apps`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ access_token: accessToken })
+          }
+        );
+      }
+      
+      // Encrypt and store token
+      const iv = randomBytes(16);
+      const key = Buffer.from(process.env.ENCRYPTION_KEY || "0".repeat(64), "hex");
+      const cipher = createCipheriv("aes-256-cbc", key, iv);
+      let encryptedToken = cipher.update(accessToken, "utf8", "hex");
+      encryptedToken += cipher.final("hex");
+      
+      // Check existing connection
+      const existingConnection = await db.select().from(channelConnections)
+        .where(and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp")
+        ))
+        .limit(1);
+      
+      if (existingConnection.length > 0) {
+        await db.update(channelConnections)
+          .set({
+            businessId,
+            wabaId,
+            phoneNumberId,
+            phoneNumberE164,
+            displayName,
+            accessToken: encryptedToken,
+            tokenIv: iv.toString("hex"),
+            status: "active",
+            updatedAt: new Date()
+          })
+          .where(eq(channelConnections.id, existingConnection[0].id));
+      } else {
+        await db.insert(channelConnections).values({
+          companyId: user.companyId,
+          channel: "whatsapp",
+          businessId,
+          wabaId,
+          phoneNumberId,
+          phoneNumberE164,
+          displayName,
+          accessToken: encryptedToken,
+          tokenIv: iv.toString("hex"),
+          status: "active"
+        });
+      }
+      
+      console.log("[WhatsApp OAuth] Connection saved successfully for company:", user.companyId);
+      return res.json({ success: true, wabaId, phoneNumber: phoneNumberE164 });
+      
+    } catch (error) {
+      console.error("[WhatsApp OAuth] Exchange code error:", error);
+      return res.status(500).json({ error: "Failed to exchange authorization code" });
     }
   });
 
