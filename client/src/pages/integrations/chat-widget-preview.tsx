@@ -156,6 +156,7 @@ export default function ChatWidgetPreviewPage() {
     rating: number | null;
     feedback: string | null;
     agentName?: string | null;
+    agentAvatar?: string | null;
     status?: string | null;
   } | null>(null);
   
@@ -1083,6 +1084,7 @@ export default function ChatWidgetPreviewPage() {
           rating: actualRating,
           feedback: actualFeedback,
           agentName: agent?.fullName || null,
+          agentAvatar: agent?.avatar || null,
           status: status || existingSession.status || 'solved',
         });
         
@@ -1136,6 +1138,7 @@ export default function ChatWidgetPreviewPage() {
           rating: rating || null,
           feedback: feedback || null,
           agentName: agent?.fullName || null,
+          agentAvatar: agent?.avatar || null,
           status: status || 'solved',
         });
         
@@ -2598,25 +2601,20 @@ export default function ChatWidgetPreviewPage() {
                   )}
                 </div>
                 
-                {/* Agent photos */}
+                {/* Agent photo */}
                 <div className="flex items-center gap-3">
                   <div className="flex -space-x-2">
-                    {[
-                      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
-                      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-                      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face",
-                    ].map((avatar, i) => (
-                      <div 
-                        key={i} 
-                        className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm"
-                      >
-                        <img 
-                          src={avatar} 
-                          alt={`Team member ${i + 1}`}
-                          className="w-full h-full object-cover"
-                        />
+                    {solvedChatData.agentAvatar ? (
+                      <img 
+                        src={solvedChatData.agentAvatar} 
+                        alt={solvedChatData.agentName || 'Agent'}
+                        className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                        {solvedChatData.agentName?.[0]?.toUpperCase() || 'A'}
                       </div>
-                    ))}
+                    )}
                   </div>
                   <button
                     className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
