@@ -53,7 +53,9 @@ import {
   Settings,
   Gift,
   Heart,
-  Lightbulb
+  Lightbulb,
+  AlertCircle,
+  Check
 } from "lucide-react";
 import { Link } from "wouter";
 import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
@@ -300,6 +302,26 @@ export default function InboxPage() {
     queryKey: ['/api/ai/conversations', selectedConversationId, 'chat-messages'],
     enabled: !!selectedConversationId,
   });
+
+  // Query for pending AI autopilot approvals
+  const { data: pendingApprovalsData } = useQuery<{ pending: Array<{
+    id: string;
+    conversationId: string;
+    outputText: string;
+    confidence: string;
+    needsHuman: boolean;
+    createdAt: string;
+  }> }>({
+    queryKey: ['/api/ai/autopilot/pending'],
+    enabled: isAuthenticated,
+    refetchInterval: 10000, // Poll every 10 seconds
+  });
+  const pendingApprovals = pendingApprovalsData?.pending || [];
+  
+  // Get pending approval for current conversation
+  const currentConversationPendingApproval = useMemo(() => {
+    return pendingApprovals.find(p => p.conversationId === selectedConversationId);
+  }, [pendingApprovals, selectedConversationId]);
 
   const { data: companyUsersData } = useQuery<{ users: UserType[] }>({
     queryKey: ["/api/users"],
@@ -667,6 +689,54 @@ export default function InboxPage() {
     onError: (error: any) => {
       toast({
         title: "Failed to generate summary",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Approve pending AI response
+  const approveAiResponseMutation = useMutation({
+    mutationFn: async (runId: string) => {
+      return apiRequest("POST", `/api/ai/autopilot/approve/${runId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/autopilot/pending'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      if (selectedConversationId) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
+        });
+      }
+      toast({
+        title: "Response Approved",
+        description: "The AI response has been sent to the customer.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to approve",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reject pending AI response
+  const rejectAiResponseMutation = useMutation({
+    mutationFn: async ({ runId, reason }: { runId: string; reason?: string }) => {
+      return apiRequest("POST", `/api/ai/autopilot/reject/${runId}`, { reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/autopilot/pending'] });
+      toast({
+        title: "Response Rejected",
+        description: "The AI response has been dismissed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to reject",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -1868,6 +1938,68 @@ export default function InboxPage() {
               "absolute bottom-4 left-4 right-4 rounded-lg border bg-white dark:bg-gray-900 shadow-lg",
               isInternalNote && "bg-yellow-50 dark:bg-yellow-900/20"
             )}>
+              {/* Pending AI Approval Banner */}
+              {currentConversationPendingApproval && (
+                <div 
+                  className="mx-4 mt-4 mb-2 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-lg"
+                  data-testid="pending-approval-banner"
+                >
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                          AI Response Needs Approval
+                        </span>
+                        {currentConversationPendingApproval.needsHuman && (
+                          <Badge variant="outline" className="text-xs border-amber-500 text-amber-700 dark:text-amber-300">
+                            Human Required
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mb-3" data-testid="text-pending-response">
+                        {currentConversationPendingApproval.outputText || "Response pending..."}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => approveAiResponseMutation.mutate(currentConversationPendingApproval.id)}
+                          disabled={approveAiResponseMutation.isPending || rejectAiResponseMutation.isPending}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          data-testid="btn-approve-ai"
+                        >
+                          {approveAiResponseMutation.isPending ? (
+                            <LoadingSpinner fullScreen={false} className="h-4 w-4" />
+                          ) : (
+                            <>
+                              <Check className="h-4 w-4 mr-1" />
+                              Approve & Send
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => rejectAiResponseMutation.mutate({ runId: currentConversationPendingApproval.id })}
+                          disabled={approveAiResponseMutation.isPending || rejectAiResponseMutation.isPending}
+                          className="border-red-300 text-red-600 hover:bg-red-50"
+                          data-testid="btn-reject-ai"
+                        >
+                          {rejectAiResponseMutation.isPending ? (
+                            <LoadingSpinner fullScreen={false} className="h-4 w-4" />
+                          ) : (
+                            <>
+                              <X className="h-4 w-4 mr-1" />
+                              Dismiss
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* AI Copilot Draft Banner */}
               {copilotDraft && (
                 <div 
