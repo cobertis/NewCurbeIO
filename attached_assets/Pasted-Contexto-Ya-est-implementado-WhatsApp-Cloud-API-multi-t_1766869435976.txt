@@ -1,0 +1,284 @@
+Contexto: Ya está implementado WhatsApp Cloud API multi-tenant con OAuth/Embedded Signup, subscribed_apps, webhooks con HMAC y ruteo por phone_number_id, envío con lógica 24h/templates, templates CRUD y media upload/send.
+
+Objetivo ahora: Llevarlo a nivel production-grade SaaS: idempotencia/dedupe, procesamiento asíncrono de webhooks, cola de envío con retries/backoff + DLQ, aislamiento por tenant, token lifecycle + “needs_reauth”, observabilidad mínima y modelo de conversaciones.
+
+1) Idempotencia / Dedupe de webhooks (OBLIGATORIO)
+Implementar
+
+Crear una tabla para deduplicación:
+
+CREATE TABLE IF NOT EXISTS whatsapp_webhook_dedupe (
+  id bigserial PRIMARY KEY,
+  tenant_id uuid NOT NULL,
+  dedupe_key text NOT NULL,
+  event_type text NOT NULL, -- 'inbound_message' | 'status_update'
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(tenant_id, dedupe_key, event_type)
+);
+
+Dedupe keys
+
+Para mensajes inbound: dedupe_key = message.id si existe, o wamid/messages[0].id (lo que venga en payload).
+
+Para status: dedupe_key = statuses[0].id + ':' + statuses[0].status (ej: wamid...:delivered)
+
+Lógica
+
+En el processor de webhooks:
+
+Antes de insertar mensaje inbound, intentar:
+
+INSERT INTO whatsapp_webhook_dedupe (...) VALUES (...) ON CONFLICT DO NOTHING
+
+Si el insert no inserta (conflict), entonces return (no hacer nada).
+
+Igual para status updates.
+
+Criterio de aceptación
+
+Si Meta reenvía el mismo webhook 3 veces, en DB solo queda 1 mensaje y 1 actualización por estado.
+
+2) Webhook: responder rápido (ACK) + procesamiento asíncrono
+Implementar
+
+Modificar POST /api/webhooks/meta/whatsapp:
+
+Mantener: verificación HMAC con X-Hub-Signature-256.
+
+Luego: responder 200 OK inmediatamente (ack rápido).
+
+Después del res.sendStatus(200), enviar el payload a un processor asíncrono (cola / outbox / background worker).
+
+Si no hay Redis: usar “webhook_events” table + worker.
+
+Crear tabla:
+
+CREATE TABLE IF NOT EXISTS whatsapp_webhook_events (
+  id bigserial PRIMARY KEY,
+  received_at timestamptz NOT NULL DEFAULT now(),
+  processed_at timestamptz,
+  status text NOT NULL DEFAULT 'pending', -- pending|processing|done|failed
+  attempt int NOT NULL DEFAULT 0,
+  last_error text,
+  payload jsonb NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_wh_webhook_events_pending
+ON whatsapp_webhook_events(status, received_at);
+
+
+Handler POST:
+
+Inserta payload en whatsapp_webhook_events
+
+res.sendStatus(200) inmediatamente
+
+Worker:
+
+Poll cada 250-500ms y procesa pendientes con locking tipo:
+
+FOR UPDATE SKIP LOCKED para evitar doble proceso.
+
+Criterio de aceptación
+
+POST webhook responde p95 < 200ms
+
+Eventos se procesan igual aunque el worker tarde
+
+3) Cola de envío real con retries/backoff + DLQ (OBLIGATORIO)
+Implementar
+
+Si ya existe outbox, asegurar:
+
+attempts
+
+next_run_at
+
+last_error
+
+status pending|running|done|failed
+
+Si NO existe, crear:
+
+CREATE TABLE IF NOT EXISTS whatsapp_send_outbox (
+  id bigserial PRIMARY KEY,
+  tenant_id uuid NOT NULL,
+  phone_number_id text NOT NULL,
+  message_id bigint NOT NULL,
+  status text NOT NULL DEFAULT 'pending', -- pending|running|done|failed
+  attempts int NOT NULL DEFAULT 0,
+  next_run_at timestamptz NOT NULL DEFAULT now(),
+  last_error text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wa_outbox_pending
+ON whatsapp_send_outbox(status, next_run_at);
+
+
+En POST /api/whatsapp/meta/send:
+
+NO enviar directo a Meta
+
+Insertar mensaje en DB con status queued
+
+Insertar job en outbox
+
+Worker envío:
+
+Toma job pendiente con FOR UPDATE SKIP LOCKED
+
+Envía a Meta
+
+Si ok: set message status sent y set outbox done
+
+Si error temporario / rate limit: attempts++ y next_run_at = now()+backoff
+
+Si error permanente (invalid token, template invalid): marcar failed y guardar error
+
+Backoff:
+
+backoff_seconds = min(300, 2^attempts * 5) (cap 5 minutos)
+
+DLQ:
+
+Si attempts >= 8, marcar outbox failed definitivo.
+
+Criterio de aceptación
+
+Si Meta devuelve 429/5xx, el sistema reintenta solo con backoff.
+
+Si Meta cae 2 minutos, al volver se vacía la cola sin perder mensajes.
+
+4) Aislamiento por tenant (rate limiting + concurrency)
+Implementar
+
+En worker de envío:
+
+Limitar jobs simultáneos por tenant: MAX_CONCURRENCY_PER_TENANT = 2 (config env)
+
+Implementación simple sin Redis:
+
+Tabla tenant_locks o usar query para contar running por tenant
+
+Solo lockear un job si running_count < limit
+
+Ejemplo tabla opcional:
+
+CREATE TABLE IF NOT EXISTS whatsapp_tenant_send_locks (
+  tenant_id uuid PRIMARY KEY,
+  running_count int NOT NULL DEFAULT 0,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+
+Pero puede hacerse solo con SELECT count(*) FROM whatsapp_send_outbox WHERE tenant_id=? AND status='running'.
+
+Criterio de aceptación
+
+Un tenant con 1000 mensajes no degrada el envío de otros tenants.
+
+5) Token lifecycle: auto-detect + “needs_reauth”
+Implementar
+
+Agregar campo en whatsapp_accounts:
+
+auth_status = 'ok' | 'needs_reauth'
+
+auth_last_error
+
+Cuando Graph responda errores de auth (token inválido/expirado):
+
+Set auth_status='needs_reauth'
+
+Bloquear nuevos envíos para ese tenant y responder error claro en API/UI:
+
+WHATSAPP_REAUTH_REQUIRED
+
+Agregar endpoint:
+
+POST /api/integrations/meta/whatsapp/reconnect (reusa start/callback)
+
+Criterio de aceptación
+
+Si revoco token manualmente, el sistema lo detecta y muestra “Reconnect”.
+
+6) Observabilidad mínima (logs + métricas)
+Implementar
+
+Agregar logging estructurado (JSON):
+
+Campos: tenant_id, phone_number_id, wamid, event_type, duration_ms
+
+Métricas mínimas (aunque sea en DB):
+
+webhook_events_pending_count
+
+outbox_pending_count
+
+outbox_failed_count
+
+send_success_rate_last_1h
+
+Agregar endpoint admin:
+
+GET /api/admin/whatsapp/health retorna counts y p95 latency aproximada
+
+Criterio de aceptación
+
+Puedo ver en 1 request si hay backlog, fallos, o latencia alta.
+
+7) Modelo de conversaciones (Inbox real)
+Implementar
+
+Tablas:
+
+CREATE TABLE IF NOT EXISTS whatsapp_conversations (
+  id bigserial PRIMARY KEY,
+  tenant_id uuid NOT NULL,
+  phone_number_id text NOT NULL,
+  contact_wa_id text NOT NULL, -- el "from" real
+  status text NOT NULL DEFAULT 'open', -- open|closed
+  last_message_at timestamptz NOT NULL DEFAULT now(),
+  assigned_user_id uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(tenant_id, phone_number_id, contact_wa_id)
+);
+
+ALTER TABLE whatsapp_messages
+ADD COLUMN IF NOT EXISTS conversation_id bigint;
+
+
+En processor inbound:
+
+Upsert conversación por (tenant_id, phone_number_id, contact_wa_id)
+
+Linkear mensaje a conversation_id
+
+Actualizar last_message_at
+
+Criterio de aceptación
+
+Un inbound crea/actualiza conversación y los mensajes quedan agrupados.
+
+Entregables
+
+Migraciones SQL
+
+PR con:
+
+webhook ack + event table + worker
+
+dedupe implementado
+
+outbox robusta + retries + DLQ
+
+tenant isolation
+
+reauth detection + endpoint
+
+conversations model
+
+Script de pruebas manuales con pasos y payloads de ejemplo.

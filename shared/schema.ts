@@ -4636,6 +4636,10 @@ export const channelConnections = pgTable("channel_connections", {
   webhookSecret: text("webhook_secret"),
   metadata: jsonb("metadata"),
   
+  // Token lifecycle
+  authStatus: text("auth_status").notNull().default("ok"), // 'ok' | 'needs_reauth'
+  authLastError: text("auth_last_error"),
+  
   connectedAt: timestamp("connected_at", { withTimezone: true }),
   disconnectedAt: timestamp("disconnected_at", { withTimezone: true }),
   lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
@@ -4722,6 +4726,55 @@ export const waWebhookLogs = pgTable("wa_webhook_logs", {
   createdAtIdx: index("wa_webhook_logs_created_at_idx").on(table.createdAt),
 }));
 
+// WhatsApp Webhook Dedupe - Idempotency for webhook processing
+export const waWebhookDedupeEventTypeEnum = pgEnum("wa_webhook_dedupe_event_type", ["inbound_message", "status_update"]);
+
+export const waWebhookDedupe = pgTable("wa_webhook_dedupe", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  dedupeKey: text("dedupe_key").notNull(),
+  eventType: waWebhookDedupeEventTypeEnum("event_type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  tenantDedupeUnique: unique().on(table.companyId, table.dedupeKey, table.eventType),
+  createdAtIdx: index("wa_webhook_dedupe_created_at_idx").on(table.createdAt),
+}));
+
+// WhatsApp Webhook Events - Async processing queue
+export const waWebhookEventStatusEnum = pgEnum("wa_webhook_event_status", ["pending", "processing", "done", "failed"]);
+
+export const waWebhookEvents = pgTable("wa_webhook_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  status: waWebhookEventStatusEnum("status").notNull().default("pending"),
+  attempt: integer("attempt").notNull().default(0),
+  lastError: text("last_error"),
+  payload: jsonb("payload").notNull(),
+}, (table) => ({
+  pendingIdx: index("wa_webhook_events_pending_idx").on(table.status, table.receivedAt),
+}));
+
+// WhatsApp Send Outbox - Queue with retries/backoff + DLQ
+export const waSendOutboxStatusEnum = pgEnum("wa_send_outbox_status", ["pending", "running", "done", "failed"]);
+
+export const waSendOutbox = pgTable("wa_send_outbox", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  phoneNumberId: text("phone_number_id").notNull(),
+  messageId: varchar("message_id").notNull().references(() => waMessages.id, { onDelete: "cascade" }),
+  status: waSendOutboxStatusEnum("status").notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull().defaultNow(),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  pendingIdx: index("wa_send_outbox_pending_idx").on(table.status, table.nextRunAt),
+  companyIdIdx: index("wa_send_outbox_company_id_idx").on(table.companyId),
+  messageIdIdx: index("wa_send_outbox_message_id_idx").on(table.messageId),
+}));
+
 export const oauthProviderEnum = pgEnum("oauth_provider", ["meta_whatsapp", "meta_instagram", "meta_facebook", "tiktok", "telegram"]);
 
 export const oauthStates = pgTable("oauth_states", {
@@ -4743,6 +4796,9 @@ export const insertChannelConnectionSchema = createInsertSchema(channelConnectio
 export const insertWaConversationSchema = createInsertSchema(waConversations).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWaMessageSchema = createInsertSchema(waMessages).omit({ id: true, createdAt: true });
 export const insertWaWebhookLogSchema = createInsertSchema(waWebhookLogs).omit({ id: true, createdAt: true });
+export const insertWaWebhookDedupeSchema = createInsertSchema(waWebhookDedupe).omit({ id: true, createdAt: true });
+export const insertWaWebhookEventSchema = createInsertSchema(waWebhookEvents).omit({ id: true });
+export const insertWaSendOutboxSchema = createInsertSchema(waSendOutbox).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOauthStateSchema = createInsertSchema(oauthStates).omit({ id: true, createdAt: true });
 
 export type ChannelConnection = typeof channelConnections.$inferSelect;
@@ -4753,6 +4809,12 @@ export type WaMessage = typeof waMessages.$inferSelect;
 export type InsertWaMessage = z.infer<typeof insertWaMessageSchema>;
 export type WaWebhookLog = typeof waWebhookLogs.$inferSelect;
 export type InsertWaWebhookLog = z.infer<typeof insertWaWebhookLogSchema>;
+export type WaWebhookDedupe = typeof waWebhookDedupe.$inferSelect;
+export type InsertWaWebhookDedupe = z.infer<typeof insertWaWebhookDedupeSchema>;
+export type WaWebhookEvent = typeof waWebhookEvents.$inferSelect;
+export type InsertWaWebhookEvent = z.infer<typeof insertWaWebhookEventSchema>;
+export type WaSendOutbox = typeof waSendOutbox.$inferSelect;
+export type InsertWaSendOutbox = z.infer<typeof insertWaSendOutboxSchema>;
 export type OauthState = typeof oauthStates.$inferSelect;
 export type InsertOauthState = z.infer<typeof insertOauthStateSchema>;
 
