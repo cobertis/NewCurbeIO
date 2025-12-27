@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, User } from "lucide-react";
 import type { WidgetConfig } from "@shared/widget-config";
 
 interface WidgetHeaderProps {
@@ -6,13 +6,19 @@ interface WidgetHeaderProps {
   onClose?: () => void;
 }
 
-const defaultAvatars = [
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face",
-];
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map(n => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
+  const teamMembers = config.teamMembers || [];
+  const hasTeamMembers = teamMembers.length > 0;
+
   return (
     <div
       className="flex items-center justify-between"
@@ -34,19 +40,35 @@ export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
       </div>
       <div className="flex items-center gap-3">
         <div className="flex -space-x-2">
-          {defaultAvatars.map((avatar, i) => (
+          {hasTeamMembers ? (
+            teamMembers.slice(0, 3).map((member, i) => (
+              <div
+                key={i}
+                className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200"
+                data-testid={`widget-avatar-${i + 1}`}
+                title={member.name}
+              >
+                {member.avatarUrl ? (
+                  <img 
+                    src={member.avatarUrl} 
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xs font-medium text-slate-600">
+                    {getInitials(member.name)}
+                  </span>
+                )}
+              </div>
+            ))
+          ) : (
             <div
-              key={i}
-              className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm"
-              data-testid={`widget-avatar-${i + 1}`}
+              className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200"
+              data-testid="widget-avatar-default"
             >
-              <img 
-                src={avatar} 
-                alt={`Team member ${i + 1}`}
-                className="w-full h-full object-cover"
-              />
+              <User className="w-5 h-5 text-slate-500" />
             </div>
-          ))}
+          )}
         </div>
         <button
           className="p-1.5 hover:bg-slate-100 rounded-full transition-colors z-10"

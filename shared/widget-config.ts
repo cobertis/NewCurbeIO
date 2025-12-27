@@ -196,6 +196,11 @@ export interface TelegramSettings {
   };
 }
 
+export interface TeamMember {
+  name: string;
+  avatarUrl: string | null;
+}
+
 export interface WidgetConfig {
   id: string;
   theme: WidgetTheme;
@@ -213,6 +218,7 @@ export interface WidgetConfig {
   instagramSettings?: InstagramSettings;
   telegramSettings?: TelegramSettings;
   channelOrder: string[];
+  teamMembers?: TeamMember[];
 }
 
 const colorOptions: Record<string, { hex: string; gradientHex: string }> = {

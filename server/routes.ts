@@ -28402,6 +28402,17 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "Widget not found" });
       }
 
+      // Get team members (agents) for the company - up to 3 with avatars
+      const teamMembers = await db
+        .select({
+          name: users.name,
+          avatarUrl: users.avatarUrl,
+        })
+        .from(users)
+        .where(eq(users.companyId, widget.companyId))
+        .limit(3);
+
+
       const clientIP = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() 
         || req.headers["x-real-ip"] as string 
         || req.socket.remoteAddress 
@@ -28566,7 +28577,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       
       return res.json({
-        widget: { ...widgetSettings, branding: (widget.branding as any) || {}, targeting: { countries: targeting.countries || "all", selectedCountries: targeting.selectedCountries || [], schedule: targeting.schedule || "always", timezone: targeting.timezone || "(UTC -05:00): America/New_York", deviceType: targeting.deviceType || "all", pageUrls: targeting.pageUrls || "all", urlRules: targeting.urlRules || [], scheduleEntries: targeting.scheduleEntries || [] } },
+        widget: { ...widgetSettings, teamMembers, branding: (widget.branding as any) || {}, targeting: { countries: targeting.countries || "all", selectedCountries: targeting.selectedCountries || [], schedule: targeting.schedule || "always", timezone: targeting.timezone || "(UTC -05:00): America/New_York", deviceType: targeting.deviceType || "all", pageUrls: targeting.pageUrls || "all", urlRules: targeting.urlRules || [], scheduleEntries: targeting.scheduleEntries || [] } },
         shouldDisplay: finalShouldDisplay,
         visitorCountry,
         countryCode,
