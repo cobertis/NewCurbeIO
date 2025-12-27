@@ -35,6 +35,7 @@ export async function getFullGeolocationFromIP(ip: string): Promise<FullGeolocat
     // Using FreeIPAPI.com - free, 60 req/min, commercial use allowed
     const response = await fetch(`https://freeipapi.com/api/json/${cleanIP}`, {
       signal: controller.signal,
+      redirect: 'follow',
     });
     
     clearTimeout(timeoutId);
