@@ -43,11 +43,38 @@ export class AiAutopilotService {
 
     const { aiDeskService } = await import("./ai-desk-service");
     
-    const settings = await aiDeskService.getAiSettings(companyId);
-    if (!settings?.autopilotEnabled) {
-      console.log(`[Autopilot] Autopilot is disabled for company ${companyId}`);
+    // First fetch the conversation to check conversation-level autopilot setting
+    const [conversationCheck] = await db
+      .select({
+        autopilotEnabled: telnyxConversations.autopilotEnabled,
+      })
+      .from(telnyxConversations)
+      .where(and(
+        eq(telnyxConversations.id, conversationId),
+        eq(telnyxConversations.companyId, companyId)
+      ));
+    
+    if (!conversationCheck) {
+      console.log(`[Autopilot] Conversation ${conversationId} not found for company ${companyId}`);
       return { shouldRespond: false };
     }
+    
+    // Check if autopilot is explicitly disabled for this conversation
+    if (conversationCheck.autopilotEnabled === false) {
+      console.log(`[Autopilot] Autopilot is disabled for conversation ${conversationId}`);
+      return { shouldRespond: false };
+    }
+    
+    const settings = await aiDeskService.getAiSettings(companyId);
+    
+    // If conversation autopilotEnabled is null (not set), check company-wide setting
+    if (conversationCheck.autopilotEnabled === null && !settings?.autopilotEnabled) {
+      console.log(`[Autopilot] Autopilot is disabled at company level for ${companyId}`);
+      return { shouldRespond: false };
+    }
+    
+    // Autopilot is enabled - either at conversation level (true) or falls back to company level (true)
+    console.log(`[Autopilot] Autopilot ENABLED - conversation: ${conversationCheck.autopilotEnabled}, company: ${settings?.autopilotEnabled}`);
 
     const runId = nanoid();
     const startTime = Date.now();
@@ -73,7 +100,7 @@ export class AiAutopilotService {
       const recentMessages = await this.getRecentMessages(companyId, conversationId, 10);
       const kbContext = await this.getKnowledgeBaseContext(companyId, messageContent);
 
-      const autopilotLevel = settings.autopilotLevel || 1;
+      const autopilotLevel = settings?.autopilotLevel || 1;
       
       const systemPrompt = this.buildSystemPrompt(kbContext, conversation);
       const messages = this.buildMessageHistory(recentMessages, messageContent);
@@ -143,7 +170,7 @@ export class AiAutopilotService {
 
       const latencyMs = Date.now() - startTime;
       
-      const confidenceThreshold = settings.confidenceThreshold 
+      const confidenceThreshold = settings?.confidenceThreshold 
         ? parseFloat(settings.confidenceThreshold.toString()) 
         : 0.75;
       
