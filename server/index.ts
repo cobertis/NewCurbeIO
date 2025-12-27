@@ -211,8 +211,8 @@ app.get('/widget-script.js', (req, res) => {
       // Mobile: fullscreen overlay
       iframe.style.cssText = 'position: fixed; inset: 0; width: 100vw; height: 100vh; border: none; z-index: 2147483646; background: white; border-radius: 0;';
     } else {
-      // Desktop: positioned panel
-      iframe.style.cssText = 'position: absolute; right: 0; bottom: 72px; width: 380px; max-width: calc(100vw - 48px); height: 560px; max-height: calc(100vh - 140px); border: none; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); background: white; z-index: 2147483646;';
+      // Desktop: positioned panel - matches widget-renderer dimensions exactly (360px x 600px)
+      iframe.style.cssText = 'position: absolute; right: 0; bottom: 72px; width: 360px; max-width: calc(100vw - 48px); height: min(600px, calc(100vh - 100px)); max-height: calc(100dvh - 80px); border: none; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); background: white; z-index: 2147483646;';
     }
     
     root.appendChild(iframe);
