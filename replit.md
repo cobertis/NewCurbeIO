@@ -61,13 +61,15 @@ AI-powered operational engine with knowledge base management and intelligent res
 - **Key Services:** `ai-desk-service.ts`, `ai-openai-service.ts`, `ai-ingestion-service.ts`, `ai-tool-registry.ts`, `ai-autopilot-service.ts`.
 
 **Meta WhatsApp Cloud API Integration:**
-Full multi-tenant WhatsApp Business API integration via Meta Cloud API with Embedded Signup OAuth flow.
-- **OAuth Flow:** POST `/api/integrations/meta/whatsapp/start` generates nonce, GET `/api/integrations/meta/whatsapp/callback` exchanges code for token, captures `businessId`, `wabaId`, `phoneNumberId`, and automatically calls `POST /{WABA-ID}/subscribed_apps` to subscribe for webhooks.
-- **Webhooks:** GET `/api/webhooks/meta/whatsapp` for hub.challenge verification, POST with HMAC X-Hub-Signature-256 validation using app secret. Multi-tenant routing by `phone_number_id` lookup.
-- **Messaging:** POST `/api/whatsapp/meta/send` with 24-hour session window logic (free text within 24h, templates outside). Tracks `wamid` for delivery status updates via webhook.
+Full multi-tenant WhatsApp Business API integration via Meta Cloud API with Embedded Signup OAuth flow. WhatsApp is fully integrated into the unified inbox alongside SMS, iMessage, Telegram, and Live Chat.
+- **OAuth Flow:** POST `/api/integrations/meta/whatsapp/start` generates nonce, GET `/api/integrations/meta/whatsapp/callback` exchanges code for token, captures `businessId`, `wabaId`, `phoneNumberId`, and automatically calls `POST /{WABA-ID}/subscribed_apps` to subscribe for webhooks. Hardcoded fallback redirect URI: `https://app.curbe.io/api/integrations/meta/whatsapp/callback`.
+- **Unified Inbox Integration:** WhatsApp conversations use `telnyxConversations` (channel="whatsapp") and `telnyxMessages` for unified inbox display. Frontend shows WhatsApp icon (SiWhatsapp) with emerald-500 color.
+- **Webhooks:** GET `/api/webhooks/meta/whatsapp` for hub.challenge verification, POST with HMAC X-Hub-Signature-256 validation using app secret. Multi-tenant routing by `phone_number_id` lookup. Inbound messages upsert to `telnyxConversations`.
+- **24-Hour Window Enforcement:** Free-form messages blocked outside 24h window with clear error directing users to template feature. Messages only saved to database after successful Meta API response.
+- **Messaging:** POST `/api/inbox/conversations/:id/messages` with WhatsApp channel routing. Tracks `wamid` for delivery status updates via webhook.
 - **Templates CRUD:** GET/POST/DELETE `/api/whatsapp/meta/templates` for managing message templates per WABA.
 - **Media:** POST `/api/whatsapp/meta/media/upload` (multipart with size limits), GET `/api/whatsapp/meta/media/:mediaId`, POST `/api/whatsapp/meta/send-media`.
-- **Database Tables:** `channelConnections` (with `businessId`, `wabaId`, `phoneNumberId`, encrypted access token), `waConversations`, `waMessages`, `waWebhookLogs`.
+- **Database Tables:** `channelConnections` (with `businessId`, `wabaId`, `phoneNumberId`, encrypted access token), `waWebhookLogs`. Conversations/messages in `telnyxConversations`/`telnyxMessages`.
 - **Security:** HMAC signature validation, multi-tenant isolation by companyId, conversation ownership verification on send endpoints.
 - **Webhook URL for Meta Dashboard:** `https://app.curbe.io/api/webhooks/meta/whatsapp`
 - **Verify Token:** Configured via `META_WEBHOOK_VERIFY_TOKEN` environment variable.
