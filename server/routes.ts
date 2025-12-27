@@ -31003,6 +31003,68 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       broadcastConversationUpdate(companyId);
       console.log("[Telnyx SMS Webhook] Broadcasted conversation update for company:", companyId);
       
+      // AI Autopilot Integration for SMS/MMS - Process message asynchronously
+      (async () => {
+        try {
+          const { AiAutopilotService } = await import("./services/ai-autopilot-service");
+          const autopilotService = new AiAutopilotService();
+          
+          const autopilotResult = await autopilotService.processIncomingMessage(
+            conversation.companyId,
+            conversation.id,
+            messageText.trim(),
+            "customer"
+          );
+          
+          if (autopilotResult.shouldRespond && autopilotResult.response && !autopilotResult.requiresApproval) {
+            // Send AI response via Telnyx SMS
+            const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
+            
+            const sendResult = await sendTelnyxMessage({
+              from: to, // our number (company phone)
+              to: from, // customer number
+              text: autopilotResult.response,
+              companyId,
+            });
+            
+            if (sendResult.success) {
+              // Save AI response as outbound message
+              await db.insert(telnyxMessages).values({
+                conversationId: conversation.id,
+                direction: "outbound",
+                messageType: "outgoing",
+                channel: "sms",
+                text: autopilotResult.response,
+                contentType: "text",
+                status: "sent",
+                telnyxMessageId: sendResult.messageId,
+                createdAt: new Date(),
+                sentAt: new Date(),
+              });
+              
+              // Update conversation with AI response
+              await db
+                .update(telnyxConversations)
+                .set({
+                  lastMessage: autopilotResult.response.substring(0, 200),
+                  lastMessageAt: new Date(),
+                  updatedAt: new Date(),
+                })
+                .where(eq(telnyxConversations.id, conversation.id));
+              
+              broadcastConversationUpdate(companyId);
+              console.log("[SMS AI] Autopilot responded to conversation:", conversation.id);
+            } else {
+              console.error("[SMS AI] Failed to send autopilot response:", sendResult.error);
+            }
+          } else if (autopilotResult.requiresApproval) {
+            console.log("[SMS AI] Response requires approval, waiting for agent:", autopilotResult.runId);
+          }
+        } catch (aiError: any) {
+          console.error("[SMS AI] Autopilot error:", aiError.message);
+        }
+      })();
+      
     } catch (error: any) {
       console.error("[Telnyx SMS Webhook] Error:", error);
     }
