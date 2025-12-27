@@ -2548,7 +2548,7 @@ export default function ChatWidgetPreviewPage() {
           >
           {chatLoading ? (
             /* Loading state during transition */
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: '680px' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
               <div className="px-4 py-3 text-white w-full" style={{ background: currentBackground }}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
@@ -2569,7 +2569,7 @@ export default function ChatWidgetPreviewPage() {
             </div>
           ) : viewingSolvedChat && solvedChatData ? (
             /* Solved Chat View - Textmagic style */
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '680px' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
               {/* Header - same style as Home (WidgetHeader) */}
               <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
                 {/* Back button + Logo */}
@@ -2909,7 +2909,7 @@ export default function ChatWidgetPreviewPage() {
             </div>
           ) : (chatFlowState === 'activeChat' || chatFlowState === 'postChatSurvey') ? (
             /* Active Live Chat View or Post-Chat Survey - Professional Design */
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '680px' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
               {/* Header - same style as Home (WidgetHeader) */}
               <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
                 {/* Back button + Logo */}
@@ -3522,7 +3522,7 @@ export default function ChatWidgetPreviewPage() {
               </div>
             </div>
           ) : (
-            <div className="relative" style={{ height: '680px' }}>
+            <div className="relative" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
               {/* State machine controlled rendering - only one view at a time */}
               {chatFlowState === 'preChatForm' ? (
                 /* Pre-chat form - controlled by state machine */
@@ -3720,7 +3720,7 @@ export default function ChatWidgetPreviewPage() {
                   }}
                 />
               ) : (
-                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: '680px' }}>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: 'min(600px, calc(100vh - 100px))', maxHeight: 'calc(100dvh - 80px)' }}>
                   <div className="text-center">
                     <div className="animate-spin h-8 w-8 border-4 border-slate-300 border-t-slate-600 rounded-full mx-auto mb-3"></div>
                     <p className="text-sm text-slate-500">Loading...</p>
