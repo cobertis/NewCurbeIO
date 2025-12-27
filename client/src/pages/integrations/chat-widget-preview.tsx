@@ -2945,23 +2945,30 @@ export default function ChatWidgetPreviewPage() {
                         alt={connectedAgent.fullName}
                         className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
                       />
-                    ) : (
-                      [
-                        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
-                        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-                        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face",
-                      ].map((avatar, i) => (
+                    ) : (widget as any).teamMembers && (widget as any).teamMembers.length > 0 ? (
+                      (widget as any).teamMembers.slice(0, 3).map((member: any, i: number) => (
                         <div 
                           key={i} 
-                          className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm"
+                          className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200"
+                          title={member.name}
                         >
-                          <img 
-                            src={avatar} 
-                            alt={`Team member ${i + 1}`}
-                            className="w-full h-full object-cover"
-                          />
+                          {member.avatarUrl ? (
+                            <img 
+                              src={member.avatarUrl} 
+                              alt={member.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs font-medium text-slate-600">
+                              {member.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                            </span>
+                          )}
                         </div>
                       ))
+                    ) : (
+                      <div className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200">
+                        <User className="w-5 h-5 text-slate-500" />
+                      </div>
                     )}
                   </div>
                   
@@ -3527,8 +3534,17 @@ export default function ChatWidgetPreviewPage() {
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">
                   {/* Header - same style as Home (WidgetHeader) */}
                   <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
-                    {/* Logo */}
-                    <div className="flex items-center">
+                    {/* Back button + Logo */}
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => { 
+                          resetChatSession();
+                        }}
+                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                        data-testid="back-from-prechat"
+                      >
+                        <ChevronLeft className="h-5 w-5 text-slate-500" />
+                      </button>
                       {widget.branding?.customLogo ? (
                         <img src={widget.branding.customLogo} alt="Logo" className="h-7 object-contain" />
                       ) : (
@@ -3541,22 +3557,31 @@ export default function ChatWidgetPreviewPage() {
                     {/* Agent photos + close button - same as WidgetHeader */}
                     <div className="flex items-center gap-3">
                       <div className="flex -space-x-2">
-                        {[
-                          "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
-                          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-                          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face",
-                        ].map((avatar, i) => (
-                          <div 
-                            key={i} 
-                            className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm"
-                          >
-                            <img 
-                              src={avatar} 
-                              alt={`Team member ${i + 1}`}
-                              className="w-full h-full object-cover"
-                            />
+                        {(widget as any).teamMembers && (widget as any).teamMembers.length > 0 ? (
+                          (widget as any).teamMembers.slice(0, 3).map((member: any, i: number) => (
+                            <div 
+                              key={i} 
+                              className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200"
+                              title={member.name}
+                            >
+                              {member.avatarUrl ? (
+                                <img 
+                                  src={member.avatarUrl} 
+                                  alt={member.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-medium text-slate-600">
+                                  {member.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                                </span>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm flex items-center justify-center bg-slate-200">
+                            <User className="w-5 h-5 text-slate-500" />
                           </div>
-                        ))}
+                        )}
                       </div>
                       <button
                         onClick={() => { 

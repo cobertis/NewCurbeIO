@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { Search, Home, MessageSquare, HelpCircle, Newspaper, ChevronRight, Send, ChevronLeft } from "lucide-react";
+import { Search, Home, MessageSquare, HelpCircle, Newspaper, ChevronRight, Send } from "lucide-react";
 import type { WidgetConfig } from "@shared/widget-config";
 import { WidgetHeader } from "./WidgetHeader";
 import { WidgetChannelList } from "./WidgetChannelList";
@@ -344,24 +344,18 @@ export function WidgetRenderer({
     >
       {/* Header - Always show logo and avatars */}
       <div className="p-4">
-        <WidgetHeader config={config} onClose={onClose} />
+        <WidgetHeader 
+          config={config} 
+          onClose={onClose} 
+          showBackButton={!!activeChannel && !!channelContent}
+          onBack={onBackFromChannel}
+        />
       </div>
 
       {/* Content */}
       <div className="px-5 flex-1 overflow-y-auto">
         {activeChannel && channelContent ? (
-          <>
-            {/* Back button inside content area */}
-            <button 
-              onClick={onBackFromChannel}
-              className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3 -ml-1"
-              data-testid="widget-back-button"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Back</span>
-            </button>
-            {channelContent}
-          </>
+          channelContent
         ) : renderContent()}
       </div>
 

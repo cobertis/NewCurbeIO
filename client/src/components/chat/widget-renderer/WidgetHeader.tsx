@@ -1,9 +1,11 @@
-import { ChevronDown, User } from "lucide-react";
+import { ChevronDown, ChevronLeft, User } from "lucide-react";
 import type { WidgetConfig } from "@shared/widget-config";
 
 interface WidgetHeaderProps {
   config: WidgetConfig;
   onClose?: () => void;
+  onBack?: () => void;
+  showBackButton?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -15,7 +17,7 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
+export function WidgetHeader({ config, onClose, onBack, showBackButton }: WidgetHeaderProps) {
   const teamMembers = config.teamMembers || [];
   const hasTeamMembers = teamMembers.length > 0;
 
@@ -24,7 +26,16 @@ export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
       className="flex items-center justify-between"
       data-testid="widget-header"
     >
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
+        {showBackButton && onBack && (
+          <button
+            onClick={onBack}
+            className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
+            data-testid="widget-back-button"
+          >
+            <ChevronLeft className="h-5 w-5 text-slate-500" />
+          </button>
+        )}
         {config.branding.customLogo ? (
           <img
             src={config.branding.customLogo}
