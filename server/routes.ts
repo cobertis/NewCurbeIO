@@ -26284,7 +26284,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         : null;
       
       if (existing) {
-        await db.delete(channelConnections)
+        await db.update(channelConnections)
           .set({
             wabaId,
             phoneNumberId,
@@ -26398,7 +26398,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     });
     
     if (existing) {
-      await db.delete(channelConnections)
+      await db.update(channelConnections)
         .set({
           wabaId,
           phoneNumberId,
@@ -26446,7 +26446,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     
     // Mark as revoked instead of deleting (preserves audit trail)
-    await db.delete(channelConnections)
+    await db.update(channelConnections)
       .set({
         status: "revoked",
         accessTokenEnc: null, // Clear the token
@@ -26475,7 +26475,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       return res.status(404).json({ error: "No WhatsApp connection found" });
     }
     
-    await db.delete(channelConnections)
+    await db.update(channelConnections)
       .set({
         status: "revoked",
         accessTokenEnc: null,
@@ -26647,7 +26647,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       };
       
       if (existing) {
-        await db.delete(channelConnections)
+        await db.update(channelConnections)
           .set(connectionData)
           .where(eq(channelConnections.id, existing.id));
       } else {
@@ -26704,7 +26704,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "No Instagram connection found" });
       }
       
-      await db.delete(channelConnections)
+      await db.update(channelConnections)
         .set({
           status: "revoked",
           accessTokenEnc: null,
@@ -26859,7 +26859,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       });
       
       if (existingConnection) {
-        await db.delete(channelConnections)
+        await db.update(channelConnections)
           .set({
             status: "active",
             fbPageId: pageId,
@@ -26932,7 +26932,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "No Facebook connection found" });
       }
       
-      await db.delete(channelConnections)
+      await db.update(channelConnections)
         .set({
           status: "revoked",
           accessTokenEnc: null,
@@ -27120,7 +27120,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       });
       
       if (existingConnection) {
-        await db.delete(channelConnections)
+        await db.update(channelConnections)
           .set({
             status: "active",
             tiktokOpenId: openId,
