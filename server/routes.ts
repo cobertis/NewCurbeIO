@@ -189,7 +189,7 @@ function detectStopKeyword(messageBody: string): boolean {
   return stopKeywords.some(keyword => normalizedBody === keyword || normalizedBody.startsWith(keyword + " "));
 }
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
-  // Serve static files from public folder (for widget.js)
+  // Serve static files from public folder
   app.use(express.static(path.join(process.cwd(), 'public')));
   
   // Initialize Stripe for type safety
