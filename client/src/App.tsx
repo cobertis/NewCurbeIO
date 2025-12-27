@@ -91,7 +91,6 @@ import PublicLandingPage from "@/pages/public-landing-page";
 import SmsMmsPage from "@/pages/sms-mms";
 import InboxPage from "@/pages/inbox";
 import EmailMarketingPage from "@/pages/email-marketing";
-import IntegrationsPage from "@/pages/integrations";
 import Leads from "@/pages/leads";
 import Tasks from "@/pages/tasks";
 import PhoneSystem from "@/pages/phone-system";
@@ -1800,21 +1799,6 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <TelegramPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      {/* Wildcard settings route - catches all other /settings/* paths */}
-      <Route path="/settings/:tab*">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <IntegrationsPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <IntegrationsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

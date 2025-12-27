@@ -1,0 +1,92 @@
+Tenemos Facebook Login for Business configuration id: 1586148692802125.
+
+1) Cambiar el endpoint /api/integrations/meta/whatsapp/start
+
+En vez de generar el login URL con scope=... (Facebook Login clásico), deben generar el URL usando config_id.
+
+Generar URL así:
+
+https://www.facebook.com/v21.0/dialog/oauth
+  ?client_id=<META_APP_ID>
+  &redirect_uri=<META_OAUTH_REDIRECT_URI>
+  &response_type=code
+  &state=<RANDOM_STATE>
+  &config_id=1586148692802125
+
+
+Reglas:
+
+redirect_uri debe ser EXACTAMENTE el mismo string que usan en el token exchange del callback.
+
+state se guarda en DB (o cache) con tenant_id, user_id, created_at, used_at para evitar doble uso.
+
+2) Backend env var
+
+Agregar:
+
+META_BUSINESS_LOGIN_CONFIG_ID=1586148692802125
+y usarla para construir el auth URL.
+
+3) Callback no cambia (casi)
+
+El callback sigue intercambiando code → token con:
+
+client_id
+
+client_secret
+
+redirect_uri (idéntico)
+
+code
+
+Pero deben loguear si falla:
+
+error.message
+
+error.code
+
+fbtrace_id
+
+4) Ajuste en Meta settings (solo si hace falta)
+
+En Meta → Facebook Login for Business → Settings:
+
+Confirmar que Valid OAuth Redirect URIs incluye:
+https://app.curbe.io/api/integrations/meta/whatsapp/callback
+
+5) Criterio de aceptación
+
+Probar con una cuenta externa que no esté en App Roles:
+
+Antes fallaba con “Feature Unavailable”
+
+Después, debe poder completar login y conectar WhatsApp.
+
+Extra (importante): deja de usar scope= si estás usando config_id
+
+No mezclen “Login clásico con scopes” con “Login for Business con config_id”.
+Si siguen mandando scope, podrían seguir teniendo comportamientos raros en usuarios externos.
+
+Si quieres el snippet exacto (Node/Express)
+
+Pídeles que implementen algo equivalente a:
+
+const configId = process.env.META_BUSINESS_LOGIN_CONFIG_ID; // 1586148692802125
+const clientId = process.env.META_APP_ID;
+const redirectUri = process.env.META_OAUTH_REDIRECT_URI; // fijo
+const state = crypto.randomUUID();
+
+await db.insertOAuthState({ state, tenantId, userId, usedAt: null });
+
+const url =
+  `https://www.facebook.com/v21.0/dialog/oauth` +
+  `?client_id=${encodeURIComponent(clientId)}` +
+  `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+  `&response_type=code` +
+  `&state=${encodeURIComponent(state)}` +
+  `&config_id=${encodeURIComponent(configId)}`;
+
+return res.json({ url });
+
+
+Brutalmente honesto: si Replit no hace este cambio y sigue con scope=whatsapp_..., vas a seguir en el infierno de “a mí me funciona, a clientes no”. El config_id es el interruptor para salir de eso.

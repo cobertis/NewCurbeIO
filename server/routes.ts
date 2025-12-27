@@ -26105,19 +26105,17 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
       });
       
-      // Build OAuth URL for Meta Embedded Signup
-      // Using response_type=code for server-side flow
+      // Build OAuth URL for Meta Facebook Login for Business
+      // Using config_id for external users (NOT scope-based login)
+      const configId = process.env.META_BUSINESS_LOGIN_CONFIG_ID || "1586148692802125";
+      
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
       authUrl.searchParams.set("client_id", appId);
       authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", META_WHATSAPP_SCOPES);
       authUrl.searchParams.set("state", nonce);
-      // Enable embedded signup extras
-      authUrl.searchParams.set("extras", JSON.stringify({
-        feature: "whatsapp_embedded_signup",
-        setup: { business: { name: "", email: "" } }
-      }));
+      authUrl.searchParams.set("config_id", configId);
+      // NOTE: Do NOT use scope= when using config_id (Facebook Login for Business)
       
       return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {

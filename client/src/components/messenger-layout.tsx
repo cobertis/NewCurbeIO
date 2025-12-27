@@ -53,7 +53,7 @@ export function MessengerLayout({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => setLocation("/settings/integrations")}
+            onClick={() => setLocation("/settings/channels")}
             data-testid="btn-messenger-settings"
           >
             <Settings className="h-4 w-4 text-muted-foreground" />
