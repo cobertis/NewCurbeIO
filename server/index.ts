@@ -83,9 +83,20 @@ app.use('/uploads', express.static('uploads'));
 // Widget embed script - served with correct content-type
 // This is loaded by external websites via: <script src="https://app.curbe.io/widget-script.js" data-code="WIDGET_ID" defer></script>
 app.get('/widget-script.js', (req, res) => {
+  // Determine API host based on environment
+  // In production, always use https://app.curbe.io
+  // In dev, use the request protocol (respecting x-forwarded-proto from Replit proxy)
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('host');
+  const apiHost = process.env.NODE_ENV === 'production' 
+    ? 'https://app.curbe.io' 
+    : `${protocol}://${host}`;
+  
   const scriptContent = `
 (function() {
   'use strict';
+  
+  var API_HOST = '${apiHost}';
   
   // Find the script tag to get the widget code
   var scripts = document.getElementsByTagName('script');
@@ -99,13 +110,13 @@ app.get('/widget-script.js', (req, res) => {
   }
   
   if (!currentScript) {
-    console.error('[CurbeWidget] Could not find widget script tag');
+    console.error('[Curbe Widget] Could not find widget script tag');
     return;
   }
   
-  var widgetCode = currentScript.getAttribute('data-code');
-  if (!widgetCode) {
-    console.error('[CurbeWidget] Missing data-code attribute');
+  var widgetId = currentScript.getAttribute('data-code');
+  if (!widgetId) {
+    console.error('[Curbe Widget] Missing data-code attribute');
     return;
   }
   
@@ -115,72 +126,172 @@ app.get('/widget-script.js', (req, res) => {
   }
   window.__curbeWidgetInitialized = true;
   
-  // Size constants
-  var BUTTON_SIZE = 80; // 56px button + padding
+  // Boot logging per spec
+  console.log('[Curbe Widget] boot', { widgetId: widgetId, origin: location.origin });
+  
+  // Size constants per spec
+  var BUTTON_SIZE = 80; // 56px button + 24px padding
   var PANEL_WIDTH = 420;
   var PANEL_HEIGHT = 650;
   
-  // Create iframe that contains everything (button + chat panel)
-  var iframe = document.createElement('iframe');
-  iframe.id = 'curbe-widget-iframe';
-  iframe.src = 'https://app.curbe.io/widget/' + widgetCode;
-  // Start with button-only size
-  iframe.style.cssText = 'position: fixed; bottom: 0; right: 0; width: ' + BUTTON_SIZE + 'px; height: ' + BUTTON_SIZE + 'px; border: none; z-index: 2147483647; background: transparent;';
-  iframe.allow = 'microphone; camera; geolocation';
-  iframe.setAttribute('allowtransparency', 'true');
-  document.body.appendChild(iframe);
+  // Track widget state
+  var isOpen = false;
+  var iframe = null;
+  var config = null;
   
-  // Listen for messages from widget to resize iframe
-  window.addEventListener('message', function(event) {
-    // Verify origin in production
-    if (event.data && event.data.type === 'curbe-widget-resize') {
-      if (event.data.open) {
-        // Expand for panel + button
-        var isMobile = window.innerWidth < 480;
-        if (isMobile) {
-          iframe.style.width = '100vw';
-          iframe.style.height = '100vh';
-          iframe.style.bottom = '0';
-          iframe.style.right = '0';
-        } else {
-          iframe.style.width = PANEL_WIDTH + 'px';
-          iframe.style.height = PANEL_HEIGHT + 'px';
-          iframe.style.maxWidth = '100vw';
-          iframe.style.maxHeight = '100vh';
-        }
+  // Create the fixed root container
+  function createRoot() {
+    var root = document.createElement('div');
+    root.id = 'curbe-widget-root';
+    root.style.cssText = 'position: fixed; right: 24px; bottom: 24px; z-index: 2147483647; background: transparent;';
+    document.body.appendChild(root);
+    return root;
+  }
+  
+  // Create launcher button
+  function createLauncher(root, buttonColor) {
+    var button = document.createElement('button');
+    button.id = 'curbe-widget-launcher';
+    button.style.cssText = 'width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s; background: ' + (buttonColor || '#2563eb') + ';';
+    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>';
+    button.onmouseover = function() { button.style.transform = 'scale(1.05)'; };
+    button.onmouseout = function() { button.style.transform = 'scale(1)'; };
+    button.onclick = togglePanel;
+    root.appendChild(button);
+    return button;
+  }
+  
+  // Toggle panel open/close
+  function togglePanel() {
+    isOpen = !isOpen;
+    
+    if (isOpen) {
+      openPanel();
+    } else {
+      closePanel();
+    }
+    
+    // Update launcher icon
+    var launcher = document.getElementById('curbe-widget-launcher');
+    if (launcher) {
+      if (isOpen) {
+        launcher.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
       } else {
-        // Shrink to button only
-        iframe.style.width = BUTTON_SIZE + 'px';
-        iframe.style.height = BUTTON_SIZE + 'px';
+        launcher.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>';
+      }
+    }
+  }
+  
+  // Open the panel (create iframe)
+  function openPanel() {
+    var root = document.getElementById('curbe-widget-root');
+    if (!root) return;
+    
+    var isMobile = window.innerWidth < 480;
+    
+    // Create iframe for panel content
+    iframe = document.createElement('iframe');
+    iframe.id = 'curbe-widget-panel';
+    iframe.src = API_HOST + '/widget/' + widgetId + '?mode=panel';
+    iframe.allow = 'microphone; camera; geolocation';
+    iframe.setAttribute('allowtransparency', 'true');
+    
+    if (isMobile) {
+      // Mobile: fullscreen overlay
+      iframe.style.cssText = 'position: fixed; inset: 0; width: 100vw; height: 100vh; border: none; z-index: 2147483646; background: white; border-radius: 0;';
+    } else {
+      // Desktop: positioned panel
+      iframe.style.cssText = 'position: absolute; right: 0; bottom: 72px; width: 380px; max-width: calc(100vw - 48px); height: 560px; max-height: calc(100vh - 140px); border: none; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); background: white; z-index: 2147483646;';
+    }
+    
+    root.appendChild(iframe);
+  }
+  
+  // Close the panel (remove iframe)
+  function closePanel() {
+    if (iframe && iframe.parentNode) {
+      iframe.parentNode.removeChild(iframe);
+      iframe = null;
+    }
+  }
+  
+  // Listen for messages from panel iframe
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'curbe-widget-close') {
+      isOpen = false;
+      closePanel();
+      var launcher = document.getElementById('curbe-widget-launcher');
+      if (launcher) {
+        launcher.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>';
       }
     }
   });
   
-  console.log('[CurbeWidget] Initialized with code:', widgetCode);
+  // Capture render errors
+  window.addEventListener('error', function(event) {
+    if (event.target && (event.target.id === 'curbe-widget-panel' || event.target.id === 'curbe-widget-launcher')) {
+      console.error('[Curbe Widget] render error', { message: event.message });
+    }
+  });
+  
+  // Fetch widget config and bootstrap
+  fetch(API_HOST + '/api/public/chat-widget/' + widgetId)
+    .then(function(res) {
+      if (!res.ok) {
+        throw new Error('HTTP ' + res.status);
+      }
+      return res.json();
+    })
+    .then(function(data) {
+      config = data;
+      var shouldDisplay = data.shouldDisplay !== false;
+      
+      console.log('[Curbe Widget] config loaded', { shouldDisplay: shouldDisplay });
+      
+      if (!shouldDisplay) {
+        // Widget should be hidden - do nothing, no UI
+        console.log('[Curbe Widget] hidden per config');
+        return;
+      }
+      
+      // Create root and launcher
+      var root = createRoot();
+      var buttonColor = data.widget && data.widget.branding && data.widget.branding.primaryColor 
+        ? data.widget.branding.primaryColor 
+        : (data.widget && data.widget.branding && data.widget.branding.gradientStart 
+          ? data.widget.branding.gradientStart 
+          : '#2563eb');
+      createLauncher(root, buttonColor);
+    })
+    .catch(function(error) {
+      console.error('[Curbe Widget] fetch failed', { status: error.message, error: error });
+      // On fetch failure, show nothing (never a blank panel)
+    });
 })();
 `.trim();
 
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Cache-Control', 'public, max-age=300');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.send(scriptContent);
 });
 
-// Widget embed page - serves dedicated HTML that only renders the widget
-// This is what gets loaded inside the iframe on external sites
+// Widget embed page - serves dedicated HTML that only renders the widget panel
+// This is what gets loaded inside the iframe when user clicks the launcher
 app.get('/widget/:widgetId', (req, res, next) => {
   const { widgetId } = req.params;
+  const mode = req.query.mode as string || 'panel';
   
   // Skip if this looks like an API call or asset request
   if (widgetId.includes('.')) {
     return next();
   }
   
-  // Base styles for both dev and production
-  const baseStyles = `
+  // Styles for panel mode - fullscreen within iframe, white background
+  const panelStyles = `
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; background: transparent !important; overflow: hidden; }
-    #curbe-widget-root { position: fixed; inset: auto 24px 24px auto; z-index: 2147483647; background: transparent; width: auto; height: auto; }
+    html, body { width: 100%; height: 100%; background: #fff !important; overflow: hidden; }
+    #curbe-widget-root { width: 100%; height: 100%; background: #fff; }
   `;
   
   // In development, serve with Vite dev server scripts
@@ -191,7 +302,7 @@ app.get('/widget/:widgetId', (req, res, next) => {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Curbe Chat Widget</title>
-    <style>${baseStyles}</style>
+    <style>${panelStyles}</style>
     <script type="module" src="/@vite/client"></script>
     <script type="module">
       import RefreshRuntime from "/@react-refresh"
@@ -203,7 +314,7 @@ app.get('/widget/:widgetId', (req, res, next) => {
   </head>
   <body>
     <div id="curbe-widget-root"></div>
-    <script>window.__CURBE_WIDGET_ID = "${widgetId}";</script>
+    <script>window.__CURBE_WIDGET_ID = "${widgetId}"; window.__CURBE_WIDGET_MODE = "${mode}";</script>
     <script type="module" src="/src/embed/main.tsx"></script>
   </body>
 </html>`;
@@ -221,13 +332,13 @@ app.get('/widget/:widgetId', (req, res, next) => {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Curbe Chat Widget</title>
-    <style>${baseStyles}</style>
+    <style>${panelStyles}</style>
     <script type="module" crossorigin src="/assets/embed.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/embed.css">
   </head>
   <body>
     <div id="curbe-widget-root"></div>
-    <script>window.__CURBE_WIDGET_ID = "${widgetId}";</script>
+    <script>window.__CURBE_WIDGET_ID = "${widgetId}"; window.__CURBE_WIDGET_MODE = "${mode}";</script>
   </body>
 </html>`;
   

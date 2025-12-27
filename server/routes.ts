@@ -28687,6 +28687,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+
+  // OPTIONS handler for CORS preflight on chat widget
+  app.options("/api/public/chat-widget/:id", (req: Request, res: Response) => {
+    res.set({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
+    res.sendStatus(200);
+  });
   // ==================== LIVE CHAT PUBLIC API ====================
   
 

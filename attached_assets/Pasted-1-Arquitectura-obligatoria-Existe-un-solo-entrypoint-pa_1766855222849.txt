@@ -1,0 +1,88 @@
+1) Arquitectura obligatoria
+
+Existe un solo entrypoint para embed:
+
+widget-script.js → monta WidgetEmbed únicamente.
+La test page es otra ruta/build:
+
+/widget-test o lo que sea → monta WidgetTestPage y jamás se bundlea dentro de widget-script.js.
+
+2) El snippet debe ser estúpido (por diseño)
+
+El snippet público no hace fetch, no decide país, no pasa config gigante.
+Solo:
+
+<script defer src="https://app.curbe.io/widget-script.js" data-code="WIDGET_ID"></script>
+
+
+Todo lo demás vive dentro de widget-script.js.
+
+3) Boot sequence del widget (paso a paso)
+
+Al ejecutarse widget-script.js:
+
+Leer widgetId = script.dataset.code
+
+Crear div#curbe-widget-root con:
+
+position: fixed; right: 24px; bottom: 24px; z-index: 2147483647; background: transparent;
+
+Hacer fetch GET /api/public/chat-widget/:widgetId
+
+Si shouldDisplay=false → desmontar root y terminar (sin UI, sin rectángulo).
+
+Si ok → renderizar launcher (botón circular).
+
+Solo cuando el usuario hace click → abrir panel.
+
+Si el fetch falla:
+
+Mostrar launcher mínimo con estado “offline” (o no mostrar nada), pero jamás un panel blanco vacío.
+
+4) Reglas de UI (definición exacta)
+
+Estado inicial: solo botón flotante 56x56
+
+Panel al abrir:
+
+width: 380px (max: calc(100vw - 48px))
+
+height: 560px (max: calc(100vh - 140px))
+
+borde redondo + sombra
+
+Móvil: fullscreen + overlay.
+
+Prohibido renderizar “Welcome / test page / contenido de landing”.
+
+5) Diagnóstico obligatorio (logs)
+
+console.log("[Curbe Widget] boot", { widgetId, origin })
+
+console.log("[Curbe Widget] config loaded", { shouldDisplay })
+
+console.error("[Curbe Widget] fetch failed", { status, error })
+
+Capturar errores de render: window.addEventListener("error"... )
+
+6) Pruebas automatizadas (para que no rompan de nuevo)
+
+Añadir Playwright/Cypress con 2 tests:
+
+Test A — Embed
+
+Abrir página simple con snippet.
+
+Afirmar que NO existe texto “Welcome to…”.
+
+Afirmar que existe botón launcher.
+
+Click → panel visible.
+
+Test B — Hidden
+
+Mock API para shouldDisplay=false
+
+Afirmar que no existe root ni launcher.
+
+Si estos tests no pasan, no se deploya.

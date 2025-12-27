@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { MessageCircle, X, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { WidgetRenderer } from "@/components/chat/widget-renderer";
 import { mapChatWidgetToConfig } from "@shared/widget-config";
 import type { ChatWidget } from "@shared/schema";
+
+declare global {
+  interface Window {
+    __CURBE_WIDGET_MODE?: string;
+  }
+}
 
 interface WidgetResponse {
   widget: ChatWidget;
@@ -21,33 +27,17 @@ interface WidgetEmbedRootProps {
   widgetId: string;
 }
 
+/**
+ * WidgetEmbedRoot - Panel mode only
+ * This component is loaded inside an iframe when the user clicks the launcher button.
+ * It renders the widget content directly without a launcher button.
+ * The launcher is handled by widget-script.js on the parent page.
+ */
 export function WidgetEmbedRoot({ widgetId }: WidgetEmbedRootProps) {
   const [widgetData, setWidgetData] = useState<WidgetResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"home" | "messages" | "help" | "news">("home");
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Check if mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 480);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // Notify parent frame about open/close state to resize iframe
-  useEffect(() => {
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage(
-        { type: "curbe-widget-resize", open: isOpen },
-        "*"
-      );
-    }
-  }, [isOpen]);
 
   // Fetch widget data
   useEffect(() => {
@@ -68,8 +58,11 @@ export function WidgetEmbedRoot({ widgetId }: WidgetEmbedRootProps) {
       });
   }, [widgetId]);
 
+  // Handle close - notify parent frame to close the panel
   const handleClose = useCallback(() => {
-    setIsOpen(false);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: "curbe-widget-close" }, "*");
+    }
   }, []);
 
   const handleChannelClick = useCallback((channel: string) => {
@@ -78,97 +71,33 @@ export function WidgetEmbedRoot({ widgetId }: WidgetEmbedRootProps) {
 
   if (loading) {
     return (
-      <button
-        className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg"
-        style={{ background: "#2563eb" }}
-        disabled
-      >
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </button>
+      <div className="w-full h-full flex items-center justify-center bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
     );
   }
 
   if (error || !widgetData) {
-    return null;
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-white text-gray-500">
+        <p>Unable to load chat</p>
+      </div>
+    );
   }
 
   const config = mapChatWidgetToConfig(widgetData.widget);
-  const branding = widgetData.widget.branding as {
-    primaryColor?: string;
-    gradientStart?: string;
-    gradientEnd?: string;
-  } | null;
-  const buttonColor = branding?.primaryColor || branding?.gradientStart || "#2563eb";
-  const buttonGradient =
-    branding?.gradientStart && branding?.gradientEnd
-      ? `linear-gradient(135deg, ${branding.gradientStart}, ${branding.gradientEnd})`
-      : buttonColor;
 
-  // Panel styles based on mobile/desktop
-  const panelStyles = isMobile
-    ? {
-        position: "fixed" as const,
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        borderRadius: 0,
-        zIndex: 2147483647,
-      }
-    : {
-        position: "absolute" as const,
-        right: 0,
-        bottom: "72px",
-        width: "380px",
-        maxWidth: "calc(100vw - 48px)",
-        height: "560px",
-        maxHeight: "calc(100vh - 140px)",
-        borderRadius: "16px",
-        zIndex: 2147483647,
-      };
-
+  // Panel mode - render content directly, full size within iframe
   return (
-    <>
-      {/* Mobile overlay */}
-      {isOpen && isMobile && (
-        <div
-          className="fixed inset-0 bg-black/50"
-          style={{ zIndex: 2147483646 }}
-          onClick={handleClose}
-        />
-      )}
-
-      {/* Chat Panel */}
-      {isOpen && (
-        <div
-          className="bg-white shadow-2xl overflow-hidden flex flex-col"
-          style={panelStyles}
-        >
-          <WidgetRenderer
-            config={config}
-            mode="embed"
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            onClose={handleClose}
-            onChannelClick={handleChannelClick}
-          />
-        </div>
-      )}
-
-      {/* Launcher Button - hidden when panel is open on mobile */}
-      {!(isOpen && isMobile) && (
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg transition-transform hover:scale-105"
-          style={{ background: buttonGradient }}
-          data-testid="button-widget-launcher"
-        >
-          {isOpen ? (
-            <X className="h-6 w-6" />
-          ) : (
-            <MessageCircle className="h-6 w-6" />
-          )}
-        </button>
-      )}
-    </>
+    <div className="w-full h-full bg-white overflow-hidden flex flex-col">
+      <WidgetRenderer
+        config={config}
+        mode="embed"
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onClose={handleClose}
+        onChannelClick={handleChannelClick}
+      />
+    </div>
   );
 }
