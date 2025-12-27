@@ -2297,9 +2297,9 @@ export default function InboxPage() {
                              selectedConversation.visitorCountry === "United Kingdom" ? "🇬🇧 " : ""}
                             {selectedConversation.visitorCity || selectedConversation.visitorState || selectedConversation.visitorCountry ? (
                               <>
-                                {selectedConversation.visitorCity && `${selectedConversation.visitorCity}, `}
-                                {selectedConversation.visitorState && `${selectedConversation.visitorState}, `}
-                                {selectedConversation.visitorCountry || ""}
+                                {selectedConversation.visitorCity && `${selectedConversation.visitorCity}`}
+                                {selectedConversation.visitorCity && selectedConversation.visitorState && ", "}
+                                {selectedConversation.visitorState || ""}
                               </>
                             ) : (
                               "Unknown"
