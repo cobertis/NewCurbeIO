@@ -28376,7 +28376,23 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "Widget not found" });
       }
       
-      return res.json({ widget });
+      // Get team members (agents) for the company - up to 3 with avatars
+      const teamMembersRaw = await db
+        .select({
+          firstName: users.firstName,
+          lastName: users.lastName,
+          avatar: users.avatar,
+        })
+        .from(users)
+        .where(eq(users.companyId, user.companyId))
+        .limit(3);
+      
+      const teamMembers = teamMembersRaw.map(u => ({
+        name: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Agent",
+        avatarUrl: u.avatar || null,
+      }));
+      
+      return res.json({ widget: { ...widget, teamMembers } });
     } catch (error: any) {
       console.error("[Chat Widget] Get error:", error);
       return res.status(500).json({ error: "Failed to get widget" });
