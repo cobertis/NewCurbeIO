@@ -103,3 +103,34 @@ Implements per-tenant BYO (Bring Your Own) domain email sending via AWS SES. Key
 - **Security:** Bcrypt.
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
+## Embeddable Chat Widget
+
+The chat widget can be embedded on any external website using a simple script tag.
+
+### Integration (Client-Side)
+
+Customers can embed the widget by adding this single line to their website:
+
+```html
+<script defer src="https://app.curbe.io/widget.js" data-widget="WIDGET_ID"></script>
+```
+
+### Architecture
+
+- **Loader Script** (`/widget.js`): Injects a wrapper div + iframe, handles open/close states via postMessage, exposes `window.CurbeWidget[widgetId]` API
+- **Widget Frame** (`/widget-frame/:id`): Public page that renders only the widget UI (no dashboard layout)
+- **Config Endpoint** (`/api/public/widgets/:id/config`): Returns minimal config for the loader (position, launcherSize, panelWidth, panelHeight, primaryColor)
+
+### PostMessage Contract
+
+- Parent listens for: `curbe-widget-open`, `curbe-widget-close`, `curbe-widget-ready`
+- Iframe listens for: `curbe-widget-toggle`, `curbe-widget-open-command`, `curbe-widget-close-command`
+
+### API
+
+The loader exposes a control API:
+```javascript
+window.CurbeWidget[widgetId].open();   // Open the widget
+window.CurbeWidget[widgetId].close();  // Close the widget
+window.CurbeWidget[widgetId].toggle(); // Toggle open/close
+```

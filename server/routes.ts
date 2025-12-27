@@ -28468,11 +28468,15 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ shouldDisplay: false, error: "Widget not found" });
       }
       
+      // Map buttonSize string to numeric pixels
+      const sizeMap: Record<string, number> = { small: 48, medium: 56, large: 64 };
+      const launcherSize = sizeMap[widget.buttonSize as string] || 56;
+      
       return res.json({
         shouldDisplay: true,
         settings: {
           position: widget.position || "br",
-          launcherSize: widget.buttonSize || 56,
+          launcherSize,
           panelWidth: 380,
           panelHeight: 560,
           primaryColor: widget.primaryColor || "#111"
