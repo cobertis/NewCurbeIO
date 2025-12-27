@@ -77,21 +77,16 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
         for (const msg of value.messages) {
           const dedupeKey = `msg:${msg.id}`;
           try {
-            await db.insert(waWebhookDedupe).values({
-              companyId,
-              dedupeKey,
-              eventType: "inbound_message",
-            }).onConflictDoNothing();
-
-            const inserted = await db.query.waWebhookDedupe.findFirst({
-              where: and(
-                eq(waWebhookDedupe.companyId, companyId),
-                eq(waWebhookDedupe.dedupeKey, dedupeKey),
-                eq(waWebhookDedupe.eventType, "inbound_message")
-              ),
-            });
-
-            if (!inserted) {
+            // Use INSERT with RETURNING to detect if we actually inserted (vs conflict)
+            const result = await db.execute(sql`
+              INSERT INTO wa_webhook_dedupe (company_id, dedupe_key, event_type)
+              VALUES (${companyId}, ${dedupeKey}, 'inbound_message')
+              ON CONFLICT (company_id, dedupe_key, event_type) DO NOTHING
+              RETURNING id
+            `);
+            
+            // If rowCount is 0, this was a duplicate - skip processing
+            if (!result.rows || result.rows.length === 0) {
               console.log(`[WhatsApp Webhook Worker] Duplicate message skipped: ${msg.id}`);
               continue;
             }
@@ -189,12 +184,21 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
         for (const status of value.statuses) {
           const dedupeKey = `status:${status.id}:${status.status}`;
           try {
-            await db.insert(waWebhookDedupe).values({
-              companyId,
-              dedupeKey,
-              eventType: "status_update",
-            }).onConflictDoNothing();
+            // Use INSERT with RETURNING to detect if we actually inserted (vs conflict)
+            const result = await db.execute(sql`
+              INSERT INTO wa_webhook_dedupe (company_id, dedupe_key, event_type)
+              VALUES (${companyId}, ${dedupeKey}, 'status_update')
+              ON CONFLICT (company_id, dedupe_key, event_type) DO NOTHING
+              RETURNING id
+            `);
+            
+            // If rowCount is 0, this was a duplicate - skip processing
+            if (!result.rows || result.rows.length === 0) {
+              console.log(`[WhatsApp Webhook Worker] Duplicate status update skipped: ${status.id}:${status.status}`);
+              continue;
+            }
           } catch {
+            // On error, process anyway (fail open for status updates)
           }
 
           const newStatus = status.status;
@@ -234,51 +238,58 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
 
 async function pollWebhookEvents(): Promise<void> {
   try {
-    const events = await db.execute<typeof waWebhookEvents.$inferSelect>(sql`
-      SELECT * FROM wa_webhook_events
-      WHERE status = 'pending'
-      ORDER BY received_at ASC
-      LIMIT 10
-      FOR UPDATE SKIP LOCKED
-    `);
+    // Use transaction to hold the lock until we've claimed the job
+    await db.transaction(async (tx) => {
+      // Select and lock pending events
+      const events = await tx.execute<typeof waWebhookEvents.$inferSelect>(sql`
+        SELECT * FROM wa_webhook_events
+        WHERE status = 'pending'
+        ORDER BY received_at ASC
+        LIMIT 10
+        FOR UPDATE SKIP LOCKED
+      `);
 
-    if (!events.rows || events.rows.length === 0) {
-      return;
-    }
-
-    for (const event of events.rows) {
-      const eventId = event.id;
-      
-      try {
-        await db.update(waWebhookEvents)
-          .set({
-            status: "processing",
-            attempt: sql`${waWebhookEvents.attempt} + 1`,
-          })
-          .where(eq(waWebhookEvents.id, eventId));
-
-        await processWebhookEvent(event);
-
-        await db.update(waWebhookEvents)
-          .set({
-            status: "done",
-            processedAt: new Date(),
-          })
-          .where(eq(waWebhookEvents.id, eventId));
-
-        console.log(`[WhatsApp Webhook Worker] Processed event: ${eventId}`);
-      } catch (error: any) {
-        console.error(`[WhatsApp Webhook Worker] Error processing event ${eventId}:`, error.message);
-        
-        await db.update(waWebhookEvents)
-          .set({
-            status: "failed",
-            lastError: error.message || "Unknown error",
-            processedAt: new Date(),
-          })
-          .where(eq(waWebhookEvents.id, eventId));
+      if (!events.rows || events.rows.length === 0) {
+        return;
       }
-    }
+
+      // Mark all selected events as processing within the transaction
+      for (const event of events.rows) {
+        await tx.execute(sql`
+          UPDATE wa_webhook_events
+          SET status = 'processing', attempt = attempt + 1
+          WHERE id = ${event.id}
+        `);
+      }
+
+      // Process events outside the transaction (after claiming them)
+      for (const event of events.rows) {
+        const eventId = event.id;
+        
+        try {
+          await processWebhookEvent(event);
+
+          await db.update(waWebhookEvents)
+            .set({
+              status: "done",
+              processedAt: new Date(),
+            })
+            .where(eq(waWebhookEvents.id, eventId));
+
+          console.log(`[WhatsApp Webhook Worker] Processed event: ${eventId}`);
+        } catch (error: any) {
+          console.error(`[WhatsApp Webhook Worker] Error processing event ${eventId}:`, error.message);
+          
+          await db.update(waWebhookEvents)
+            .set({
+              status: "failed",
+              lastError: error.message || "Unknown error",
+              processedAt: new Date(),
+            })
+            .where(eq(waWebhookEvents.id, eventId));
+        }
+      }
+    });
   } catch (error: any) {
     console.error("[WhatsApp Webhook Worker] Poll error:", error.message);
   }
@@ -403,41 +414,54 @@ async function sendWhatsAppMessage(job: typeof waSendOutbox.$inferSelect): Promi
 
 async function pollSendOutbox(): Promise<void> {
   try {
-    const jobs = await db.execute<typeof waSendOutbox.$inferSelect>(sql`
-      SELECT * FROM wa_send_outbox
-      WHERE status = 'pending' AND next_run_at <= NOW()
-      ORDER BY next_run_at ASC
-      LIMIT 10
-      FOR UPDATE SKIP LOCKED
-    `);
-
-    if (!jobs.rows || jobs.rows.length === 0) {
-      return;
-    }
-
-    for (const job of jobs.rows) {
-      const jobId = job.id;
-      const companyId = job.companyId;
-
-      const runningCount = await db.execute<{ count: string }>(sql`
-        SELECT COUNT(*) as count FROM wa_send_outbox
-        WHERE company_id = ${companyId} AND status = 'running'
+    // Track which jobs we claimed in the transaction
+    const claimedJobs: typeof waSendOutbox.$inferSelect[] = [];
+    
+    // Use transaction to hold the lock until we've claimed the jobs
+    await db.transaction(async (tx) => {
+      const jobs = await tx.execute<typeof waSendOutbox.$inferSelect>(sql`
+        SELECT * FROM wa_send_outbox
+        WHERE status = 'pending' AND next_run_at <= NOW()
+        ORDER BY next_run_at ASC
+        LIMIT 10
+        FOR UPDATE SKIP LOCKED
       `);
 
-      const currentRunning = parseInt(runningCount.rows[0]?.count || "0", 10);
-      if (currentRunning >= MAX_CONCURRENCY_PER_TENANT) {
-        console.log(`[WhatsApp Send Worker] Tenant ${companyId} at max concurrency, skipping job ${jobId}`);
-        continue;
+      if (!jobs.rows || jobs.rows.length === 0) {
+        return;
       }
 
-      await db.update(waSendOutbox)
-        .set({
-          status: "running",
-          attempts: sql`${waSendOutbox.attempts} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(eq(waSendOutbox.id, jobId));
+      for (const job of jobs.rows) {
+        const jobId = job.id;
+        const companyId = job.companyId;
 
+        // Check tenant concurrency within the transaction
+        const runningCount = await tx.execute<{ count: string }>(sql`
+          SELECT COUNT(*) as count FROM wa_send_outbox
+          WHERE company_id = ${companyId} AND status = 'running'
+        `);
+
+        const currentRunning = parseInt(runningCount.rows[0]?.count || "0", 10);
+        if (currentRunning >= MAX_CONCURRENCY_PER_TENANT) {
+          console.log(`[WhatsApp Send Worker] Tenant ${companyId} at max concurrency, skipping job ${jobId}`);
+          continue;
+        }
+
+        // Claim the job by marking as running within the transaction
+        await tx.execute(sql`
+          UPDATE wa_send_outbox
+          SET status = 'running', attempts = attempts + 1, updated_at = NOW()
+          WHERE id = ${jobId}
+        `);
+        
+        claimedJobs.push(job);
+      }
+    });
+
+    // Process claimed jobs outside the transaction
+    for (const job of claimedJobs) {
+      const jobId = job.id;
+      
       try {
         await sendWhatsAppMessage(job);
 
