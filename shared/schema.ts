@@ -222,6 +222,7 @@ export const users = pgTable("users", {
   
   // Onboarding
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false), // Whether user has completed onboarding
+  skippedOnboardingSteps: text("skipped_onboarding_steps").array().default([]), // Steps user chose to skip/mark as complete
   
   // Timestamps
   createdAt: timestamp("created_at").notNull().defaultNow(),

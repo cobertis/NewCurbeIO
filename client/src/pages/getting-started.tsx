@@ -33,7 +33,8 @@ import {
   Globe,
   Headphones,
   Building2,
-  ArrowRight
+  ArrowRight,
+  SkipForward
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
@@ -55,7 +56,9 @@ interface OnboardingProgress {
   phoneSetup: boolean;
   emailSetup: boolean;
   messagingSetup: boolean;
+  otherCompleted?: boolean;
   allComplete: boolean;
+  skippedOnboardingSteps?: string[];
 }
 
 export default function GettingStarted() {
@@ -139,6 +142,22 @@ export default function GettingStarted() {
     },
   });
 
+  const skipStepMutation = useMutation({
+    mutationFn: async ({ step, skip }: { step: string; skip: boolean }) => {
+      return await apiRequest("POST", "/api/onboarding/skip-step", { step, skip });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding/progress"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update step status",
+        variant: "destructive",
+      });
+    },
+  });
+
   const user = sessionData?.user;
   const progress = progressData || {
     profileCompleted: !!(user?.firstName && user?.lastName && user?.phone),
@@ -146,7 +165,19 @@ export default function GettingStarted() {
     phoneSetup: false,
     emailSetup: false,
     messagingSetup: false,
+    otherCompleted: false,
     allComplete: false,
+    skippedOnboardingSteps: [],
+  };
+
+  const skippedSteps = progress.skippedOnboardingSteps || [];
+
+  const isStepSkipped = (step: string) => skippedSteps.includes(step);
+
+  const handleSkipStep = (step: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const isCurrentlySkipped = isStepSkipped(step);
+    skipStepMutation.mutate({ step, skip: !isCurrentlySkipped });
   };
 
   // Auto-open the next incomplete step
@@ -192,10 +223,29 @@ export default function GettingStarted() {
                   {progress.profileCompleted && (
                     <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
                       <Check className="w-3 h-3 mr-1" />
-                      Completed
+                      {isStepSkipped('profile') ? 'Skipped' : 'Completed'}
                     </Badge>
                   )}
                 </div>
+                {!progress.profileCompleted && (
+                  <button
+                    onClick={(e) => handleSkipStep('profile', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1"
+                    data-testid="button-skip-profile"
+                  >
+                    <SkipForward className="w-3 h-3" />
+                    Mark complete
+                  </button>
+                )}
+                {progress.profileCompleted && isStepSkipped('profile') && (
+                  <button
+                    onClick={(e) => handleSkipStep('profile', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    data-testid="button-unskip-profile"
+                  >
+                    Undo
+                  </button>
+                )}
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
@@ -231,10 +281,29 @@ export default function GettingStarted() {
                   {progress.planSelected && (
                     <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
                       <Check className="w-3 h-3 mr-1" />
-                      Completed
+                      {isStepSkipped('plan') ? 'Skipped' : 'Completed'}
                     </Badge>
                   )}
                 </div>
+                {!progress.planSelected && (
+                  <button
+                    onClick={(e) => handleSkipStep('plan', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1"
+                    data-testid="button-skip-plan"
+                  >
+                    <SkipForward className="w-3 h-3" />
+                    Mark complete
+                  </button>
+                )}
+                {progress.planSelected && isStepSkipped('plan') && (
+                  <button
+                    onClick={(e) => handleSkipStep('plan', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    data-testid="button-unskip-plan"
+                  >
+                    Undo
+                  </button>
+                )}
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
@@ -309,10 +378,29 @@ export default function GettingStarted() {
                   {progress.messagingSetup && (
                     <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
                       <Check className="w-3 h-3 mr-1" />
-                      Completed
+                      {isStepSkipped('sms') ? 'Skipped' : 'Completed'}
                     </Badge>
                   )}
                 </div>
+                {!progress.messagingSetup && (
+                  <button
+                    onClick={(e) => handleSkipStep('sms', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1"
+                    data-testid="button-skip-sms"
+                  >
+                    <SkipForward className="w-3 h-3" />
+                    Mark complete
+                  </button>
+                )}
+                {progress.messagingSetup && isStepSkipped('sms') && (
+                  <button
+                    onClick={(e) => handleSkipStep('sms', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    data-testid="button-unskip-sms"
+                  >
+                    Undo
+                  </button>
+                )}
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
@@ -464,10 +552,29 @@ export default function GettingStarted() {
                   {progress.emailSetup && (
                     <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
                       <Check className="w-3 h-3 mr-1" />
-                      Completed
+                      {isStepSkipped('email') ? 'Skipped' : 'Completed'}
                     </Badge>
                   )}
                 </div>
+                {!progress.emailSetup && (
+                  <button
+                    onClick={(e) => handleSkipStep('email', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1"
+                    data-testid="button-skip-email"
+                  >
+                    <SkipForward className="w-3 h-3" />
+                    Mark complete
+                  </button>
+                )}
+                {progress.emailSetup && isStepSkipped('email') && (
+                  <button
+                    onClick={(e) => handleSkipStep('email', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    data-testid="button-unskip-email"
+                  >
+                    Undo
+                  </button>
+                )}
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
@@ -500,7 +607,32 @@ export default function GettingStarted() {
                     <MessageSquare className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                   </div>
                   <span className="font-medium text-gray-900 dark:text-gray-100">Other channels</span>
+                  {progress.otherCompleted && (
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
+                      <Check className="w-3 h-3 mr-1" />
+                      {isStepSkipped('other') ? 'Skipped' : 'Completed'}
+                    </Badge>
+                  )}
                 </div>
+                {!progress.otherCompleted && (
+                  <button
+                    onClick={(e) => handleSkipStep('other', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1"
+                    data-testid="button-skip-other"
+                  >
+                    <SkipForward className="w-3 h-3" />
+                    Mark complete
+                  </button>
+                )}
+                {progress.otherCompleted && isStepSkipped('other') && (
+                  <button
+                    onClick={(e) => handleSkipStep('other', e)}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    data-testid="button-unskip-other"
+                  >
+                    Undo
+                  </button>
+                )}
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">

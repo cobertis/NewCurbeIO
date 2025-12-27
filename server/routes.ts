@@ -3557,20 +3557,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       },
     });
   });
-
   // ==================== ONBOARDING PROGRESS ====================
   app.get("/api/onboarding/progress", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
       
-      // Check profile completion (firstName, lastName, phone)
-      const profileCompleted = !!(user.firstName && user.lastName && user.phone);
+      // Get skipped onboarding steps from user record
+      const skippedSteps = (user.skippedOnboardingSteps as string[]) || [];
+      
+      // Check profile completion (firstName, lastName, phone) OR skipped
+      const profileNaturallyCompleted = !!(user.firstName && user.lastName && user.phone);
+      const profileCompleted = profileNaturallyCompleted || skippedSteps.includes('profile');
       
       // Check if company has phone setup
-      let phoneSetup = false;
-      let emailSetup = false;
-      let messagingSetup = false;
-      let planSelected = false;
+      let phoneSetupNatural = false;
+      let emailSetupNatural = false;
+      let messagingSetupNatural = false;
+      let planSelectedNatural = false;
       
       if (user.companyId) {
         const company = await storage.getCompany(user.companyId);
@@ -3590,34 +3593,41 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .limit(1);
         const hasCompliancePhone = activeApp.length > 0;
         
-        phoneSetup = hasCompanyPhone || hasSipEnabled || hasCompliancePhone;
+        phoneSetupNatural = hasCompanyPhone || hasSipEnabled || hasCompliancePhone;
         
         // Check company email settings
         const settings = await storage.getCompanySettings(user.companyId);
         if (settings?.emailSettings) {
           const emailSettings = settings.emailSettings as { fromEmail?: string; fromName?: string };
-          emailSetup = !!(emailSettings.fromEmail && emailSettings.fromName);
+          emailSetupNatural = !!(emailSettings.fromEmail && emailSettings.fromName);
         }
         
         // Also check SES email settings (new AWS SES system)
-        if (!emailSetup) {
+        if (!emailSetupNatural) {
           const sesSettings = await sesService.getCompanyEmailSettings(user.companyId);
           if (sesSettings) {
             const isDomainVerified = sesSettings.domainVerificationStatus?.toLowerCase() === "success" || 
                                      sesSettings.dkimStatus?.toLowerCase() === "success";
             const hasSenders = Array.isArray(sesSettings.senders) && sesSettings.senders.length > 0;
-            emailSetup = isDomainVerified && hasSenders;
+            emailSetupNatural = isDomainVerified && hasSenders;
           }
         }
         
         // Check if company has any BulkVS phone numbers (messaging channels)
         const bulkvsNumbers = await storage.getBulkvsPhoneNumbersByCompany(user.companyId);
-        messagingSetup = bulkvsNumbers.length > 0 || hasSipEnabled || hasCompliancePhone;
+        messagingSetupNatural = bulkvsNumbers.length > 0 || hasSipEnabled || hasCompliancePhone;
         
         // Check if user has selected a plan (has subscription)
         const subscription = await storage.getSubscriptionByCompany(user.companyId);
-        planSelected = !!(subscription && subscription.status !== 'cancelled');
+        planSelectedNatural = !!(subscription && subscription.status !== 'cancelled');
       }
+      
+      // A step is "completed" if naturally completed OR skipped
+      const planSelected = planSelectedNatural || skippedSteps.includes('plan');
+      const phoneSetup = phoneSetupNatural || skippedSteps.includes('sms');
+      const emailSetup = emailSetupNatural || skippedSteps.includes('email');
+      const messagingSetup = messagingSetupNatural || skippedSteps.includes('sms');
+      const otherCompleted = skippedSteps.includes('other');
       
       // Calculate if all steps are complete
       const allComplete = profileCompleted && planSelected && phoneSetup && emailSetup && messagingSetup;
@@ -3628,11 +3638,59 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         phoneSetup,
         emailSetup,
         messagingSetup,
-        allComplete
+        otherCompleted,
+        allComplete,
+        skippedOnboardingSteps: skippedSteps
       });
     } catch (error) {
       console.error("[ONBOARDING] Error fetching progress:", error);
       res.status(500).json({ message: "Failed to fetch onboarding progress" });
+    }
+  });
+
+  // Mark/unmark an onboarding step as skipped
+  app.post("/api/onboarding/skip-step", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { step, skip } = req.body;
+      
+      // Validate step name
+      const validSteps = ['profile', 'plan', 'sms', 'email', 'other'];
+      if (!validSteps.includes(step)) {
+        return res.status(400).json({ message: "Invalid step name. Valid steps: profile, plan, sms, email, other" });
+      }
+      
+      // Get current skipped steps
+      const currentSkipped = (user.skippedOnboardingSteps as string[]) || [];
+      
+      let newSkipped: string[];
+      if (skip) {
+        // Add step if not already there
+        if (!currentSkipped.includes(step)) {
+          newSkipped = [...currentSkipped, step];
+        } else {
+          newSkipped = currentSkipped;
+        }
+      } else {
+        // Remove step from array
+        newSkipped = currentSkipped.filter((s: string) => s !== step);
+      }
+      
+      // Update user record
+      await db.update(users)
+        .set({ 
+          skippedOnboardingSteps: newSkipped,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, user.id));
+      
+      res.json({ 
+        success: true, 
+        skippedOnboardingSteps: newSkipped 
+      });
+    } catch (error) {
+      console.error("[ONBOARDING] Error updating skip status:", error);
+      res.status(500).json({ message: "Failed to update onboarding step" });
     }
   });
 
