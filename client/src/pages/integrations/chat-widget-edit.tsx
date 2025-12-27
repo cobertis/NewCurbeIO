@@ -4297,67 +4297,12 @@ export default function ChatWidgetEditPage() {
                     </div>
                   </div>
                 ) : expandedChannel === "liveChat" && activeLiveChatSubSection === "welcomeScreen" ? (
-                  <div className="relative">
-                    <div className="rounded-xl overflow-hidden shadow-lg" style={{ background: currentBackground }}>
-                      <div className="p-6 text-white">
-                        {widget.branding?.customLogo && (
-                          <img 
-                            src={widget.branding.customLogo} 
-                            alt="Logo" 
-                            className="h-10 w-auto mb-4 rounded"
-                          />
-                        )}
-                        <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
-                          <div>{widget.welcomeTitle || "Hi there 👋"}</div>
-                          <div>{widget.welcomeMessage || "How can we help?"}</div>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border-2 border-blue-400 ring-2 ring-blue-100">
-                          <h5 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">
-                            {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "How can we help you today?"}
-                          </h5>
-                          <div className="space-y-3">
-                            <div>
-                              <Label className="text-xs text-slate-500 font-medium">
-                                {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "Message"}
-                              </Label>
-                              <Textarea placeholder="Type your message here" disabled className="mt-1" rows={3} />
-                            </div>
-                          </div>
-                          <Button className="w-full mt-3" style={{ background: currentBackground }}>
-                            {widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
-                          </Button>
-                        </div>
-                        
-                        {widget.channels?.sms?.enabled && (
-                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                            <div className="flex items-center gap-3">
-                              <MessageSquare className="h-5 w-5 text-blue-500" />
-                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Send a text</span>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-slate-400" />
-                          </div>
-                        )}
-                        
-                        {widget.channels?.phone?.enabled && (
-                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                            <div className="flex items-center gap-3">
-                              <Phone className="h-5 w-5 text-green-500" />
-                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Call us</span>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-slate-400" />
-                          </div>
-                        )}
-                        
-                        <div className="text-center pt-2">
-                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="relative flex justify-center">
+                    <WidgetRenderer
+                      config={widget}
+                      mode="preview"
+                      activeTab="home"
+                    />
                   </div>
                 ) : expandedChannel === "liveChat" && activeLiveChatSubSection === "queueSettings" ? (
                   <div className="relative">
