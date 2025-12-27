@@ -1780,7 +1780,7 @@ export default function ChatWidgetPreviewPage() {
     ? (widget.customColor || currentColor.hex)
     : currentColor.gradient;
 
-  const embedCode = `<script src="https://app.curbe.io/widget-script.js" data-code="${widgetId}" defer=""></script>`;
+  const embedCode = `<script src="https://app.curbe.io/widget-script.js?code=${widgetId}" defer></script>`;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(embedCode);
