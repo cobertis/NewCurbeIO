@@ -2387,24 +2387,6 @@ export default function InboxPage() {
                       <div className="space-y-4 pl-6" data-testid="section-pulse-ai-settings">
                         <div className="flex items-center justify-between">
                           <div className="space-y-0.5">
-                            <Label htmlFor="copilot-switch" className="text-sm font-medium">Copilot</Label>
-                            <p className="text-xs text-muted-foreground">Get AI suggestions for responses</p>
-                          </div>
-                          <Switch
-                            id="copilot-switch"
-                            checked={selectedConversation.copilotEnabled ?? false}
-                            onCheckedChange={(checked) => {
-                              updateAiSettingsMutation.mutate({
-                                conversationId: selectedConversation.id,
-                                copilotEnabled: checked,
-                              });
-                            }}
-                            disabled={updateAiSettingsMutation.isPending}
-                            data-testid="switch-copilot"
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
                             <Label htmlFor="autopilot-switch" className="text-sm font-medium">Autopilot</Label>
                             <p className="text-xs text-muted-foreground">Let AI respond automatically</p>
                           </div>
