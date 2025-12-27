@@ -70,7 +70,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { allCountries, getCountryByName } from "@/lib/countries";
 import { WidgetRenderer } from "@/components/chat/widget-renderer";
-import { mapChatWidgetToConfig, normalizeChannelsToBoolean } from "@shared/widget-config";
+import { mapChatWidgetToConfig } from "@shared/widget-config";
 
 function QRCodeDisplay({ value, size = 128 }: { value: string; size?: number }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -166,7 +166,7 @@ interface WidgetConfig {
     sms: boolean;
     phone: boolean;
     whatsapp: boolean;
-    messenger: boolean;
+    facebook: boolean;
     instagram: boolean;
     telegram: boolean;
   };
@@ -385,7 +385,7 @@ const channelConfigs: ChannelConfig[] = [
   { id: "sms", key: "sms", label: "Text message", icon: <Send className="h-5 w-5" />, iconColor: "text-green-500" },
   { id: "phone", key: "phone", label: "Call", icon: <Phone className="h-5 w-5" />, iconColor: "text-blue-600" },
   { id: "whatsapp", key: "whatsapp", label: "WhatsApp", icon: <SiWhatsapp className="h-5 w-5" />, iconColor: "text-[#25D366]" },
-  { id: "messenger", key: "messenger", label: "Facebook Messenger", icon: <SiFacebook className="h-5 w-5" />, iconColor: "text-[#1877F2]" },
+  { id: "facebook", key: "facebook", label: "Facebook", icon: <SiFacebook className="h-5 w-5" />, iconColor: "text-[#1877F2]" },
   { id: "instagram", key: "instagram", label: "Instagram", icon: <SiInstagram className="h-5 w-5" />, iconColor: "text-[#E4405F]" },
   { id: "telegram", key: "telegram", label: "Telegram", icon: <SiTelegram className="h-5 w-5" />, iconColor: "text-[#0088CC]" },
 ];
@@ -1669,7 +1669,7 @@ function SortableChannelItem({
           )}
         </div>
       )}
-      {isExpanded && channel.id === "messenger" && messengerSettings && onMessengerSettingsChange && (
+      {isExpanded && channel.id === "facebook" && messengerSettings && onMessengerSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeMessengerSubSection === null ? (
             <div className="space-y-1">
@@ -2243,11 +2243,11 @@ export default function ChatWidgetEditPage() {
       sms: true,
       phone: true,
       whatsapp: false,
-      messenger: false,
+      facebook: false,
       instagram: false,
       telegram: false,
     },
-    channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "messenger", "instagram", "telegram"],
+    channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram", "telegram"],
     liveChatSettings: {
       welcomeScreen: {
         fieldLabel: "How can we help you today?",
@@ -2429,16 +2429,10 @@ export default function ChatWidgetEditPage() {
     },
   };
   
-  // Use shared normalization to clean API channels (handles all legacy formats)
-  const cleanedApiChannels = normalizeChannelsToBoolean(widgetData?.widget?.channels);
-  const cleanedLocalChannels = normalizeChannelsToBoolean(localWidget?.channels);
-  
   const widget = { 
     ...defaultWidget, 
     ...widgetData?.widget, 
     ...localWidget,
-    // Explicitly merge channels with cleaned data to remove legacy numbered keys
-    channels: { ...defaultWidget.channels, ...cleanedApiChannels, ...cleanedLocalChannels },
     targeting: { ...defaultWidget.targeting, ...widgetData?.widget?.targeting, ...localWidget?.targeting },
     branding: { ...defaultWidget.branding, ...widgetData?.widget?.branding, ...localWidget?.branding },
     minimizedState: { ...defaultWidget.minimizedState, ...widgetData?.widget?.minimizedState, ...localWidget?.minimizedState },
@@ -2494,7 +2488,35 @@ export default function ChatWidgetEditPage() {
     },
   };
 
-  const embedCode = `<script src="https://app.curbe.io/widget-script.js?code=${widgetId}" defer></script>`;
+  const embedCode = `<script>
+(function() {
+  var widgetId = "${widgetId}";
+  var apiBase = "https://app.curbe.io";
+  
+  fetch(apiBase + "/api/public/chat-widget/" + widgetId)
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (!data.shouldDisplay) {
+        console.log("[Curbe Widget] Hidden for country: " + data.visitorCountry);
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = "https://app.curbe.io/widget-script.js";
+      script.setAttribute("data-code", widgetId);
+      script.setAttribute("data-config", JSON.stringify(data.widget));
+      script.defer = true;
+      document.body.appendChild(script);
+    })
+    .catch(function(err) {
+      console.error("[Curbe Widget] Error:", err);
+      var script = document.createElement("script");
+      script.src = "https://app.curbe.io/widget-script.js";
+      script.setAttribute("data-code", widgetId);
+      script.defer = true;
+      document.body.appendChild(script);
+    });
+})();
+</script>`;
 
   const updateLocalWidget = (updates: Partial<WidgetConfig>) => {
     setLocalWidget(prev => ({ ...prev, ...updates }));
@@ -2614,7 +2636,7 @@ export default function ChatWidgetEditPage() {
       phone: widget.callSettings?.callUsScreen?.title || "Speak with an agent",
       whatsapp: widget.whatsappSettings?.messageScreen?.title || "Message us on WhatsApp",
       email: widget.emailSettings?.formFields?.title || "Get response via email",
-      messenger: widget.messengerSettings?.messageUsScreen?.title || "Message us on Facebook",
+      facebook: widget.messengerSettings?.messageUsScreen?.title || "Message us on Facebook",
       instagram: widget.instagramSettings?.messageUsScreen?.title || "Message us on Instagram",
       telegram: widget.telegramSettings?.messageUsScreen?.title || "Message us on Telegram",
     };
@@ -2624,7 +2646,7 @@ export default function ChatWidgetEditPage() {
       phone: widget.callSettings?.callUsScreen?.description || "Call us for urgent matters.",
       whatsapp: widget.whatsappSettings?.messageScreen?.description || "Click the button below or scan the QR code.",
       email: widget.emailSettings?.formFields?.description || "Fill the details and we will reply.",
-      messenger: widget.messengerSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
+      facebook: widget.messengerSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
       instagram: widget.instagramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
       telegram: widget.telegramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
     };
@@ -2634,7 +2656,7 @@ export default function ChatWidgetEditPage() {
       phone: widget.callSettings?.callUsScreen?.buttonLabel || "Call now",
       whatsapp: widget.whatsappSettings?.messageScreen?.buttonLabel || "Open chat",
       email: widget.emailSettings?.formFields?.buttonLabel || "Send email",
-      messenger: widget.messengerSettings?.messageUsScreen?.buttonLabel || "Open Facebook",
+      facebook: widget.messengerSettings?.messageUsScreen?.buttonLabel || "Open Facebook",
       instagram: widget.instagramSettings?.messageUsScreen?.buttonLabel || "Open Instagram",
       telegram: widget.telegramSettings?.messageUsScreen?.buttonLabel || "Open Telegram",
     };
@@ -4275,12 +4297,67 @@ export default function ChatWidgetEditPage() {
                     </div>
                   </div>
                 ) : expandedChannel === "liveChat" && activeLiveChatSubSection === "welcomeScreen" ? (
-                  <div className="relative flex justify-center">
-                    <WidgetRenderer
-                      config={widget}
-                      mode="preview"
-                      activeTab="home"
-                    />
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg" style={{ background: currentBackground }}>
+                      <div className="p-6 text-white">
+                        {widget.branding?.customLogo && (
+                          <img 
+                            src={widget.branding.customLogo} 
+                            alt="Logo" 
+                            className="h-10 w-auto mb-4 rounded"
+                          />
+                        )}
+                        <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
+                          <div>{widget.welcomeTitle || "Hi there 👋"}</div>
+                          <div>{widget.welcomeMessage || "How can we help?"}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border-2 border-blue-400 ring-2 ring-blue-100">
+                          <h5 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">
+                            {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "How can we help you today?"}
+                          </h5>
+                          <div className="space-y-3">
+                            <div>
+                              <Label className="text-xs text-slate-500 font-medium">
+                                {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "Message"}
+                              </Label>
+                              <Textarea placeholder="Type your message here" disabled className="mt-1" rows={3} />
+                            </div>
+                          </div>
+                          <Button className="w-full mt-3" style={{ background: currentBackground }}>
+                            {widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
+                          </Button>
+                        </div>
+                        
+                        {widget.channels?.sms?.enabled && (
+                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                            <div className="flex items-center gap-3">
+                              <MessageSquare className="h-5 w-5 text-blue-500" />
+                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Send a text</span>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                          </div>
+                        )}
+                        
+                        {widget.channels?.phone?.enabled && (
+                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                            <div className="flex items-center gap-3">
+                              <Phone className="h-5 w-5 text-green-500" />
+                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Call us</span>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                          </div>
+                        )}
+                        
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : expandedChannel === "liveChat" && activeLiveChatSubSection === "queueSettings" ? (
                   <div className="relative">
@@ -4950,7 +5027,7 @@ export default function ChatWidgetEditPage() {
                       </div>
                     </div>
                   </div>
-                ) : expandedChannel === "messenger" ? (
+                ) : expandedChannel === "facebook" ? (
                   <div className="relative">
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>

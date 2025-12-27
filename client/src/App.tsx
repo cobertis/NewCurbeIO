@@ -2024,6 +2024,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/data-deletion" component={DataDeletionPage} />
+      <Route path="/widget/:id" component={ChatWidgetPreview} />
       <Route path="/l/:slug" component={PublicLandingPage} />
       <Route path="/consent/:token" component={PublicConsentPage} />
       <Route path="/unsubscribe" component={Unsubscribe} />

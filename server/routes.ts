@@ -28376,23 +28376,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "Widget not found" });
       }
       
-      // Get team members (agents) for the company - up to 3 with avatars
-      const teamMembersRaw = await db
-        .select({
-          firstName: users.firstName,
-          lastName: users.lastName,
-          avatar: users.avatar,
-        })
-        .from(users)
-        .where(eq(users.companyId, user.companyId))
-        .limit(3);
-      
-      const teamMembers = teamMembersRaw.map(u => ({
-        name: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Agent",
-        avatarUrl: u.avatar || null,
-      }));
-      
-      return res.json({ widget: { ...widget, teamMembers } });
+      return res.json({ widget });
     } catch (error: any) {
       console.error("[Chat Widget] Get error:", error);
       return res.status(500).json({ error: "Failed to get widget" });
@@ -28467,12 +28451,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const { id } = req.params;
     const forceCountry = req.query.country as string | undefined;
     
-    // CORS headers must be sent on ALL responses (success, 404, and errors)
-    res.set({
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    });
     try {
       const widget = await db.query.chatWidgets.findFirst({
         where: eq(chatWidgets.id, id)
@@ -28693,16 +28671,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
-
-  // OPTIONS handler for CORS preflight on chat widget
-  app.options("/api/public/chat-widget/:id", (req: Request, res: Response) => {
-    res.set({
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    });
-    res.sendStatus(200);
-  });
   // ==================== LIVE CHAT PUBLIC API ====================
   
 

@@ -152,22 +152,20 @@ export default function ChatWidgetPage() {
     }
   };
 
-  const getStatusBadge = (widget: ChatWidgetConfig) => {
-    const hasDomain = widget.domain && widget.domain.trim() !== '';
-    
-    if (hasDomain || widget.status === 'active' || widget.status === 'published') {
-      return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100" data-testid="badge-status-active">Active</Badge>;
-    }
-    
-    switch (widget.status) {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+      case "published":
+        return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100" data-testid="badge-status-active">Active</Badge>;
       case "pending":
         return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-100" data-testid="badge-status-pending">Pending</Badge>;
+      case "draft":
+        return <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100" data-testid="badge-status-draft">Draft</Badge>;
       case "inactive":
       case "disabled":
         return <Badge className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-100" data-testid="badge-status-inactive">Inactive</Badge>;
-      case "draft":
       default:
-        return <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100" data-testid="badge-status-draft">Draft</Badge>;
+        return <Badge variant="outline" data-testid="badge-status-unknown">{status || "Unknown"}</Badge>;
     }
   };
 
@@ -423,17 +421,8 @@ export default function ChatWidgetPage() {
                         <span className="font-medium">{widget.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {widget.domain ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500" title="Connected" />
-                          <span className="text-slate-700 dark:text-slate-300">{widget.domain}</span>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400">Not connected</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(widget)}</TableCell>
+                    <TableCell className="text-slate-500">{widget.domain}</TableCell>
+                    <TableCell>{getStatusBadge(widget.status)}</TableCell>
                     <TableCell className="text-slate-500">
                       {widget.createdAt ? format(new Date(widget.createdAt), "MMM d, h:mm a") : "-"}
                     </TableCell>
