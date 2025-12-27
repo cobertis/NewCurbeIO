@@ -98,34 +98,36 @@ app.get('/widget-script.js', (req, res) => {
   
   var API_HOST = '${apiHost}';
   
-  // Find the script tag to get the widget code
-  var scripts = document.getElementsByTagName('script');
-  var currentScript = null;
-  var widgetId = null;
-  
-  for (var i = 0; i < scripts.length; i++) {
-    if (scripts[i].src && scripts[i].src.indexOf('widget-script.js') !== -1) {
-      currentScript = scripts[i];
-      // Extract code from query string: widget-script.js?code=WIDGET_ID
-      var match = scripts[i].src.match(/[?&]code=([^&]+)/);
-      if (match) {
-        widgetId = match[1];
+  // Use document.currentScript (most reliable), with fallback scan
+  var currentScript = document.currentScript;
+  if (!currentScript) {
+    var scripts = document.getElementsByTagName('script');
+    for (var i = scripts.length - 1; i >= 0; i--) {
+      if (scripts[i].src && scripts[i].src.includes('widget-script.js')) {
+        currentScript = scripts[i];
+        break;
       }
-      // Fallback to data-code attribute for backwards compatibility
-      if (!widgetId) {
-        widgetId = scripts[i].getAttribute('data-code');
-      }
-      break;
     }
   }
   
   if (!currentScript) {
-    console.error('[Curbe Widget] Could not find widget script tag');
+    console.error('[CurbeWidget] Could not find widget script tag');
     return;
   }
   
+  // Support both data-code attribute and ?code= query parameter
+  var widgetId =
+    currentScript.getAttribute('data-code') ||
+    (function () {
+      try {
+        return new URL(currentScript.src).searchParams.get('code');
+      } catch (e) {
+        return null;
+      }
+    })();
+  
   if (!widgetId) {
-    console.error('[Curbe Widget] Missing code parameter in script URL');
+    console.error('[CurbeWidget] Missing widget code (data-code or ?code=)');
     return;
   }
   
@@ -136,7 +138,7 @@ app.get('/widget-script.js', (req, res) => {
   window.__curbeWidgetInitialized = true;
   
   // Boot logging per spec
-  console.log('[Curbe Widget] boot', { widgetId: widgetId, origin: location.origin });
+  console.log('[CurbeWidget] boot', { widgetId: widgetId, origin: location.origin });
   
   // Size constants per spec
   var BUTTON_SIZE = 80; // 56px button + 24px padding
@@ -239,7 +241,7 @@ app.get('/widget-script.js', (req, res) => {
   // Capture render errors
   window.addEventListener('error', function(event) {
     if (event.target && (event.target.id === 'curbe-widget-panel' || event.target.id === 'curbe-widget-launcher')) {
-      console.error('[Curbe Widget] render error', { message: event.message });
+      console.error('[CurbeWidget] render error', { message: event.message });
     }
   });
   
@@ -255,11 +257,11 @@ app.get('/widget-script.js', (req, res) => {
       config = data;
       var shouldDisplay = data.shouldDisplay !== false;
       
-      console.log('[Curbe Widget] config loaded', { shouldDisplay: shouldDisplay });
+      console.log('[CurbeWidget] config loaded', { shouldDisplay: shouldDisplay });
       
       if (!shouldDisplay) {
         // Widget should be hidden - do nothing, no UI
-        console.log('[Curbe Widget] hidden per config');
+        console.log('[CurbeWidget] hidden per config');
         return;
       }
       
@@ -273,7 +275,7 @@ app.get('/widget-script.js', (req, res) => {
       createLauncher(root, buttonColor);
     })
     .catch(function(error) {
-      console.error('[Curbe Widget] fetch failed', { status: error.message, error: error });
+      console.error('[CurbeWidget] fetch failed', { status: error.message, error: error });
       // On fetch failure, show nothing (never a blank panel)
     });
 })();
