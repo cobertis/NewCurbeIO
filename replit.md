@@ -60,8 +60,20 @@ AI-powered operational engine with knowledge base management and intelligent res
 - **Settings UI:** Located at `/pulse-ai` with tabs for Settings (Copilot/Autopilot toggles), Knowledge Base (source management), Usage (metrics dashboard), and Activity (audit logs).
 - **Key Services:** `ai-desk-service.ts`, `ai-openai-service.ts`, `ai-ingestion-service.ts`, `ai-tool-registry.ts`, `ai-autopilot-service.ts`.
 
+**Meta WhatsApp Cloud API Integration:**
+Full multi-tenant WhatsApp Business API integration via Meta Cloud API with Embedded Signup OAuth flow.
+- **OAuth Flow:** POST `/api/integrations/meta/whatsapp/start` generates nonce, GET `/api/integrations/meta/whatsapp/callback` exchanges code for token, captures `businessId`, `wabaId`, `phoneNumberId`, and automatically calls `POST /{WABA-ID}/subscribed_apps` to subscribe for webhooks.
+- **Webhooks:** GET `/api/webhooks/meta/whatsapp` for hub.challenge verification, POST with HMAC X-Hub-Signature-256 validation using app secret. Multi-tenant routing by `phone_number_id` lookup.
+- **Messaging:** POST `/api/whatsapp/meta/send` with 24-hour session window logic (free text within 24h, templates outside). Tracks `wamid` for delivery status updates via webhook.
+- **Templates CRUD:** GET/POST/DELETE `/api/whatsapp/meta/templates` for managing message templates per WABA.
+- **Media:** POST `/api/whatsapp/meta/media/upload` (multipart with size limits), GET `/api/whatsapp/meta/media/:mediaId`, POST `/api/whatsapp/meta/send-media`.
+- **Database Tables:** `channelConnections` (with `businessId`, `wabaId`, `phoneNumberId`, encrypted access token), `waConversations`, `waMessages`, `waWebhookLogs`.
+- **Security:** HMAC signature validation, multi-tenant isolation by companyId, conversation ownership verification on send endpoints.
+- **Webhook URL for Meta Dashboard:** `https://app.curbe.io/api/webhooks/meta/whatsapp`
+- **Verify Token:** Configured via `META_WEBHOOK_VERIFY_TOKEN` environment variable.
+
 **Security Architecture:**
-Includes session security, webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, iMessage webhook secret isolation, multi-tenant WhatsApp session isolation, and token encryption for sensitive data.
+Includes session security, webhook signature validation (Twilio, BulkVS, BlueBubbles, Meta WhatsApp), Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, iMessage webhook secret isolation, multi-tenant WhatsApp session isolation, and token encryption for sensitive data.
 
 **Credential Storage:**
 All service credentials (Stripe, Telnyx, AWS SES, Twilio, BulkVS, Telegram, etc.) are stored encrypted in the `system_credentials` database table with IV and key versioning. Super admins manage credentials via System Settings > API Credentials. The `credentialProvider` service provides a unified abstraction with 5-minute caching and cache invalidation on updates. Environment variables serve as fallback only.

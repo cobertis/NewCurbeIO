@@ -26398,29 +26398,25 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/webhooks/meta/whatsapp - Receive webhook events
   app.post("/api/webhooks/meta/whatsapp", async (req: Request, res: Response) => {
-    // CRITICAL: Always return 200 OK quickly to avoid Meta retries
-    // Process asynchronously after responding
-    res.status(200).send("EVENT_RECEIVED");
-
     try {
       const rawBody = req.body as Buffer;
       const signature = req.headers["x-hub-signature-256"] as string;
 
-      // Validate signature
+      // SECURITY: Validate signature BEFORE processing - do NOT return 200 early
       const { appSecret } = await credentialProvider.getMeta();
       if (!appSecret) {
         console.error("[Meta Webhook] App secret not configured");
-        return;
+        return res.status(500).json({ error: "Webhook not configured" });
       }
 
       if (!signature) {
         console.error("[Meta Webhook] Missing X-Hub-Signature-256 header");
-        return;
+        return res.status(403).json({ error: "Forbidden: Missing signature" });
       }
 
       if (!validateMetaWebhookSignature(rawBody, signature, appSecret)) {
         console.error("[Meta Webhook] Invalid signature");
-        return;
+        return res.status(403).json({ error: "Forbidden: Invalid signature" });
       }
 
       // Parse the payload
@@ -26430,7 +26426,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Process entries
       if (!payload.entry || !Array.isArray(payload.entry)) {
         console.log("[Meta Webhook] No entries in payload");
-        return;
+        return res.status(200).send("EVENT_RECEIVED");
       }
 
       for (const entry of payload.entry) {
@@ -26671,8 +26667,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           }
         }
       }
+      // Successfully processed webhook
+      return res.status(200).send("EVENT_RECEIVED");
     } catch (error) {
       console.error("[Meta Webhook] Error processing webhook:", error);
+      return res.status(500).json({ error: "Internal server error" });
     }
   });
 
@@ -26873,14 +26872,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       // Get conversation to find recipient
       const conversation = await db.query.waConversations.findFirst({
-        where: and(
-          eq(waConversations.id, conversationId),
-          eq(waConversations.companyId, user.companyId)
-        )
+        where: eq(waConversations.id, conversationId)
       });
 
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // SECURITY: Verify conversation belongs to the authenticated user's company
+      if (conversation.companyId !== user.companyId) {
+        return res.status(403).json({ error: "Not authorized to access this conversation" });
       }
 
       const contactWaId = conversation.contactWaId;
@@ -27610,14 +27611,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       // Get conversation to find recipient
       const conversation = await db.query.waConversations.findFirst({
-        where: and(
-          eq(waConversations.id, conversationId),
-          eq(waConversations.companyId, user.companyId)
-        )
+        where: eq(waConversations.id, conversationId)
       });
 
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // SECURITY: Verify conversation belongs to the authenticated user's company
+      if (conversation.companyId !== user.companyId) {
+        return res.status(403).json({ error: "Not authorized to access this conversation" });
       }
 
       const contactWaId = conversation.contactWaId;
