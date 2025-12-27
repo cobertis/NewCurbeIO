@@ -217,6 +217,7 @@ export default function InboxPage() {
   const [selectedText, setSelectedText] = useState<string | null>(null);
   const [selectionPopupPosition, setSelectionPopupPosition] = useState<{ x: number, y: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pulseAiMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -713,6 +714,10 @@ export default function InboxPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    pulseAiMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [pulseAiMessages]);
 
   useEffect(() => {
     if (companyNumbers.length > 0 && !selectedFromNumber) {
@@ -2602,53 +2607,56 @@ export default function InboxPage() {
                         </Link>
                       </div>
                     ) : (
-                      pulseAiMessages.map((msg, idx) => (
-                        <div 
-                          key={idx} 
-                          className={cn(
-                            "flex gap-2",
-                            msg.role === "user" ? "justify-end" : "justify-start"
-                          )}
-                          data-testid={`pulse-ai-message-${idx}`}
-                        >
-                          {msg.role === "assistant" && (
-                            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0">
-                              <Activity className="h-3 w-3 text-white" />
-                            </div>
-                          )}
+                      <>
+                        {pulseAiMessages.map((msg, idx) => (
                           <div 
+                            key={idx} 
                             className={cn(
-                              "rounded-lg px-3 py-2 text-sm max-w-[85%]",
-                              msg.role === "user" 
-                                ? "bg-blue-600 text-white" 
-                                : "bg-muted"
+                              "flex gap-2",
+                              msg.role === "user" ? "justify-end" : "justify-start"
                             )}
+                            data-testid={`pulse-ai-message-${idx}`}
                           >
-                            {msg.isLoading ? (
-                              <div className="flex items-center gap-2">
-                                <LoadingSpinner fullScreen={false} />
-                                <span className="text-muted-foreground text-xs">Thinking...</span>
+                            {msg.role === "assistant" && (
+                              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0">
+                                <Activity className="h-3 w-3 text-white" />
                               </div>
-                            ) : (
-                              <>
-                                <p className="whitespace-pre-wrap">{msg.content}</p>
-                                {msg.role === "assistant" && msg.content && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="mt-2 h-7 text-xs text-violet-600 hover:text-violet-700 px-2"
-                                    onClick={() => handleInsertPulseAiMessage(msg.content)}
-                                    data-testid={`btn-insert-message-${idx}`}
-                                  >
-                                    <Pencil className="h-3 w-3 mr-1" />
-                                    Insert and edit
-                                  </Button>
-                                )}
-                              </>
                             )}
+                            <div 
+                              className={cn(
+                                "rounded-lg px-3 py-2 text-sm max-w-[85%]",
+                                msg.role === "user" 
+                                  ? "bg-blue-600 text-white" 
+                                  : "bg-muted"
+                              )}
+                            >
+                              {msg.isLoading ? (
+                                <div className="flex items-center gap-2">
+                                  <LoadingSpinner fullScreen={false} />
+                                  <span className="text-muted-foreground text-xs">Thinking...</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                                  {msg.role === "assistant" && msg.content && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="mt-2 h-7 text-xs text-violet-600 hover:text-violet-700 px-2"
+                                      onClick={() => handleInsertPulseAiMessage(msg.content)}
+                                      data-testid={`btn-insert-message-${idx}`}
+                                    >
+                                      <Pencil className="h-3 w-3 mr-1" />
+                                      Insert and edit
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                        <div ref={pulseAiMessagesEndRef} />
+                      </>
                     )}
                   </div>
                 </ScrollArea>
