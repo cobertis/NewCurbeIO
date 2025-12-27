@@ -1064,11 +1064,14 @@ export default function ChatWidgetPreviewPage() {
           new Date(a.createdAt || a.created_at).getTime() - new Date(b.createdAt || b.created_at).getTime()
         );
         
+        const actualRating = rating || existingSession.rating || null;
+        const actualFeedback = feedback || existingSession.feedback || null;
+        
         setSolvedChatData({
           sessionId: existingSession.sessionId,
           messages: sortedMessages,
-          rating: rating || existingSession.rating || null,
-          feedback: feedback || existingSession.feedback || null,
+          rating: actualRating,
+          feedback: actualFeedback,
           agentName: agent?.fullName || null,
           status: status || existingSession.status || 'solved',
         });
@@ -1077,7 +1080,14 @@ export default function ChatWidgetPreviewPage() {
         // Store the sessionId for survey submission
         setChatSessionId(existingSession.sessionId);
         
-        console.log('[Chat] Viewing solved chat with', sortedMessages.length, 'messages, rating:', rating);
+        // If chat already has rating/feedback, mark survey as completed to prevent re-prompting
+        if (actualRating || actualFeedback) {
+          setSurveySubmitted(true);
+          setShowSatisfactionSurvey(false);
+          setShowSurveyModal(false);
+        }
+        
+        console.log('[Chat] Viewing solved chat with', sortedMessages.length, 'messages, rating:', actualRating);
       }
     } catch (error) {
       console.error('[Chat] Failed to load solved chat:', error);
@@ -1452,6 +1462,16 @@ export default function ChatWidgetPreviewPage() {
       
       if (res.ok) {
         setChatStatus('solved');
+        // Update allSessions to reflect the solved status
+        setAllSessions(prev => prev.map(session => 
+          session.sessionId === chatSessionId 
+            ? { ...session, status: 'solved' } 
+            : session
+        ));
+        // Update existingSession if it matches
+        if (existingSession?.sessionId === chatSessionId) {
+          setExistingSession(prev => prev ? { ...prev, status: 'solved' } : null);
+        }
         // Transition to post-chat survey via state machine
         setChatFlowState('postChatSurvey');
         setShowSatisfactionSurvey(true);
@@ -1532,6 +1552,21 @@ export default function ChatWidgetPreviewPage() {
       if (res.ok) {
         setSurveySubmitted(true);
         setShowSatisfactionSurvey(false);
+        setShowSurveyModal(false);
+        // Update allSessions with the rating
+        setAllSessions(prev => prev.map(session => 
+          session.sessionId === chatSessionId 
+            ? { ...session, rating: surveyRating, status: 'solved' } 
+            : session
+        ));
+        // Update existingSession if it matches
+        if (existingSession?.sessionId === chatSessionId) {
+          setExistingSession(prev => prev ? { ...prev, rating: surveyRating, status: 'solved' } : null);
+        }
+        // Update solvedChatData if viewing it
+        if (solvedChatData?.sessionId === chatSessionId) {
+          setSolvedChatData(prev => prev ? { ...prev, rating: surveyRating } : null);
+        }
         // Clear survey state from localStorage after submission
         if (widgetId) {
           localStorage.removeItem(`chatSurveyState-${widgetId}`);
