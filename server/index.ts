@@ -80,6 +80,100 @@ app.use(cookieParser()); // Required to read cookies like 'trusted_device'
 // Serve static files from uploads directory
 app.use('/uploads', express.static('uploads'));
 
+// Widget embed script - served with correct content-type
+// This is loaded by external websites via: <script src="https://app.curbe.io/widget-script.js" data-code="WIDGET_ID" defer></script>
+app.get('/widget-script.js', (req, res) => {
+  const scriptContent = `
+(function() {
+  'use strict';
+  
+  // Find the script tag to get the widget code
+  var scripts = document.getElementsByTagName('script');
+  var currentScript = null;
+  
+  for (var i = 0; i < scripts.length; i++) {
+    if (scripts[i].src && scripts[i].src.indexOf('widget-script.js') !== -1) {
+      currentScript = scripts[i];
+      break;
+    }
+  }
+  
+  if (!currentScript) {
+    console.error('[CurbeWidget] Could not find widget script tag');
+    return;
+  }
+  
+  var widgetCode = currentScript.getAttribute('data-code');
+  if (!widgetCode) {
+    console.error('[CurbeWidget] Missing data-code attribute');
+    return;
+  }
+  
+  // Prevent double initialization
+  if (window.__curbeWidgetInitialized) {
+    return;
+  }
+  window.__curbeWidgetInitialized = true;
+  
+  // Create widget container
+  var container = document.createElement('div');
+  container.id = 'curbe-widget-container';
+  container.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 2147483647; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
+  document.body.appendChild(container);
+  
+  // Create iframe for widget
+  var iframe = document.createElement('iframe');
+  iframe.id = 'curbe-widget-iframe';
+  iframe.src = 'https://app.curbe.io/widget/' + widgetCode;
+  iframe.style.cssText = 'border: none; width: 400px; height: 600px; max-width: calc(100vw - 40px); max-height: calc(100vh - 100px); border-radius: 16px; box-shadow: 0 5px 40px rgba(0,0,0,0.16); background: white; display: none;';
+  iframe.allow = 'microphone; camera; geolocation';
+  container.appendChild(iframe);
+  
+  // Create toggle button
+  var button = document.createElement('button');
+  button.id = 'curbe-widget-button';
+  button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"></path></svg>';
+  button.style.cssText = 'width: 60px; height: 60px; border-radius: 50%; border: none; background: #2563eb; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); transition: transform 0.2s, box-shadow 0.2s;';
+  button.onmouseover = function() { this.style.transform = 'scale(1.05)'; this.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.5)'; };
+  button.onmouseout = function() { this.style.transform = 'scale(1)'; this.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)'; };
+  container.appendChild(button);
+  
+  var isOpen = false;
+  
+  button.onclick = function() {
+    isOpen = !isOpen;
+    iframe.style.display = isOpen ? 'block' : 'none';
+    button.style.display = isOpen ? 'none' : 'flex';
+  };
+  
+  // Listen for close messages from iframe
+  window.addEventListener('message', function(event) {
+    if (event.origin !== 'https://app.curbe.io') return;
+    
+    if (event.data && event.data.type === 'curbe-widget-close') {
+      isOpen = false;
+      iframe.style.display = 'none';
+      button.style.display = 'flex';
+    }
+    
+    // Handle button color customization
+    if (event.data && event.data.type === 'curbe-widget-config') {
+      if (event.data.buttonColor) {
+        button.style.background = event.data.buttonColor;
+      }
+    }
+  });
+  
+  console.log('[CurbeWidget] Initialized with code:', widgetCode);
+})();
+`.trim();
+
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.send(scriptContent);
+});
+
 // Configure PostgreSQL session store for persistent sessions
 const PgStore = connectPgSimple(session);
 
