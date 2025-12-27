@@ -3658,7 +3658,7 @@ export default function ChatWidgetPreviewPage() {
                 </div>
               ) : chatFlowState === 'idle' && effectiveWidgetData?.widget ? (
                 <WidgetRenderer 
-                  config={mapChatWidgetToConfig(effectiveWidgetData.widget)}
+                  config={mapChatWidgetToConfig(widget)}
                   mode="embed"
                   activeTab={activeWidgetTab}
                   onTabChange={(tab) => {
