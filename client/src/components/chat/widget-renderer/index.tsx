@@ -205,10 +205,7 @@ export function WidgetRenderer({
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="font-medium text-sm text-slate-900 truncate block">
-                    {session.agent?.fullName || session.displayName || 'Support'}
-                  </span>
-                  <p className="text-sm text-slate-500 truncate mt-0.5">
+                  <p className="text-sm text-slate-700 truncate">
                     {session.lastMessage || 'No messages yet'}
                   </p>
                   <div className="flex items-center justify-between mt-1">
@@ -231,7 +228,7 @@ export function WidgetRenderer({
                     </span>
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0 mt-3" />
+                <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
               </button>
             ))}
           </div>
