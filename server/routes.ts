@@ -29541,15 +29541,22 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           }
         }
 
-        // Fetch geolocation
-        let geoData: any = {};
+        // Fetch geolocation using ip-api.com (more reliable than ipapi.co)
+        let geoData: { city: string | null; region: string | null; country_name: string | null } = { city: null, region: null, country_name: null };
         if (visitorIp && !visitorIp.includes('127.0.0.1') && !visitorIp.includes('::1')) {
           try {
-            const geoResponse = await fetch(`https://ipapi.co/${visitorIp}/json/`);
-            if (geoResponse.ok) {
-              geoData = await geoResponse.json();
+            const { getFullGeolocationFromIP } = await import("./services/geolocation");
+            const geoResult = await getFullGeolocationFromIP(visitorIp);
+            if (geoResult.success) {
+              geoData = {
+                city: geoResult.city,
+                region: geoResult.region,
+                country_name: geoResult.country,
+              };
             }
-          } catch (geoErr) {}
+          } catch (geoErr) {
+            console.error("[ChatWidget] Geolocation error:", geoErr);
+          }
         }
         
         // Only create new conversation if we did not reopen a solved one

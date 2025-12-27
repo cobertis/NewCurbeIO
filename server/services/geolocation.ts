@@ -4,8 +4,75 @@ interface GeolocationResult {
   success: boolean;
 }
 
+interface FullGeolocationResult {
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  countryCode: string | null;
+  success: boolean;
+}
+
 const cache = new Map<string, { result: GeolocationResult; timestamp: number }>();
+const fullCache = new Map<string, { result: FullGeolocationResult; timestamp: number }>();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour cache
+
+export async function getFullGeolocationFromIP(ip: string): Promise<FullGeolocationResult> {
+  const cleanIP = ip.replace(/^::ffff:/, "");
+  
+  if (cleanIP === "127.0.0.1" || cleanIP === "::1" || cleanIP === "localhost" || cleanIP.startsWith("192.168.") || cleanIP.startsWith("10.")) {
+    return { city: null, region: null, country: null, countryCode: null, success: false };
+  }
+
+  const cached = fullCache.get(cleanIP);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.result;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    // Using IPWho.org - completely free, unlimited, no API key required
+    const response = await fetch(`https://ipwho.is/${cleanIP}`, {
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      console.error(`[Geolocation] HTTP error for IP ${cleanIP}: ${response.status}`);
+      return { city: null, region: null, country: null, countryCode: null, success: false };
+    }
+
+    const data = await response.json() as { 
+      success: boolean; 
+      message?: string;
+      country?: string; 
+      country_code?: string;
+      region?: string;
+      city?: string;
+    };
+    
+    if (data.success) {
+      const result: FullGeolocationResult = {
+        city: data.city || null,
+        region: data.region || null,
+        country: data.country || null,
+        countryCode: data.country_code || null,
+        success: true,
+      };
+      fullCache.set(cleanIP, { result, timestamp: Date.now() });
+      console.log(`[Geolocation] Success for IP ${cleanIP}: ${result.city}, ${result.region}, ${result.country}`);
+      return result;
+    }
+    
+    console.error(`[Geolocation] API returned failure for IP ${cleanIP}: ${data.message}`);
+    return { city: null, region: null, country: null, countryCode: null, success: false };
+  } catch (error) {
+    console.error(`[Geolocation] Error fetching location for IP ${cleanIP}:`, error);
+    return { city: null, region: null, country: null, countryCode: null, success: false };
+  }
+}
 
 export async function getCountryFromIP(ip: string): Promise<GeolocationResult> {
   const cleanIP = ip.replace(/^::ffff:/, "");
