@@ -13,7 +13,10 @@ import { MessengerLayout, type MessengerView } from "@/components/messenger-layo
 import { Filter } from "lucide-react";
 import { 
   Search, 
-  Phone, 
+  Phone,
+  PhoneMissed,
+  PhoneIncoming,
+  PhoneOff,
   Plus, 
   Send, 
   Paperclip, 
@@ -1420,12 +1423,38 @@ export default function InboxPage() {
                     // System messages (calls) are displayed centered
                     if (isSystemMessage) {
                       const isCallMessage = message.text?.toLowerCase().includes("call");
+                      const isMissedCall = message.text?.toLowerCase().includes("missed");
+                      const isIncomingCall = message.text?.toLowerCase().includes("incoming");
+                      const isEndedCall = message.text?.toLowerCase().includes("ended") || message.text?.includes("(") && message.text?.includes("s)");
+                      
+                      // Determine call icon and color
+                      let CallIcon = Phone;
+                      let iconColorClass = "text-emerald-500";
+                      let bgColorClass = "bg-gray-100 dark:bg-gray-800";
+                      
+                      if (isMissedCall) {
+                        CallIcon = PhoneMissed;
+                        iconColorClass = "text-red-500";
+                        bgColorClass = "bg-red-50 dark:bg-red-900/30";
+                      } else if (isEndedCall) {
+                        CallIcon = PhoneOff;
+                        iconColorClass = "text-gray-500";
+                        bgColorClass = "bg-gray-100 dark:bg-gray-800";
+                      } else if (isIncomingCall) {
+                        CallIcon = PhoneIncoming;
+                        iconColorClass = "text-blue-500";
+                        bgColorClass = "bg-blue-50 dark:bg-blue-900/30";
+                      }
+                      
                       return (
                         <div key={message.id} className="flex justify-center my-2">
-                          <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm text-gray-600 dark:text-gray-300">
+                          <div className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-full text-sm text-gray-600 dark:text-gray-300",
+                            bgColorClass
+                          )}>
                             {isCallMessage ? (
                               <>
-                                <Phone className="h-4 w-4 text-emerald-500" />
+                                <CallIcon className={cn("h-4 w-4", iconColorClass)} />
                                 <span>{message.text}</span>
                               </>
                             ) : (
