@@ -1548,8 +1548,15 @@ export default function InboxPage() {
                             </div>
                           )}
                           
-                          {/* Message text */}
-                          {message.text && message.text !== "(MMS attachment)" && message.text !== "(attachment)" && (
+                          {/* Message text - hide placeholder text for media-only messages */}
+                          {message.text && 
+                           message.text !== "(MMS attachment)" && 
+                           message.text !== "(attachment)" && 
+                           message.text !== "[image]" && 
+                           message.text !== "[video]" && 
+                           message.text !== "[audio]" && 
+                           message.text !== "[document]" && 
+                           message.text !== "[sticker]" && (
                             <p className={cn(
                               "text-sm whitespace-pre-wrap",
                               isNote ? "text-yellow-900" : "text-gray-900 dark:text-gray-100"
