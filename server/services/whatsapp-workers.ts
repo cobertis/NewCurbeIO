@@ -131,16 +131,6 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             whatsappCallService.handleCallTerminate(call.id);
           }
 
-          // Upsert conversation for this WhatsApp call
-          // First, try to find conversation WITHOUT companyPhoneNumber filter to handle reconnection scenarios
-          let inboxConversation = await db.query.telnyxConversations.findFirst({
-            where: and(
-              eq(telnyxConversations.companyId, companyId),
-              eq(telnyxConversations.phoneNumber, customerPhone),
-              eq(telnyxConversations.channel, "whatsapp")
-            ),
-          });
-
           // Build call status text with safe fallbacks
           let callStatusText: string;
           if (callEvent === "missed") {
@@ -159,81 +149,47 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             ? new Date(parseInt(call.timestamp) * 1000) 
             : new Date();
 
-          if (!inboxConversation) {
-            // No conversation exists - try to create one, handling race conditions
-            try {
-              const [newConv] = await db.insert(telnyxConversations).values({
-                companyId,
-                phoneNumber: customerPhone,
-                companyPhoneNumber: companyPhone,
-                displayName: contactName !== callerWaId ? contactName : null,
-                channel: "whatsapp",
-                status: "open",
-                unreadCount: 1,
-                lastMessage: callStatusText,
-                lastMessageAt: callTimestamp,
-              }).returning();
-              inboxConversation = newConv;
-              console.log(`[WhatsApp Webhook Worker] Created inbox conversation for call: ${inboxConversation.id}`);
-            } catch (insertErr: any) {
-              // Handle race condition - another worker may have created the conversation
-              if (insertErr.code === '23505') { // PostgreSQL unique constraint violation
-                console.log(`[WhatsApp Webhook Worker] Race condition detected for call, retrying lookup`);
-                
-                // Retry with small delays to allow other transaction to commit
-                for (let attempt = 0; attempt < 3; attempt++) {
-                  if (attempt > 0) {
-                    await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // 100ms, 200ms delays
-                  }
-                  
-                  // Try finding by exact companyPhoneNumber AND channel (prevent mixing with SMS)
-                  inboxConversation = await db.query.telnyxConversations.findFirst({
-                    where: and(
-                      eq(telnyxConversations.companyId, companyId),
-                      eq(telnyxConversations.phoneNumber, customerPhone),
-                      eq(telnyxConversations.companyPhoneNumber, companyPhone),
-                      eq(telnyxConversations.channel, "whatsapp")
-                    ),
-                  });
-                  
-                  if (inboxConversation) break;
-                  
-                  // Fallback: any WhatsApp conversation with this customer (but still must be WhatsApp channel)
-                  inboxConversation = await db.query.telnyxConversations.findFirst({
-                    where: and(
-                      eq(telnyxConversations.companyId, companyId),
-                      eq(telnyxConversations.phoneNumber, customerPhone),
-                      eq(telnyxConversations.channel, "whatsapp")
-                    ),
-                  });
-                  
-                  if (inboxConversation) break;
-                }
-                
-                if (!inboxConversation) {
-                  console.error(`[WhatsApp Webhook Worker] Failed to find conversation after 3 retries for call from ${customerPhone}`);
-                  throw new Error(`Failed to find conversation after race condition for call from ${customerPhone}`);
-                }
-                console.log(`[WhatsApp Webhook Worker] Found conversation after race condition for call: ${inboxConversation.id}`);
-              } else {
-                throw insertErr;
-              }
-            }
-          }
+          // Upsert conversation using raw SQL to target specific unique constraint
+          const displayNameForCall = contactName !== callerWaId ? contactName : null;
           
-          // Always update the conversation to ensure it's current
+          const upsertCallResult = await db.execute<typeof telnyxConversations.$inferSelect>(sql`
+            INSERT INTO telnyx_conversations 
+              (company_id, phone_number, company_phone_number, channel, display_name, status, unread_count, last_message, last_message_at)
+            VALUES 
+              (${companyId}, ${customerPhone}, ${companyPhone}, 'whatsapp', ${displayNameForCall}, 'open', 1, ${callStatusText}, ${callTimestamp})
+            ON CONFLICT (company_id, phone_number, company_phone_number, channel) 
+            DO UPDATE SET
+              unread_count = telnyx_conversations.unread_count + 1,
+              last_message = ${callStatusText},
+              last_message_at = ${callTimestamp},
+              display_name = COALESCE(${displayNameForCall}, telnyx_conversations.display_name),
+              status = CASE 
+                WHEN telnyx_conversations.status IN ('solved', 'archived') THEN 'open'
+                ELSE telnyx_conversations.status
+              END,
+              updated_at = NOW()
+            RETURNING *
+          `);
+          
+          let inboxConversation: typeof telnyxConversations.$inferSelect | undefined = upsertCallResult.rows?.[0];
+          
           if (inboxConversation) {
-            await db.update(telnyxConversations)
-              .set({
-                unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
-                lastMessageAt: callTimestamp,
-                lastMessage: callStatusText,
-                displayName: (contactName !== callerWaId ? contactName : null) || inboxConversation.displayName,
-                companyPhoneNumber: companyPhone, // Update to current company phone in case of reconnection
-                status: (inboxConversation.status === "solved" || inboxConversation.status === "archived") ? "open" : inboxConversation.status,
-                updatedAt: new Date(),
-              })
-              .where(eq(telnyxConversations.id, inboxConversation.id));
+            console.log(`[WhatsApp Webhook Worker] Upserted inbox conversation for call: ${inboxConversation.id}`);
+          } else {
+            // Fallback: lookup the conversation if RETURNING didn't work
+            const found = await db.query.telnyxConversations.findFirst({
+              where: and(
+                eq(telnyxConversations.companyId, companyId),
+                eq(telnyxConversations.phoneNumber, customerPhone),
+                eq(telnyxConversations.channel, "whatsapp")
+              ),
+            });
+            
+            if (!found) {
+              console.error(`[WhatsApp Webhook Worker] Failed to find/create conversation for call from ${customerPhone}`);
+              throw new Error(`Failed to upsert conversation for call from ${customerPhone}`);
+            }
+            inboxConversation = found;
           }
 
           // Store call event as a message in the inbox (using valid schema values)
@@ -287,91 +243,49 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
           const customerPhone = contactWaId.startsWith("+") ? contactWaId : `+${contactWaId}`;
           const companyPhone = connection.phoneNumberE164 || phoneNumberId;
 
-          // Upsert conversation in telnyxConversations for unified inbox
-          // First, try to find conversation WITHOUT companyPhoneNumber filter to handle reconnection scenarios
-          let inboxConversation = await db.query.telnyxConversations.findFirst({
-            where: and(
-              eq(telnyxConversations.companyId, companyId),
-              eq(telnyxConversations.phoneNumber, customerPhone),
-              eq(telnyxConversations.channel, "whatsapp")
-            ),
-          });
-
-          if (!inboxConversation) {
-            // No conversation exists - try to create one, handling race conditions
-            try {
-              const [newConv] = await db.insert(telnyxConversations).values({
-                companyId,
-                phoneNumber: customerPhone,
-                companyPhoneNumber: companyPhone,
-                displayName: contactName !== contactWaId ? contactName : null,
-                channel: "whatsapp",
-                status: "open",
-                unreadCount: 1,
-                lastMessage: msg.text?.body || `[${msg.type}]`,
-                lastMessageAt: new Date(),
-              }).returning();
-              inboxConversation = newConv;
-              console.log(`[WhatsApp Webhook Worker] Created inbox conversation: ${inboxConversation.id}`);
-            } catch (insertErr: any) {
-              // Handle race condition - another worker may have created the conversation
-              if (insertErr.code === '23505') { // PostgreSQL unique constraint violation
-                console.log(`[WhatsApp Webhook Worker] Race condition detected, retrying lookup`);
-                
-                // Retry with small delays to allow other transaction to commit
-                for (let attempt = 0; attempt < 3; attempt++) {
-                  if (attempt > 0) {
-                    await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // 100ms, 200ms delays
-                  }
-                  
-                  // Try finding by exact companyPhoneNumber AND channel (prevent mixing with SMS)
-                  inboxConversation = await db.query.telnyxConversations.findFirst({
-                    where: and(
-                      eq(telnyxConversations.companyId, companyId),
-                      eq(telnyxConversations.phoneNumber, customerPhone),
-                      eq(telnyxConversations.companyPhoneNumber, companyPhone),
-                      eq(telnyxConversations.channel, "whatsapp")
-                    ),
-                  });
-                  
-                  if (inboxConversation) break;
-                  
-                  // Fallback: any WhatsApp conversation with this customer (but still must be WhatsApp channel)
-                  inboxConversation = await db.query.telnyxConversations.findFirst({
-                    where: and(
-                      eq(telnyxConversations.companyId, companyId),
-                      eq(telnyxConversations.phoneNumber, customerPhone),
-                      eq(telnyxConversations.channel, "whatsapp")
-                    ),
-                  });
-                  
-                  if (inboxConversation) break;
-                }
-                
-                if (!inboxConversation) {
-                  console.error(`[WhatsApp Webhook Worker] Failed to find conversation after 3 retries for ${customerPhone}`);
-                  throw new Error(`Failed to find conversation after race condition for ${customerPhone}`);
-                }
-                console.log(`[WhatsApp Webhook Worker] Found conversation after race condition: ${inboxConversation.id}`);
-              } else {
-                throw insertErr;
-              }
-            }
-          }
+          // Upsert conversation using raw SQL to target specific unique constraint
+          // This handles both new conversation creation and race conditions atomically
+          const displayNameValue = contactName !== contactWaId ? contactName : null;
+          const lastMessageValue = msg.text?.body || `[${msg.type}]`;
           
-          // Always update the conversation to ensure it's current
+          const upsertResult = await db.execute<typeof telnyxConversations.$inferSelect>(sql`
+            INSERT INTO telnyx_conversations 
+              (company_id, phone_number, company_phone_number, channel, display_name, status, unread_count, last_message, last_message_at)
+            VALUES 
+              (${companyId}, ${customerPhone}, ${companyPhone}, 'whatsapp', ${displayNameValue}, 'open', 1, ${lastMessageValue}, NOW())
+            ON CONFLICT (company_id, phone_number, company_phone_number, channel) 
+            DO UPDATE SET
+              unread_count = telnyx_conversations.unread_count + 1,
+              last_message = ${lastMessageValue},
+              last_message_at = NOW(),
+              display_name = COALESCE(${displayNameValue}, telnyx_conversations.display_name),
+              status = CASE 
+                WHEN telnyx_conversations.status IN ('solved', 'archived') THEN 'open'
+                ELSE telnyx_conversations.status
+              END,
+              updated_at = NOW()
+            RETURNING *
+          `);
+          
+          let inboxConversation: typeof telnyxConversations.$inferSelect | undefined = upsertResult.rows?.[0];
+          
           if (inboxConversation) {
-            await db.update(telnyxConversations)
-              .set({
-                unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
-                lastMessageAt: new Date(),
-                lastMessage: msg.text?.body || `[${msg.type}]`,
-                displayName: (contactName !== contactWaId ? contactName : null) || inboxConversation.displayName,
-                companyPhoneNumber: companyPhone, // Update to current company phone in case of reconnection
-                status: (inboxConversation.status === "solved" || inboxConversation.status === "archived") ? "open" : inboxConversation.status,
-                updatedAt: new Date(),
-              })
-              .where(eq(telnyxConversations.id, inboxConversation.id));
+            console.log(`[WhatsApp Webhook Worker] Upserted inbox conversation: ${inboxConversation.id}`);
+          } else {
+            // Fallback: lookup the conversation if RETURNING didn't work
+            const found = await db.query.telnyxConversations.findFirst({
+              where: and(
+                eq(telnyxConversations.companyId, companyId),
+                eq(telnyxConversations.phoneNumber, customerPhone),
+                eq(telnyxConversations.channel, "whatsapp")
+              ),
+            });
+            
+            if (!found) {
+              console.error(`[WhatsApp Webhook Worker] Failed to find/create conversation for ${customerPhone}`);
+              throw new Error(`Failed to upsert conversation for ${customerPhone}`);
+            }
+            inboxConversation = found;
           }
 
           const messageType = msg.type || "text";
@@ -501,7 +415,10 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
 
 async function pollWebhookEvents(): Promise<void> {
   try {
-    // Use transaction to hold the lock until we've claimed the job
+    // Step 1: Claim events in a short transaction
+    const claimedEventIds: string[] = [];
+    const claimedEvents: Array<typeof waWebhookEvents.$inferSelect> = [];
+    
     await db.transaction(async (tx) => {
       // Select and lock pending events
       const events = await tx.execute<typeof waWebhookEvents.$inferSelect>(sql`
@@ -516,6 +433,8 @@ async function pollWebhookEvents(): Promise<void> {
         return;
       }
 
+      console.log(`[WhatsApp Webhook Worker] Found ${events.rows.length} pending events`);
+
       // Mark all selected events as processing within the transaction
       for (const event of events.rows) {
         await tx.execute(sql`
@@ -523,36 +442,38 @@ async function pollWebhookEvents(): Promise<void> {
           SET status = 'processing', attempt = attempt + 1
           WHERE id = ${event.id}
         `);
-      }
-
-      // Process events outside the transaction (after claiming them)
-      for (const event of events.rows) {
-        const eventId = event.id;
-        
-        try {
-          await processWebhookEvent(event);
-
-          await db.update(waWebhookEvents)
-            .set({
-              status: "done",
-              processedAt: new Date(),
-            })
-            .where(eq(waWebhookEvents.id, eventId));
-
-          console.log(`[WhatsApp Webhook Worker] Processed event: ${eventId}`);
-        } catch (error: any) {
-          console.error(`[WhatsApp Webhook Worker] Error processing event ${eventId}:`, error.message);
-          
-          await db.update(waWebhookEvents)
-            .set({
-              status: "failed",
-              lastError: error.message || "Unknown error",
-              processedAt: new Date(),
-            })
-            .where(eq(waWebhookEvents.id, eventId));
-        }
+        claimedEventIds.push(event.id);
+        claimedEvents.push(event);
       }
     });
+
+    // Step 2: Process events OUTSIDE the transaction (transaction is now committed)
+    for (const event of claimedEvents) {
+      const eventId = event.id;
+      
+      try {
+        await processWebhookEvent(event);
+
+        await db.update(waWebhookEvents)
+          .set({
+            status: "done",
+            processedAt: new Date(),
+          })
+          .where(eq(waWebhookEvents.id, eventId));
+
+        console.log(`[WhatsApp Webhook Worker] Processed event: ${eventId}`);
+      } catch (error: any) {
+        console.error(`[WhatsApp Webhook Worker] Error processing event ${eventId}:`, error.message);
+        
+        await db.update(waWebhookEvents)
+          .set({
+            status: "failed",
+            lastError: error.message || "Unknown error",
+            processedAt: new Date(),
+          })
+          .where(eq(waWebhookEvents.id, eventId));
+      }
+    }
   } catch (error: any) {
     console.error("[WhatsApp Webhook Worker] Poll error:", error.message);
   }
@@ -786,9 +707,12 @@ export function startWebhookWorker(): void {
     return;
   }
 
-  console.log("[WhatsApp Webhook Worker] Starting...");
-  webhookIntervalId = setInterval(pollWebhookEvents, WEBHOOK_POLL_INTERVAL_MS);
-  pollWebhookEvents();
+  console.log("[WhatsApp Webhook Worker] Starting with poll interval:", WEBHOOK_POLL_INTERVAL_MS, "ms");
+  webhookIntervalId = setInterval(() => {
+    pollWebhookEvents().catch(err => console.error("[WhatsApp Webhook Worker] Polling error:", err));
+  }, WEBHOOK_POLL_INTERVAL_MS);
+  // Run initial poll
+  pollWebhookEvents().catch(err => console.error("[WhatsApp Webhook Worker] Initial poll error:", err));
 }
 
 export function startSendWorker(): void {

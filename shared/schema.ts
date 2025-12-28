@@ -6571,8 +6571,9 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
-  // Unique conversation per phone number pair per company
-  companyPhoneUnique: uniqueIndex("telnyx_conversations_company_phone_unique").on(table.companyId, table.phoneNumber, table.companyPhoneNumber),
+  // Unique conversation per phone number pair per company AND channel
+  // This allows the same customer to have separate SMS and WhatsApp conversations
+  companyPhoneChannelUnique: uniqueIndex("telnyx_conversations_company_phone_channel_unique").on(table.companyId, table.phoneNumber, table.companyPhoneNumber, table.channel),
   deviceIdIdx: index("telnyx_conversations_device_id_idx").on(table.deviceId),
   // INVARIANT A: Only ONE open live_chat conversation per device (Intercom-style)
   // This prevents duplicate sessions when user clicks "New Chat" multiple times
