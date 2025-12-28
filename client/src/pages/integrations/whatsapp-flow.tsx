@@ -60,9 +60,25 @@ export default function WhatsAppFlow() {
     queryKey: ["/api/integrations/whatsapp/status"],
   });
 
+  // Get real phone registration status from Meta API
+  const { data: phoneStatusData } = useQuery<{ 
+    status?: string; 
+    code_verification_status?: string;
+    quality_rating?: string;
+    verified_name?: string;
+  }>({
+    queryKey: ["/api/integrations/whatsapp/phone-status"],
+    enabled: !!connectionData?.connection,
+    retry: false,
+  });
+
   const connection = connectionData?.connection;
   const isConnected = connection?.status === "active";
   const isPending = connection?.status === "pending";
+  // Phone is fully registered when code_verification_status is VERIFIED or NOT_VERIFIED (means registration was attempted)
+  const isPhoneRegistered = phoneStatusData?.code_verification_status === "VERIFIED" || 
+                            phoneStatusData?.code_verification_status === "NOT_VERIFIED" ||
+                            phoneStatusData?.status === "CONNECTED";
 
   useEffect(() => {
     if (document.getElementById("facebook-jssdk")) {
@@ -142,12 +158,16 @@ export default function WhatsAppFlow() {
   }, [toast]);
 
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && isPhoneRegistered) {
+      // Only go to step 3 if phone is fully registered (PIN was entered)
       setCurrentStep(3);
+    } else if (isConnected && !isPhoneRegistered) {
+      // Connected but phone not registered yet - show PIN step
+      setCurrentStep(2);
     } else if (isPending) {
       setCurrentStep(2);
     }
-  }, [isConnected, isPending]);
+  }, [isConnected, isPending, isPhoneRegistered]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
