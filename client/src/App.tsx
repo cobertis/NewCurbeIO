@@ -1561,7 +1561,6 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/quotes/new">
       <Route path="/pulse-ai">
         <ProtectedRoute>
           <DashboardLayout>
@@ -1576,6 +1575,7 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/quotes/new">
         <ProtectedRoute>
           <DashboardLayout>
             <Quotes />
