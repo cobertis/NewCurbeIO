@@ -38,7 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
 import { WebPhoneFloatingWindow } from '@/components/WebPhoneFloatingWindow';
-import { WhatsAppCallHandler } from '@/components/whatsapp-call-handler';
+import { whatsAppCallService } from '@/services/whatsapp-call-service';
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
 import { useTelnyxStore, telnyxWebRTC } from "@/services/telnyx-webrtc";
 import { useExtensionCall } from "@/hooks/useExtensionCall";
@@ -2060,17 +2060,26 @@ function Router() {
   );
 }
 
-// Global WhatsApp Call Handler - Always mounted when user is authenticated
-function GlobalWhatsAppCallHandler() {
+// Global WhatsApp Call Service Initializer - Connects when user is authenticated
+function GlobalWhatsAppCallInitializer() {
   const { data: sessionData } = useQuery<{ user: User }>({ 
     queryKey: ["/api/session"],
     staleTime: 0,
   });
   
-  // Only render if user is authenticated
-  if (!sessionData?.user) return null;
+  useEffect(() => {
+    if (sessionData?.user) {
+      whatsAppCallService.connect();
+    } else {
+      whatsAppCallService.disconnect();
+    }
+    
+    return () => {
+      whatsAppCallService.disconnect();
+    };
+  }, [sessionData?.user]);
   
-  return <WhatsAppCallHandler />;
+  return null;
 }
 
 function App() {
@@ -2081,7 +2090,7 @@ function App() {
           <TooltipProvider>
             <IntercomProvider>
             <Toaster />
-            <GlobalWhatsAppCallHandler />
+            <GlobalWhatsAppCallInitializer />
             <Router />
             </IntercomProvider>
           </TooltipProvider>
