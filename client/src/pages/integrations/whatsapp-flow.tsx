@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SiWhatsapp, SiFacebook } from "react-icons/si";
-import { CheckCircle2, Clock, AlertCircle, ChevronLeft, Info, RefreshCw, ExternalLink, QrCode } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, ChevronLeft, ChevronRight, Info, RefreshCw, ExternalLink, QrCode } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SettingsLayout } from "@/components/settings-layout";
@@ -398,14 +398,10 @@ export default function WhatsAppFlow() {
   return (
     <SettingsLayout activeSection="whatsapp">
       <div className="space-y-6" data-testid="page-whatsapp-flow">
-        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <Link href="/settings" className="hover:text-slate-700 dark:hover:text-slate-300">
-            Settings
-          </Link>
-          <span>&gt;</span>
-          <Link href="/settings/whatsapp" className="hover:text-slate-700 dark:hover:text-slate-300">
-            WhatsApp
-          </Link>
+        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-whatsapp-setup">
+          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">WhatsApp Setup</span>
         </div>
 
         <Card className="border-slate-200 dark:border-slate-800">

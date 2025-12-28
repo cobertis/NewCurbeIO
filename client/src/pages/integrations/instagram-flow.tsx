@@ -4,7 +4,7 @@ import { useLocation, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CheckCircle2, MessageCircle, Clock, ExternalLink, QrCode } from "lucide-react";
+import { CheckCircle2, MessageCircle, Clock, ExternalLink, QrCode, ChevronRight } from "lucide-react";
 import { SiInstagram } from "react-icons/si";
 import { SettingsLayout } from "@/components/settings-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -119,14 +119,10 @@ export default function InstagramFlowPage() {
   return (
     <SettingsLayout activeSection="instagram">
       <div className="space-y-6" data-testid="page-instagram-flow">
-        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <Link href="/settings" className="hover:text-slate-700 dark:hover:text-slate-300">
-            Settings
-          </Link>
-          <span>&gt;</span>
-          <Link href="/settings/instagram" className="hover:text-slate-700 dark:hover:text-slate-300">
-            Instagram
-          </Link>
+        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-instagram-setup">
+          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">Instagram Setup</span>
         </div>
 
         <Card className="border-slate-200 dark:border-slate-800">

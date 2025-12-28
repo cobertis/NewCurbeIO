@@ -42,7 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -367,6 +367,12 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
   if (hasDomainConfigured && isDomainVerified) {
     const content = (
       <div className="space-y-6" data-testid="page-email-integration">
+        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-email">
+          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">Email</span>
+        </div>
+
         <div className="flex items-center gap-3">
           <Button 
             variant="outline" 
@@ -483,6 +489,12 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
   if (hasDomainConfigured && !isDomainVerified) {
     const content = (
       <div className="space-y-6" data-testid="page-email-integration">
+        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-email">
+          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">Email</span>
+        </div>
+
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">Email</h1>
           <p className="text-sm text-muted-foreground">Complete your domain verification to start sending emails</p>
@@ -525,6 +537,12 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
 
   const content = (
     <div className="space-y-6" data-testid="page-email-integration">
+      <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-email">
+        <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium">Email</span>
+      </div>
+
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">Email</h1>
       </div>
