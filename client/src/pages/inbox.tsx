@@ -480,8 +480,8 @@ export default function InboxPage() {
         })
       );
       toast({
-        title: "Failed to send message",
-        description: error.message || "Please try again",
+        title: "Error al enviar mensaje",
+        description: error.message || "Por favor intenta de nuevo",
         variant: "destructive",
       });
     },
@@ -1045,6 +1045,36 @@ export default function InboxPage() {
 
   const handleSendMessage = () => {
     if ((!newMessage.trim() && selectedFiles.length === 0) || !selectedConversationId) return;
+    
+    // Validate file sizes for WhatsApp before sending
+    if (selectedConversation?.channel === "whatsapp" && selectedFiles.length > 0) {
+      const WA_LIMITS: Record<string, number> = {
+        image: 5 * 1024 * 1024,    // 5 MB
+        video: 16 * 1024 * 1024,   // 16 MB
+        audio: 16 * 1024 * 1024,   // 16 MB
+        document: 100 * 1024 * 1024 // 100 MB
+      };
+      const typeNames: Record<string, string> = { image: "imágenes", video: "videos", audio: "audio", document: "documentos" };
+      
+      for (const file of selectedFiles) {
+        const isImage = file.type.startsWith("image/");
+        const isVideo = file.type.startsWith("video/");
+        const isAudio = file.type.startsWith("audio/");
+        const mediaType = isImage ? "image" : isVideo ? "video" : isAudio ? "audio" : "document";
+        const maxSize = WA_LIMITS[mediaType];
+        
+        if (file.size > maxSize) {
+          const maxSizeMB = Math.round(maxSize / (1024 * 1024));
+          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+          toast({
+            title: "Archivo muy grande",
+            description: `El archivo "${file.name}" (${fileSizeMB}MB) excede el límite de WhatsApp para ${typeNames[mediaType]} (${maxSizeMB}MB). Por favor, reduce el tamaño.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
     
     if (selectedConversation?.channel === "live_chat") {
       if (typingTimeoutRef.current) {
