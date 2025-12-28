@@ -26793,6 +26793,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         updatedAt: connection.updatedAt,
       }
     });
+  });
 
   // GET /api/integrations/whatsapp/connections - List all active WhatsApp connections for company
   app.get("/api/integrations/whatsapp/connections", requireActiveCompany, async (req: Request, res: Response) => {
@@ -26818,7 +26819,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }));
     
     return res.json({ connections: safeConnections });
-  });
   });
 
   // GET /api/integrations/whatsapp/phone-status - Check real phone number status from Meta Graph API
