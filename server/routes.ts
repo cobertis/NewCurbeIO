@@ -28436,7 +28436,8 @@ CRITICAL REMINDERS:
 
       // Get message ID from response
       const providerMessageId = responseData.messages?.[0]?.id;
-      const messageText = `[Template: ${templateName}]`;
+      const renderedText = req.body.renderedText || "";
+      const messageText = renderedText || `[Template: ${templateName}]`;
 
       // Save the sent message to telnyxMessages
       const [insertedMessage] = await db.insert(telnyxMessages).values({

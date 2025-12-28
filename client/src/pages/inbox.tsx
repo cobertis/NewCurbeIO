@@ -641,16 +641,18 @@ export default function InboxPage() {
 
   // Send WhatsApp template mutation
   const sendTemplateMutation = useMutation({
-    mutationFn: async ({ conversationId, templateName, languageCode, components }: {
+    mutationFn: async ({ conversationId, templateName, languageCode, components, renderedText }: {
       conversationId: string;
       templateName: string;
       languageCode: string;
       components?: Array<{ type: string; parameters: Array<{ type: string; text: string }> }>;
+      renderedText: string;
     }) => {
       return apiRequest("POST", "/api/whatsapp/meta/templates/send", {
         conversationId,
         templateName,
         languageCode,
+        renderedText,
         components,
       });
     },
@@ -3779,11 +3781,39 @@ export default function InboxPage() {
                         }
                       });
                       
+
+                      // Build rendered text for display in inbox
+                      let renderedText = "";
+                      selectedTemplateForSend.components.forEach((comp: any) => {
+                        const compType = comp.type?.toUpperCase();
+                        if (compType === "HEADER" && comp.text) {
+                          let headerText = comp.text;
+                          Object.keys(varsRecord).filter(k => k.startsWith("HEADER_")).forEach(key => {
+                            const varNum = key.split("_")[1];
+                            headerText = headerText.replace(`{{${varNum}}}`, varsRecord[key] || "");
+                          });
+                          renderedText += `*${headerText}*\n`;
+                        }
+                        if (compType === "BODY" && comp.text) {
+                          let bodyText = comp.text;
+                          Object.keys(varsRecord).filter(k => k.startsWith("BODY_")).forEach(key => {
+                            const varNum = key.split("_")[1];
+                            bodyText = bodyText.replace(`{{${varNum}}}`, varsRecord[key] || "");
+                          });
+                          renderedText += bodyText + "\n";
+                        }
+                        if (compType === "FOOTER" && comp.text) {
+                          renderedText += `_${comp.text}_\n`;
+                        }
+                      });
+                      renderedText = renderedText.trim();
+                      
                       sendTemplateMutation.mutate({
                         conversationId: selectedConversationId,
                         templateName: selectedTemplateForSend.name,
                         languageCode: selectedTemplateForSend.language,
                         components: components.length > 0 ? components : undefined,
+                        renderedText,
                       });
                     }}
                     disabled={sendTemplateMutation.isPending || Object.values(templateVariables).some(v => !(v as string)?.trim())}
