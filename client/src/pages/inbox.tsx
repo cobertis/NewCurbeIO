@@ -216,6 +216,7 @@ export default function InboxPage() {
   const [newConversationPhone, setNewConversationPhone] = useState("");
   const [selectedFromNumber, setSelectedFromNumber] = useState<string>("");
   const [newConversationChannel, setNewConversationChannel] = useState<"sms" | "whatsapp">("sms");
+  const [selectedWaConnection, setSelectedWaConnection] = useState<string>("");
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [contactInfoOpen, setContactInfoOpen] = useState(true);
   const [insightsOpen, setInsightsOpen] = useState(true);
@@ -290,6 +291,21 @@ export default function InboxPage() {
   const whatsappPhoneNumber = whatsappStatusData?.phoneNumber;
   const whatsappDisplayName = whatsappStatusData?.displayName;
 
+
+  // Query to get all active WhatsApp connections for company
+  const { data: waConnectionsData } = useQuery<{
+    connections: Array<{
+      id: string;
+      phoneNumberE164: string;
+      displayName: string;
+      wabaId: string;
+      phoneNumberId: string;
+    }>;
+  }>({
+    queryKey: ["/api/integrations/whatsapp/connections"],
+    enabled: isAuthenticated,
+  });
+  const waConnections = waConnectionsData?.connections || [];
   const { data: conversationsData, isLoading: loadingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
     enabled: isAuthenticated,
@@ -670,17 +686,22 @@ export default function InboxPage() {
     }
   });
 
-  // WhatsApp templates query - fetch approved templates for this company
+  // Get wabaId from selected WhatsApp connection (for new conversation) or from existing conversation's connection
+  const selectedWaConnectionData = waConnections.find(c => c.id === selectedWaConnection);
+  const activeWabaId = selectedWaConnectionData?.wabaId || (waConnections.length > 0 ? waConnections[0]?.wabaId : null);
+
+  // WhatsApp templates query - fetch approved templates for selected connection
   const { data: whatsappTemplatesData } = useQuery<{ templates: Array<{
     id: string;
     name: string;
     status: string;
     category: string;
     language: string;
-    components: Array<{ type: string; text?: string; format?: string }>;
+    components: Array<{ type: string; text?: string; format?: string; buttons?: Array<{ type: string; text: string; url?: string }> }>;
   }> }>({
-    queryKey: ["/api/whatsapp/meta/templates"],
-    enabled: isAuthenticated && selectedConversation?.channel === "whatsapp",
+    queryKey: ["/api/whatsapp/meta/templates", activeWabaId],
+    queryFn: () => fetch(`/api/whatsapp/meta/templates${activeWabaId ? `?wabaId=${activeWabaId}` : ""}`).then(r => r.json()),
+    enabled: isAuthenticated && (selectedConversation?.channel === "whatsapp" || (newConversationChannel === "whatsapp" && !!activeWabaId)),
   });
   const approvedTemplates = (whatsappTemplatesData?.templates || []).filter(t => t.status === "APPROVED");
 
@@ -3370,15 +3391,10 @@ export default function InboxPage() {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              {newConversationChannel === "whatsapp" && whatsappConnected && (
-                <p className="text-xs text-muted-foreground">
-                  Sending from: {whatsappDisplayName || formatForDisplay(whatsappPhoneNumber || "")}
-                </p>
-              )}
             </div>
 
-            {/* From Number - Only for SMS */}
-            {newConversationChannel === "sms" && (
+            {/* From Number - SMS or WhatsApp */}
+            {newConversationChannel === "sms" ? (
               <div className="space-y-2">
                 <label className="text-sm font-medium">From Number</label>
                 <Select value={selectedFromNumber} onValueChange={setSelectedFromNumber}>
@@ -3394,6 +3410,39 @@ export default function InboxPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            ) : waConnections.length > 0 ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">From WhatsApp</label>
+                <Select 
+                  value={selectedWaConnection || waConnections[0]?.id || ""} 
+                  onValueChange={(val) => {
+                    setSelectedWaConnection(val);
+                    setNewConvTemplate(null);
+                    setNewConvVars({});
+                  }}
+                >
+                  <SelectTrigger data-testid="select-whatsapp-from">
+                    <SelectValue placeholder="Select WhatsApp account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {waConnections.map((conn) => (
+                      <SelectItem key={conn.id} value={conn.id}>
+                        <div className="flex items-center gap-2">
+                          <SiWhatsapp className="h-4 w-4 text-emerald-500" />
+                          <span>{conn.displayName || formatForDisplay(conn.phoneNumberE164)}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-sm text-amber-800 dark:text-amber-200">No WhatsApp accounts connected</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Connect WhatsApp in Settings → Channels
+                </p>
               </div>
             )}
 
