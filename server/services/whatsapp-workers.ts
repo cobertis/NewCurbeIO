@@ -186,18 +186,19 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
                     await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // 100ms, 200ms delays
                   }
                   
-                  // Try finding by exact companyPhoneNumber first (most likely match)
+                  // Try finding by exact companyPhoneNumber AND channel (prevent mixing with SMS)
                   inboxConversation = await db.query.telnyxConversations.findFirst({
                     where: and(
                       eq(telnyxConversations.companyId, companyId),
                       eq(telnyxConversations.phoneNumber, customerPhone),
-                      eq(telnyxConversations.companyPhoneNumber, companyPhone)
+                      eq(telnyxConversations.companyPhoneNumber, companyPhone),
+                      eq(telnyxConversations.channel, "whatsapp")
                     ),
                   });
                   
                   if (inboxConversation) break;
                   
-                  // Fallback: any WhatsApp conversation with this customer
+                  // Fallback: any WhatsApp conversation with this customer (but still must be WhatsApp channel)
                   inboxConversation = await db.query.telnyxConversations.findFirst({
                     where: and(
                       eq(telnyxConversations.companyId, companyId),
@@ -323,18 +324,19 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
                     await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // 100ms, 200ms delays
                   }
                   
-                  // Try finding by exact companyPhoneNumber first (most likely match)
+                  // Try finding by exact companyPhoneNumber AND channel (prevent mixing with SMS)
                   inboxConversation = await db.query.telnyxConversations.findFirst({
                     where: and(
                       eq(telnyxConversations.companyId, companyId),
                       eq(telnyxConversations.phoneNumber, customerPhone),
-                      eq(telnyxConversations.companyPhoneNumber, companyPhone)
+                      eq(telnyxConversations.companyPhoneNumber, companyPhone),
+                      eq(telnyxConversations.channel, "whatsapp")
                     ),
                   });
                   
                   if (inboxConversation) break;
                   
-                  // Fallback: any WhatsApp conversation with this customer
+                  // Fallback: any WhatsApp conversation with this customer (but still must be WhatsApp channel)
                   inboxConversation = await db.query.telnyxConversations.findFirst({
                     where: and(
                       eq(telnyxConversations.companyId, companyId),
