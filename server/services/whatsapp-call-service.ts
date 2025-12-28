@@ -147,11 +147,11 @@ class WhatsAppCallService {
       console.log(`[WhatsApp Call] Sending pre_accept for call ${callId}`);
       const preAcceptPayload = {
         messaging_product: 'whatsapp',
-        wacid: callId,
+        call_id: callId,
         action: 'pre_accept',
         session: {
-          sdp: modifiedSdp,
-          sdp_type: 'answer'
+          sdp_type: 'answer',
+          sdp: modifiedSdp
         }
       };
       console.log(`[WhatsApp Call] pre_accept payload:`, JSON.stringify(preAcceptPayload, null, 2));
@@ -177,7 +177,7 @@ class WhatsAppCallService {
       console.log(`[WhatsApp Call] Sending accept for call ${callId}`);
       const acceptPayload = {
         messaging_product: 'whatsapp',
-        wacid: callId,
+        call_id: callId,
         action: 'accept'
       };
       
