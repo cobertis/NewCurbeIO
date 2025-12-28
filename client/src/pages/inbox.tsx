@@ -1415,6 +1415,29 @@ export default function InboxPage() {
                     const isNote = isMessageInternalNote(message);
                     const isOutbound = message.direction === "outbound";
                     const isInbound = message.direction === "inbound" && !isNote;
+                    const isSystemMessage = message.contentType === "system";
+                    
+                    // System messages (calls) are displayed centered
+                    if (isSystemMessage) {
+                      const isCallMessage = message.text?.toLowerCase().includes("call");
+                      return (
+                        <div key={message.id} className="flex justify-center my-2">
+                          <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm text-gray-600 dark:text-gray-300">
+                            {isCallMessage ? (
+                              <>
+                                <Phone className="h-4 w-4 text-emerald-500" />
+                                <span>{message.text}</span>
+                              </>
+                            ) : (
+                              <span>{message.text}</span>
+                            )}
+                            <span className="text-xs text-gray-400 ml-2">
+                              {new Intl.DateTimeFormat('default', { hour: 'numeric', minute: '2-digit' }).format(new Date(message.createdAt))}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
                     
                     return (
                       <div
