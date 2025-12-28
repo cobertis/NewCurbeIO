@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Phone, PhoneOff, PhoneMissed, User } from 'lucide-react';
+import { Phone, PhoneOff, PhoneMissed, User, Mic, MicOff } from 'lucide-react';
 import { SiWhatsapp } from 'react-icons/si';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,7 +29,9 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
   const [isConnected, setIsConnected] = useState(false);
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [activeCall, setActiveCall] = useState<string | null>(null);
+  const [activeCallInfo, setActiveCallInfo] = useState<{ from: string; fromName: string } | null>(null);
   const [isAnswering, setIsAnswering] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const callStartTimeRef = useRef<number | null>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -161,7 +163,9 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
   const handleCallEnd = () => {
     setIncomingCall(null);
     setActiveCall(null);
+    setActiveCallInfo(null);
     setIsAnswering(false);
+    setIsMuted(false);
     stopRingtone();
     cleanupCall();
     onCallStateChange?.(null);
@@ -248,6 +252,7 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
       }));
 
       setActiveCall(incomingCall.callId);
+      setActiveCallInfo({ from: incomingCall.from, fromName: incomingCall.fromName });
       setIncomingCall(null);
       onCallStateChange?.(incomingCall.callId);
 
@@ -294,6 +299,16 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
     }));
 
     handleCallEnd();
+  };
+
+  const toggleMute = () => {
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMuted(!audioTrack.enabled);
+      }
+    }
   };
 
   const formatDuration = (seconds: number) => {
@@ -370,20 +385,38 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
 
       {activeCall && (
         <div className="fixed bottom-4 right-4 z-50" data-testid="whatsapp-active-call">
-          <Card className="w-72 bg-emerald-600 text-white shadow-2xl">
+          <Card className="w-80 bg-emerald-600 text-white shadow-2xl">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
-                    <SiWhatsapp className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">WhatsApp Call</p>
-                    <p className="text-xs text-white/80" data-testid="text-call-duration">
-                      {formatDuration(callDuration)}
-                    </p>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center relative flex-shrink-0">
+                  <User className="h-6 w-6" />
+                  <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-white flex items-center justify-center">
+                    <SiWhatsapp className="h-3 w-3 text-emerald-600" />
                   </div>
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate" data-testid="text-active-call-name">
+                    {activeCallInfo?.fromName || 'Unknown'}
+                  </p>
+                  <p className="text-xs text-white/80 truncate" data-testid="text-active-call-number">
+                    {activeCallInfo?.from || 'Unknown'}
+                  </p>
+                  <p className="text-xs text-white/60" data-testid="text-call-duration">
+                    {formatDuration(callDuration)}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-center gap-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={`h-10 w-10 rounded-full ${isMuted ? 'bg-white text-emerald-600 hover:bg-white/90' : 'bg-white/20 hover:bg-white/30 text-white'}`}
+                  onClick={toggleMute}
+                  data-testid="btn-mute-call"
+                >
+                  {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                </Button>
                 
                 <Button
                   size="sm"
