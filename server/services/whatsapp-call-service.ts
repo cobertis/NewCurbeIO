@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 import { db } from '../db';
 import { channelConnections } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
-import { decrypt } from '../crypto';
+import { decryptToken } from '../crypto';
 
 interface PendingCall {
   callId: string;
@@ -138,7 +138,7 @@ class WhatsAppCallService {
         return { success: false, error: 'WhatsApp connection not found' };
       }
 
-      const accessToken = decrypt(connection.accessTokenEnc);
+      const accessToken = decryptToken(connection.accessTokenEnc);
       let modifiedSdp = sdpAnswer.replace(/a=setup:actpass/g, 'a=setup:active');
 
       console.log(`[WhatsApp Call] Sending pre_accept for call ${callId}`);
@@ -215,7 +215,7 @@ class WhatsAppCallService {
       });
 
       if (connection?.accessTokenEnc) {
-        const accessToken = decrypt(connection.accessTokenEnc);
+        const accessToken = decryptToken(connection.accessTokenEnc);
         
         // Meta doesn't have a direct "decline" endpoint, but we can terminate the call
         // The call will end on Meta's side when we don't respond with accept

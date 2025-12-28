@@ -1,0 +1,76 @@
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 registered for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | [TURN Credentials] Returning TURN servers for: gencredeaJuooJUafIZwYGRHNnaB83TKR8gYTAWY16FdUsEIu
+0|curbe-admin  | 3:58:30 AM [express] GET /api/telnyx/turn-credentials 304 in 22ms :: {"username":"gencredeaJuooJUafI…
+0|curbe-admin  | 3:58:30 AM [express] GET /api/pbx/special-extensions 304 in 25ms :: {"ivrExtension":null,"queues":[]}
+0|curbe-admin  | 3:58:30 AM [express] GET /api/webrtc/extension-credentials 304 in 14ms :: {"extensionId":"bd5db414-7…
+0|curbe-admin  | 3:58:30 AM [express] GET /api/telnyx/voice-settings/062de1ab-a1e9-47cd-bae7-5759c6d7b02a 304 in 166m…
+0|curbe-admin  | 3:58:34 AM [express] GET /api/ai/conversations 304 in 2ms
+0|curbe-admin  | 3:58:34 AM [express] GET /api/inbox/conversations/66194c53-9dc9-4657-8cfb-75fd1f5efbb3/messages 200 …
+0|curbe-admin  | 3:58:39 AM [express] GET /api/ai/autopilot/pending 304 in 29ms :: {"pending":[]}
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 3:58:44 AM [express] POST /api/webhooks/meta/whatsapp 200 in 6ms
+0|curbe-admin  | [WhatsApp Webhook Worker] Dedupe check failed for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNDBDMUVFRDdCQjVDMTVBNjZCMzA4MEM3NUFCQkVDOUEcGAsxNzg2NzYzMTU5MxUCABUaAA==, processing anyway
+0|curbe-admin  | [WhatsApp Webhook Worker] Incoming call with SDP offer: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNDBDMUVFRDdCQjVDMTVBNjZCMzA4MEM3NUFCQkVDOUEcGAsxNzg2NzYzMTU5MxUCABUaAA== from 17866302522
+0|curbe-admin  | [WhatsApp Call] Incoming call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNDBDMUVFRDdCQjVDMTVBNjZCMzA4MEM3NUFCQkVDOUEcGAsxNzg2NzYzMTU5MxUCABUaAA== from +17866302522 to +17867631593
+0|curbe-admin  | [WhatsApp Call] Notified 1 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Webhook Worker] Saved inbound call to inbox: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNDBDMUVFRDdCQjVDMTVBNjZCMzA4MEM3NUFCQkVDOUEcGAsxNzg2NzYzMTU5MxUCABUaAA== - connect
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 unregistered from company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call WS] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 disconnected
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 registered for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [BOUNCE PROCESSOR] IMAP error: Timed out while authenticating with server
+0|curbe-admin  | [BOUNCE PROCESSOR] Error processing bounces: Error: Timed out while authenticating with server
+0|curbe-admin  |     at Timeout._onTimeout (/var/www/curbe/node_modules/imap/lib/Connection.js:139:17)
+0|curbe-admin  |     at listOnTimeout (node:internal/timers:581:17)
+0|curbe-admin  |     at process.processTimers (node:internal/timers:519:7) {
+0|curbe-admin  |   source: 'timeout-auth'
+0|curbe-admin  | }
+0|curbe-admin  | [WhatsApp Call WS] Received message: answer
+0|curbe-admin  | ⚠️  WARNING: Using default encryption key. Set ENCRYPTION_KEY environment variable for production!
+0|curbe-admin  | Decryption error: SyntaxError: Unexpected token 'u', "uFb0nMdPVr"... is not valid JSON
+0|curbe-admin  |     at JSON.parse (<anonymous>)
+0|curbe-admin  |     at decrypt3 (file:///var/www/curbe/dist/index.js:15131:46)
+0|curbe-admin  |     at WhatsAppCallService.answerCall (file:///var/www/curbe/dist/index.js:15308:31)
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  |     at async WebSocket.<anonymous> (file:///var/www/curbe/dist/index.js:21175:34)
+0|curbe-admin  | [WhatsApp Call] Sending pre_accept for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNDBDMUVFRDdCQjVDMTVBNjZCMzA4MEM3NUFCQkVDOUEcGAsxNzg2NzYzMTU5MxUCABUaAA==
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 unregistered from company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call WS] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 disconnected
+0|curbe-admin  | 3:58:49 AM [express] GET /api/ai/autopilot/pending 304 in 36ms :: {"pending":[]}
+0|curbe-admin  | [WhatsApp Call] pre_accept failed: {
+0|curbe-admin  |   error: {
+0|curbe-admin  |     message: 'Invalid OAuth access token - Cannot parse access token',
+0|curbe-admin  |     type: 'OAuthException',
+0|curbe-admin  |     code: 190,
+0|curbe-admin  |     fbtrace_id: 'AHwtTShpN2gUPYJTp1q_3RM'
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 registered for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 3:58:59 AM [express] GET /api/ai/autopilot/pending 304 in 32ms :: {"pending":[]}
+0|curbe-admin  | 3:59:10 AM [express] GET /api/ai/autopilot/pending 304 in 32ms :: {"pending":[]}
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 3:59:16 AM [express] POST /api/webhooks/meta/whatsapp 200 in 3ms
+0|curbe-admin  | 3:59:20 AM [express] GET /api/ai/autopilot/pending 304 in 34ms :: {"pending":[]}
+0|curbe-admin  | [WhatsApp Call WS] Received message: decline
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 unregistered from company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call WS] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 disconnected
+0|curbe-admin  | ⚠️  WARNING: Using default encryption key. Set ENCRYPTION_KEY environment variable for production!
+0|curbe-admin  | Decryption error: SyntaxError: Unexpected token 'u', "uFb0nMdPVr"... is not valid JSON
+0|curbe-admin  |     at JSON.parse (<anonymous>)
+0|curbe-admin  |     at decrypt3 (file:///var/www/curbe/dist/index.js:15131:46)
+0|curbe-admin  |     at WhatsAppCallService.declineCall (file:///var/www/curbe/dist/index.js:15372:33)
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  |     at async WebSocket.<anonymous> (file:///var/www/curbe/dist/index.js:21179:35)
+0|curbe-admin  | [WhatsApp Call] Call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNDBDMUVFRDdCQjVDMTVBNjZCMzA4MEM3NUFCQkVDOUEcGAsxNzg2NzYzMTU5MxUCABUaAA== declined - letting it timeout on Meta's side
+0|curbe-admin  | [WhatsApp Call] Notified 0 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call] Call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNDBDMUVFRDdCQjVDMTVBNjZCMzA4MEM3NUFCQkVDOUEcGAsxNzg2NzYzMTU5MxUCABUaAA== declined
+0
