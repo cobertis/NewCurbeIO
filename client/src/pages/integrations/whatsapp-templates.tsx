@@ -348,35 +348,8 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
     buttonType: "quick_reply",
     buttons: ["Comenzar a Comprar"],
   },
-  // AUTHENTICATION
-  {
-    id: "verification_code",
-    name: "verification_code",
-    category: "AUTHENTICATION",
-    categoryLabel: "Verification",
-    description: "One-time verification code",
-    language: "en",
-    headerType: "none",
-    headerText: "",
-    bodyText: "Your verification code is {{1}}. This code expires in 10 minutes. Do not share this code with anyone.",
-    footerText: "",
-    buttonType: "none",
-    buttons: [],
-  },
-  {
-    id: "codigo_verificacion",
-    name: "codigo_verificacion",
-    category: "AUTHENTICATION",
-    categoryLabel: "Verification",
-    description: "Codigo de verificacion en español",
-    language: "es",
-    headerType: "none",
-    headerText: "",
-    bodyText: "Tu codigo de verificacion es {{1}}. Este codigo expira en 10 minutos. No compartas este codigo con nadie.",
-    footerText: "",
-    buttonType: "none",
-    buttons: [],
-  },
+  // NOTE: Authentication templates removed from library - Meta requires a very specific format
+  // that doesn't allow custom body text. They are auto-generated with OTP button.
 ];
 
 export default function WhatsAppTemplatesPage() {
@@ -504,6 +477,35 @@ export default function WhatsAppTemplatesPage() {
   // Create template mutation
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      // AUTHENTICATION templates have special Meta requirements - cannot use custom text
+      if (data.category === "AUTHENTICATION") {
+        // Meta Authentication templates must follow a strict format
+        const components: any[] = [
+          {
+            type: "BODY",
+            add_security_recommendation: true,
+          },
+          {
+            type: "BUTTONS",
+            buttons: [
+              {
+                type: "OTP",
+                otp_type: "COPY_CODE",
+              }
+            ],
+          }
+        ];
+
+        return apiRequest("POST", "/api/whatsapp/meta/templates", {
+          wabaId,
+          name: data.name.toLowerCase().replace(/\s+/g, "_"),
+          language: data.language,
+          category: data.category,
+          components,
+        });
+      }
+
+      // Standard UTILITY/MARKETING templates
       const components: any[] = [];
 
       // Header component
@@ -1092,6 +1094,14 @@ export default function WhatsAppTemplatesPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {formData.category === "AUTHENTICATION" && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    <strong>Note:</strong> Authentication templates have strict Meta requirements. 
+                    Body text will be auto-generated with a Copy Code button. Custom text is not allowed.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Language */}
