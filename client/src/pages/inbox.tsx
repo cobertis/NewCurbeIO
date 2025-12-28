@@ -58,7 +58,7 @@ import {
   Check
 } from "lucide-react";
 import { Link } from "wouter";
-import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp } from "react-icons/si";
+import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp, SiImessage, SiGooglemessages } from "react-icons/si";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -143,17 +143,17 @@ const getChannelIcon = (channel?: string) => {
     case "instagram":
       return <SiInstagram className="h-2.5 w-2.5 text-white" />;
     case "imessage":
-      return <MessageSquare className="h-2.5 w-2.5 text-white" />;
+      return <SiImessage className="h-2.5 w-2.5 text-white" />;
     case "telegram":
       return <SiTelegram className="h-2.5 w-2.5 text-white" />;
     case "rcs":
-      return <MessageSquare className="h-2.5 w-2.5 text-white" />;
+      return <SiGooglemessages className="h-2.5 w-2.5 text-white" />;
     case "sms":
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
     case "live_chat":
       return <Globe className="h-2.5 w-2.5 text-white" />;
     case "whatsapp":
-      return <Phone className="h-2.5 w-2.5 text-white" />;
+      return <SiWhatsapp className="h-2.5 w-2.5 text-white" />;
     default:
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
   }
