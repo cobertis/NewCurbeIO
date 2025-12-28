@@ -26308,12 +26308,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         );
       }
       
-      // Encrypt and store token
-      const iv = randomBytes(16);
-      const key = Buffer.from(process.env.ENCRYPTION_KEY || "0".repeat(64), "hex");
-      const cipher = createCipheriv("aes-256-cbc", key, iv);
-      let encryptedToken = cipher.update(accessToken, "utf8", "hex");
-      encryptedToken += cipher.final("hex");
+      // Encrypt the access token using the standard encryptToken function
+      const encryptedToken = encryptToken(accessToken);
       
       // Check existing connection
       const existingConnection = await db.select().from(channelConnections)
@@ -26331,8 +26327,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             phoneNumberId,
             phoneNumberE164,
             displayName,
-            accessToken: encryptedToken,
-            tokenIv: iv.toString("hex"),
+            accessTokenEnc: encryptedToken,
+            
             status: "active",
             updatedAt: new Date()
           })
@@ -26346,8 +26342,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           phoneNumberId,
           phoneNumberE164,
           displayName,
-          accessToken: encryptedToken,
-          tokenIv: iv.toString("hex"),
+          accessTokenEnc: encryptedToken,
+          
           status: "active"
         });
       }
