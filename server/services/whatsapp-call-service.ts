@@ -141,18 +141,22 @@ class WhatsAppCallService {
       const accessToken = decryptToken(connection.accessTokenEnc);
       let modifiedSdp = sdpAnswer.replace(/a=setup:actpass/g, 'a=setup:active');
 
+      // Meta WhatsApp Calling API: POST /{phone_number_id}/calls with command in body
+      const callsEndpoint = `https://graph.facebook.com/v21.0/${call.phoneNumberId}/calls`;
+
       console.log(`[WhatsApp Call] Sending pre_accept for call ${callId}`);
-      const preAcceptResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${call.phoneNumberId}/calls/${callId}/pre_accept`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ sdp: modifiedSdp })
-        }
-      );
+      const preAcceptResponse = await fetch(callsEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          call_id: callId,
+          command: 'pre_accept',
+          sdp: modifiedSdp
+        })
+      });
 
       if (!preAcceptResponse.ok) {
         const errorData = await preAcceptResponse.json();
@@ -161,17 +165,18 @@ class WhatsAppCallService {
       }
 
       console.log(`[WhatsApp Call] Sending accept for call ${callId}`);
-      const acceptResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${call.phoneNumberId}/calls/${callId}/accept`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({})
-        }
-      );
+      const acceptResponse = await fetch(callsEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          call_id: callId,
+          command: 'accept',
+          sdp: modifiedSdp
+        })
+      });
 
       if (!acceptResponse.ok) {
         const errorData = await acceptResponse.json();
