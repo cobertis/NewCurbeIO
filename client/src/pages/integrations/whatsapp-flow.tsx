@@ -29,6 +29,9 @@ interface FBLoginResponse {
     accessToken?: string;
     userID?: string;
     expiresIn?: number;
+    signedRequest?: string;
+    graphDomain?: string;
+    data_access_expiration_time?: number;
   };
   status: string;
 }
@@ -158,10 +161,17 @@ export default function WhatsAppFlow() {
 
     window.FB.login(
       (response: FBLoginResponse) => {
+        console.log("[WhatsApp Flow] FB.login full response:", JSON.stringify(response, null, 2));
+        
         if (response.authResponse?.code) {
+          console.log("[WhatsApp Flow] Got authorization code, exchanging...");
           exchangeCodeMutation.mutate(response.authResponse.code);
+        } else if (response.authResponse?.accessToken) {
+          console.log("[WhatsApp Flow] Got access token directly (no code), sending...");
+          exchangeCodeMutation.mutate(response.authResponse.accessToken);
         } else {
           setIsConnecting(false);
+          console.log("[WhatsApp Flow] No code or token in response, status:", response.status);
           if (response.status === "unknown") {
             toast({
               variant: "destructive",

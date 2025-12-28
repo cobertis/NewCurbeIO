@@ -26158,12 +26158,14 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       const accessToken = tokenData.access_token;
+      console.log("[WhatsApp OAuth] Got access token, fetching WABA info...");
       
       // Get WABA info
       const wabaResponse = await fetch(
         `https://graph.facebook.com/${META_GRAPH_VERSION}/me/businesses?fields=owned_whatsapp_business_accounts{id,name,timezone_id,message_template_namespace}&access_token=${accessToken}`
       );
       const wabaData = await wabaResponse.json() as any;
+      console.log("[WhatsApp OAuth] me/businesses response:", JSON.stringify(wabaData, null, 2));
       
       let businessId: string | null = null;
       let wabaId: string | null = null;
@@ -26189,6 +26191,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           `https://graph.facebook.com/${META_GRAPH_VERSION}/me/whatsapp_shared_business_accounts?fields=id,name&access_token=${accessToken}`
         );
         const sharedWabaData = await sharedWabaResponse.json() as any;
+        console.log("[WhatsApp OAuth] Shared WABAs response:", JSON.stringify(sharedWabaData, null, 2));
         if (sharedWabaData.data?.length > 0) {
           wabaId = sharedWabaData.data[0].id;
           displayName = sharedWabaData.data[0].name || "WhatsApp Business";
@@ -26364,6 +26367,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       const accessToken = tokenData.access_token;
+      console.log("[WhatsApp OAuth] Got access token, fetching WABA info...");
       
       // Get WhatsApp Business Account(s) associated with this token
       // First get the list of businesses
@@ -26377,6 +26381,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         `https://graph.facebook.com/${META_GRAPH_VERSION}/me/businesses?fields=owned_whatsapp_business_accounts{id,name,timezone_id,message_template_namespace}&access_token=${accessToken}`
       );
       const wabaData = await wabaResponse.json() as any;
+      console.log("[WhatsApp OAuth] me/businesses response:", JSON.stringify(wabaData, null, 2));
       
       let businessId: string | null = null;
       let wabaId: string | null = null;
@@ -26415,6 +26420,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           `https://graph.facebook.com/${META_GRAPH_VERSION}/me/wabas?access_token=${accessToken}`
         );
         const sharedWabaData = await sharedWabaResponse.json() as any;
+        console.log("[WhatsApp OAuth] Shared WABAs response:", JSON.stringify(sharedWabaData, null, 2));
         
         if (sharedWabaData.data && sharedWabaData.data.length > 0) {
           wabaId = sharedWabaData.data[0].id;
@@ -27790,6 +27796,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       const accessToken = tokenData.access_token;
+      console.log("[WhatsApp OAuth] Got access token, fetching WABA info...");
       
       // Fetch pages with Instagram Business accounts
       const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?fields=id,name,instagram_business_account{id,username}&access_token=${accessToken}`;
@@ -28276,6 +28283,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       const accessToken = tokenData.access_token;
+      console.log("[WhatsApp OAuth] Got access token, fetching WABA info...");
       const refreshToken = tokenData.refresh_token;
       const openId = tokenData.open_id;
       const expiresIn = tokenData.expires_in || 86400;
