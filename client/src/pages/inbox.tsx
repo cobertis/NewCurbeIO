@@ -138,6 +138,10 @@ interface TelnyxConversation {
 
 const getChannelIcon = (channel?: string) => {
   switch (channel) {
+    case "facebook":
+      return <SiFacebook className="h-2.5 w-2.5 text-white" />;
+    case "instagram":
+      return <SiInstagram className="h-2.5 w-2.5 text-white" />;
     case "imessage":
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
     case "telegram":
@@ -149,7 +153,7 @@ const getChannelIcon = (channel?: string) => {
     case "live_chat":
       return <Globe className="h-2.5 w-2.5 text-white" />;
     case "whatsapp":
-      return <SiWhatsapp className="h-2.5 w-2.5 text-white" />;
+      return <Phone className="h-2.5 w-2.5 text-white" />;
     default:
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
   }
@@ -157,6 +161,10 @@ const getChannelIcon = (channel?: string) => {
 
 const getChannelColor = (channel?: string) => {
   switch (channel) {
+    case "facebook":
+      return "bg-blue-600";
+    case "instagram":
+      return "bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600";
     case "imessage":
       return "bg-blue-500";
     case "telegram":
@@ -164,13 +172,13 @@ const getChannelColor = (channel?: string) => {
     case "rcs":
       return "bg-purple-500";
     case "sms":
-      return "bg-green-500";
+      return "bg-gray-500";
     case "live_chat":
-      return "bg-orange-500";
+      return "bg-orange-400";
     case "whatsapp":
       return "bg-emerald-500";
     default:
-      return "bg-green-500";
+      return "bg-gray-500";
   }
 };
 
