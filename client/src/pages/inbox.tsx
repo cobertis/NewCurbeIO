@@ -250,6 +250,9 @@ export default function InboxPage() {
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [selectedTemplateForSend, setSelectedTemplateForSend] = useState<any>(null);
   const [templateVariables, setTemplateVariables] = useState<Record<number, string>>({});
+  // New conversation WhatsApp template state
+  const [newConvSelectedTemplate, setNewConvSelectedTemplate] = useState<any>(null);
+  const [newConvTemplateVariables, setNewConvTemplateVariables] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pulseAiMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -3298,17 +3301,165 @@ export default function InboxPage() {
                 data-testid="input-to-phone"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Message</label>
-              <Textarea
-                placeholder="Type your message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                className="min-h-[100px]"
-                data-testid="input-new-message"
-              />
-            </div>
-            <Button
+            
+            {/* Message - SMS uses textarea, WhatsApp uses template selector */}
+            {newConversationChannel === "sms" ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Message</label>
+                <Textarea
+                  placeholder="Type your message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="min-h-[100px]"
+                  data-testid="input-new-message"
+                />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Select Template</label>
+                {approvedTemplates.length === 0 ? (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      No approved templates available. WhatsApp requires pre-approved templates to start conversations.
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Create templates in Settings → Channels → WhatsApp Templates
+                    </p>
+                  </div>
+                ) : !newConvSelectedTemplate ? (
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-lg">
+                    {approvedTemplates.map((template) => {
+                      const bodyComp = template.components?.find((c: any) => c.type?.toUpperCase() === "BODY");
+                      return (
+                        <button
+                          key={`${template.name}-${template.language}`}
+                          className="w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 border-b last:border-b-0 transition-colors"
+                          onClick={() => {
+                            setNewConvSelectedTemplate(template);
+                            // Extract variables from template
+                            const vars: Record<string, string> = {};
+                            template.components?.forEach((comp: any) => {
+                              const compType = comp.type?.toUpperCase();
+                              if (["HEADER", "BODY"].includes(compType) && comp.text) {
+                                const matches = comp.text.match(/\{\{(\d+)\}\}/g) || [];
+                                matches.forEach((match: string) => {
+                                  const num = match.replace(/[{}]/g, '');
+                                  vars[`${compType}_${num}`] = "";
+                                });
+                              }
+                              if ((compType === "BUTTONS" || compType === "BUTTON") && comp.buttons) {
+                                comp.buttons.forEach((btn: any, btnIdx: number) => {
+                                  if (btn.type?.toUpperCase() === "URL" && btn.url) {
+                                    const urlMatches = btn.url.match(/\{\{(\d+)\}\}/g) || [];
+                                    urlMatches.forEach((match: string) => {
+                                      const num = match.replace(/[{}]/g, '');
+                                      vars[`BUTTON_${btnIdx}_${num}`] = "";
+                                    });
+                                  }
+                                });
+                              }
+                            });
+                            setNewConvTemplateVariables(vars);
+                          }}
+                          data-testid={`btn-new-conv-template-${template.name}`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium text-sm">{template.name.replace(/_/g, ' ')}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                {bodyComp?.text || "No body text"}
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="ml-2 shrink-0 text-xs">
+                              {template.language}
+                            </Badge>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{newConvSelectedTemplate.name.replace(/_/g, ' ')}</Badge>
+                        <Badge variant="outline">{newConvSelectedTemplate.language}</Badge>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setNewConvSelectedTemplate(null);
+                          setNewConvTemplateVariables({});
+                        }}
+                        data-testid="btn-change-template"
+                      >
+                        Change
+                      </Button>
+                    </div>
+                    
+                    {/* Template preview */}
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
+                      {newConvSelectedTemplate.components?.map((comp: any, idx: number) => {
+                        const compType = comp.type?.toUpperCase();
+                        if (compType === "HEADER" && comp.text) {
+                          let text = comp.text;
+                          Object.keys(newConvTemplateVariables).filter(k => k.startsWith("HEADER_")).forEach(key => {
+                            const varNum = key.split("_")[1];
+                            text = text.replace(`{{${varNum}}}`, newConvTemplateVariables[key] || `{{${varNum}}}`);
+                          });
+                          return <p key={idx} className="font-semibold">{text}</p>;
+                        }
+                        if (compType === "BODY" && comp.text) {
+                          let text = comp.text;
+                          Object.keys(newConvTemplateVariables).filter(k => k.startsWith("BODY_")).forEach(key => {
+                            const varNum = key.split("_")[1];
+                            text = text.replace(`{{${varNum}}}`, newConvTemplateVariables[key] || `{{${varNum}}}`);
+                          });
+                          return <p key={idx} className="whitespace-pre-wrap">{text}</p>;
+                        }
+                        if (compType === "FOOTER" && comp.text) {
+                          return <p key={idx} className="text-xs text-muted-foreground mt-2">{comp.text}</p>;
+                        }
+                        return null;
+                      })}
+                    </div>
+                    
+                    {/* Variable inputs */}
+                    {Object.keys(newConvTemplateVariables).length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Fill in variables:</p>
+                        {Object.keys(newConvTemplateVariables).sort((a, b) => {
+                          const [typeA, numA] = a.split("_");
+                          const [typeB, numB] = b.split("_");
+                          if (typeA !== typeB) return typeA.localeCompare(typeB);
+                          return parseInt(numA) - parseInt(numB);
+                        }).map((key) => {
+                          const [type, ...rest] = key.split("_");
+                          const varNum = rest.join("_");
+                          return (
+                            <div key={key} className="space-y-1">
+                              <Label className="text-xs">{type} Variable {varNum}</Label>
+                              <Input
+                                value={newConvTemplateVariables[key] || ""}
+                                onChange={(e) => setNewConvTemplateVariables(prev => ({
+                                  ...prev,
+                                  [key]: e.target.value
+                                }))}
+                                placeholder={`Enter value for {{${varNum}}}`}
+                                className="h-8 text-sm"
+                                data-testid={`input-new-conv-var-${key}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            
               className="w-full"
               onClick={handleCreateConversation}
               disabled={createConversationMutation.isPending || createWhatsAppConversationMutation.isPending}
