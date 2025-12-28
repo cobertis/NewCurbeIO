@@ -40032,6 +40032,153 @@ CRITICAL REMINDERS:
   });
 
   // POST /api/inbox/conversations/whatsapp - Create new WhatsApp conversation and send first message
+  // Create new WhatsApp conversation with template
+  app.post("/api/inbox/conversations/whatsapp/template", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    const userId = (req.user as any).id;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    const { phoneNumber, templateName, languageCode, components, renderedText } = req.body;
+    if (!phoneNumber || !templateName || !languageCode) {
+      return res.status(400).json({ message: "phoneNumber, templateName, and languageCode are required" });
+    }
+
+    try {
+      // Get WhatsApp connection for this company
+      const waConnection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        ),
+      });
+
+      if (!waConnection || !waConnection.accessTokenEnc) {
+        return res.status(400).json({ message: "WhatsApp not connected. Please connect WhatsApp in Settings > Channels." });
+      }
+
+      const accessToken = decryptToken(waConnection.accessTokenEnc);
+      const phoneNumberId = waConnection.phoneNumberId;
+      const companyPhoneNumber = waConnection.phoneNumberE164 || "";
+      const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
+
+      // Normalize recipient phone number (remove non-digits, ensure no leading +)
+      const recipientPhone = phoneNumber.replace(/\D/g, "");
+
+      // Check if conversation already exists
+      let [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.phoneNumber, recipientPhone),
+          eq(telnyxConversations.channel, "whatsapp")
+        ));
+
+      const displayText = renderedText || `[Template: ${templateName}]`;
+
+      if (!conversation) {
+        // Create new conversation with WhatsApp channel
+        const [newConversation] = await db
+          .insert(telnyxConversations)
+          .values({
+            companyId,
+            phoneNumber: recipientPhone,
+            companyPhoneNumber,
+            channel: "whatsapp",
+            displayName: null,
+            lastMessage: displayText.substring(0, 100),
+            lastMessageAt: new Date(),
+            unreadCount: 0,
+          })
+          .returning();
+        conversation = newConversation;
+      } else {
+        // Update existing conversation
+        await db
+          .update(telnyxConversations)
+          .set({ lastMessage: displayText.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
+          .where(eq(telnyxConversations.id, conversation.id));
+      }
+
+      // Build template message payload for Meta API
+      const templatePayload: any = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: recipientPhone,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+        },
+      };
+
+      // Add components if provided
+      if (components && Array.isArray(components) && components.length > 0) {
+        templatePayload.template.components = components;
+      }
+
+      // Send template message via Meta WhatsApp API
+      const metaResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(templatePayload),
+        }
+      );
+
+      const metaData = await metaResponse.json() as any;
+
+      let status: "sent" | "failed" = "sent";
+      let errorMessage: string | null = null;
+      let whatsappMessageId: string | null = null;
+
+      if (!metaResponse.ok) {
+        status = "failed";
+        errorMessage = metaData.error?.message || "Failed to send template via WhatsApp API";
+        console.error("WhatsApp template send error:", metaData);
+      } else {
+        whatsappMessageId = metaData.messages?.[0]?.id || null;
+      }
+
+      // Save message to database
+      const [message] = await db
+        .insert(telnyxMessages)
+        .values({
+          conversationId: conversation.id,
+          companyId,
+          direction: "outbound",
+          text: displayText,
+          status,
+          wamid: whatsappMessageId,
+          sentAt: new Date(),
+          createdAt: new Date(),
+        })
+        .returning();
+
+      if (status === "failed") {
+        return res.status(500).json({ message: errorMessage || "Failed to send WhatsApp template" });
+      }
+
+      return res.json({
+        conversationId: conversation.id,
+        messageId: message.id,
+        whatsappMessageId,
+      });
+    } catch (error: any) {
+      console.error("Error creating WhatsApp template conversation:", error);
+      return res.status(500).json({ message: error.message || "Internal server error" });
+    }
+  });
+
   app.post("/api/inbox/conversations/whatsapp", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });

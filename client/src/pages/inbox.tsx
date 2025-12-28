@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { WhatsAppTemplatePreview, extractTemplateVariables, buildRenderedText } from "@/components/whatsapp-template-preview";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -251,8 +252,8 @@ export default function InboxPage() {
   const [selectedTemplateForSend, setSelectedTemplateForSend] = useState<any>(null);
   const [templateVariables, setTemplateVariables] = useState<Record<number, string>>({});
   // New conversation WhatsApp template state
-  const [newConvSelectedTemplate, setNewConvSelectedTemplate] = useState<any>(null);
-  const [newConvTemplateVariables, setNewConvTemplateVariables] = useState<Record<string, string>>({});
+  const [newConvTemplate, setNewConvTemplate] = useState<any>(null);
+  const [newConvVars, setNewConvVars] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pulseAiMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -553,6 +554,47 @@ export default function InboxPage() {
     onError: (error: any) => {
       toast({
         title: "Failed to start WhatsApp conversation",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createWhatsAppWithTemplateMutation = useMutation({
+    mutationFn: async ({ phoneNumber, templateName, languageCode, components, renderedText }: {
+      phoneNumber: string;
+      templateName: string;
+      languageCode: string;
+      components?: Array<any>;
+      renderedText: string;
+    }) => {
+      return apiRequest("POST", "/api/inbox/conversations/whatsapp/template", {
+        phoneNumber,
+        templateName,
+        languageCode,
+        components,
+        renderedText,
+      });
+    },
+    onSuccess: (data: any) => {
+      setShowNewConversation(false);
+      setNewConversationPhone("");
+      setNewMessage("");
+      setNewConversationChannel("sms");
+      setNewConvTemplate(null);
+      setNewConvVars({});
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      if (data.conversationId) {
+        setSelectedConversationId(data.conversationId);
+      }
+      toast({
+        title: "Template sent via WhatsApp",
+        description: "Your conversation has been started",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to send WhatsApp template",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -1243,29 +1285,16 @@ export default function InboxPage() {
   };
 
   const handleCreateConversation = () => {
-    if (!newConversationPhone.trim() || !newMessage.trim()) {
-      toast({
-        title: "Missing information",
-        description: "Please enter a phone number and message",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (newConversationChannel === "whatsapp") {
-      if (!whatsappConnected) {
+    // For SMS, require message. For WhatsApp, require template
+    if (newConversationChannel === "sms") {
+      if (!newConversationPhone.trim() || !newMessage.trim()) {
         toast({
-          title: "WhatsApp not connected",
-          description: "Please connect WhatsApp in Settings > Channels first",
+          title: "Missing information",
+          description: "Please enter a phone number and message",
           variant: "destructive",
         });
         return;
       }
-      createWhatsAppConversationMutation.mutate({
-        phoneNumber: newConversationPhone.trim(),
-        text: newMessage.trim(),
-      });
-    } else {
       if (!selectedFromNumber) {
         toast({
           title: "Missing information",
@@ -1279,9 +1308,85 @@ export default function InboxPage() {
         fromNumber: selectedFromNumber,
         text: newMessage.trim(),
       });
+    } else {
+      // WhatsApp - requires template
+      if (!newConversationPhone.trim()) {
+        toast({
+          title: "Missing phone number",
+          description: "Please enter a phone number",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!whatsappConnected) {
+        toast({
+          title: "WhatsApp not connected",
+          description: "Please connect WhatsApp in Settings > Channels first",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!newConvTemplate) {
+        toast({
+          title: "No template selected",
+          description: "Please select a WhatsApp template to send",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Check all variables are filled
+      const hasEmptyVars = Object.values(newConvVars).some(v => !v.trim());
+      if (hasEmptyVars && Object.keys(newConvVars).length > 0) {
+        toast({
+          title: "Missing variable values",
+          description: "Please fill in all template variables",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Build components for Meta API
+      const components: Array<any> = [];
+      const getParams = (prefix: string): Array<{ type: string; text: string }> => {
+        const keys = Object.keys(newConvVars)
+          .filter(k => k.startsWith(prefix))
+          .sort((a, b) => {
+            const numA = parseInt(a.split("_").pop() || "0");
+            const numB = parseInt(b.split("_").pop() || "0");
+            return numA - numB;
+          });
+        return keys.map(k => ({ type: "text", text: newConvVars[k] || "" }));
+      };
+      newConvTemplate.components?.forEach((comp: any) => {
+        const compType = comp.type?.toUpperCase();
+        if (compType === "HEADER") {
+          const params = getParams("HEADER_");
+          if (params.length > 0) components.push({ type: "header", parameters: params });
+        } else if (compType === "BODY") {
+          const params = getParams("BODY_");
+          if (params.length > 0) components.push({ type: "body", parameters: params });
+        } else if ((compType === "BUTTONS" || compType === "BUTTON") && comp.buttons) {
+          comp.buttons.forEach((btn: any, btnIdx: number) => {
+            if (btn.type?.toUpperCase() === "URL") {
+              const params = getParams(`BUTTON_${btnIdx}_`);
+              if (params.length > 0) {
+                components.push({ type: "button", sub_type: "url", index: btnIdx, parameters: params });
+              }
+            }
+          });
+        }
+      });
+      // Build rendered text for display
+      const renderedText = buildRenderedText(newConvTemplate, newConvVars);
+      // Send via WhatsApp template endpoint
+      createWhatsAppWithTemplateMutation.mutate({
+        phoneNumber: newConversationPhone.trim(),
+        templateName: newConvTemplate.name,
+        languageCode: newConvTemplate.language,
+        components: components.length > 0 ? components : undefined,
+        renderedText,
+      });
     }
   };
-
   const insertVariable = () => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -3301,8 +3406,7 @@ export default function InboxPage() {
                 data-testid="input-to-phone"
               />
             </div>
-            
-            {/* Message - SMS uses textarea, WhatsApp uses template selector */}
+            {/* Message - SMS shows textarea, WhatsApp shows template picker */}
             {newConversationChannel === "sms" ? (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Message</label>
@@ -3316,139 +3420,73 @@ export default function InboxPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                <label className="text-sm font-medium">Select Template</label>
+                <label className="text-sm font-medium">WhatsApp Template</label>
                 {approvedTemplates.length === 0 ? (
                   <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
-                      No approved templates available. WhatsApp requires pre-approved templates to start conversations.
-                    </p>
+                    <p className="text-sm text-amber-800 dark:text-amber-200">No templates available.</p>
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                       Create templates in Settings → Channels → WhatsApp Templates
                     </p>
                   </div>
-                ) : !newConvSelectedTemplate ? (
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-lg">
-                    {approvedTemplates.map((template) => {
-                      const bodyComp = template.components?.find((c: any) => c.type?.toUpperCase() === "BODY");
-                      return (
-                        <button
-                          key={`${template.name}-${template.language}`}
-                          className="w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 border-b last:border-b-0 transition-colors"
-                          onClick={() => {
-                            setNewConvSelectedTemplate(template);
-                            // Extract variables from template
-                            const vars: Record<string, string> = {};
-                            template.components?.forEach((comp: any) => {
-                              const compType = comp.type?.toUpperCase();
-                              if (["HEADER", "BODY"].includes(compType) && comp.text) {
-                                const matches = comp.text.match(/\{\{(\d+)\}\}/g) || [];
-                                matches.forEach((match: string) => {
-                                  const num = match.replace(/[{}]/g, '');
-                                  vars[`${compType}_${num}`] = "";
-                                });
-                              }
-                              if ((compType === "BUTTONS" || compType === "BUTTON") && comp.buttons) {
-                                comp.buttons.forEach((btn: any, btnIdx: number) => {
-                                  if (btn.type?.toUpperCase() === "URL" && btn.url) {
-                                    const urlMatches = btn.url.match(/\{\{(\d+)\}\}/g) || [];
-                                    urlMatches.forEach((match: string) => {
-                                      const num = match.replace(/[{}]/g, '');
-                                      vars[`BUTTON_${btnIdx}_${num}`] = "";
-                                    });
-                                  }
-                                });
-                              }
-                            });
-                            setNewConvTemplateVariables(vars);
-                          }}
-                          data-testid={`btn-new-conv-template-${template.name}`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="font-medium text-sm">{template.name.replace(/_/g, ' ')}</p>
-                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                {bodyComp?.text || "No body text"}
-                              </p>
+                ) : !newConvTemplate ? (
+                  <ScrollArea className="h-[200px] border rounded-lg">
+                    <div className="p-2 space-y-2">
+                      {approvedTemplates.map((template) => {
+                        const bodyComp = template.components?.find((c: any) => c.type?.toUpperCase() === "BODY");
+                        return (
+                          <button
+                            key={`${template.name}-${template.language}`}
+                            className="w-full p-3 text-left bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border rounded-lg transition-colors"
+                            onClick={() => {
+                              setNewConvTemplate(template);
+                              setNewConvVars(extractTemplateVariables(template));
+                            }}
+                            data-testid={`btn-new-conv-tpl-${template.name}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{template.name.replace(/_/g, ' ')}</p>
+                                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                  {bodyComp?.text || "No body"}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="shrink-0 text-xs">{template.language}</Badge>
                             </div>
-                            <Badge variant="outline" className="ml-2 shrink-0 text-xs">
-                              {template.language}
-                            </Badge>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{newConvSelectedTemplate.name.replace(/_/g, ' ')}</Badge>
-                        <Badge variant="outline">{newConvSelectedTemplate.language}</Badge>
-                      </div>
+                      <Badge variant="secondary">{newConvTemplate.name.replace(/_/g, ' ')}</Badge>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setNewConvSelectedTemplate(null);
-                          setNewConvTemplateVariables({});
-                        }}
-                        data-testid="btn-change-template"
+                        onClick={() => { setNewConvTemplate(null); setNewConvVars({}); }}
                       >
                         Change
                       </Button>
                     </div>
-                    
-                    {/* Template preview */}
-                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
-                      {newConvSelectedTemplate.components?.map((comp: any, idx: number) => {
-                        const compType = comp.type?.toUpperCase();
-                        if (compType === "HEADER" && comp.text) {
-                          let text = comp.text;
-                          Object.keys(newConvTemplateVariables).filter(k => k.startsWith("HEADER_")).forEach(key => {
-                            const varNum = key.split("_")[1];
-                            text = text.replace(`{{${varNum}}}`, newConvTemplateVariables[key] || `{{${varNum}}}`);
-                          });
-                          return <p key={idx} className="font-semibold">{text}</p>;
-                        }
-                        if (compType === "BODY" && comp.text) {
-                          let text = comp.text;
-                          Object.keys(newConvTemplateVariables).filter(k => k.startsWith("BODY_")).forEach(key => {
-                            const varNum = key.split("_")[1];
-                            text = text.replace(`{{${varNum}}}`, newConvTemplateVariables[key] || `{{${varNum}}}`);
-                          });
-                          return <p key={idx} className="whitespace-pre-wrap">{text}</p>;
-                        }
-                        if (compType === "FOOTER" && comp.text) {
-                          return <p key={idx} className="text-xs text-muted-foreground mt-2">{comp.text}</p>;
-                        }
-                        return null;
-                      })}
+                    <div className="flex justify-center">
+                      <WhatsAppTemplatePreview template={newConvTemplate} variables={newConvVars} />
                     </div>
-                    
-                    {/* Variable inputs */}
-                    {Object.keys(newConvTemplateVariables).length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Fill in variables:</p>
-                        {Object.keys(newConvTemplateVariables).sort((a, b) => {
-                          const [typeA, numA] = a.split("_");
-                          const [typeB, numB] = b.split("_");
-                          if (typeA !== typeB) return typeA.localeCompare(typeB);
-                          return parseInt(numA) - parseInt(numB);
-                        }).map((key) => {
+                    {Object.keys(newConvVars).length > 0 && (
+                      <div className="space-y-2 pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground">Fill variables:</p>
+                        {Object.keys(newConvVars).sort().map((key) => {
                           const [type, ...rest] = key.split("_");
                           const varNum = rest.join("_");
                           return (
-                            <div key={key} className="space-y-1">
-                              <Label className="text-xs">{type} Variable {varNum}</Label>
+                            <div key={key} className="flex items-center gap-2">
+                              <span className="text-xs w-20 text-muted-foreground">{type} {varNum}:</span>
                               <Input
-                                value={newConvTemplateVariables[key] || ""}
-                                onChange={(e) => setNewConvTemplateVariables(prev => ({
-                                  ...prev,
-                                  [key]: e.target.value
-                                }))}
-                                placeholder={`Enter value for {{${varNum}}}`}
-                                className="h-8 text-sm"
-                                data-testid={`input-new-conv-var-${key}`}
+                                value={newConvVars[key] || ""}
+                                onChange={(e) => setNewConvVars(prev => ({ ...prev, [key]: e.target.value }))}
+                                placeholder={`Value for {{${varNum}}}`}
+                                className="h-8 text-sm flex-1"
+                                data-testid={`input-new-var-${key}`}
                               />
                             </div>
                           );
@@ -3459,7 +3497,7 @@ export default function InboxPage() {
                 )}
               </div>
             )}
-            
+            <Button
               className="w-full"
               onClick={handleCreateConversation}
               disabled={createConversationMutation.isPending || createWhatsAppConversationMutation.isPending}
