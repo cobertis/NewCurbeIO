@@ -139,6 +139,7 @@ import { blacklistService } from "./services/blacklist-service";
 import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-service";
 import { getTelnyxMasterApiKey } from "./services/telnyx-numbers-service";
 import { pbxService } from "./services/pbx-service";
+import { AiOpenAIService } from "./services/ai-openai-service";
 import { registerWalletRoutes } from "./wallet-routes";
 import { registerAiDeskRoutes } from "./ai-desk-routes";
 import { objectStorage, objectStorageClient } from "./objectStorage";
@@ -27872,6 +27873,95 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     } catch (error) {
       console.error("[WhatsApp Templates] Error fetching template details:", error);
       return res.status(500).json({ error: "Failed to fetch template details" });
+    }
+  });
+
+  // POST /api/whatsapp/meta/templates/ai-assist - AI-powered template creation assistance
+  app.post("/api/whatsapp/meta/templates/ai-assist", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      const { purpose, category, language, businessType } = req.body;
+
+      if (!purpose || !category) {
+        return res.status(400).json({ error: "Purpose and category are required" });
+      }
+
+      const aiService = new AiOpenAIService();
+      
+      const systemPrompt = `You are an expert in creating WhatsApp Business message templates that comply with Meta's policies.
+Your task is to help create templates that will be APPROVED by Meta's review process.
+
+CRITICAL RULES FOR APPROVAL:
+1. NO spam or promotional abuse - templates must provide clear value to recipients
+2. NO misleading content - be transparent about who is sending and why
+3. NO prohibited content: gambling, adult content, alcohol to minors, weapons, drugs
+4. MUST include opt-out option for marketing templates (e.g., "Reply STOP to unsubscribe")
+5. MUST use variables like {{1}}, {{2}} for personalization - never hardcode names/dates
+6. MUST be professional and respectful
+7. MARKETING category requires clear promotional disclosure
+8. UTILITY category is for transactional updates (appointments, orders, payments)
+9. AUTHENTICATION is ONLY for one-time passwords/verification codes
+10. Keep messages concise - under 1024 characters for body
+11. Footer should be brief (max 60 characters)
+12. Use proper grammar and no excessive caps/punctuation
+
+LANGUAGE: Respond in the same language as the user's request. If the user requests in Spanish, write the template in Spanish.
+
+Respond with a JSON object containing:
+{
+  "name": "template_name_in_snake_case",
+  "headerText": "Optional header (keep under 60 chars, can include {{1}} variable)",
+  "bodyText": "Main message with {{1}}, {{2}} variables for personalization",
+  "footerText": "Brief footer like company name or opt-out for marketing",
+  "tips": ["Array of tips to avoid rejection"],
+  "warnings": ["Any potential issues with the template"]
+}`;
+
+      const userMessage = `Create a WhatsApp template for:
+Purpose: ${purpose}
+Category: ${category}
+Language: ${language || 'English'}
+Business Type: ${businessType || 'General business'}
+
+Generate a compliant template that will be approved by Meta.`;
+
+      const result = await aiService.chat([
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage }
+      ], {
+        temperature: 0.7,
+        maxTokens: 1024,
+      });
+
+      // Parse the JSON response
+      let suggestion;
+      try {
+        // Extract JSON from response (handle markdown code blocks)
+        const jsonMatch = result.content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          suggestion = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("No JSON found in response");
+        }
+      } catch (parseError) {
+        console.error("[WhatsApp AI] Failed to parse AI response:", parseError);
+        return res.status(500).json({ 
+          error: "Failed to generate template suggestion",
+          rawResponse: result.content
+        });
+      }
+
+      return res.json({
+        suggestion,
+        tokensUsed: result.tokensIn + result.tokensOut,
+      });
+    } catch (error: any) {
+      console.error("[WhatsApp AI] Template assist error:", error);
+      return res.status(500).json({ error: error.message || "Failed to generate template suggestion" });
     }
   });
 
