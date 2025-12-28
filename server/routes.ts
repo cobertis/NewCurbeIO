@@ -39878,43 +39878,212 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               });
             }
             
-            // 4. Build message payload
+            // 4. Handle media uploads and message sending
             const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}/messages`;
+            let waMsgId: string | null = null;
+            let sentMediaIds: string[] = [];
             
-            const messagePayload = {
-              messaging_product: "whatsapp",
-              recipient_type: "individual",
-              to: recipientWaId,
-              type: "text",
-              text: { body: text || (mediaUrls.length > 0 ? "[Media attachment]" : "") },
+            // Helper to determine media type from URL/mimetype
+            const getMediaType = (url: string, file?: Express.Multer.File): 'image' | 'video' | 'audio' | 'document' => {
+              const lowerUrl = url.toLowerCase();
+              if (file?.mimetype) {
+                if (file.mimetype.startsWith('image/')) return 'image';
+                if (file.mimetype.startsWith('video/')) return 'video';
+                if (file.mimetype.startsWith('audio/')) return 'audio';
+                return 'document';
+              }
+              if (lowerUrl.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i)) return 'image';
+              if (lowerUrl.match(/\.(mp4|mov|avi|webm|3gp)(\?|$)/i)) return 'video';
+              if (lowerUrl.match(/\.(mp3|ogg|wav|aac|m4a|amr)(\?|$)/i)) return 'audio';
+              return 'document';
             };
             
-            // 5. Call Meta API
-            const metaResponse = await fetch(sendUrl, {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(messagePayload),
-            });
-            
-            const metaData = await metaResponse.json() as any;
-            
-            // 6. If Meta API fails, return error immediately (don't save to DB)
-            if (!metaResponse.ok || metaData.error) {
-              const errorMessage = metaData.error?.message || "Failed to send WhatsApp message";
-              console.error("[Inbox WhatsApp] Send error:", metaData);
-              return res.status(metaResponse.status >= 400 && metaResponse.status < 500 ? 400 : 500).json({ 
-                message: errorMessage,
-                code: metaData.error?.code || "WHATSAPP_SEND_FAILED"
+            // If we have media files, upload them to Meta and send as media messages
+            if (mediaUrls.length > 0 && files && files.length > 0) {
+              console.log("[Inbox WhatsApp] Sending media message with", files.length, "files");
+              
+              for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const mediaUrl = mediaUrls[i];
+                const mediaType = getMediaType(mediaUrl, file);
+                
+                try {
+                  // Upload media to Meta using multipart/form-data
+                  const uploadUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}/media`;
+                  
+                  // Create FormData manually for Node.js
+                  const boundary = `----WebKitFormBoundary${Math.random().toString(36).substr(2)}`;
+                  const formDataParts: string[] = [];
+                  
+                  // Add messaging_product field
+                  formDataParts.push(`--${boundary}`);
+                  formDataParts.push('Content-Disposition: form-data; name="messaging_product"');
+                  formDataParts.push('');
+                  formDataParts.push('whatsapp');
+                  
+                  // Add type field
+                  formDataParts.push(`--${boundary}`);
+                  formDataParts.push('Content-Disposition: form-data; name="type"');
+                  formDataParts.push('');
+                  formDataParts.push(file.mimetype);
+                  
+                  // Build the body with binary file
+                  const textPart = formDataParts.join('\r\n') + '\r\n';
+                  const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${file.originalname || 'file'}"\r\nContent-Type: ${file.mimetype}\r\n\r\n`;
+                  const endPart = `\r\n--${boundary}--\r\n`;
+                  
+                  // Combine parts with file buffer
+                  const textBuffer = Buffer.from(textPart);
+                  const filePartBuffer = Buffer.from(filePart);
+                  const endBuffer = Buffer.from(endPart);
+                  const bodyBuffer = Buffer.concat([textBuffer, filePartBuffer, file.buffer, endBuffer]);
+                  
+                  const uploadResponse = await fetch(uploadUrl, {
+                    method: "POST",
+                    headers: {
+                      "Authorization": `Bearer ${accessToken}`,
+                      "Content-Type": `multipart/form-data; boundary=${boundary}`,
+                    },
+                    body: bodyBuffer,
+                  });
+                  
+                  const uploadData = await uploadResponse.json() as any;
+                  
+                  if (!uploadResponse.ok || uploadData.error) {
+                    console.error("[Inbox WhatsApp] Media upload failed:", uploadData);
+                    // Fallback: try using URL method
+                    const urlPayload: any = {
+                      messaging_product: "whatsapp",
+                      recipient_type: "individual",
+                      to: recipientWaId,
+                      type: mediaType,
+                      [mediaType]: {
+                        link: mediaUrl,
+                        ...(i === 0 && text ? { caption: text } : {})
+                      }
+                    };
+                    
+                    const urlResponse = await fetch(sendUrl, {
+                      method: "POST",
+                      headers: {
+                        "Authorization": `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify(urlPayload),
+                    });
+                    
+                    const urlData = await urlResponse.json() as any;
+                    if (urlResponse.ok && urlData.messages?.[0]?.id) {
+                      waMsgId = urlData.messages[0].id;
+                      console.log("[Inbox WhatsApp] Media sent via URL fallback:", waMsgId);
+                    } else {
+                      console.error("[Inbox WhatsApp] URL fallback also failed:", urlData);
+                    }
+                    continue;
+                  }
+                  
+                  const metaMediaId = uploadData.id;
+                  sentMediaIds.push(metaMediaId);
+                  console.log("[Inbox WhatsApp] Media uploaded to Meta:", metaMediaId);
+                  
+                  // Send the media message using the uploaded media ID
+                  const mediaPayload: any = {
+                    messaging_product: "whatsapp",
+                    recipient_type: "individual",
+                    to: recipientWaId,
+                    type: mediaType,
+                    [mediaType]: {
+                      id: metaMediaId,
+                      ...(i === 0 && text ? { caption: text } : {})
+                    }
+                  };
+                  
+                  const mediaResponse = await fetch(sendUrl, {
+                    method: "POST",
+                    headers: {
+                      "Authorization": `Bearer ${accessToken}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(mediaPayload),
+                  });
+                  
+                  const mediaData = await mediaResponse.json() as any;
+                  
+                  if (!mediaResponse.ok || mediaData.error) {
+                    console.error("[Inbox WhatsApp] Media send failed:", mediaData);
+                    continue;
+                  }
+                  
+                  waMsgId = mediaData.messages?.[0]?.id || waMsgId;
+                  console.log("[Inbox WhatsApp] Media message sent:", waMsgId);
+                } catch (mediaError) {
+                  console.error("[Inbox WhatsApp] Error sending media:", mediaError);
+                }
+              }
+              
+              // If no media was sent successfully but we have text, send text
+              if (!waMsgId && text) {
+                const textPayload = {
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: recipientWaId,
+                  type: "text",
+                  text: { body: text },
+                };
+                
+                const textResponse = await fetch(sendUrl, {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(textPayload),
+                });
+                
+                const textData = await textResponse.json() as any;
+                if (textResponse.ok && textData.messages?.[0]?.id) {
+                  waMsgId = textData.messages[0].id;
+                }
+              }
+            } else if (text) {
+              // No media, just send text message
+              const messagePayload = {
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to: recipientWaId,
+                type: "text",
+                text: { body: text },
+              };
+              
+              const metaResponse = await fetch(sendUrl, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(messagePayload),
               });
+              
+              const metaData = await metaResponse.json() as any;
+              
+              if (!metaResponse.ok || metaData.error) {
+                const errorMessage = metaData.error?.message || "Failed to send WhatsApp message";
+                console.error("[Inbox WhatsApp] Send error:", metaData);
+                return res.status(metaResponse.status >= 400 && metaResponse.status < 500 ? 400 : 500).json({ 
+                  message: errorMessage,
+                  code: metaData.error?.code || "WHATSAPP_SEND_FAILED"
+                });
+              }
+              
+              waMsgId = metaData.messages?.[0]?.id || null;
+              console.log("[Inbox WhatsApp] Text message sent:", waMsgId);
+            } else {
+              return res.status(400).json({ message: "Message text or media is required" });
             }
             
-            // 7. Meta API succeeded - save message to database
-            const telnyxMessageId = metaData.messages?.[0]?.id || null;
-            console.log("[Inbox WhatsApp] Message sent:", telnyxMessageId);
-            
+            // 5. Save message to database
+            const telnyxMessageId = waMsgId;
+            console.log("[Inbox WhatsApp] Message sent, saving to DB:", telnyxMessageId);
             const [message] = await db
               .insert(telnyxMessages)
               .values({
