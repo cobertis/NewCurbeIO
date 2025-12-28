@@ -1,0 +1,148 @@
+0|curbe-admin  | 6:33:27 PM [express] DELETE /api/inbox/conversations/68bd2f9f-507f-46c9-a33b-c7a0a9a818ec 200 in 17m…
+0|curbe-admin  | [Inbox] Returning 2 conversations for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:33:28 PM [express] GET /api/inbox/conversations 200 in 15ms :: {"conversations":[{"id":"3f71280d-5…
+0|curbe-admin  | 6:33:28 PM [express] GET /api/ai/conversations 304 in 2ms
+0|curbe-admin  | 6:33:28 PM [express] GET /api/inbox/conversations/c8a8ebd3-58bf-4e06-a5ae-62db4e2627d6/messages 200 …
+0|curbe-admin  | [Inbox] Deleted conversation c8a8ebd3-58bf-4e06-a5ae-62db4e2627d6 and all messages for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:33:30 PM [express] DELETE /api/inbox/conversations/c8a8ebd3-58bf-4e06-a5ae-62db4e2627d6 200 in 15m…
+0|curbe-admin  | [Inbox] Returning 1 conversations for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:33:30 PM [express] GET /api/inbox/conversations 200 in 12ms :: {"conversations":[{"id":"3f71280d-5…
+0|curbe-admin  | 6:33:31 PM [express] GET /api/ai/conversations 304 in 2ms
+0|curbe-admin  | 6:33:31 PM [express] GET /api/mms-file/211b888f-1b3a-49c5-b55d-45f01ebc832d 200 in 5ms
+0|curbe-admin  | 6:33:36 PM [express] GET /api/ai/autopilot/pending 304 in 17ms :: {"pending":[]}
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 6:33:40 PM [express] POST /api/webhooks/meta/whatsapp 200 in 6ms
+0|curbe-admin  | [WhatsApp Webhook Worker] Found 1 pending events
+0|curbe-admin  | [WhatsApp Webhook Worker] Error processing event c8b12a39-55ab-4162-ad67-3d812076d756: there is no unique or exclusion constraint matching the ON CONFLICT specification
+
+
+
+
+
+
+
+
+0|curbe-admin  | 6:33:46 PM [express] GET /api/ai/autopilot/pending 304 in 31ms :: {"pending":[]}
+
+
+
+
+
+
+
+
+
+
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 6:33:56 PM [express] POST /api/webhooks/meta/whatsapp 200 in 3ms
+0|curbe-admin  | 6:33:57 PM [express] GET /api/ai/autopilot/pending 304 in 36ms :: {"pending":[]}
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 unregistered from company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call WS] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:34:07 PM [express] GET /api/ai/autopilot/pending 304 in 32ms :: {"pending":[]}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 registered for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 unregistered from company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call WS] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | 6:34:12 PM [express] GET /api/session 304 in 39ms :: {"user":{"id":"4f49a9c8-a3fb-4724-b96c-5006f773…
+0|curbe-admin  | 6:34:12 PM [express] GET /api/session 304 in 26ms :: {"user":{"id":"4f49a9c8-a3fb-4724-b96c-5006f773…
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 6:34:12 PM [express] GET /api/notifications 304 in 23ms :: {"notifications":[{"id":"dc50991a-dfc7-40…
+0|curbe-admin  | [Inbox] Returning 1 conversations for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | 6:34:12 PM [express] GET /api/inbox/conversations 304 in 57ms :: {"conversations":[{"id":"3f71280d-5…
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 registered for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:34:12 PM [express] GET /api/imessage/access 304 in 56ms :: {"hasAccess":false,"reason":"feature_no…
+0|curbe-admin  | 6:34:12 PM [express] GET /api/session 304 in 123ms :: {"user":{"id":"4f49a9c8-a3fb-4724-b96c-5006f77…
+0|curbe-admin  | [CONTACTS UNIFICADOS] Usuario: javier@curbe.io, Rol: admin, UserID: 4f49a9c8-a3fb-4724-b96c-5006f773f2c6, CompañíaID: 4e62c351-05a4-496c-9085-7362c7c08333, Total contactos: 0
+0|curbe-admin  | [CONTACTS UNIFICADOS] Contactos sanitizados y retornando: 0
+0|curbe-admin  | 6:34:12 PM [express] GET /api/telnyx/user-phone-status 304 in 154ms :: {"hasAssignedNumber":true,"ca…
+0|curbe-admin  | 6:34:12 PM [express] GET /api/contacts/unified 304 in 165ms :: {"contacts":[]}
+0|curbe-admin  | 6:34:12 PM [express] GET /api/telnyx/phone-system-access 304 in 153ms :: {"hasAccess":true,"isOwner"…
+0|curbe-admin  | 6:34:12 PM [express] GET /api/users 304 in 124ms :: {"users":[{"id":"4f49a9c8-a3fb-4724-b96c-5006f77…
+0|curbe-admin  | 6:34:12 PM [express] GET /api/call-logs 304 in 138ms :: {"logs":[{"id":"97a12998-8d8d-43a4-b7d7-578a…
+0|curbe-admin  | 6:34:12 PM [express] GET /api/users/availability-status 304 in 109ms :: {"status":"online"}
+0|curbe-admin  | 6:34:12 PM [express] GET /api/voicemails 304 in 188ms :: {"voicemails":[]}
+0|curbe-admin  | 6:34:12 PM [express] GET /api/companies/4e62c351-05a4-496c-9085-7362c7c08333 304 in 75ms :: {"compan…
+0|curbe-admin  | 6:34:13 PM [express] GET /api/ai/autopilot/pending 304 in 200ms :: {"pending":[]}
+0|curbe-admin  | [Telnyx Sync] Synced 0 new numbers for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:34:13 PM [express] GET /api/telnyx/my-numbers 304 in 305ms :: {"numbers":[{"id":"58440281-9d02-447…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [TURN Credentials] Returning TURN servers for: gencredeaJuooJUafIZwYGRHNnaB83TKR8gYTAWY16FdUsEIu
+0|curbe-admin  | 6:34:13 PM [express] GET /api/telnyx/turn-credentials 304 in 22ms :: {"username":"gencredeaJuooJUafI…
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 6:34:13 PM [express] GET /api/pbx/special-extensions 304 in 25ms :: {"ivrExtension":null,"queues":[]}
+0|curbe-admin  | 6:34:13 PM [express] GET /api/webrtc/extension-credentials 304 in 19ms :: {"extensionId":"bd5db414-7…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | 6:34:13 PM [express] GET /api/telnyx/voice-settings/062de1ab-a1e9-47cd-bae7-5759c6d7b02a 304 in 166m…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:34:23 PM [express] GET /api/ai/autopilot/pending 304 in 31ms :: {"pending":[]}
+0|curbe-admin  | [Telnyx SMS Webhook] Event type: message.received
+0|curbe-admin  | [Telnyx SMS Webhook] Received: from=+17866302522, to=+13053936666, text=Hola sms, media=0
+0|curbe-admin  | [Telnyx SMS Webhook] Created new conversation: f1889d40-7421-4084-9929-5b7c792bca64
+0|curbe-admin  | [Telnyx SMS Webhook] Message saved for conversation: f1889d40-7421-4084-9929-5b7c792bca64 with 0 media files
+0|curbe-admin  | [WebSocket] Broadcasting conversation_update to 4 authenticated clients (company: 4e62c351-05a4-496c-9085-7362c7c08333)
+0|curbe-admin  | [Telnyx SMS Webhook] Broadcasted conversation update for company: 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Broadcasting telnyx_message for inbox conversation f1889d40-7421-4084-9929-5b7c792bca64 to 4 clients (company: 4e62c351-05a4-496c-9085-7362c7c08333)
+0|curbe-admin  | [Autopilot] Processing message for company 4e62c351-05a4-496c-9085-7362c7c08333, conversation f1889d40-7421-4084-9929-5b7c792bca64
+0|curbe-admin  | [Autopilot] Autopilot is disabled at company level for 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:34:26 PM [express] GET /api/notifications 304 in 22ms :: {"notifications":[{"id":"dc50991a-dfc7-40…
+0|curbe-admin  | [Inbox] Returning 2 conversations for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:34:26 PM [express] GET /api/inbox/conversations 200 in 23ms :: {"conversations":[{"id":"f1889d40-7…
+0|curbe-admin  | 6:34:26 PM [express] GET /api/notifications 304 in 21ms :: {"notifications":[{"id":"dc50991a-dfc7-40…
+0|curbe-admin  | [Inbox] Returning 2 conversations for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:34:26 PM [express] GET /api/inbox/conversations 304 in 20ms :: {"conversations":[{"id":"f1889d40-7…
+0|curbe-admin  | [Inbox] Returning 2 conversations for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:34:27 PM [express] GET /api/inbox/conversations 304 in 16ms :: {"conversations":[{"id":"f1889d40-7…
+0|curbe-admin  | 6:34:29 PM [express] GET /api/inbox/conversations/f1889d40-7421-4084-9929-5b7c792bca64/messages 200 …
+0|curbe-admin  | 6:34:29 PM [express] GET /api/ai/conversations 304 in 11ms
+0|curbe-admin  | 6:34:29 PM [express] PATCH /api/inbox/conversations/f1889d40-7421-4084-9929-5b7c792bca64 200 in 54ms…
+0|curbe-admin  | [Inbox] Returning 2 conversations for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 6:34:29 PM [express] GET /api/inbox/conversations 200 in 18ms :: {"conversations":[{"id":"f1889d40-7…
+0|curbe-admin  | 6:34:33 PM [express] GET /api/ai/autopilot/pending 304 in 33ms :: {"pending":[]}
+0|curbe-admin  | 6:34:43 PM [express] GET /api/ai/autopilot/pending 304 in 29ms :: {"pending":[]}
+0|curbe-admin  | 6:34:53 PM [express] GET /api/ai/autopilot/pending 304 in 26ms :: {"pending":[]}
