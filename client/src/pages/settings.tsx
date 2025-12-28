@@ -29,6 +29,9 @@ import data from "@emoji-mart/data";
 import { insertUserSchema, type User, type CompanySettings } from "@shared/schema";
 import Billing from "@/pages/billing";
 import { WhiteLabelSettings } from "@/components/white-label-settings";
+import { SmsVoiceContent } from "@/pages/sms-voice";
+import EmailSettingsPage from "@/pages/email-settings";
+import PulseAiSettings from "@/pages/pulse-ai-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
@@ -359,6 +362,9 @@ export default function Settings({ view = 'all' }: SettingsProps) {
     if (location === "/settings/billing") return "billing";
     if (location === "/settings/webphone") return "webphone";
     if (location === "/settings/white-label") return "white-label";
+    if (location === "/settings/sms-voice") return "sms-voice";
+    if (location === "/settings/email") return "email";
+    if (location === "/settings/pulse-ai") return "pulse-ai";
     // Default to profile for /settings or /settings/profile
     return "profile";
   };
@@ -618,9 +624,9 @@ export default function Settings({ view = 'all' }: SettingsProps) {
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
-    const baseTabs = ["overview", "security", "notifications", "automations", "webphone", "billing", "white-label"];
+    const baseTabs = ["overview", "security", "notifications", "automations", "webphone", "billing", "white-label", "sms-voice", "email", "pulse-ai"];
     if (isAdmin) {
-      return ["overview", "team", "security", "notifications", "automations", "webphone", "billing", "white-label"];
+      return ["overview", "team", "security", "notifications", "automations", "webphone", "billing", "white-label", "sms-voice", "email", "pulse-ai"];
     }
     return baseTabs;
   }, [isAdmin]);
@@ -2250,6 +2256,21 @@ export default function Settings({ view = 'all' }: SettingsProps) {
             {/* Notifications Tab */}
             <TabsContent value="notifications" className="space-y-4">
               <NotificationsSection />
+            </TabsContent>
+
+            {/* SMS & Voice Tab */}
+            <TabsContent value="sms-voice" className="space-y-4">
+              <SmsVoiceContent />
+            </TabsContent>
+
+            {/* Email Tab */}
+            <TabsContent value="email" className="space-y-4">
+              <EmailSettingsPage />
+            </TabsContent>
+
+            {/* Pulse AI Tab */}
+            <TabsContent value="pulse-ai" className="space-y-4">
+              <PulseAiSettings embedded={true} />
             </TabsContent>
           </Tabs>
         </div>
