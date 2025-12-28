@@ -1071,8 +1071,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* WebPhone Floating Window - Visible to admins, superadmins, or users with extensions */}
       {(user?.role === 'admin' || user?.role === 'superadmin' || hasPbxExtension) && <WebPhoneFloatingWindow />}
 
-      {/* WhatsApp Call Handler - Handles incoming WhatsApp voice calls */}
-      {user && <WhatsAppCallHandler />}
+      {/* WhatsApp Call Handler moved to App level for persistent connection */}
 
       {/* Timezone Dialog */}
       <Dialog open={timezoneDialogOpen} onOpenChange={setTimezoneDialogOpen}>
@@ -2061,6 +2060,19 @@ function Router() {
   );
 }
 
+// Global WhatsApp Call Handler - Always mounted when user is authenticated
+function GlobalWhatsAppCallHandler() {
+  const { data: sessionData } = useQuery<{ user: User }>({ 
+    queryKey: ["/api/session"],
+    staleTime: 0,
+  });
+  
+  // Only render if user is authenticated
+  if (!sessionData?.user) return null;
+  
+  return <WhatsAppCallHandler />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -2069,6 +2081,7 @@ function App() {
           <TooltipProvider>
             <IntercomProvider>
             <Toaster />
+            <GlobalWhatsAppCallHandler />
             <Router />
             </IntercomProvider>
           </TooltipProvider>
