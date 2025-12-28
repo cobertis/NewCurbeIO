@@ -156,10 +156,11 @@ export default function WhatsAppFlow() {
     if (whatsappStatus === "connected") {
       toast({
         title: "WhatsApp Connected",
-        description: "Your WhatsApp Business account has been connected successfully.",
+        description: "Now enter your 6-digit PIN to complete the phone number registration.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
-      setCurrentStep(3);
+      // Go to step 2 for PIN registration instead of step 3
+      setCurrentStep(2);
       urlParams.delete("whatsapp");
       const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
       window.history.replaceState({}, "", newUrl);
@@ -183,10 +184,11 @@ export default function WhatsAppFlow() {
     onSuccess: () => {
       toast({
         title: "WhatsApp Connected",
-        description: "Your WhatsApp Business account has been connected successfully.",
+        description: "Now enter your 6-digit PIN to complete the phone number registration.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
-      setCurrentStep(3);
+      // Go to step 2 for PIN registration instead of step 3
+      setCurrentStep(2);
       setIsConnecting(false);
       setPendingCode(null);
       setEmbeddedSignupData(null);
