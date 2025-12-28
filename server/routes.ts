@@ -26349,6 +26349,37 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       console.log("[WhatsApp OAuth] Connection saved successfully for company:", user.companyId);
+      
+      // Enable WhatsApp voice calling for this phone number
+      if (phoneNumberId && accessToken) {
+        try {
+          const callingResponse = await fetch(
+            `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}/settings`,
+            {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({
+                calling: {
+                  status: "ENABLED"
+                }
+              })
+            }
+          );
+          const callingData = await callingResponse.json();
+          if (callingResponse.ok) {
+            console.log(`[WhatsApp OAuth] Voice calling enabled for phone ${phoneNumberId}`);
+          } else {
+            console.warn(`[WhatsApp OAuth] Could not enable voice calling:`, callingData.error?.message || callingData);
+          }
+        } catch (callingError) {
+          console.warn("[WhatsApp OAuth] Error enabling voice calling:", callingError);
+          // Don't fail connection - voice calling is optional
+        }
+      }
+      
       return res.json({ success: true, wabaId, phoneNumber: phoneNumberE164 });
       
     } catch (error) {
@@ -26604,6 +26635,36 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       } catch (subscribeError) {
         console.error(`[WhatsApp OAuth] Error subscribing app to WABA:`, subscribeError);
         // Don't fail the connection - webhook subscription can be retried
+      }
+
+      // Enable WhatsApp voice calling for this phone number
+      if (phoneNumberId && accessToken) {
+        try {
+          const callingResponse = await fetch(
+            `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}/settings`,
+            {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({
+                calling: {
+                  status: "ENABLED"
+                }
+              })
+            }
+          );
+          const callingData = await callingResponse.json();
+          if (callingResponse.ok) {
+            console.log(`[WhatsApp OAuth] Voice calling enabled for phone ${phoneNumberId}`);
+          } else {
+            console.warn(`[WhatsApp OAuth] Could not enable voice calling:`, callingData.error?.message || callingData);
+          }
+        } catch (callingError) {
+          console.warn("[WhatsApp OAuth] Error enabling voice calling:", callingError);
+          // Don't fail connection - voice calling is optional
+        }
       }
 
       console.log(`[WhatsApp OAuth] Successfully connected WABA ${wabaId} for company ${oauthState.companyId}`);

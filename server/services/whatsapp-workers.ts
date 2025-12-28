@@ -54,7 +54,8 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
   for (const entry of payload.entry) {
     const changes = entry.changes || [];
     for (const change of changes) {
-      if (change.field !== "messages") continue;
+      // Process messages and calls webhooks
+      if (change.field !== "messages" && change.field !== "calls") continue;
       
       const value = change.value;
       const phoneNumberId = value?.metadata?.phone_number_id;
@@ -75,8 +76,117 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
 
       const companyId = connection.companyId;
 
+      // Process incoming WhatsApp voice calls
+      if (change.field === "calls" && value.calls && Array.isArray(value.calls)) {
+        for (const call of value.calls) {
+          // Validate required fields before processing
+          if (!call.id || !call.from) {
+            console.log(`[WhatsApp Webhook Worker] Skipping call event - missing id or from field`);
+            continue;
+          }
+
+          const dedupeKey = `call:${call.id}:${call.status || 'unknown'}`;
+          try {
+            const result = await db.execute(sql`
+              INSERT INTO wa_webhook_dedupe (company_id, dedupe_key, event_type)
+              VALUES (${companyId}, ${dedupeKey}, 'inbound_call')
+              ON CONFLICT (company_id, dedupe_key, event_type) DO NOTHING
+              RETURNING id
+            `);
+            
+            if (!result.rows || result.rows.length === 0) {
+              console.log(`[WhatsApp Webhook Worker] Duplicate call event skipped: ${call.id}`);
+              continue;
+            }
+          } catch (dedupeErr) {
+            console.log(`[WhatsApp Webhook Worker] Dedupe check failed for call ${call.id}, processing anyway`);
+          }
+
+          const callerWaId = call.from;
+          const contactName = value.contacts?.[0]?.profile?.name || callerWaId;
+          const customerPhone = callerWaId.startsWith("+") ? callerWaId : `+${callerWaId}`;
+          const companyPhone = connection.phoneNumberE164 || phoneNumberId;
+
+          // Upsert conversation for this WhatsApp call
+          let inboxConversation = await db.query.telnyxConversations.findFirst({
+            where: and(
+              eq(telnyxConversations.companyId, companyId),
+              eq(telnyxConversations.phoneNumber, customerPhone),
+              eq(telnyxConversations.companyPhoneNumber, companyPhone),
+              eq(telnyxConversations.channel, "whatsapp")
+            ),
+          });
+
+          // Build call status text with safe fallbacks
+          let callStatusText: string;
+          if (call.status === "missed") {
+            callStatusText = "Missed WhatsApp call";
+          } else if (call.status === "completed" || call.status === "ended") {
+            const duration = call.duration || 0;
+            callStatusText = `WhatsApp call (${duration}s)`;
+          } else if (call.status === "ringing") {
+            callStatusText = "Incoming WhatsApp call";
+          } else {
+            callStatusText = "WhatsApp call";
+          }
+
+          // Safe timestamp parsing with fallback to current time
+          const callTimestamp = call.timestamp 
+            ? new Date(parseInt(call.timestamp) * 1000) 
+            : new Date();
+
+          if (!inboxConversation) {
+            const [newConv] = await db.insert(telnyxConversations).values({
+              companyId,
+              phoneNumber: customerPhone,
+              companyPhoneNumber: companyPhone,
+              displayName: contactName !== callerWaId ? contactName : null,
+              channel: "whatsapp",
+              status: "open",
+              unreadCount: 1,
+              lastMessage: callStatusText,
+              lastMessageAt: callTimestamp,
+            }).returning();
+            inboxConversation = newConv;
+            console.log(`[WhatsApp Webhook Worker] Created inbox conversation for call: ${inboxConversation.id}`);
+          } else {
+            await db.update(telnyxConversations)
+              .set({
+                unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+                lastMessageAt: callTimestamp,
+                lastMessage: callStatusText,
+                displayName: (contactName !== callerWaId ? contactName : null) || inboxConversation.displayName,
+                status: inboxConversation.status === "solved" ? "open" : inboxConversation.status,
+                updatedAt: new Date(),
+              })
+              .where(eq(telnyxConversations.id, inboxConversation.id));
+          }
+
+          // Store call event as a message in the inbox (using valid schema values)
+          await db.insert(telnyxMessages).values({
+            conversationId: inboxConversation.id,
+            direction: "inbound",
+            messageType: "incoming",
+            channel: "whatsapp",
+            text: callStatusText,
+            contentType: "system",
+            status: "delivered",
+            telnyxMessageId: call.id,
+            deliveredAt: callTimestamp,
+          });
+
+          console.log(`[WhatsApp Webhook Worker] Saved inbound call to inbox: ${call.id} - ${call.status || 'unknown'}`);
+        }
+      }
+
       if (value.messages && Array.isArray(value.messages)) {
         for (const msg of value.messages) {
+          // Validate required fields before processing
+          if (!msg || !msg.id || !msg.from) {
+            console.log(`[WhatsApp Webhook Worker] Skipping message - missing required fields`);
+            continue;
+          }
+          
           const dedupeKey = `msg:${msg.id}`;
           try {
             // Use INSERT with RETURNING to detect if we actually inserted (vs conflict)
@@ -185,7 +295,7 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             mediaUrls: messageMediaUrls,
             status: "delivered",
             telnyxMessageId: msg.id,
-            deliveredAt: new Date(parseInt(msg.timestamp) * 1000),
+            deliveredAt: msg.timestamp ? new Date(parseInt(msg.timestamp) * 1000) : new Date(),
           });
 
           console.log(`[WhatsApp Webhook Worker] Saved inbound message to inbox: ${msg.id}`);
