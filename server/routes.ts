@@ -39921,11 +39921,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
                   const maxSizeMB = Math.round(maxSize / (1024 * 1024));
                   const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
                   console.error(`[Inbox WhatsApp] File too large: ${fileSizeMB}MB (max ${maxSizeMB}MB for ${mediaType})`);
-                  const typeNames: Record<string, string> = { image: "imágenes", video: "videos", audio: "audio", document: "documentos" };
-                  return res.status(400).json({ 
-                    message: `El archivo es muy grande (${fileSizeMB}MB). El límite de WhatsApp para ${typeNames[mediaType] || mediaType} es ${maxSizeMB}MB. Por favor, reduce el tamaño del archivo.`,
-                    code: "FILE_TOO_LARGE"
-                  });
+                  return res.status(400).json({ message: `${fileSizeMB}MB exceeds ${maxSizeMB}MB limit for ${mediaType}s`, code: "FILE_TOO_LARGE" });
                 }
                 
                 try {

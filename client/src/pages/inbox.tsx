@@ -480,8 +480,8 @@ export default function InboxPage() {
         })
       );
       toast({
-        title: "Error al enviar mensaje",
-        description: error.message || "Por favor intenta de nuevo",
+        title: "Send failed",
+        description: error.message || "Please try again",
         variant: "destructive",
       });
     },
@@ -1067,8 +1067,8 @@ export default function InboxPage() {
           const maxSizeMB = Math.round(maxSize / (1024 * 1024));
           const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
           toast({
-            title: "Archivo muy grande",
-            description: `El archivo "${file.name}" (${fileSizeMB}MB) excede el límite de WhatsApp para ${typeNames[mediaType]} (${maxSizeMB}MB). Por favor, reduce el tamaño.`,
+            title: "File too large",
+            description: `${fileSizeMB}MB exceeds ${maxSizeMB}MB limit for ${mediaType}s`,
             variant: "destructive",
           });
           return;
