@@ -3489,14 +3489,34 @@ export default function InboxPage() {
                         className="w-full text-left p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                         onClick={() => {
                           setSelectedTemplateForSend(template);
-                          // Initialize variables with empty strings
-                          const vars: Record<number, string> = {};
-                          const matches = (bodyComp?.text || "").match(/\{\{(\d+)\}\}/g) || [];
-                          matches.forEach(match => {
-                            const num = parseInt(match.replace(/[{}]/g, ''));
-                            vars[num] = "";
+                          // Extract variables from ALL component types (HEADER, BODY, BUTTONS)
+                          const vars: Record<string, string> = {};
+                          template.components.forEach((comp: any) => {
+                            const compType = comp.type?.toUpperCase();
+                            // Handle HEADER and BODY text variables
+                            if (["HEADER", "BODY"].includes(compType)) {
+                              const text = comp.text || "";
+                              const matches = text.match(/\{\{(\d+)\}\}/g) || [];
+                              matches.forEach((match: string) => {
+                                const num = match.replace(/[{}]/g, '');
+                                vars[`${compType}_${num}`] = "";
+                              });
+                            }
+                            // Handle BUTTONS component with nested buttons array (Meta uses "BUTTONS" as component type)
+                            if ((compType === "BUTTONS" || compType === "BUTTON") && comp.buttons) {
+                              comp.buttons.forEach((btn: any, btnIdx: number) => {
+                                // URL buttons can have dynamic variables in the URL
+                                if (btn.type?.toUpperCase() === "URL" && btn.url) {
+                                  const urlMatches = btn.url.match(/\{\{(\d+)\}\}/g) || [];
+                                  urlMatches.forEach((match: string) => {
+                                    const num = match.replace(/[{}]/g, '');
+                                    vars[`BUTTON_${btnIdx}_${num}`] = "";
+                                  });
+                                }
+                              });
+                            }
                           });
-                          setTemplateVariables(vars);
+                          setTemplateVariables(vars as any);
                         }}
                         data-testid={`btn-select-template-${template.name}`}
                       >
@@ -3532,16 +3552,31 @@ export default function InboxPage() {
                   ← Back to templates
                 </Button>
                 
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <h4 className="font-medium mb-2">{selectedTemplateForSend.name.replace(/_/g, ' ')}</h4>
+                <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                  <h4 className="font-medium">{selectedTemplateForSend.name.replace(/_/g, ' ')}</h4>
+                  {/* Show HEADER if present */}
+                  {(() => {
+                    const headerComp = selectedTemplateForSend.components.find((c: any) => c.type === "HEADER");
+                    if (!headerComp?.text) return null;
+                    let text = headerComp.text;
+                    Object.entries(templateVariables).forEach(([key, value]) => {
+                      if (key.startsWith("HEADER_")) {
+                        const num = key.split("_")[1];
+                        text = text.replace(`{{${num}}}`, value || `[Header ${num}]`);
+                      }
+                    });
+                    return <p className="text-sm font-medium">{text}</p>;
+                  })()}
+                  {/* Show BODY */}
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {(() => {
                       const bodyComp = selectedTemplateForSend.components.find((c: any) => c.type === "BODY");
                       let text = bodyComp?.text || "";
-                      // Replace variables with values or placeholders
                       Object.entries(templateVariables).forEach(([key, value]) => {
-                        const placeholder = `{{${key}}}`;
-                        text = text.replace(placeholder, value || `[Variable ${key}]`);
+                        if (key.startsWith("BODY_")) {
+                          const num = key.split("_")[1];
+                          text = text.replace(`{{${num}}}`, value || `[Variable ${num}]`);
+                        }
                       });
                       return text;
                     })()}
@@ -3551,23 +3586,28 @@ export default function InboxPage() {
                 {Object.keys(templateVariables).length > 0 && (
                   <div className="space-y-3">
                     <h4 className="font-medium text-sm">Fill in the variables:</h4>
-                    {Object.keys(templateVariables).sort((a, b) => Number(a) - Number(b)).map((key) => (
-                      <div key={key} className="space-y-1">
-                        <Label htmlFor={`var-${key}`} className="text-sm">
-                          Variable {key}
-                        </Label>
-                        <Input
-                          id={`var-${key}`}
-                          value={templateVariables[Number(key)]}
-                          onChange={(e) => setTemplateVariables(prev => ({
-                            ...prev,
-                            [key]: e.target.value
-                          }))}
-                          placeholder={`Enter value for {{${key}}}`}
-                          data-testid={`input-template-var-${key}`}
-                        />
-                      </div>
-                    ))}
+                    {Object.keys(templateVariables).sort().map((key) => {
+                      const [compType, ...rest] = key.split("_");
+                      const varNum = rest.join("_");
+                      const labelPrefix = compType === "HEADER" ? "Header" : compType === "BUTTON" ? "Button URL" : "Body";
+                      return (
+                        <div key={key} className="space-y-1">
+                          <Label htmlFor={`var-${key}`} className="text-sm">
+                            {labelPrefix} Variable {varNum}
+                          </Label>
+                          <Input
+                            id={`var-${key}`}
+                            value={(templateVariables as Record<string, string>)[key] || ""}
+                            onChange={(e) => setTemplateVariables(prev => ({
+                              ...prev,
+                              [key]: e.target.value
+                            }))}
+                            placeholder={`Enter value for {{${varNum}}}`}
+                            data-testid={`input-template-var-${key}`}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 
@@ -3587,23 +3627,66 @@ export default function InboxPage() {
                     onClick={() => {
                       if (!selectedConversationId || !selectedTemplateForSend) return;
                       
-                      // Build components with variable values
-                      const bodyParams = Object.keys(templateVariables)
-                        .sort((a, b) => Number(a) - Number(b))
-                        .map(key => ({ type: "text", text: templateVariables[Number(key)] || "" }));
+                      // Build components array for Meta API (lowercase types required)
+                      const components: Array<{ type: string; parameters: Array<{ type: string; text: string }> }> = [];
                       
-                      const components = bodyParams.length > 0 
-                        ? [{ type: "body", parameters: bodyParams }]
-                        : undefined;
+                      // Group variables by component type
+                      const headerVars: string[] = [];
+                      const bodyVars: string[] = [];
+                      const buttonVars: Record<number, string[]> = {};
+                      
+                      Object.entries(templateVariables).forEach(([key, value]) => {
+                        if (key.startsWith("HEADER_")) {
+                          const num = parseInt(key.split("_")[1]);
+                          headerVars[num - 1] = value as string;
+                        } else if (key.startsWith("BODY_")) {
+                          const num = parseInt(key.split("_")[1]);
+                          bodyVars[num - 1] = value as string;
+                        } else if (key.startsWith("BUTTON_")) {
+                          const parts = key.split("_");
+                          const btnIdx = parseInt(parts[1]);
+                          const varNum = parseInt(parts[2]);
+                          if (!buttonVars[btnIdx]) buttonVars[btnIdx] = [];
+                          buttonVars[btnIdx][varNum - 1] = value as string;
+                        }
+                      });
+                      
+                      // Add header component if has variables
+                      if (headerVars.some(v => v)) {
+                        components.push({
+                          type: "header",
+                          parameters: headerVars.filter(v => v !== undefined).map(v => ({ type: "text", text: v || "" }))
+                        });
+                      }
+                      
+                      // Add body component if has variables
+                      if (bodyVars.some(v => v)) {
+                        components.push({
+                          type: "body",
+                          parameters: bodyVars.filter(v => v !== undefined).map(v => ({ type: "text", text: v || "" }))
+                        });
+                      }
+                      
+                      // Add button components if has variables
+                      Object.entries(buttonVars).forEach(([btnIdx, vars]) => {
+                        if (vars.some(v => v)) {
+                          components.push({
+                            type: "button",
+                            sub_type: "url",
+                            index: parseInt(btnIdx),
+                            parameters: vars.filter(v => v !== undefined).map(v => ({ type: "text", text: v || "" }))
+                          } as any);
+                        }
+                      });
                       
                       sendTemplateMutation.mutate({
                         conversationId: selectedConversationId,
                         templateName: selectedTemplateForSend.name,
                         languageCode: selectedTemplateForSend.language,
-                        components,
+                        components: components.length > 0 ? components : undefined,
                       });
                     }}
-                    disabled={sendTemplateMutation.isPending || Object.values(templateVariables).some(v => !v.trim())}
+                    disabled={sendTemplateMutation.isPending || Object.values(templateVariables).some(v => !(v as string)?.trim())}
                     className="bg-emerald-600 hover:bg-emerald-700"
                     data-testid="btn-send-template"
                   >
