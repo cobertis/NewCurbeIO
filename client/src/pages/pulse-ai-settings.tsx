@@ -256,6 +256,10 @@ export default function PulseAiSettings({ embedded = false }: PulseAiSettingsPro
       toast({ title: "Source added" });
       setIsSourceDialogOpen(false);
       sourceForm.reset();
+      // Auto-enable Copilot when first KB source is added
+      if (!settings?.copilotEnabled) {
+        updateSettingsMutation.mutate({ copilotEnabled: true });
+      }
     },
     onError: () => {
       toast({ title: "Failed to add source", variant: "destructive" });
@@ -295,6 +299,10 @@ export default function PulseAiSettings({ embedded = false }: PulseAiSettingsPro
       queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
       if (results.length > 0) {
         toast({ title: `${results.length} source(s) added and syncing` });
+        // Auto-enable Copilot when KB sources are added
+        if (!settings?.copilotEnabled) {
+          updateSettingsMutation.mutate({ copilotEnabled: true });
+        }
       }
       setIsSourceDialogOpen(false);
       setUrlInputs(['']);
@@ -383,6 +391,10 @@ export default function PulseAiSettings({ embedded = false }: PulseAiSettingsPro
       toast({ title: "Document uploaded successfully" });
       setIsDocumentDialogOpen(false);
       setSelectedFile(null);
+      // Auto-enable Copilot when KB source is added
+      if (!settings?.copilotEnabled) {
+        updateSettingsMutation.mutate({ copilotEnabled: true });
+      }
     } catch (error) {
       toast({ 
         title: "Failed to upload document", 
