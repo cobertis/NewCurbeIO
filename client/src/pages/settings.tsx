@@ -347,18 +347,23 @@ export default function Settings({ view = 'all' }: SettingsProps) {
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   
-  // OPTIMIZATION: Determine active tab from URL FIRST (before queries)
-  // This allows us to guard queries with `enabled` based on which tab is active
-  const getCurrentTab = () => {
+  // Determine current view from URL path - each path maps to specific content
+  const getCurrentView = () => {
     if (location === "/settings/automations") return "automations";
-    if (location === "/settings" || location === "/settings/profile" || location === "/settings/overview" || location === "/settings/company") return "overview";
+    if (location === "/settings/company") return "company";
     if (location === "/settings/security") return "security";
     if (location === "/settings/notifications") return "notifications";
     if (location === "/settings/team") return "team";
+    if (location === "/settings/billing") return "billing";
     if (location === "/settings/webphone") return "webphone";
-    return "overview"; // default
+    if (location === "/settings/white-label") return "white-label";
+    // Default to profile for /settings or /settings/profile
+    return "profile";
   };
-  const currentTab = getCurrentTab();
+  const currentView = getCurrentView();
+  
+  // Map view to tab for internal tab system (profile and company use "overview" tab internally)
+  const currentTab = (currentView === "profile" || currentView === "company") ? "overview" : currentView;
   
   // ESSENTIAL: Always fetch session and preferences (needed for initial render)
   const { data: userData, isLoading: isLoadingUser } = useQuery<{ user: User }>({
@@ -611,14 +616,14 @@ export default function Settings({ view = 'all' }: SettingsProps) {
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
-    const baseTabs = ["overview", "security", "notifications", "automations", "webphone"];
+    const baseTabs = ["overview", "security", "notifications", "automations", "webphone", "billing", "white-label"];
     if (isAdmin) {
-      return ["overview", "team", "security", "notifications", "automations", "webphone"];
+      return ["overview", "team", "security", "notifications", "automations", "webphone", "billing", "white-label"];
     }
     return baseTabs;
   }, [isAdmin]);
 
-  const [activeTab, setActiveTab] = useTabsState(availableTabs, getCurrentTab());
+  const [activeTab, setActiveTab] = useTabsState(availableTabs, currentTab);
 
   // Profile form state (personal information only)
   const [profileForm, setProfileForm] = useState({
@@ -1341,13 +1346,9 @@ export default function Settings({ view = 'all' }: SettingsProps) {
     return <LoadingSpinner message="Loading settings..." />;
   }
 
-  // Determine active section for SettingsLayout based on current tab
+  // Determine active section for SettingsLayout based on current view
   const getActiveSection = () => {
-    if (activeTab === "overview" || activeTab === "profile") return "profile";
-    if (activeTab === "security") return "security";
-    if (activeTab === "team") return "team";
-    if (activeTab === "automations") return "automations";
-    return "profile";
+    return currentView;
   };
 
   return (
@@ -1363,6 +1364,9 @@ export default function Settings({ view = 'all' }: SettingsProps) {
               <TabsTrigger value="security">Security</TabsTrigger>
               <TabsTrigger value="automations">Automations</TabsTrigger>
               <TabsTrigger value="team">Team</TabsTrigger>
+              <TabsTrigger value="billing">Billing</TabsTrigger>
+              <TabsTrigger value="white-label">White Label</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab - Profile + Company */}
@@ -1379,9 +1383,9 @@ export default function Settings({ view = 'all' }: SettingsProps) {
               </div>
 
               {/* Profile + Company Cards */}
-              <div className={view === 'all' || view === 'profile' ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""}>
+              <div className={currentView === 'profile' ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""}>
                 {/* Profile Information Card */}
-                {(view === 'profile' || view === 'all') && (
+                {currentView === 'profile' && (
                 <Card>
                   <CardHeader className="pb-4">
                     <CardTitle>Profile Information</CardTitle>
@@ -1746,7 +1750,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
               </Dialog>
 
               {/* Company Information - Admin Only */}
-              {isAdmin && (view === 'company' || view === 'all') && (
+              {isAdmin && currentView === 'company' && (
               <Card key={`company-info-${companyData?.company?.id || 'loading'}`}>
                   <CardHeader className="pb-2">
                     <CardTitle>Company Information</CardTitle>
@@ -2222,6 +2226,21 @@ export default function Settings({ view = 'all' }: SettingsProps) {
             {/* Team Tab */}
             <TabsContent value="team" className="space-y-4">
               <TeamMembersSection />
+            </TabsContent>
+
+            {/* Billing Tab */}
+            <TabsContent value="billing" className="space-y-4">
+              <BillingSection />
+            </TabsContent>
+
+            {/* White Label Tab */}
+            <TabsContent value="white-label" className="space-y-4">
+              <WhiteLabelSection />
+            </TabsContent>
+
+            {/* Notifications Tab */}
+            <TabsContent value="notifications" className="space-y-4">
+              <NotificationsSection />
             </TabsContent>
           </Tabs>
         </div>
@@ -4012,5 +4031,101 @@ function AutomationsTab() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function BillingSection() {
+  const [, setLocation] = useLocation();
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Billing & Subscription</CardTitle>
+        <CardDescription>
+          Manage your subscription, payment methods, and view invoices.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button 
+          onClick={() => setLocation('/billing')} 
+          data-testid="button-go-to-billing"
+        >
+          Go to Billing Dashboard
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WhiteLabelSection() {
+  const [, setLocation] = useLocation();
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>White Label Settings</CardTitle>
+        <CardDescription>
+          Customize the appearance of your CRM with your own branding.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button 
+          onClick={() => setLocation('/white-label')} 
+          data-testid="button-go-to-white-label"
+        >
+          Go to White Label Settings
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NotificationsSection() {
+  const { data: notificationsData, isLoading } = useQuery<{ notifications: any[] }>({
+    queryKey: ["/api/notifications"],
+  });
+
+  if (isLoading) {
+    return <LoadingSpinner message="Loading notifications..." fullScreen={false} />;
+  }
+
+  const notifications = notificationsData?.notifications || [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Notifications</CardTitle>
+        <CardDescription>
+          View and manage your system notifications.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {notifications.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No notifications yet
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {notifications.slice(0, 10).map((notification: any) => (
+              <div 
+                key={notification.id} 
+                className="p-3 border rounded-md hover:bg-muted/50"
+                data-testid={`notification-${notification.id}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium">{notification.title}</p>
+                    <p className="text-sm text-muted-foreground">{notification.message}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(notification.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
