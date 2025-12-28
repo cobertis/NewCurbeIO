@@ -203,6 +203,36 @@ export default function WhatsAppFlow() {
     },
   });
 
+  // Register phone number with Meta API using 6-digit PIN
+  const registerMutation = useMutation({
+    mutationFn: async (pinCode: string) => {
+      return apiRequest("POST", "/api/integrations/whatsapp/register", { pin: pinCode });
+    },
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
+      if (response.isFullyActivated) {
+        setCurrentStep(3);
+        toast({
+          title: "Phone number activated",
+          description: "Your WhatsApp number is now ready to use.",
+        });
+      } else {
+        toast({
+          title: "Registration submitted",
+          description: "Your phone number registration has been submitted. Status: " + (response.currentStatus || "Processing"),
+        });
+        setCurrentStep(3);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Registration failed",
+        description: error.message || "Failed to register phone number. Please check your PIN and try again.",
+      });
+    },
+  });
+
   // Effect to process when we have both code and embedded signup data
   useEffect(() => {
     if (pendingCode && embeddedSignupData && !exchangeCodeMutation.isPending) {
@@ -474,14 +504,16 @@ export default function WhatsAppFlow() {
                       
                       {currentStep === 2 && (
                         <div className="mt-4 space-y-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2" role="group" aria-label="6-digit PIN entry">
                             {pin.slice(0, 3).map((digit, index) => (
                               <Input
                                 key={index}
-                                type="text"
+                                type="password"
                                 inputMode="numeric"
                                 maxLength={1}
                                 value={digit}
+                                autoComplete="one-time-code"
+                                aria-label={`PIN digit ${index + 1} of 6`}
                                 onChange={(e) => {
                                   const val = e.target.value.replace(/\D/g, "");
                                   const newPin = [...pin];
@@ -503,14 +535,16 @@ export default function WhatsAppFlow() {
                                 data-testid={`input-pin-${index}`}
                               />
                             ))}
-                            <span className="text-slate-400 text-lg">-</span>
+                            <span className="text-slate-400 text-lg" aria-hidden="true">-</span>
                             {pin.slice(3).map((digit, index) => (
                               <Input
                                 key={index + 3}
-                                type="text"
+                                type="password"
                                 inputMode="numeric"
                                 maxLength={1}
                                 value={digit}
+                                autoComplete="one-time-code"
+                                aria-label={`PIN digit ${index + 4} of 6`}
                                 onChange={(e) => {
                                   const val = e.target.value.replace(/\D/g, "");
                                   const newPin = [...pin];
@@ -538,11 +572,7 @@ export default function WhatsAppFlow() {
                             onClick={() => {
                               const pinCode = pin.join("");
                               if (pinCode.length === 6) {
-                                setCurrentStep(3);
-                                toast({
-                                  title: "PIN verified",
-                                  description: "Your two-factor authentication has been set up.",
-                                });
+                                registerMutation.mutate(pinCode);
                               } else {
                                 toast({
                                   variant: "destructive",
@@ -551,9 +581,17 @@ export default function WhatsAppFlow() {
                                 });
                               }
                             }}
+                            disabled={registerMutation.isPending}
                             data-testid="button-continue"
                           >
-                            Continue
+                            {registerMutation.isPending ? (
+                              <>
+                                <LoadingSpinner fullScreen={false} className="mr-2 h-4 w-4" />
+                                Registering...
+                              </>
+                            ) : (
+                              "Continue"
+                            )}
                           </Button>
                         </div>
                       )}

@@ -47,7 +47,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SettingsLayout } from "@/components/settings-layout";
 import { SiWhatsapp } from "react-icons/si";
-import { Plus, Search, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2, PlayCircle } from "lucide-react";
+import { Plus, Search, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2, PlayCircle, AlertCircle, Zap } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { ChannelConnection } from "@shared/schema";
 import whatsappPreviewImg from "@assets/image_1766559979785.png";
 
@@ -60,6 +61,20 @@ interface WhatsAppAccount {
   countryCode?: string;
 }
 
+interface PhoneStatus {
+  phoneNumberId: string;
+  wabaId: string;
+  displayPhoneNumber: string;
+  status: string;
+  qualityRating: string;
+  nameStatus: string;
+  verifiedName: string;
+  codeVerificationStatus: string;
+  accountMode: string;
+  needsRegistration: boolean;
+  isFullyActivated: boolean;
+}
+
 export default function WhatsAppPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -67,9 +82,11 @@ export default function WhatsAppPage() {
   const [rowsPerPage, setRowsPerPage] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
+  const [activationDialogOpen, setActivationDialogOpen] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string | number | null>(null);
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [pin, setPin] = useState(["", "", "", "", "", ""]);
 
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/whatsapp/status"],
@@ -124,6 +141,53 @@ export default function WhatsAppPage() {
         variant: "destructive",
         title: "Disconnect Failed",
         description: error.message || "Failed to disconnect WhatsApp Business account.",
+      });
+    },
+  });
+
+  // Query to check phone number status from Meta API
+  const { data: phoneStatusData, isLoading: isCheckingStatus, refetch: refetchPhoneStatus } = useQuery<PhoneStatus>({
+    queryKey: ["/api/integrations/whatsapp/phone-status"],
+    enabled: isConnected,
+    refetchOnWindowFocus: false,
+  });
+
+  // Retry activation mutation
+  const retryActivationMutation = useMutation({
+    mutationFn: async (pinCode?: string) => {
+      return apiRequest("POST", "/api/integrations/whatsapp/retry-activation", { pin: pinCode });
+    },
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/phone-status"] });
+      
+      if (response.isFullyActivated) {
+        setActivationDialogOpen(false);
+        setPin(["", "", "", "", "", ""]);
+        toast({
+          title: "Phone number activated",
+          description: "Your WhatsApp number is now fully activated and ready to use.",
+        });
+      } else if (response.action === "pin_required") {
+        setActivationDialogOpen(true);
+        toast({
+          title: "PIN required",
+          description: "Please enter your 6-digit PIN to complete activation.",
+        });
+      } else if (response.action === "registered") {
+        setActivationDialogOpen(false);
+        setPin(["", "", "", "", "", ""]);
+        toast({
+          title: "Registration submitted",
+          description: "Your phone number is being activated. Status: " + response.currentStatus,
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Activation failed",
+        description: error.message || "Failed to activate phone number. Please try again.",
       });
     },
   });
@@ -417,11 +481,23 @@ export default function WhatsAppPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] })}
+                            onClick={() => {
+                              queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
+                              refetchPhoneStatus();
+                            }}
                           >
                             <RefreshCw className="h-4 w-4 mr-2" />
                             Refresh status
                           </DropdownMenuItem>
+                          {account.status === "pending" && (
+                            <DropdownMenuItem
+                              onClick={() => retryActivationMutation.mutate(undefined)}
+                              disabled={retryActivationMutation.isPending}
+                            >
+                              <Zap className="h-4 w-4 mr-2" />
+                              {retryActivationMutation.isPending ? "Checking..." : "Activate number"}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             className="text-red-600"
                             onClick={() => {
@@ -509,6 +585,142 @@ export default function WhatsAppPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={activationDialogOpen} onOpenChange={(open) => {
+        setActivationDialogOpen(open);
+        if (!open) setPin(["", "", "", "", "", ""]);
+      }}>
+        <DialogContent data-testid="dialog-activate-whatsapp">
+          <DialogHeader>
+            <DialogTitle>Activate WhatsApp Number</DialogTitle>
+            <DialogDescription>
+              Enter your 6-digit two-factor authentication PIN to complete the phone number activation.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {phoneStatusData && (
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Phone Number</span>
+                  <span className="font-medium">{phoneStatusData.displayPhoneNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Status</span>
+                  <span className={`font-medium ${phoneStatusData.status === "CONNECTED" ? "text-green-600" : "text-yellow-600"}`}>
+                    {phoneStatusData.status}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Verification</span>
+                  <span className={`font-medium ${phoneStatusData.codeVerificationStatus === "VERIFIED" ? "text-green-600" : "text-yellow-600"}`}>
+                    {phoneStatusData.codeVerificationStatus || "Pending"}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <label htmlFor="activate-pin-0" className="text-sm font-medium">Enter 6-digit PIN</label>
+              <p className="text-xs text-slate-500 sr-only">Enter each digit of your 6-digit PIN in the fields below</p>
+              <div className="flex items-center justify-center gap-2" role="group" aria-label="6-digit PIN entry">
+                {pin.slice(0, 3).map((digit, index) => (
+                  <Input
+                    key={index}
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    autoComplete="one-time-code"
+                    aria-label={`PIN digit ${index + 1} of 6`}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      const newPin = [...pin];
+                      newPin[index] = val;
+                      setPin(newPin);
+                      if (val && index < 5) {
+                        const nextInput = document.getElementById(`activate-pin-${index + 1}`);
+                        nextInput?.focus();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace" && !digit && index > 0) {
+                        const prevInput = document.getElementById(`activate-pin-${index - 1}`);
+                        prevInput?.focus();
+                      }
+                    }}
+                    id={`activate-pin-${index}`}
+                    className="w-12 h-12 text-center text-lg font-medium"
+                    data-testid={`input-activate-pin-${index}`}
+                  />
+                ))}
+                <span className="text-slate-400 text-lg" aria-hidden="true">-</span>
+                {pin.slice(3).map((digit, index) => (
+                  <Input
+                    key={index + 3}
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    autoComplete="one-time-code"
+                    aria-label={`PIN digit ${index + 4} of 6`}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      const newPin = [...pin];
+                      newPin[index + 3] = val;
+                      setPin(newPin);
+                      if (val && index + 3 < 5) {
+                        const nextInput = document.getElementById(`activate-pin-${index + 4}`);
+                        nextInput?.focus();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace" && !digit && index + 3 > 0) {
+                        const prevInput = document.getElementById(`activate-pin-${index + 2}`);
+                        prevInput?.focus();
+                      }
+                    }}
+                    id={`activate-pin-${index + 3}`}
+                    className="w-12 h-12 text-center text-lg font-medium"
+                    data-testid={`input-activate-pin-${index + 3}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActivationDialogOpen(false);
+                setPin(["", "", "", "", "", ""]);
+              }}
+              data-testid="button-cancel-activation"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const pinCode = pin.join("");
+                if (pinCode.length === 6) {
+                  retryActivationMutation.mutate(pinCode);
+                } else {
+                  toast({
+                    variant: "destructive",
+                    title: "Invalid PIN",
+                    description: "Please enter a 6-digit PIN.",
+                  });
+                }
+              }}
+              disabled={retryActivationMutation.isPending}
+              data-testid="button-confirm-activation"
+            >
+              {retryActivationMutation.isPending ? "Activating..." : "Activate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SettingsLayout>
   );
 }
