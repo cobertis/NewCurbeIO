@@ -39902,10 +39902,31 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             if (mediaUrls.length > 0 && files && files.length > 0) {
               console.log("[Inbox WhatsApp] Sending media message with", files.length, "files");
               
+              // WhatsApp file size limits (in bytes)
+              const WA_LIMITS: Record<string, number> = {
+                image: 5 * 1024 * 1024,    // 5 MB
+                video: 16 * 1024 * 1024,   // 16 MB
+                audio: 16 * 1024 * 1024,   // 16 MB
+                document: 100 * 1024 * 1024 // 100 MB
+              };
+              
               for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 const mediaUrl = mediaUrls[i];
                 const mediaType = getMediaType(mediaUrl, file);
+                
+                // Check file size before uploading
+                const maxSize = WA_LIMITS[mediaType];
+                if (file.size > maxSize) {
+                  const maxSizeMB = Math.round(maxSize / (1024 * 1024));
+                  const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+                  console.error(`[Inbox WhatsApp] File too large: ${fileSizeMB}MB (max ${maxSizeMB}MB for ${mediaType})`);
+                  const typeNames: Record<string, string> = { image: "imágenes", video: "videos", audio: "audio", document: "documentos" };
+                  return res.status(400).json({ 
+                    message: `El archivo es muy grande (${fileSizeMB}MB). El límite de WhatsApp para ${typeNames[mediaType] || mediaType} es ${maxSizeMB}MB. Por favor, reduce el tamaño del archivo.`,
+                    code: "FILE_TOO_LARGE"
+                  });
+                }
                 
                 try {
                   // Upload media to Meta using multipart/form-data
