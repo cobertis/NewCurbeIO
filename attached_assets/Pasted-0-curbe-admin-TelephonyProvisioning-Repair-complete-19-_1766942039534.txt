@@ -1,0 +1,15 @@
+0|curbe-admin  | [TelephonyProvisioning] Repair complete: 19 phones repaired
+0|curbe-admin  | [Routing Repair] Could not repair for 4e62c351-05a4-496c-9085-7362c7c08333: Failed to repair +13057974444: HTTP 404 - {"errors":[{"code":"10005","title":"Resource not found","detail":"The requested resource or URL could not be found.","source":{"pointer":"/"},"meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10005"}}]}, Failed to repair +13054405757: HTTP 429 - {"errors":[{"code":"10011","detail":"You have exceeded the maximum number of allowed requests.","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10011"},"title":"Too many requests"}]}
+0|curbe-admin  | , Failed to repair +13053936666: HTTP 429 - {"errors":[{"code":"10011","detail":"You have exceeded the maximum number of allowed requests.","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10011"},"title":"Too many requests"}]}
+0|curbe-admin  | , Failed to repair +13054400606: HTTP 429 - {"errors":[{"code":"10011","detail":"You have exceeded the maximum number of allowed requests.","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10011"},"title":"Too many requests"}]}
+0|curbe-admin  | , Failed to repair +13057034343: HTTP 429 - {"errors":[{"code":"10011","detail":"You have exceeded the maximum number of allowed requests.","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10011"},"title":"Too many requests"}]}
+0|curbe-admin  | , Failed to repair +13053150700: HTTP 429 - {"errors":[{"code":"10011","detail":"You have exceeded the maximum number of allowed requests.","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10011"},"title":"Too many requests"}]}
+0|curbe-admin  | , Failed to repair +13053598080: HTTP 429 - {"errors":[{"code":"10011","detail":"You have exceeded the maximum number of allowed requests.","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10011"},"title":"Too many requests"}]}
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 5:13:37 PM [express] POST /api/webhooks/meta/whatsapp 200 in 6ms
+0|curbe-admin  | [WhatsApp Webhook Worker] Race condition detected, fetching existing conversation
+0|curbe-admin  | [WhatsApp Webhook Worker] Error processing event ef386d28-0619-4383-810e-88717c4869cd: Failed to find conversation after race condition for +17866302522
+0|curbe-admin  | [BOUNCE PROCESSOR] Running initial check...
+0|curbe-admin  | [BOUNCE PROCESSOR] Starting bounce email processing...
+0|curbe-admin  | 5:13:41 PM [express] GET /api/ai/autopilot/pending 304 in 34ms :: {"pending":[]}
+0

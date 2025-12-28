@@ -47,7 +47,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SettingsLayout } from "@/components/settings-layout";
 import { SiWhatsapp } from "react-icons/si";
-import { Plus, Search, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2, PlayCircle, AlertCircle, Zap } from "lucide-react";
+import { Plus, Search, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2, PlayCircle, AlertCircle, Zap, UserCircle } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { ChannelConnection } from "@shared/schema";
 import whatsappPreviewImg from "@assets/image_1766559979785.png";
@@ -87,6 +88,7 @@ export default function WhatsAppPage() {
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   
   // Connection status query - must be declared before profile query
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
@@ -590,43 +592,55 @@ export default function WhatsAppPage() {
                     <TableCell className="font-mono text-sm">{account.wabaId}</TableCell>
                     <TableCell>{getStatusBadge(account.status)}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-menu-${account.id}`}>
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
-                              refetchPhoneStatus();
-                            }}
-                          >
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Refresh status
-                          </DropdownMenuItem>
-                          {account.status === "pending" && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setProfileSheetOpen(true)}
+                          title="Edit Profile"
+                          data-testid={`button-profile-${account.id}`}
+                        >
+                          <UserCircle className="h-4 w-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-menu-${account.id}`}>
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => retryActivationMutation.mutate(undefined)}
-                              disabled={retryActivationMutation.isPending}
+                              onClick={() => {
+                                queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
+                                refetchPhoneStatus();
+                              }}
                             >
-                              <Zap className="h-4 w-4 mr-2" />
-                              {retryActivationMutation.isPending ? "Checking..." : "Activate number"}
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Refresh status
                             </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => {
-                              setSelectedAccountId(account.id);
-                              setDisconnectDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Disconnect
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {account.status === "pending" && (
+                              <DropdownMenuItem
+                                onClick={() => retryActivationMutation.mutate(undefined)}
+                                disabled={retryActivationMutation.isPending}
+                              >
+                                <Zap className="h-4 w-4 mr-2" />
+                                {retryActivationMutation.isPending ? "Checking..." : "Activate number"}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => {
+                                setSelectedAccountId(account.id);
+                                setDisconnectDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Disconnect
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -1044,6 +1058,194 @@ export default function WhatsAppPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={profileSheetOpen} onOpenChange={setProfileSheetOpen}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" data-testid="sheet-edit-profile">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <UserCircle className="h-5 w-5" />
+              Edit Business Profile
+            </SheetTitle>
+            <SheetDescription>
+              Update your WhatsApp Business profile information that customers see
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="space-y-6 mt-6">
+            {isLoadingProfile ? (
+              <div className="flex items-center justify-center py-8">
+                <LoadingSpinner fullScreen={false} />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    {profileData?.profilePictureUrl ? (
+                      <img
+                        src={profileData.profilePictureUrl}
+                        alt="Business profile"
+                        className="w-16 h-16 rounded-full object-cover"
+                        data-testid="img-sheet-profile-photo"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                        <SiWhatsapp className="h-8 w-8 text-slate-400" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('profile-photo-upload')?.click()}
+                      disabled={uploadPhotoMutation.isPending}
+                      data-testid="button-sheet-upload-photo"
+                    >
+                      {uploadPhotoMutation.isPending ? "Uploading..." : "Change Photo"}
+                    </Button>
+                    <p className="text-xs text-slate-500 mt-1">JPEG or PNG, max 5MB</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    About <span className="text-slate-400">({profileForm.about.length}/139)</span>
+                  </label>
+                  <Input
+                    value={profileForm.about}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, about: e.target.value.slice(0, 139) }))}
+                    placeholder="Brief status text for your business"
+                    maxLength={139}
+                    data-testid="input-sheet-profile-about"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Description <span className="text-slate-400">({profileForm.description.length}/512)</span>
+                  </label>
+                  <textarea
+                    value={profileForm.description}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value.slice(0, 512) }))}
+                    placeholder="Describe your business to customers"
+                    maxLength={512}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-800"
+                    data-testid="input-sheet-profile-description"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Address <span className="text-slate-400">({profileForm.address.length}/256)</span>
+                  </label>
+                  <Input
+                    value={profileForm.address}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, address: e.target.value.slice(0, 256) }))}
+                    placeholder="Your business address"
+                    maxLength={256}
+                    data-testid="input-sheet-profile-address"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Email <span className="text-slate-400">({profileForm.email.length}/128)</span>
+                  </label>
+                  <Input
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value.slice(0, 128) }))}
+                    placeholder="contact@business.com"
+                    maxLength={128}
+                    data-testid="input-sheet-profile-email"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Websites (max 2)
+                  </label>
+                  <div className="space-y-2">
+                    <Input
+                      value={profileForm.websites[0] || ""}
+                      onChange={(e) => {
+                        const newWebsites = [...profileForm.websites];
+                        newWebsites[0] = e.target.value.slice(0, 256);
+                        setProfileForm(prev => ({ ...prev, websites: newWebsites }));
+                      }}
+                      placeholder="https://www.example.com"
+                      maxLength={256}
+                      data-testid="input-sheet-profile-website-1"
+                    />
+                    <Input
+                      value={profileForm.websites[1] || ""}
+                      onChange={(e) => {
+                        const newWebsites = [...profileForm.websites];
+                        newWebsites[1] = e.target.value.slice(0, 256);
+                        setProfileForm(prev => ({ ...prev, websites: newWebsites }));
+                      }}
+                      placeholder="https://shop.example.com"
+                      maxLength={256}
+                      data-testid="input-sheet-profile-website-2"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Industry Category</label>
+                  <Select value={profileForm.vertical} onValueChange={(value) => setProfileForm(prev => ({ ...prev, vertical: value }))}>
+                    <SelectTrigger data-testid="select-sheet-profile-vertical">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="UNDEFINED">Not Specified</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                      <SelectItem value="AUTO">Automotive</SelectItem>
+                      <SelectItem value="BEAUTY">Beauty & Personal Care</SelectItem>
+                      <SelectItem value="APPAREL">Apparel & Clothing</SelectItem>
+                      <SelectItem value="EDU">Education</SelectItem>
+                      <SelectItem value="ENTERTAIN">Entertainment</SelectItem>
+                      <SelectItem value="EVENT_PLAN">Event Planning</SelectItem>
+                      <SelectItem value="FINANCE">Finance</SelectItem>
+                      <SelectItem value="GROCERY">Grocery</SelectItem>
+                      <SelectItem value="GOVT">Government</SelectItem>
+                      <SelectItem value="HOTEL">Hotel & Lodging</SelectItem>
+                      <SelectItem value="HEALTH">Health</SelectItem>
+                      <SelectItem value="NONPROFIT">Nonprofit</SelectItem>
+                      <SelectItem value="PROF_SERVICES">Professional Services</SelectItem>
+                      <SelectItem value="RETAIL">Retail</SelectItem>
+                      <SelectItem value="TRAVEL">Travel</SelectItem>
+                      <SelectItem value="RESTAURANT">Restaurant</SelectItem>
+                      <SelectItem value="NOT_A_BIZ">Not a Business</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <Button
+                    variant="outline"
+                    onClick={() => setProfileSheetOpen(false)}
+                    data-testid="button-sheet-cancel"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      updateProfileMutation.mutate(profileForm);
+                      setProfileSheetOpen(false);
+                    }}
+                    disabled={updateProfileMutation.isPending}
+                    data-testid="button-sheet-save-profile"
+                  >
+                    {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </SettingsLayout>
   );
 }
