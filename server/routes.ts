@@ -26668,6 +26668,324 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     });
   });
 
+  // GET /api/integrations/whatsapp/phone-status - Check real phone number status from Meta Graph API
+  app.get("/api/integrations/whatsapp/phone-status", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    if (!user.companyId) return res.status(400).json({ error: "No company" });
+
+    try {
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp")
+        ),
+      });
+
+      if (!connection) {
+        return res.status(404).json({ error: "WhatsApp not connected" });
+      }
+
+      if (!connection.phoneNumberId || !connection.accessTokenEnc) {
+        return res.status(400).json({ error: "Missing phone number ID or access token" });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const phoneNumberId = connection.phoneNumberId;
+
+      const metaResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}?fields=status,quality_rating,name_status,verified_name,code_verification_status,account_mode,display_phone_number`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      const metaData = await metaResponse.json() as any;
+
+      if (!metaResponse.ok) {
+        console.error("[WhatsApp Phone Status] Meta API error:", metaData);
+        return res.status(metaResponse.status).json({
+          error: metaData.error?.message || "Failed to fetch phone status",
+          code: metaData.error?.code,
+          fbtrace_id: metaData.error?.fbtrace_id,
+        });
+      }
+
+      const needsRegistration = metaData.status !== "CONNECTED" || metaData.code_verification_status !== "VERIFIED";
+
+      return res.json({
+        status: metaData.status,
+        qualityRating: metaData.quality_rating,
+        nameStatus: metaData.name_status,
+        verifiedName: metaData.verified_name,
+        codeVerificationStatus: metaData.code_verification_status,
+        accountMode: metaData.account_mode,
+        displayPhoneNumber: metaData.display_phone_number,
+        needsRegistration,
+      });
+    } catch (error: any) {
+      console.error("[WhatsApp Phone Status] Error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // POST /api/integrations/whatsapp/register - Register phone number with 6-digit PIN
+  app.post("/api/integrations/whatsapp/register", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    if (!user.companyId) return res.status(400).json({ error: "No company" });
+
+    const { pin } = req.body;
+
+    if (!pin || !/^\d{6}$/.test(pin)) {
+      return res.status(400).json({ error: "PIN must be exactly 6 digits" });
+    }
+
+    try {
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp")
+        ),
+      });
+
+      if (!connection) {
+        return res.status(404).json({ error: "WhatsApp not connected" });
+      }
+
+      if (!connection.phoneNumberId || !connection.accessTokenEnc) {
+        return res.status(400).json({ error: "Missing phone number ID or access token" });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const phoneNumberId = connection.phoneNumberId;
+
+      const registerResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}/register`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            pin: pin,
+          }),
+        }
+      );
+
+      const registerData = await registerResponse.json() as any;
+
+      if (!registerResponse.ok) {
+        console.error("[WhatsApp Register] Meta API error:", registerData);
+        await db.insert(waWebhookLogs).values({
+          companyId: user.companyId,
+          eventType: "register_error",
+          payload: { error: registerData.error, phoneNumberId },
+          processedAt: new Date(),
+        });
+        return res.status(registerResponse.status).json({
+          error: registerData.error?.message || "Registration failed",
+          code: registerData.error?.code,
+          fbtrace_id: registerData.error?.fbtrace_id,
+        });
+      }
+
+      await db.insert(waWebhookLogs).values({
+        companyId: user.companyId,
+        eventType: "register_success",
+        payload: { success: true, phoneNumberId },
+        processedAt: new Date(),
+      });
+
+      const statusResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}?fields=status,code_verification_status`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      const statusData = await statusResponse.json() as any;
+
+      if (statusResponse.ok && statusData.status === "CONNECTED") {
+        await db.update(channelConnections)
+          .set({ status: "active", updatedAt: new Date() })
+          .where(eq(channelConnections.id, connection.id));
+      }
+
+      return res.json({
+        success: true,
+        status: statusData.status,
+        codeVerificationStatus: statusData.code_verification_status,
+      });
+    } catch (error: any) {
+      console.error("[WhatsApp Register] Error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // POST /api/integrations/whatsapp/retry-activation - Retry activation (check status and optionally re-register)
+  app.post("/api/integrations/whatsapp/retry-activation", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    if (!user.companyId) return res.status(400).json({ error: "No company" });
+
+    const { pin } = req.body;
+
+    try {
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp")
+        ),
+      });
+
+      if (!connection) {
+        return res.status(404).json({ error: "WhatsApp not connected" });
+      }
+
+      if (!connection.phoneNumberId || !connection.accessTokenEnc) {
+        return res.status(400).json({ error: "Missing phone number ID or access token" });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const phoneNumberId = connection.phoneNumberId;
+
+      const statusResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}?fields=status,code_verification_status`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      const statusData = await statusResponse.json() as any;
+
+      if (!statusResponse.ok) {
+        console.error("[WhatsApp Retry Activation] Meta API error:", statusData);
+        await db.insert(waWebhookLogs).values({
+          companyId: user.companyId,
+          eventType: "retry_activation_status_error",
+          payload: { error: statusData.error, phoneNumberId },
+          processedAt: new Date(),
+        });
+        return res.status(statusResponse.status).json({
+          error: statusData.error?.message || "Failed to check status",
+          code: statusData.error?.code,
+          fbtrace_id: statusData.error?.fbtrace_id,
+        });
+      }
+
+      if (statusData.status === "CONNECTED" && statusData.code_verification_status === "VERIFIED") {
+        await db.update(channelConnections)
+          .set({ status: "active", updatedAt: new Date() })
+          .where(eq(channelConnections.id, connection.id));
+
+        await db.insert(waWebhookLogs).values({
+          companyId: user.companyId,
+          eventType: "retry_activation_already_active",
+          payload: { status: statusData.status, codeVerificationStatus: statusData.code_verification_status, phoneNumberId },
+          processedAt: new Date(),
+        });
+
+        return res.json({
+          success: true,
+          action: "none",
+          status: statusData.status,
+          codeVerificationStatus: statusData.code_verification_status,
+          message: "Phone number is already activated",
+        });
+      }
+
+      if (!pin) {
+        await db.insert(waWebhookLogs).values({
+          companyId: user.companyId,
+          eventType: "retry_activation_pin_required",
+          payload: { status: statusData.status, codeVerificationStatus: statusData.code_verification_status, phoneNumberId },
+          processedAt: new Date(),
+        });
+
+        return res.json({
+          success: false,
+          action: "pin_required",
+          status: statusData.status,
+          codeVerificationStatus: statusData.code_verification_status,
+          message: "PIN required to complete registration",
+        });
+      }
+
+      if (!/^\d{6}$/.test(pin)) {
+        return res.status(400).json({ error: "PIN must be exactly 6 digits" });
+      }
+
+      const registerResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}/register`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            pin: pin,
+          }),
+        }
+      );
+
+      const registerData = await registerResponse.json() as any;
+
+      if (!registerResponse.ok) {
+        console.error("[WhatsApp Retry Activation] Registration error:", registerData);
+        await db.insert(waWebhookLogs).values({
+          companyId: user.companyId,
+          eventType: "retry_activation_register_error",
+          payload: { error: registerData.error, phoneNumberId },
+          processedAt: new Date(),
+        });
+        return res.status(registerResponse.status).json({
+          error: registerData.error?.message || "Registration failed",
+          code: registerData.error?.code,
+          fbtrace_id: registerData.error?.fbtrace_id,
+        });
+      }
+
+      const finalStatusResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}?fields=status,code_verification_status`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      const finalStatusData = await finalStatusResponse.json() as any;
+
+      if (finalStatusResponse.ok && finalStatusData.status === "CONNECTED") {
+        await db.update(channelConnections)
+          .set({ status: "active", updatedAt: new Date() })
+          .where(eq(channelConnections.id, connection.id));
+      }
+
+      await db.insert(waWebhookLogs).values({
+        companyId: user.companyId,
+        eventType: "retry_activation_registered",
+        payload: { status: finalStatusData.status, codeVerificationStatus: finalStatusData.code_verification_status, phoneNumberId },
+        processedAt: new Date(),
+      });
+
+      return res.json({
+        success: true,
+        action: "registered",
+        status: finalStatusData.status,
+        codeVerificationStatus: finalStatusData.code_verification_status,
+        message: "Registration completed",
+      });
+    } catch (error: any) {
+      console.error("[WhatsApp Retry Activation] Error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // POST /api/integrations/whatsapp/connect - Manual connect (Admin/Debug only)
   // This is kept for admin debugging purposes
   app.post("/api/integrations/whatsapp/connect", requireActiveCompany, async (req: Request, res: Response) => {
