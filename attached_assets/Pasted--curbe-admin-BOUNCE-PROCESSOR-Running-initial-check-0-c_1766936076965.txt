@@ -1,0 +1,157 @@
+|curbe-admin  | [BOUNCE PROCESSOR] Running initial check...
+0|curbe-admin  | [BOUNCE PROCESSOR] Starting bounce email processing...
+0|curbe-admin  | 3:32:52 PM [express] GET /api/telnyx/phone-system-access 304 in 30ms :: {"hasAccess":true,"isOwner":…
+0|curbe-admin  | 3:32:52 PM [express] GET /api/companies/4e62c351-05a4-496c-9085-7362c7c08333 304 in 52ms :: {"compan…
+0|curbe-admin  | 3:32:52 PM [express] GET /api/pbx/special-extensions 304 in 47ms :: {"ivrExtension":null,"queues":[]}
+0|curbe-admin  | 3:32:52 PM [express] GET /api/dashboard-monthly 200 in 35ms
+0|curbe-admin  | 3:32:52 PM [express] GET /api/notifications 200 in 109ms :: {"notifications":[{"id":"b7a98331-d99d-4…
+0|curbe-admin  | 3:32:52 PM [express] GET /api/imessage/access 304 in 120ms :: {"hasAccess":false,"reason":"feature_n…
+0|curbe-admin  | 3:32:52 PM [express] GET /api/telnyx/user-phone-status 304 in 47ms :: {"hasAssignedNumber":true,"can…
+0|curbe-admin  | 3:32:52 PM [express] GET /api/policies-analytics 200 in 43ms
+0|curbe-admin  | 3:32:52 PM [express] GET /api/dashboard-agents 200 in 117ms
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 3:32:52 PM [express] GET /api/voicemails 304 in 77ms :: {"voicemails":[]}
+0|curbe-admin  | [Dashboard-Stats] Cache MISS for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 3:32:52 PM [express] GET /api/call-logs 304 in 140ms :: {"logs":[{"id":"97a12998-8d8d-43a4-b7d7-578a…
+0|curbe-admin  | [Dashboard-Carriers] Cache MISS for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 3:32:52 PM [express] GET /api/users/availability-status 304 in 135ms :: {"status":"online"}
+0|curbe-admin  | 3:32:52 PM [express] GET /api/session 304 in 169ms :: {"user":{"id":"4f49a9c8-a3fb-4724-b96c-5006f77…
+0|curbe-admin  | 3:32:52 PM [express] GET /api/dashboard-carriers 304 in 188ms :: {"carriers":[]}
+0|curbe-admin  | [DASHBOARD] Activity logs count: 5
+0|curbe-admin  | [DASHBOARD] Auth actions found: [
+0|curbe-admin  |   { action: 'auth_account_activated', date: 2025-12-18T03:02:45.398Z },
+0|curbe-admin  |   { action: 'auth_login_failed', date: 2025-12-18T03:02:26.745Z },
+0|curbe-admin  |   { action: 'auth_company_registered', date: 2025-12-18T03:02:22.108Z }
+0|curbe-admin  | ]
+0|curbe-admin  | [DASHBOARD] Failed login attempts count: 1
+0|curbe-admin  | 3:32:52 PM [express] GET /api/dashboard-stats 304 in 139ms :: {"totalUsers":1,"adminCount":1,"member…
+0|curbe-admin  | 3:32:52 PM [express] GET /api/telnyx/voice-settings/062de1ab-a1e9-47cd-bae7-5759c6d7b02a 304 in 355m…
+0|curbe-admin  | [Telnyx Sync] Synced 0 new numbers for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 3:32:52 PM [express] GET /api/telnyx/my-numbers 200 in 322ms :: {"numbers":[{"id":"f46853fb-0d1e-408…
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 unregistered from company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call WS] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 disconnected
+0|curbe-admin  | 3:32:55 PM [express] GET /api/session 200 in 27ms :: {"user":{"id":"4f49a9c8-a3fb-4724-b96c-5006f773…
+0|curbe-admin  | 3:32:55 PM [express] GET /api/session 200 in 27ms :: {"user":{"id":"4f49a9c8-a3fb-4724-b96c-5006f773…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 registered for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 3:32:56 PM [express] GET /api/dashboard-monthly 304 in 47ms
+0|curbe-admin  | 3:32:56 PM [express] GET /api/policies-analytics 304 in 49ms
+0|curbe-admin  | 3:32:56 PM [express] GET /api/dashboard-agents 304 in 50ms
+0|curbe-admin  | [Dashboard-Stats] Cache MISS for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 3:32:56 PM [express] GET /api/voicemails 304 in 78ms :: {"voicemails":[]}
+0|curbe-admin  | 3:32:56 PM [express] GET /api/imessage/access 304 in 78ms :: {"hasAccess":false,"reason":"feature_no…
+0|curbe-admin  | [Dashboard-Carriers] Cache MISS for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 3:32:56 PM [express] GET /api/telnyx/phone-system-access 304 in 83ms :: {"hasAccess":true,"isOwner":…
+0|curbe-admin  | 3:32:56 PM [express] GET /api/notifications 304 in 65ms :: {"notifications":[{"id":"b7a98331-d99d-4a…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 3:32:56 PM [express] GET /api/call-logs 304 in 122ms :: {"logs":[{"id":"97a12998-8d8d-43a4-b7d7-578a…
+0|curbe-admin  | 3:32:56 PM [express] GET /api/companies/4e62c351-05a4-496c-9085-7362c7c08333 304 in 118ms :: {"compa…
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 3:32:56 PM [express] GET /api/telnyx/user-phone-status 304 in 142ms :: {"hasAssignedNumber":true,"ca…
+0|curbe-admin  | 3:32:56 PM [express] GET /api/users/availability-status 304 in 164ms :: {"status":"online"}
+0|curbe-admin  | 3:32:56 PM [express] GET /api/session 304 in 164ms :: {"user":{"id":"4f49a9c8-a3fb-4724-b96c-5006f77…
+0|curbe-admin  | 3:32:56 PM [express] GET /api/dashboard-carriers 304 in 195ms :: {"carriers":[]}
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [DASHBOARD] Activity logs count: 5
+0|curbe-admin  | [DASHBOARD] Auth actions found: [
+0|curbe-admin  |   { action: 'auth_account_activated', date: 2025-12-18T03:02:45.398Z },
+0|curbe-admin  |   { action: 'auth_login_failed', date: 2025-12-18T03:02:26.745Z },
+0|curbe-admin  |   { action: 'auth_company_registered', date: 2025-12-18T03:02:22.108Z }
+0|curbe-admin  | ]
+0|curbe-admin  | [DASHBOARD] Failed login attempts count: 1
+0|curbe-admin  | 3:32:56 PM [express] GET /api/dashboard-stats 304 in 215ms :: {"totalUsers":1,"adminCount":1,"member…
+0|curbe-admin  | [Telnyx Sync] Synced 0 new numbers for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 3:32:56 PM [express] GET /api/telnyx/my-numbers 304 in 319ms :: {"numbers":[{"id":"f46853fb-0d1e-408…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [TURN Credentials] Returning TURN servers for: gencredeaJuooJUafIZwYGRHNnaB83TKR8gYTAWY16FdUsEIu
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 3:32:56 PM [express] GET /api/telnyx/turn-credentials 304 in 22ms :: {"username":"gencredeaJuooJUafI…
+0|curbe-admin  | 3:32:56 PM [express] GET /api/pbx/special-extensions 304 in 27ms :: {"ivrExtension":null,"queues":[]}
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | 3:32:56 PM [express] GET /api/webrtc/extension-credentials 304 in 17ms :: {"extensionId":"bd5db414-7…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | 3:32:56 PM [express] GET /api/telnyx/voice-settings/062de1ab-a1e9-47cd-bae7-5759c6d7b02a 304 in 157m…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 3:33:04 PM [express] POST /api/webhooks/meta/whatsapp 200 in 5ms
+0|curbe-admin  | [BOUNCE PROCESSOR] IMAP error: Timed out while authenticating with server
+0|curbe-admin  | [BOUNCE PROCESSOR] Error processing bounces: Error: Timed out while authenticating with server
+0|curbe-admin  |     at Timeout._onTimeout (/var/www/curbe/node_modules/imap/lib/Connection.js:139:17)
+0|curbe-admin  |     at listOnTimeout (node:internal/timers:581:17)
+0|curbe-admin  |     at process.processTimers (node:internal/timers:519:7) {
+0|curbe-admin  |   source: 'timeout-auth'
+0|curbe-admin  | }
+0|curbe-admin  | [WhatsApp Webhook Worker] Dedupe check failed for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA==, processing anyway
+0|curbe-admin  | [WhatsApp Webhook Worker] Incoming call with SDP offer: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA== from 17866302522
+0|curbe-admin  | [WhatsApp Call] Incoming call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA== from +17866302522 to +17867631593
+0|curbe-admin  | [WhatsApp Call] Notified 1 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Webhook Worker] Saved inbound call to inbox: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA== - connect
+0|curbe-admin  | 3:33:06 PM [express] GET /api/telnyx/number-pricing 304 in 14ms :: {"localMonthly":10,"tollfreeMonth…
+0|curbe-admin  | [WhatsApp Call WS] Received message: answer
+0|curbe-admin  | [WhatsApp Call] Sending pre_accept for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA==
+0|curbe-admin  | [WhatsApp Call] pre_accept payload: {
+0|curbe-admin  |   "messaging_product": "whatsapp",
+0|curbe-admin  |   "call_id": "wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA==",
+0|curbe-admin  |   "action": "pre_accept",
+0|curbe-admin  |   "session": {
+0|curbe-admin  |     "sdp_type": "answer",
+0|curbe-admin  |     "sdp": "v=0\r\no=- 6418770793780528798 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE audio\r\na=msid-semantic: WMS 8a19a736-2d09-4450-b5b9-e3d2aa7dadce\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111 126\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:SSmw\r\na=ice-pwd:hhvKAQngFj6+9cy0Ge+V/p0H\r\na=ice-options:trickle\r\na=fingerprint:sha-256 96:7B:6B:DF:FE:50:ED:BB:68:17:1A:4B:7A:C1:F1:66:EC:48:17:DB:A7:AA:B2:47:97:94:F3:E5:2D:63:9A:A0\r\na=setup:active\r\na=mid:audio\r\na=sendrecv\r\na=msid:8a19a736-2d09-4450-b5b9-e3d2aa7dadce 28a633be-1807-4611-a901-b60b4b327ac8\r\na=rtcp-mux\r\na=rtpmap:111 opus/48000/2\r\na=rtcp-fb:111 transport-cc\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=rtpmap:126 telephone-event/8000\r\na=ssrc:1309815329 cname:7Ug7ODPFtqmG8JzO\r\n"
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | [WhatsApp Call] pre_accept succeeded: { messaging_product: 'whatsapp', success: true }
+0|curbe-admin  | [WhatsApp Call] Sending accept for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA==
+0|curbe-admin  | [WhatsApp Call] accept succeeded: { messaging_product: 'whatsapp', success: true }
+0|curbe-admin  | [WhatsApp Call] Call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA== answered by user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [WhatsApp Call] Notified 1 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call WS] Received message: decline
+0|curbe-admin  | [WhatsApp Call] Call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA== declined - letting it timeout on Meta's side
+0|curbe-admin  | [WhatsApp Call] Notified 1 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call] Call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA== declined
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 3:34:01 PM [express] POST /api/webhooks/meta/whatsapp 200 in 4ms
+0|curbe-admin  | [WhatsApp Webhook Worker] Dedupe check failed for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA==, processing anyway
+0|curbe-admin  | [WhatsApp Webhook Worker] Saved inbound call to inbox: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggODVDQjVGMjAxRUUyNUZFQkMyNEIzRjM5RTQwNTNCRTYcGAsxNzg2NzYzMTU5MxUCABUaAA== - terminate
+

@@ -36998,6 +36998,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       const updateData: any = {};
       if (status !== undefined) updateData.status = status;
+      if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
       if (duration !== undefined) updateData.duration = duration;
       if (answeredAt !== undefined) updateData.answeredAt = new Date(answeredAt);
       if (endedAt !== undefined) updateData.endedAt = new Date(endedAt);
@@ -39699,7 +39700,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       return res.status(401).json({ message: "Unauthorized" });
     }
     const { id } = req.params;
-    const { displayName, email, jobTitle, organization, status } = req.body;
+    const { displayName, email, jobTitle, organization, status, unreadCount } = req.body;
     const companyId = (req.user as any).companyId;
     
     try {
@@ -39717,6 +39718,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (jobTitle !== undefined) updateData.jobTitle = jobTitle || null;
       if (organization !== undefined) updateData.organization = organization || null;
       if (status !== undefined) updateData.status = status;
+      if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
       
       await db.update(telnyxConversations)
         .set(updateData)

@@ -1,0 +1,96 @@
+Para que Replit (ya sea que uses el Agente de IA o programes tú mismo) lo implemente sin errores, tienes que ser extremadamente específico con la estructura del JSON, porque esta función de "Botón de Llamada" (`voice_call`) es relativamente nueva y muchas IAs alucinan con la sintaxis antigua.
+
+Aquí tienes exactamente qué decirle o qué código pegar.
+
+### Opción A: Si estás usando el Replit AI Agent (Prompt)
+
+Copia y pega esto en el chat del Agente de Replit:
+
+> "Crea una función en Python usando `requests` para enviar un mensaje de WhatsApp Business Cloud API.
+> **Objetivo:** Enviar un mensaje INTERACTIVO con un botón de LLAMADA DE VOZ (Voice Call Button).
+> **Especificaciones Técnicas:**
+> 1. Usa las variables de entorno `WHATSAPP_TOKEN` y `PHONE_NUMBER_ID`.
+> 2. El endpoint es `POST https://graph.facebook.com/v21.0/{phone_number_id}/messages`.
+> 3. El payload JSON debe seguir estrictamente esta estructura para el tipo 'voice_call':
+> * `type`: 'interactive'
+> * `interactive` objeto con `type`: 'voice_call'
+> * `body`: con `text`: 'Si necesitas hablar con un asesor, presiona abajo.'
+> * `action`: con `name`: 'voice_call'
+> * `action.parameters`: con `display_text`: 'Llamar Ahora' y `ttl_minutes`: 60.
+> 
+> 
+> 
+> 
+> Crea un script de prueba `main.py` que envíe este mensaje a un número definido en una variable."
+
+---
+
+### Opción B: Si estás programando tú mismo (El Código)
+
+Este es el código **listo para producción**. Copia esto en tu `main.py` en Replit.
+
+**Requisito:** En la sección "Secrets" (el candado) de Replit, agrega:
+
+* `WA_TOKEN`: Tu token de Meta (comienza con `EAA...`).
+* `WA_PHONE_ID`: El ID de tu número de teléfono (no el número, el ID).
+
+```python
+import os
+import requests
+import json
+
+def enviar_boton_llamada(numero_destino):
+    # 1. Configuración
+    token = os.environ['WA_TOKEN']
+    phone_id = os.environ['WA_PHONE_ID']
+    url = f"https://graph.facebook.com/v21.0/{phone_id}/messages"
+    
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    # 2. Construcción del Payload (Estructura EXACTA para Botón de Llamada)
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": numero_destino,
+        "type": "interactive",
+        "interactive": {
+            "type": "voice_call",
+            "body": {
+                "text": "📞 ¿Prefieres hablar con nosotros? Toca el botón para iniciar una llamada segura."
+            },
+            "action": {
+                "name": "voice_call",
+                "parameters": {
+                    "display_text": "Llamar Ahora", # Máximo 20 caracteres
+                    # "payload": "user_id_123", # Opcional: Para rastrear quién llama en tu webhook
+                    "ttl_minutes": 100 # El botón deja de funcionar en 100 minutos (seguridad)
+                }
+            }
+        }
+    }
+
+    # 3. Envío
+    try:
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        response.raise_for_status() # Lanza error si no es 200 OK
+        print(f"✅ Éxito! Botón enviado a {numero_destino}")
+        print(response.json())
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Error al enviar:")
+        print(e.response.text if e.response else e)
+
+# --- EJECUCIÓN ---
+# Reemplaza con tu número real (incluye código de país, sin +)
+# Ejemplo: 5215512345678
+enviar_boton_llamada("NUMERO_DESTINO_AQUI")
+
+```
+
+### Por qué te di este código específico:
+
+1. **`ttl_minutes`:** Lo incluí porque es vital para la seguridad. Si no lo pones, ese botón vive 30 días. Si cambias de horario o te vas de vacaciones, la gente seguirá teniendo un botón activo en su chat. Con esto, controlas la ventana de oportunidad.
+2. **`display_text`:** Tiene un límite duro de 20 caracteres. Si pones "Llamar a soporte técnico especializado", la API te dará error. "Llamar Ahora" es seguro.
+3. **Manejo de Errores:** Replit a veces falla en la salida de red. El bloque `try/except` te dirá exactamente qué dijo Facebook si algo sale mal (ej. "User not opted in").

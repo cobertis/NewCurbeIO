@@ -404,6 +404,24 @@ export default function InboxPage() {
     setPulseAiInput("");
   }, [selectedConversationId]);
 
+  // Mark conversation as read when selected
+  useEffect(() => {
+    if (!selectedConversation || selectedConversation.unreadCount === 0) return;
+    
+    const markAsRead = async () => {
+      try {
+        await apiRequest("PATCH", `/api/inbox/conversations/${selectedConversation.id}`, {
+          unreadCount: 0
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      } catch (error) {
+        console.error("Failed to mark conversation as read:", error);
+      }
+    };
+    
+    markAsRead();
+  }, [selectedConversation?.id, selectedConversation?.unreadCount]);
+
   // Sync local Pulse AI messages with database data
   useEffect(() => {
     if (pulseAiMessagesData) {
