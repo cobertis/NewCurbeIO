@@ -3627,55 +3627,52 @@ export default function InboxPage() {
                     onClick={() => {
                       if (!selectedConversationId || !selectedTemplateForSend) return;
                       
-                      // Build components array for Meta API (lowercase types required)
-                      const components: Array<{ type: string; parameters: Array<{ type: string; text: string }> }> = [];
+                      // Build components array by iterating template components with lowercase types for Meta API
+                      const components: Array<any> = [];
+                      const varsRecord = templateVariables as Record<string, string>;
                       
-                      // Group variables by component type
-                      const headerVars: string[] = [];
-                      const bodyVars: string[] = [];
-                      const buttonVars: Record<number, string[]> = {};
+                      // Helper to get sorted parameters for a component type
+                      const getParams = (prefix: string): Array<{ type: string; text: string }> => {
+                        const keys = Object.keys(varsRecord)
+                          .filter(k => k.startsWith(prefix))
+                          .sort((a, b) => {
+                            // Sort numerically by extracting the variable number
+                            const numA = parseInt(a.split("_").pop() || "0");
+                            const numB = parseInt(b.split("_").pop() || "0");
+                            return numA - numB;
+                          });
+                        return keys.map(k => ({ type: "text", text: varsRecord[k] || "" }));
+                      };
                       
-                      Object.entries(templateVariables).forEach(([key, value]) => {
-                        if (key.startsWith("HEADER_")) {
-                          const num = parseInt(key.split("_")[1]);
-                          headerVars[num - 1] = value as string;
-                        } else if (key.startsWith("BODY_")) {
-                          const num = parseInt(key.split("_")[1]);
-                          bodyVars[num - 1] = value as string;
-                        } else if (key.startsWith("BUTTON_")) {
-                          const parts = key.split("_");
-                          const btnIdx = parseInt(parts[1]);
-                          const varNum = parseInt(parts[2]);
-                          if (!buttonVars[btnIdx]) buttonVars[btnIdx] = [];
-                          buttonVars[btnIdx][varNum - 1] = value as string;
-                        }
-                      });
-                      
-                      // Add header component if has variables
-                      if (headerVars.some(v => v)) {
-                        components.push({
-                          type: "header",
-                          parameters: headerVars.filter(v => v !== undefined).map(v => ({ type: "text", text: v || "" }))
-                        });
-                      }
-                      
-                      // Add body component if has variables
-                      if (bodyVars.some(v => v)) {
-                        components.push({
-                          type: "body",
-                          parameters: bodyVars.filter(v => v !== undefined).map(v => ({ type: "text", text: v || "" }))
-                        });
-                      }
-                      
-                      // Add button components if has variables
-                      Object.entries(buttonVars).forEach(([btnIdx, vars]) => {
-                        if (vars.some(v => v)) {
-                          components.push({
-                            type: "button",
-                            sub_type: "url",
-                            index: parseInt(btnIdx),
-                            parameters: vars.filter(v => v !== undefined).map(v => ({ type: "text", text: v || "" }))
-                          } as any);
+                      // Iterate original template components to preserve structure
+                      selectedTemplateForSend.components.forEach((comp: any) => {
+                        const compType = comp.type?.toUpperCase();
+                        
+                        if (compType === "HEADER") {
+                          const params = getParams("HEADER_");
+                          if (params.length > 0) {
+                            components.push({ type: "header", parameters: params });
+                          }
+                        } else if (compType === "BODY") {
+                          const params = getParams("BODY_");
+                          if (params.length > 0) {
+                            components.push({ type: "body", parameters: params });
+                          }
+                        } else if ((compType === "BUTTONS" || compType === "BUTTON") && comp.buttons) {
+                          // Handle each button that has URL variables
+                          comp.buttons.forEach((btn: any, btnIdx: number) => {
+                            if (btn.type?.toUpperCase() === "URL") {
+                              const params = getParams(`BUTTON_${btnIdx}_`);
+                              if (params.length > 0) {
+                                components.push({
+                                  type: "button",
+                                  sub_type: "url",
+                                  index: btnIdx,
+                                  parameters: params
+                                });
+                              }
+                            }
+                          });
                         }
                       });
                       
