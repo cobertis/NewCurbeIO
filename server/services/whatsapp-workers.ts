@@ -178,17 +178,42 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             } catch (insertErr: any) {
               // Handle race condition - another worker may have created the conversation
               if (insertErr.code === '23505') { // PostgreSQL unique constraint violation
-                console.log(`[WhatsApp Webhook Worker] Race condition detected for call, fetching existing conversation`);
-                inboxConversation = await db.query.telnyxConversations.findFirst({
-                  where: and(
-                    eq(telnyxConversations.companyId, companyId),
-                    eq(telnyxConversations.phoneNumber, customerPhone),
-                    eq(telnyxConversations.channel, "whatsapp")
-                  ),
-                });
+                console.log(`[WhatsApp Webhook Worker] Race condition detected for call, retrying lookup`);
+                
+                // Retry with small delays to allow other transaction to commit
+                for (let attempt = 0; attempt < 3; attempt++) {
+                  if (attempt > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // 100ms, 200ms delays
+                  }
+                  
+                  // Try finding by exact companyPhoneNumber first (most likely match)
+                  inboxConversation = await db.query.telnyxConversations.findFirst({
+                    where: and(
+                      eq(telnyxConversations.companyId, companyId),
+                      eq(telnyxConversations.phoneNumber, customerPhone),
+                      eq(telnyxConversations.companyPhoneNumber, companyPhone)
+                    ),
+                  });
+                  
+                  if (inboxConversation) break;
+                  
+                  // Fallback: any WhatsApp conversation with this customer
+                  inboxConversation = await db.query.telnyxConversations.findFirst({
+                    where: and(
+                      eq(telnyxConversations.companyId, companyId),
+                      eq(telnyxConversations.phoneNumber, customerPhone),
+                      eq(telnyxConversations.channel, "whatsapp")
+                    ),
+                  });
+                  
+                  if (inboxConversation) break;
+                }
+                
                 if (!inboxConversation) {
+                  console.error(`[WhatsApp Webhook Worker] Failed to find conversation after 3 retries for call from ${customerPhone}`);
                   throw new Error(`Failed to find conversation after race condition for call from ${customerPhone}`);
                 }
+                console.log(`[WhatsApp Webhook Worker] Found conversation after race condition for call: ${inboxConversation.id}`);
               } else {
                 throw insertErr;
               }
@@ -290,17 +315,42 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             } catch (insertErr: any) {
               // Handle race condition - another worker may have created the conversation
               if (insertErr.code === '23505') { // PostgreSQL unique constraint violation
-                console.log(`[WhatsApp Webhook Worker] Race condition detected, fetching existing conversation`);
-                inboxConversation = await db.query.telnyxConversations.findFirst({
-                  where: and(
-                    eq(telnyxConversations.companyId, companyId),
-                    eq(telnyxConversations.phoneNumber, customerPhone),
-                    eq(telnyxConversations.channel, "whatsapp")
-                  ),
-                });
+                console.log(`[WhatsApp Webhook Worker] Race condition detected, retrying lookup`);
+                
+                // Retry with small delays to allow other transaction to commit
+                for (let attempt = 0; attempt < 3; attempt++) {
+                  if (attempt > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // 100ms, 200ms delays
+                  }
+                  
+                  // Try finding by exact companyPhoneNumber first (most likely match)
+                  inboxConversation = await db.query.telnyxConversations.findFirst({
+                    where: and(
+                      eq(telnyxConversations.companyId, companyId),
+                      eq(telnyxConversations.phoneNumber, customerPhone),
+                      eq(telnyxConversations.companyPhoneNumber, companyPhone)
+                    ),
+                  });
+                  
+                  if (inboxConversation) break;
+                  
+                  // Fallback: any WhatsApp conversation with this customer
+                  inboxConversation = await db.query.telnyxConversations.findFirst({
+                    where: and(
+                      eq(telnyxConversations.companyId, companyId),
+                      eq(telnyxConversations.phoneNumber, customerPhone),
+                      eq(telnyxConversations.channel, "whatsapp")
+                    ),
+                  });
+                  
+                  if (inboxConversation) break;
+                }
+                
                 if (!inboxConversation) {
+                  console.error(`[WhatsApp Webhook Worker] Failed to find conversation after 3 retries for ${customerPhone}`);
                   throw new Error(`Failed to find conversation after race condition for ${customerPhone}`);
                 }
+                console.log(`[WhatsApp Webhook Worker] Found conversation after race condition: ${inboxConversation.id}`);
               } else {
                 throw insertErr;
               }
