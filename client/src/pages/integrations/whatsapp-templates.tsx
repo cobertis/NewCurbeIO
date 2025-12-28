@@ -127,8 +127,9 @@ interface LibraryTemplate {
   headerText: string;
   bodyText: string;
   footerText: string;
-  buttonType: "none" | "quick_reply";
+  buttonType: "none" | "quick_reply" | "voice_call";
   buttons: string[];
+  voiceCallButtonText?: string;
 }
 
 const TEMPLATE_LIBRARY: LibraryTemplate[] = [
@@ -333,6 +334,67 @@ const TEMPLATE_LIBRARY: LibraryTemplate[] = [
     buttonType: "quick_reply",
     buttons: ["Devolver Llamada", "Solicitar Llamada"],
   },
+  // UTILITY - WhatsApp Voice Call (VoIP)
+  {
+    id: "voice_call_support",
+    name: "voice_call_support",
+    category: "UTILITY",
+    categoryLabel: "Voice Call",
+    description: "WhatsApp voice call button for support",
+    language: "en",
+    headerType: "text",
+    headerText: "Need Help? Call Us Now",
+    bodyText: "Hello! We noticed you may need assistance with {{1}}. Our support team is ready to help you right now. Tap the button below to start a WhatsApp voice call with us - no phone charges apply.",
+    footerText: "WhatsApp VoIP - Free calling",
+    buttonType: "voice_call",
+    buttons: [],
+    voiceCallButtonText: "Call Now",
+  },
+  {
+    id: "voice_call_urgent",
+    name: "voice_call_urgent",
+    category: "UTILITY",
+    categoryLabel: "Voice Call",
+    description: "Urgent voice call request",
+    language: "en",
+    headerType: "text",
+    headerText: "Urgent: Please Call Us",
+    bodyText: "We have an important matter regarding {{1}} that requires immediate attention. Reference: {{2}}. Please tap below to connect with our team via WhatsApp call - we are available {{3}}.",
+    footerText: "",
+    buttonType: "voice_call",
+    buttons: [],
+    voiceCallButtonText: "Call Urgent",
+  },
+  {
+    id: "llamada_voz_soporte",
+    name: "llamada_voz_soporte",
+    category: "UTILITY",
+    categoryLabel: "Voice Call",
+    description: "Llamada de voz WhatsApp para soporte",
+    language: "es",
+    headerType: "text",
+    headerText: "Necesitas Ayuda? Llamanos",
+    bodyText: "Hola! Notamos que puede necesitar ayuda con {{1}}. Nuestro equipo de soporte esta listo para ayudarle ahora mismo. Toque el boton para iniciar una llamada de voz por WhatsApp - sin cargos telefonicos.",
+    footerText: "WhatsApp VoIP - Llamada gratis",
+    buttonType: "voice_call",
+    buttons: [],
+    voiceCallButtonText: "Llamar Ahora",
+  },
+  {
+    id: "llamada_voz_urgente",
+    name: "llamada_voz_urgente",
+    category: "UTILITY",
+    categoryLabel: "Voice Call",
+    description: "Solicitud de llamada urgente",
+    language: "es",
+    headerType: "text",
+    headerText: "Urgente: Por Favor Llamenos",
+    bodyText: "Tenemos un asunto importante sobre {{1}} que requiere atencion inmediata. Referencia: {{2}}. Por favor toque abajo para conectar con nuestro equipo via llamada WhatsApp - estamos disponibles {{3}}.",
+    footerText: "",
+    buttonType: "voice_call",
+    buttons: [],
+    voiceCallButtonText: "Llamar Urgente",
+  },
   // MARKETING - Promotions
   {
     id: "special_offer",
@@ -454,6 +516,7 @@ export default function WhatsAppTemplatesPage() {
       buttons: template.buttons.length > 0 
         ? template.buttons.map(text => ({ type: "QUICK_REPLY", text }))
         : [{ type: "QUICK_REPLY", text: "" }],
+      voiceCallButtonText: template.voiceCallButtonText || "Call Now",
     });
     setSelectedLibraryTemplate(template);
     setCreateTab("custom");
@@ -474,6 +537,7 @@ export default function WhatsAppTemplatesPage() {
     footerText: "",
     buttonType: "none",
     buttons: [{ type: "QUICK_REPLY", text: "" }],
+    voiceCallButtonText: "Call Now",
   });
 
   // Fetch templates
@@ -605,6 +669,13 @@ export default function WhatsAppTemplatesPage() {
           buttons: data.buttons
             .filter(b => b.text)
             .map(b => ({ type: "QUICK_REPLY", text: b.text })),
+        });
+      } else if (data.buttonType === "voice_call" && data.voiceCallButtonText) {
+        components.push({
+          type: "BUTTONS",
+          buttons: [
+            { type: "VOICE_CALL", text: data.voiceCallButtonText.substring(0, 25) }
+          ],
         });
       }
 
@@ -1237,8 +1308,23 @@ export default function WhatsAppTemplatesPage() {
                 <SelectContent>
                   <SelectItem value="none">No buttons</SelectItem>
                   <SelectItem value="quick_reply">Quick Reply Buttons</SelectItem>
+                  <SelectItem value="voice_call">WhatsApp Voice Call Button</SelectItem>
                 </SelectContent>
               </Select>
+              {formData.buttonType === "voice_call" && (
+                <div className="space-y-2">
+                  <Input
+                    value={formData.voiceCallButtonText}
+                    onChange={(e) => setFormData(prev => ({ ...prev, voiceCallButtonText: e.target.value }))}
+                    placeholder="Button text (e.g., Call Now)"
+                    maxLength={25}
+                    data-testid="input-voice-call-button"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This button initiates a WhatsApp voice call (VoIP) when tapped
+                  </p>
+                </div>
+              )}
               {formData.buttonType === "quick_reply" && (
                 <div className="space-y-2">
                   {formData.buttons.map((btn, idx) => (
