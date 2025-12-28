@@ -27243,6 +27243,266 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     return res.json({ success: true });
   });
 
+
+  // GET /api/integrations/whatsapp/profile - Fetch WhatsApp Business Profile from Meta API
+  app.get("/api/integrations/whatsapp/profile", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company" });
+
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          or(eq(channelConnections.status, "active"), eq(channelConnections.status, "pending"))
+        )
+      });
+
+      if (!connection) {
+        return res.status(404).json({ error: "No WhatsApp connection found" });
+      }
+
+      if (!connection.accessTokenEnc || !connection.phoneNumberId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete" });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+      const phoneNumberId = connection.phoneNumberId;
+
+      const profileUrl = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/whatsapp_business_profile?fields=about,address,description,email,profile_picture_url,websites,vertical`;
+
+      const profileRes = await fetch(profileUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+
+      if (!profileRes.ok) {
+        const error = await profileRes.json();
+        console.error("[WhatsApp Profile] Failed to fetch:", error);
+        return res.status(profileRes.status).json({ error: (error as any).error?.message || "Failed to fetch profile" });
+      }
+
+      const profileData = await profileRes.json() as any;
+      const profile = profileData.data?.[0] || {};
+
+      return res.json({
+        about: profile.about || "",
+        address: profile.address || "",
+        description: profile.description || "",
+        email: profile.email || "",
+        profilePictureUrl: profile.profile_picture_url || "",
+        websites: profile.websites || [],
+        vertical: profile.vertical || "UNDEFINED"
+      });
+    } catch (error: any) {
+      console.error("[WhatsApp Profile] Error:", error);
+      return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+  });
+
+  // POST /api/integrations/whatsapp/profile - Update WhatsApp Business Profile via Meta API
+  app.post("/api/integrations/whatsapp/profile", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company" });
+
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          or(eq(channelConnections.status, "active"), eq(channelConnections.status, "pending"))
+        )
+      });
+
+      if (!connection) {
+        return res.status(404).json({ error: "No WhatsApp connection found" });
+      }
+
+      if (!connection.accessTokenEnc || !connection.phoneNumberId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete" });
+      }
+
+      const { about, address, description, email, vertical, websites } = req.body;
+
+      // Validate field lengths
+      if (about && about.length > 139) {
+        return res.status(400).json({ error: "About text must be 139 characters or less" });
+      }
+      if (address && address.length > 256) {
+        return res.status(400).json({ error: "Address must be 256 characters or less" });
+      }
+      if (description && description.length > 512) {
+        return res.status(400).json({ error: "Description must be 512 characters or less" });
+      }
+      if (email && email.length > 128) {
+        return res.status(400).json({ error: "Email must be 128 characters or less" });
+      }
+
+      // Validate websites array
+      if (websites) {
+        if (!Array.isArray(websites) || websites.length > 2) {
+          return res.status(400).json({ error: "Websites must be an array with max 2 URLs" });
+        }
+        for (const url of websites) {
+          if (url && url.length > 256) {
+            return res.status(400).json({ error: "Each website URL must be 256 characters or less" });
+          }
+        }
+      }
+
+      // Validate vertical enum
+      const validVerticals = [
+        "UNDEFINED", "OTHER", "AUTO", "BEAUTY", "APPAREL", "EDU", "ENTERTAIN",
+        "EVENT_PLAN", "FINANCE", "GROCERY", "GOVT", "HOTEL", "HEALTH",
+        "NONPROFIT", "PROF_SERVICES", "RETAIL", "TRAVEL", "RESTAURANT", "NOT_A_BIZ"
+      ];
+      if (vertical && !validVerticals.includes(vertical)) {
+        return res.status(400).json({ error: `Invalid vertical. Must be one of: ${validVerticals.join(", ")}` });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+      const phoneNumberId = connection.phoneNumberId;
+
+      // Build update payload - only include fields that are provided
+      const updatePayload: Record<string, any> = {
+        messaging_product: "whatsapp"
+      };
+
+      if (about !== undefined) updatePayload.about = about;
+      if (address !== undefined) updatePayload.address = address;
+      if (description !== undefined) updatePayload.description = description;
+      if (email !== undefined) updatePayload.email = email;
+      if (vertical !== undefined) updatePayload.vertical = vertical;
+      if (websites !== undefined) updatePayload.websites = websites.filter((w: string) => w && w.trim());
+
+      const updateUrl = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/whatsapp_business_profile`;
+
+      const updateRes = await fetch(updateUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(updatePayload)
+      });
+
+      if (!updateRes.ok) {
+        const error = await updateRes.json();
+        console.error("[WhatsApp Profile] Failed to update:", error);
+        return res.status(updateRes.status).json({ error: (error as any).error?.message || "Failed to update profile" });
+      }
+
+      return res.json({ success: true, message: "Profile updated successfully" });
+    } catch (error: any) {
+      console.error("[WhatsApp Profile] Error:", error);
+      return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+  });
+
+  // POST /api/integrations/whatsapp/profile/photo - Upload WhatsApp profile photo via Meta API
+  app.post("/api/integrations/whatsapp/profile/photo", requireActiveCompany, multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }).single("photo"), async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company" });
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No photo file provided" });
+      }
+
+      // Validate file type
+      const allowedTypes = ["image/jpeg", "image/png"];
+      if (!allowedTypes.includes(file.mimetype)) {
+        return res.status(400).json({ error: "Profile photo must be JPEG or PNG" });
+      }
+
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          or(eq(channelConnections.status, "active"), eq(channelConnections.status, "pending"))
+        )
+      });
+
+      if (!connection) {
+        return res.status(404).json({ error: "No WhatsApp connection found" });
+      }
+
+      if (!connection.accessTokenEnc || !connection.phoneNumberId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete" });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+      const phoneNumberId = connection.phoneNumberId;
+      const appId = process.env.META_APP_ID;
+
+      if (!appId) {
+        return res.status(500).json({ error: "META_APP_ID not configured" });
+      }
+
+      // Step 1: Create resumable upload session
+      const createSessionUrl = `https://graph.facebook.com/${graphVersion}/${appId}/uploads?file_length=${file.size}&file_type=${file.mimetype}&access_token=${accessToken}`;
+      
+      const sessionRes = await fetch(createSessionUrl, { method: "POST" });
+      if (!sessionRes.ok) {
+        const error = await sessionRes.json();
+        console.error("[WhatsApp Photo] Failed to create upload session:", error);
+        return res.status(sessionRes.status).json({ error: (error as any).error?.message || "Failed to create upload session" });
+      }
+
+      const sessionData = await sessionRes.json() as any;
+      const uploadSessionId = sessionData.id;
+
+      // Step 2: Upload the file
+      const uploadUrl = `https://graph.facebook.com/${graphVersion}/${uploadSessionId}`;
+      const uploadRes = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `OAuth ${accessToken}`,
+          "file_offset": "0",
+          "Content-Type": file.mimetype
+        },
+        body: file.buffer
+      });
+
+      if (!uploadRes.ok) {
+        const error = await uploadRes.json();
+        console.error("[WhatsApp Photo] Failed to upload file:", error);
+        return res.status(uploadRes.status).json({ error: (error as any).error?.message || "Failed to upload file" });
+      }
+
+      const uploadData = await uploadRes.json() as any;
+      const mediaHandle = uploadData.h;
+
+      // Step 3: Update profile with the media handle
+      const updateUrl = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/whatsapp_business_profile`;
+      const updateRes = await fetch(updateUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          profile_picture_handle: mediaHandle
+        })
+      });
+
+      if (!updateRes.ok) {
+        const error = await updateRes.json();
+        console.error("[WhatsApp Photo] Failed to update profile photo:", error);
+        return res.status(updateRes.status).json({ error: (error as any).error?.message || "Failed to update profile photo" });
+      }
+
+      return res.json({ success: true, message: "Profile photo updated successfully" });
+    } catch (error: any) {
+      console.error("[WhatsApp Photo] Error:", error);
+      return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+  });
+
   // POST /api/whatsapp/meta/send - Send WhatsApp message via Meta Cloud API
   app.post("/api/whatsapp/meta/send", requireActiveCompany, async (req: Request, res: Response) => {
     try {

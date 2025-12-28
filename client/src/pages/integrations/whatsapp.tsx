@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -87,13 +87,130 @@ export default function WhatsAppPage() {
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
-
+  
+  // Connection status query - must be declared before profile query
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/whatsapp/status"],
   });
 
   const connection = connectionData?.connection;
   const isConnected = connection?.status === "active" || connection?.status === "pending";
+
+  // Business Profile state
+  const [profileForm, setProfileForm] = useState({
+    about: "",
+    address: "",
+    description: "",
+    email: "",
+    vertical: "UNDEFINED",
+    websites: ["", ""] as string[]
+  });
+
+  // Query to fetch business profile
+  const { data: profileData, isLoading: isLoadingProfile, refetch: refetchProfile } = useQuery<{
+    about: string;
+    address: string;
+    description: string;
+    email: string;
+    profilePictureUrl: string;
+    websites: string[];
+    vertical: string;
+  }>({
+    queryKey: ["/api/integrations/whatsapp/profile"],
+    enabled: isConnected,
+  });
+
+  // Effect to populate form when profile data loads
+  useEffect(() => {
+    if (profileData) {
+      setProfileForm({
+        about: profileData.about || "",
+        address: profileData.address || "",
+        description: profileData.description || "",
+        email: profileData.email || "",
+        vertical: profileData.vertical || "UNDEFINED",
+        websites: [
+          profileData.websites?.[0] || "",
+          profileData.websites?.[1] || ""
+        ]
+      });
+    }
+  }, [profileData]);
+
+  // Mutation to update profile
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: typeof profileForm) => {
+      return apiRequest("POST", "/api/integrations/whatsapp/profile", {
+        about: data.about,
+        address: data.address,
+        description: data.description,
+        email: data.email,
+        vertical: data.vertical,
+        websites: data.websites.filter(w => w && w.trim())
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/profile"] });
+      toast({
+        title: "Profile Updated",
+        description: "Your WhatsApp Business profile has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "Failed to update business profile.",
+      });
+    }
+  });
+
+  // Mutation to upload profile photo
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("photo", file);
+      const response = await fetch("/api/integrations/whatsapp/profile/photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to upload photo");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/profile"] });
+      toast({
+        title: "Photo Updated",
+        description: "Your profile photo has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: error.message || "Failed to upload profile photo.",
+      });
+    }
+  });
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          title: "File Too Large",
+          description: "Profile photo must be less than 5MB.",
+        });
+        return;
+      }
+      uploadPhotoMutation.mutate(file);
+    }
+  };
 
   const accounts: WhatsAppAccount[] = connection ? [{
     id: connection.id || 1,
@@ -563,6 +680,212 @@ export default function WhatsAppPage() {
           </div>
         </div>
       </div>
+
+
+      {/* Business Profile Section */}
+      <Card className="border-slate-200 dark:border-slate-800 mt-6">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Business Profile</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Manage your WhatsApp Business profile information that customers see</p>
+            </div>
+            <Button
+              onClick={() => refetchProfile()}
+              variant="ghost"
+              size="sm"
+              disabled={isLoadingProfile}
+              data-testid="button-refresh-profile"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingProfile ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+
+          {isLoadingProfile ? (
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Profile Photo */}
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  {profileData?.profilePictureUrl ? (
+                    <img
+                      src={profileData.profilePictureUrl}
+                      alt="Business profile"
+                      className="w-20 h-20 rounded-full object-cover"
+                      data-testid="img-profile-photo"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                      <SiWhatsapp className="h-10 w-10 text-slate-400" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="profile-photo-upload"
+                    data-testid="input-profile-photo"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('profile-photo-upload')?.click()}
+                    disabled={uploadPhotoMutation.isPending}
+                    data-testid="button-upload-photo"
+                  >
+                    {uploadPhotoMutation.isPending ? "Uploading..." : "Change Photo"}
+                  </Button>
+                  <p className="text-xs text-slate-500 mt-1">JPEG or PNG, max 5MB</p>
+                </div>
+              </div>
+
+              {/* About */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  About <span className="text-slate-400">({profileForm.about.length}/139)</span>
+                </label>
+                <Input
+                  value={profileForm.about}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, about: e.target.value.slice(0, 139) }))}
+                  placeholder="Brief status text for your business"
+                  maxLength={139}
+                  data-testid="input-profile-about"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Description <span className="text-slate-400">({profileForm.description.length}/512)</span>
+                </label>
+                <textarea
+                  value={profileForm.description}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value.slice(0, 512) }))}
+                  placeholder="Describe your business to customers"
+                  maxLength={512}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-sm bg-white dark:bg-slate-800"
+                  data-testid="input-profile-description"
+                />
+              </div>
+
+              {/* Address */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Address <span className="text-slate-400">({profileForm.address.length}/256)</span>
+                </label>
+                <Input
+                  value={profileForm.address}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, address: e.target.value.slice(0, 256) }))}
+                  placeholder="Your business address"
+                  maxLength={256}
+                  data-testid="input-profile-address"
+                />
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Email <span className="text-slate-400">({profileForm.email.length}/128)</span>
+                </label>
+                <Input
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value.slice(0, 128) }))}
+                  placeholder="contact@business.com"
+                  maxLength={128}
+                  data-testid="input-profile-email"
+                />
+              </div>
+
+              {/* Websites */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Websites (max 2)
+                </label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={profileForm.websites[0] || ""}
+                      onChange={(e) => {
+                        const newWebsites = [...profileForm.websites];
+                        newWebsites[0] = e.target.value.slice(0, 256);
+                        setProfileForm(prev => ({ ...prev, websites: newWebsites }));
+                      }}
+                      placeholder="https://www.example.com"
+                      maxLength={256}
+                      data-testid="input-profile-website-1"
+                    />
+                    <span className="text-xs text-slate-400 whitespace-nowrap">({(profileForm.websites[0] || "").length}/256)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={profileForm.websites[1] || ""}
+                      onChange={(e) => {
+                        const newWebsites = [...profileForm.websites];
+                        newWebsites[1] = e.target.value.slice(0, 256);
+                        setProfileForm(prev => ({ ...prev, websites: newWebsites }));
+                      }}
+                      placeholder="https://shop.example.com"
+                      maxLength={256}
+                      data-testid="input-profile-website-2"
+                    />
+                    <span className="text-xs text-slate-400 whitespace-nowrap">({(profileForm.websites[1] || "").length}/256)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category/Vertical */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Industry Category</label>
+                <Select value={profileForm.vertical} onValueChange={(value) => setProfileForm(prev => ({ ...prev, vertical: value }))}>
+                  <SelectTrigger data-testid="select-profile-vertical">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UNDEFINED">Not Specified</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                    <SelectItem value="AUTO">Automotive</SelectItem>
+                    <SelectItem value="BEAUTY">Beauty & Personal Care</SelectItem>
+                    <SelectItem value="APPAREL">Apparel & Clothing</SelectItem>
+                    <SelectItem value="EDU">Education</SelectItem>
+                    <SelectItem value="ENTERTAIN">Entertainment</SelectItem>
+                    <SelectItem value="EVENT_PLAN">Event Planning</SelectItem>
+                    <SelectItem value="FINANCE">Finance</SelectItem>
+                    <SelectItem value="GROCERY">Grocery</SelectItem>
+                    <SelectItem value="GOVT">Government</SelectItem>
+                    <SelectItem value="HOTEL">Hotel & Lodging</SelectItem>
+                    <SelectItem value="HEALTH">Health</SelectItem>
+                    <SelectItem value="NONPROFIT">Nonprofit</SelectItem>
+                    <SelectItem value="PROF_SERVICES">Professional Services</SelectItem>
+                    <SelectItem value="RETAIL">Retail</SelectItem>
+                    <SelectItem value="TRAVEL">Travel</SelectItem>
+                    <SelectItem value="RESTAURANT">Restaurant</SelectItem>
+                    <SelectItem value="NOT_A_BIZ">Not a Business</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
+                <Button
+                  onClick={() => updateProfileMutation.mutate(profileForm)}
+                  disabled={updateProfileMutation.isPending}
+                  data-testid="button-save-profile"
+                >
+                  {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <AlertDialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
         <AlertDialogContent data-testid="dialog-disconnect-whatsapp">
