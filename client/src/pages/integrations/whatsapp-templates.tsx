@@ -962,7 +962,16 @@ export default function WhatsAppTemplatesPage() {
                           </Badge>
                         </div>
                       </div>
-                      <Button size="sm" variant="outline" className="shrink-0" data-testid={`button-use-${template.id}`}>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="shrink-0" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          loadLibraryTemplate(template);
+                        }}
+                        data-testid={`button-use-${template.id}`}
+                      >
                         Use
                       </Button>
                     </div>
