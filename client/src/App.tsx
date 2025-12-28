@@ -1865,6 +1865,20 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/settings/sms-voice">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/email">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/settings">
         <ProtectedRoute>
           <DashboardLayout>
