@@ -27436,45 +27436,55 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const accessToken = decryptToken(connection.accessTokenEnc);
       const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
       const phoneNumberId = connection.phoneNumberId;
-      const appId = process.env.META_APP_ID;
 
-      if (!appId) {
-        return res.status(500).json({ error: "META_APP_ID not configured" });
-      }
-
-      // Step 1: Create resumable upload session
-      const createSessionUrl = `https://graph.facebook.com/${graphVersion}/${appId}/uploads?file_length=${file.size}&file_type=${file.mimetype}&access_token=${accessToken}`;
+      // Step 1: Create resumable upload session using "app" (not APP_ID)
+      // See: https://developers.facebook.com/docs/graph-api/guides/upload
+      const createSessionUrl = `https://graph.facebook.com/${graphVersion}/app/uploads`;
       
-      const sessionRes = await fetch(createSessionUrl, { method: "POST" });
+      console.log("[WhatsApp Photo] Creating upload session for file size:", file.size, "type:", file.mimetype);
+      
+      const sessionRes = await fetch(createSessionUrl, { 
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          file_length: file.size,
+          file_type: file.mimetype,
+          file_name: "profile_picture.jpg"
+        })
+      });
+      
       if (!sessionRes.ok) {
         const error = await sessionRes.json();
-        console.error("[WhatsApp Photo] Failed to create upload session:", error);
+        console.error("[WhatsApp Photo] Failed to create upload session:", JSON.stringify(error, null, 2));
         return res.status(sessionRes.status).json({ error: (error as any).error?.message || "Failed to create upload session" });
       }
 
       const sessionData = await sessionRes.json() as any;
       const uploadSessionId = sessionData.id;
+      console.log("[WhatsApp Photo] Upload session created:", uploadSessionId);
 
-      // Step 2: Upload the file
+      // Step 2: Upload the file data
       const uploadUrl = `https://graph.facebook.com/${graphVersion}/${uploadSessionId}`;
       const uploadRes = await fetch(uploadUrl, {
         method: "POST",
         headers: {
           Authorization: `OAuth ${accessToken}`,
-          "file_offset": "0",
-          "Content-Type": file.mimetype
+          "file_offset": "0"
         },
         body: file.buffer
       });
 
       if (!uploadRes.ok) {
         const error = await uploadRes.json();
-        console.error("[WhatsApp Photo] Failed to upload file:", error);
+        console.error("[WhatsApp Photo] Failed to upload file:", JSON.stringify(error, null, 2));
         return res.status(uploadRes.status).json({ error: (error as any).error?.message || "Failed to upload file" });
       }
-
       const uploadData = await uploadRes.json() as any;
       const mediaHandle = uploadData.h;
+      console.log("[WhatsApp Photo] File uploaded, handle:", mediaHandle ? "obtained" : "missing");
 
       // Step 3: Update profile with the media handle
       const updateUrl = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/whatsapp_business_profile`;
