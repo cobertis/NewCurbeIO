@@ -35,7 +35,7 @@ interface FBLoginResponse {
 
 const FB_APP_ID = import.meta.env.VITE_META_APP_ID || "775292408902612";
 const FB_CONFIG_ID = import.meta.env.VITE_META_BUSINESS_LOGIN_CONFIG_ID || "1379775110076042";
-const FB_SDK_VERSION = "v21.0";
+const FB_SDK_VERSION = "v24.0";
 
 export default function WhatsAppFlow() {
   const { toast } = useToast();
