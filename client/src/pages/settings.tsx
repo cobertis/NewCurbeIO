@@ -625,6 +625,13 @@ export default function Settings({ view = 'all' }: SettingsProps) {
 
   const [activeTab, setActiveTab] = useTabsState(availableTabs, currentTab);
 
+  // Sync activeTab with URL-driven currentTab when location changes
+  useEffect(() => {
+    if (currentTab !== activeTab && availableTabs.includes(currentTab)) {
+      setActiveTab(currentTab);
+    }
+  }, [currentTab, activeTab, availableTabs, setActiveTab]);
+
   // Profile form state (personal information only)
   const [profileForm, setProfileForm] = useState({
     firstName: "",
@@ -1564,8 +1571,8 @@ export default function Settings({ view = 'all' }: SettingsProps) {
               </Card>
               )}
 
-              {/* Change Password Card - Profile view */}
-              {(view === 'profile' || view === 'all') && (
+              {/* Change Password Card - Profile view only */}
+              {currentView === 'profile' && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Change Password</CardTitle>
@@ -1616,7 +1623,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
               </div>
 
               {/* Closing Your Account - Profile View Only */}
-              {(view === 'profile' || view === 'all') && (
+              {currentView === 'profile' && (
                 <div className="pt-4 border-t">
                   <h3 className="font-semibold text-sm mb-2">Closing your account</h3>
                   <p className="text-sm text-muted-foreground">
