@@ -145,18 +145,24 @@ class WhatsAppCallService {
       const callsEndpoint = `https://graph.facebook.com/v21.0/${call.phoneNumberId}/calls`;
 
       console.log(`[WhatsApp Call] Sending pre_accept for call ${callId}`);
+      const preAcceptPayload = {
+        messaging_product: 'whatsapp',
+        wacid: callId,
+        action: 'pre_accept',
+        session: {
+          sdp: modifiedSdp,
+          sdp_type: 'answer'
+        }
+      };
+      console.log(`[WhatsApp Call] pre_accept payload:`, JSON.stringify(preAcceptPayload, null, 2));
+      
       const preAcceptResponse = await fetch(callsEndpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          call_id: callId,
-          command: 'pre_accept',
-          sdp: modifiedSdp
-        })
+        body: JSON.stringify(preAcceptPayload)
       });
 
       if (!preAcceptResponse.ok) {
@@ -165,19 +171,23 @@ class WhatsAppCallService {
         return { success: false, error: `pre_accept failed: ${JSON.stringify(errorData)}` };
       }
 
+      const preAcceptResult = await preAcceptResponse.json();
+      console.log(`[WhatsApp Call] pre_accept succeeded:`, preAcceptResult);
+
       console.log(`[WhatsApp Call] Sending accept for call ${callId}`);
+      const acceptPayload = {
+        messaging_product: 'whatsapp',
+        wacid: callId,
+        action: 'accept'
+      };
+      
       const acceptResponse = await fetch(callsEndpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          call_id: callId,
-          command: 'accept',
-          sdp: modifiedSdp
-        })
+        body: JSON.stringify(acceptPayload)
       });
 
       if (!acceptResponse.ok) {
@@ -185,6 +195,9 @@ class WhatsAppCallService {
         console.error('[WhatsApp Call] accept failed:', errorData);
         return { success: false, error: `accept failed: ${JSON.stringify(errorData)}` };
       }
+      
+      const acceptResult = await acceptResponse.json();
+      console.log(`[WhatsApp Call] accept succeeded:`, acceptResult);
 
       call.status = 'answered';
       console.log(`[WhatsApp Call] Call ${callId} answered by user ${userId}`);

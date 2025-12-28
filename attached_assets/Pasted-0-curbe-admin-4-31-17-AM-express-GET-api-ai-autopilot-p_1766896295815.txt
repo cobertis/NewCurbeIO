@@ -1,0 +1,34 @@
+0|curbe-admin  | 4:31:17 AM [express] GET /api/ai/autopilot/pending 304 in 35ms :: {"pending":[]}
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 4:31:17 AM [express] POST /api/webhooks/meta/whatsapp 200 in 6ms
+0|curbe-admin  | [WhatsApp Webhook Worker] Dedupe check failed for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggMTk2NDgzNjE4RTUwMTBEQzE2ODFEMkIxODhBMTNDQzgcGAsxNzg2NzYzMTU5MxUCABUaAA==, processing anyway
+0|curbe-admin  | [WhatsApp Webhook Worker] Incoming call with SDP offer: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggMTk2NDgzNjE4RTUwMTBEQzE2ODFEMkIxODhBMTNDQzgcGAsxNzg2NzYzMTU5MxUCABUaAA== from 17866302522
+0|curbe-admin  | [WhatsApp Call] Incoming call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggMTk2NDgzNjE4RTUwMTBEQzE2ODFEMkIxODhBMTNDQzgcGAsxNzg2NzYzMTU5MxUCABUaAA== from +17866302522 to +17867631593
+0|curbe-admin  | [WhatsApp Call] Notified 1 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Webhook Worker] Saved inbound call to inbox: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggMTk2NDgzNjE4RTUwMTBEQzE2ODFEMkIxODhBMTNDQzgcGAsxNzg2NzYzMTU5MxUCABUaAA== - connect
+0|curbe-admin  | [WhatsApp Call WS] Received message: answer
+0|curbe-admin  | [WhatsApp Call] Sending pre_accept for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggMTk2NDgzNjE4RTUwMTBEQzE2ODFEMkIxODhBMTNDQzgcGAsxNzg2NzYzMTU5MxUCABUaAA==
+0|curbe-admin  | [WhatsApp Call] pre_accept failed: {
+0|curbe-admin  |   error: {
+0|curbe-admin  |     message: 'Parameter value is not valid',
+0|curbe-admin  |     type: 'OAuthException',
+0|curbe-admin  |     code: 131009,
+0|curbe-admin  |     error_data: {
+0|curbe-admin  |       messaging_product: 'whatsapp',
+0|curbe-admin  |       details: 'Invalid parameters provided'
+0|curbe-admin  |     },
+0|curbe-admin  |     error_subcode: 2494010,
+0|curbe-admin  |     is_transient: false,
+0|curbe-admin  |     error_user_title: 'Parameter Invalid',
+0|curbe-admin  |     error_user_msg: 'Check input parameters and retry the request',
+0|curbe-admin  |     fbtrace_id: 'ATSzrVe2cV4lcx5onoyVW3J'
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | 4:31:27 AM [express] GET /api/ai/autopilot/pending 304 in 32ms :: {"pending":[]}
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 4:31:30 AM [express] POST /api/webhooks/meta/whatsapp 200 in 2ms
+0|curbe-admin  | [WhatsApp Webhook Worker] Dedupe check failed for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggMTk2NDgzNjE4RTUwMTBEQzE2ODFEMkIxODhBMTNDQzgcGAsxNzg2NzYzMTU5MxUCABUaAA==, processing anyway
+0|curbe-admin  | [WhatsApp Call] Notified 1 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call] Call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggMTk2NDgzNjE4RTUwMTBEQzE2ODFEMkIxODhBMTNDQzgcGAsxNzg2NzYzMTU5MxUCABUaAA== terminated
+0|curbe-admin  | [WhatsApp Webhook Worker] Saved inbound call to inbox: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggMTk2NDgzNjE4RTUwMTBEQzE2ODFEMkIxODhBMTNDQzgcGAsxNzg2NzYzMTU5MxUCABUaAA== - terminate
+
