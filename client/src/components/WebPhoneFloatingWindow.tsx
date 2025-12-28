@@ -5,6 +5,8 @@ import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { telnyxWebRTC, useTelnyxStore } from '@/services/telnyx-webrtc';
+import { useWhatsAppCallStore, whatsAppCallService } from '@/services/whatsapp-call-service';
+import { SiWhatsapp } from 'react-icons/si';
 import { useExtensionCall } from '@/hooks/useExtensionCall';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -1633,6 +1635,13 @@ export function WebPhoneFloatingWindow() {
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
   const telnyxTimerRef = useRef<NodeJS.Timeout>();
   
+  // WhatsApp call state
+  const waIncomingCall = useWhatsAppCallStore(state => state.incomingCall);
+  const waActiveCall = useWhatsAppCallStore(state => state.activeCall);
+  const waIsAnswering = useWhatsAppCallStore(state => state.isAnswering);
+  const waIsMuted = useWhatsAppCallStore(state => state.isMuted);
+  const waCallDuration = useWhatsAppCallStore(state => state.callDuration);
+  
   // Extension-to-Extension calling (internal WebRTC)
   const {
     connectionStatus: extConnectionStatus,
@@ -1791,6 +1800,7 @@ export function WebPhoneFloatingWindow() {
   // If there's a Telnyx call in the store (current, incoming, or outgoing), it's a Telnyx call
   const isTelnyxCall = !!(telnyxCurrentCall || telnyxIncomingCall || telnyxOutgoingCall);
   const isExtensionCall = !!(currentExtCall || incomingExtCall);
+  const isWhatsAppCall = !!(waActiveCall || waIncomingCall);
   
   // Build effective call object for UI rendering
   // Filter out default SDK caller names that aren't useful
@@ -1802,7 +1812,31 @@ export function WebPhoneFloatingWindow() {
   };
   
   const effectiveCall = useMemo(() => {
-    // Priority: Extension calls > Telnyx calls > SIP calls
+    // Priority: WhatsApp calls > Extension calls > Telnyx calls > SIP calls
+    // WhatsApp calls (highest priority)
+    if (waActiveCall) {
+      return {
+        phoneNumber: waActiveCall.from,
+        displayName: waActiveCall.fromName || null,
+        status: 'answered',
+        direction: 'inbound' as const,
+        isTelnyx: false,
+        isExtension: false,
+        isWhatsApp: true,
+      };
+    }
+    if (waIncomingCall) {
+      return {
+        phoneNumber: waIncomingCall.from,
+        displayName: waIncomingCall.fromName || null,
+        status: 'ringing',
+        direction: 'inbound' as const,
+        isTelnyx: false,
+        isExtension: false,
+        isWhatsApp: true,
+      };
+    }
+    
     // Extension-to-extension calls (internal WebRTC)
     if (currentExtCall) {
       return {
@@ -1901,10 +1935,10 @@ export function WebPhoneFloatingWindow() {
       return { ...currentCall, isTelnyx: false, isExtension: false };
     }
     return null;
-  }, [currentExtCall, incomingExtCall, telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, telnyxCurrentCallInfo, telnyxOutgoingCallInfo, telnyxIncomingCallInfo, currentCall, telnyxCallerName, callerIdNameEnabled]);
+  }, [waActiveCall, waIncomingCall, currentExtCall, incomingExtCall, telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, telnyxCurrentCallInfo, telnyxOutgoingCallInfo, telnyxIncomingCallInfo, currentCall, telnyxCallerName, callerIdNameEnabled]);
   
   // Effective mute/hold state
-  const effectiveMuted = isExtensionCall ? extIsMuted : (isTelnyxCall ? telnyxIsMuted : isMuted);
+  const effectiveMuted = isWhatsAppCall ? waIsMuted : (isExtensionCall ? extIsMuted : (isTelnyxCall ? telnyxIsMuted : isMuted));
   const effectiveOnHold = isTelnyxCall ? telnyxIsOnHold : isOnHold;
   
   // Timer for Telnyx calls - only starts when call becomes active (not during ringing)
@@ -1989,8 +2023,29 @@ export function WebPhoneFloatingWindow() {
     }
   }, [telnyxCurrentCallInfo, telnyxIncomingCallInfo, telnyxCallerLookupPhone, telnyxCallerName]);
   
+  // WhatsApp call handlers
+  const handleWhatsAppAnswer = useCallback(() => {
+    whatsAppCallService.answerCall();
+  }, []);
+
+  const handleWhatsAppDecline = useCallback(() => {
+    whatsAppCallService.declineCall();
+  }, []);
+
+  const handleWhatsAppHangup = useCallback(() => {
+    whatsAppCallService.hangUp();
+  }, []);
+
+  const handleWhatsAppMuteToggle = useCallback(() => {
+    whatsAppCallService.toggleMute();
+  }, []);
+
   // Unified call handlers
   const handleMuteToggle = useCallback(() => {
+    if (isWhatsAppCall) {
+      handleWhatsAppMuteToggle();
+      return;
+    }
     if (isExtensionCall) {
       extToggleMute();
     } else if (isTelnyxCall) {
@@ -1998,7 +2053,7 @@ export function WebPhoneFloatingWindow() {
     } else {
       isMuted ? webPhone.unmuteCall() : webPhone.muteCall();
     }
-  }, [isExtensionCall, isTelnyxCall, isMuted, extToggleMute]);
+  }, [isWhatsAppCall, isExtensionCall, isTelnyxCall, isMuted, extToggleMute, handleWhatsAppMuteToggle]);
   
   const handleHoldToggle = useCallback(async () => {
     // For queue calls with Call Control, use server-side hold with music
@@ -2038,6 +2093,10 @@ export function WebPhoneFloatingWindow() {
   }, [isTelnyxCall, isOnHold, queueCall, toast]);
   
   const handleHangup = useCallback(() => {
+    if (effectiveCall?.isWhatsApp) {
+      handleWhatsAppHangup();
+      return;
+    }
     if (isExtensionCall) {
       extEndCall();
     } else if (isTelnyxCall) {
@@ -2045,9 +2104,13 @@ export function WebPhoneFloatingWindow() {
     } else {
       webPhone.hangupCall();
     }
-  }, [isExtensionCall, isTelnyxCall, extEndCall]);
+  }, [effectiveCall?.isWhatsApp, isExtensionCall, isTelnyxCall, extEndCall, handleWhatsAppHangup]);
   
   const handleAnswerCall = useCallback(() => {
+    if (effectiveCall?.isWhatsApp) {
+      handleWhatsAppAnswer();
+      return;
+    }
     if (incomingExtCall) {
       extAnswerCall();
     } else if (telnyxIncomingCall) {
@@ -2055,9 +2118,13 @@ export function WebPhoneFloatingWindow() {
     } else {
       webPhone.answerCall();
     }
-  }, [incomingExtCall, telnyxIncomingCall, extAnswerCall]);
+  }, [effectiveCall?.isWhatsApp, incomingExtCall, telnyxIncomingCall, extAnswerCall, handleWhatsAppAnswer]);
   
   const handleRejectCall = useCallback(() => {
+    if (effectiveCall?.isWhatsApp) {
+      handleWhatsAppDecline();
+      return;
+    }
     if (incomingExtCall) {
       extRejectCall();
     } else if (telnyxIncomingCall) {
@@ -2065,7 +2132,7 @@ export function WebPhoneFloatingWindow() {
     } else {
       webPhone.rejectCall();
     }
-  }, [incomingExtCall, telnyxIncomingCall, extRejectCall]);
+  }, [effectiveCall?.isWhatsApp, incomingExtCall, telnyxIncomingCall, extRejectCall, handleWhatsAppDecline]);
   
   const handleSendDTMF = useCallback((digit: string) => {
     if (isTelnyxCall) {
@@ -2076,7 +2143,7 @@ export function WebPhoneFloatingWindow() {
   }, [isTelnyxCall]);
   
   // Get effective call duration
-  const effectiveCallDuration = isExtensionCall ? extCallDuration : (isTelnyxCall ? telnyxCallDuration : callDuration);
+  const effectiveCallDuration = isWhatsAppCall ? waCallDuration : (isExtensionCall ? extCallDuration : (isTelnyxCall ? telnyxCallDuration : callDuration));
 
   // Initialize Telnyx WebRTC when phone number is available
   const telnyxInitRef = useRef(false);
@@ -2734,6 +2801,15 @@ export function WebPhoneFloatingWindow() {
                 <div className="flex flex-col justify-between p-3 sm:p-6 min-h-full">
                   {/* Contact Info */}
                   <div className="text-center pt-4 sm:pt-8">
+                    {/* WhatsApp Badge - Only shown for WhatsApp calls */}
+                    {effectiveCall.isWhatsApp && (
+                      <div className="flex items-center justify-center gap-1.5 mb-3" data-testid="whatsapp-badge">
+                        <Badge variant="secondary" className="text-xs px-2 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          <SiWhatsapp className="h-3 w-3 mr-1" />
+                          WhatsApp Call
+                        </Badge>
+                      </div>
+                    )}
                     {/* Queue Badge - Only shown for queue calls */}
                     {effectiveCall.queueName && (
                       <div className="flex items-center justify-center gap-1.5 mb-3" data-testid="queue-badge">
