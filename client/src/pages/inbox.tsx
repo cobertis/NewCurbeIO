@@ -2042,10 +2042,10 @@ export default function InboxPage() {
                             className="h-8 w-8"
                             data-testid="btn-voice-call-button"
                           >
-                            <Phone className="h-4 w-4 text-emerald-600" />
+                            <Phone className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Send Voice Call Button</TooltipContent>
+                        <TooltipContent>Request a Call</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   )}
