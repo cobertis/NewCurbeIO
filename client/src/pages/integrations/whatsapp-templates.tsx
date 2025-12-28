@@ -134,29 +134,29 @@ interface LibraryTemplate {
 const TEMPLATE_LIBRARY: LibraryTemplate[] = [
   // UTILITY - Appointments
   {
-    id: "appointment_reminder",
-    name: "appointment_reminder",
+    id: "appt_reminder_v1",
+    name: "appt_reminder_v1",
     category: "UTILITY",
     categoryLabel: "Appointments",
     description: "Appointment reminder with date/time",
     language: "en",
     headerType: "text",
     headerText: "Appointment Reminder",
-    bodyText: "Your appointment is scheduled for {{1}} at {{2}}. Please arrive 10 minutes early. Our office is located at {{3}}. Reply YES to confirm or NO to reschedule.",
+    bodyText: "This is a reminder that your appointment is scheduled for {{1}} at {{2}}. Please arrive 10 minutes early to complete check-in. Our office is located at {{3}}. Reply YES to confirm or NO to reschedule.",
     footerText: "",
     buttonType: "quick_reply",
     buttons: ["Confirm", "Reschedule"],
   },
   {
-    id: "appointment_confirmation",
-    name: "appointment_confirmation",
+    id: "booking_confirmed_v1",
+    name: "booking_confirmed_v1",
     category: "UTILITY",
     categoryLabel: "Appointments",
     description: "Confirm a new appointment booking",
     language: "en",
     headerType: "text",
     headerText: "Booking Confirmed",
-    bodyText: "Your appointment has been successfully booked for {{1}} at {{2}}. Confirmation number: {{3}}. We look forward to seeing you.",
+    bodyText: "Great news! Your appointment has been successfully scheduled for {{1}} at {{2}}. Your confirmation number is {{3}}. Please save this for your records. We look forward to seeing you.",
     footerText: "Thank you for choosing us",
     buttonType: "none",
     buttons: [],
@@ -474,6 +474,33 @@ export default function WhatsAppTemplatesPage() {
     currentPage * parseInt(rowsPerPage)
   );
 
+  // Helper function to extract variables and generate examples
+  const extractVariablesAndGenerateExamples = (text: string): string[] => {
+    const matches = text.match(/\{\{(\d+)\}\}/g) || [];
+    const varNumbers = matches.map(m => parseInt(m.replace(/[{}]/g, '')));
+    const maxVar = Math.max(0, ...varNumbers);
+    
+    // Generate example values for each variable
+    const exampleValues: { [key: number]: string } = {
+      1: "January 15, 2025",
+      2: "10:30 AM",
+      3: "ABC123",
+      4: "$50.00",
+      5: "John",
+      6: "Order #12345",
+      7: "3-5 business days",
+      8: "support@example.com",
+      9: "555-1234",
+      10: "Example Business"
+    };
+    
+    const examples: string[] = [];
+    for (let i = 1; i <= maxVar; i++) {
+      examples.push(exampleValues[i] || `Example ${i}`);
+    }
+    return examples;
+  };
+
   // Create template mutation
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -481,18 +508,26 @@ export default function WhatsAppTemplatesPage() {
 
       // Header component
       if (data.headerType === "text" && data.headerText) {
+        const headerExamples = extractVariablesAndGenerateExamples(data.headerText);
         components.push({
           type: "HEADER",
           format: "TEXT",
           text: data.headerText,
+          ...(headerExamples.length > 0 && {
+            example: { header_text: headerExamples }
+          }),
         });
       }
 
-      // Body component (required)
+      // Body component (required) - MUST include example values for variables
       if (data.bodyText) {
+        const bodyExamples = extractVariablesAndGenerateExamples(data.bodyText);
         components.push({
           type: "BODY",
           text: data.bodyText,
+          ...(bodyExamples.length > 0 && {
+            example: { body_text: [bodyExamples] }
+          }),
         });
       }
 
