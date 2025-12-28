@@ -261,19 +261,29 @@ class WhatsAppCallService {
 
   async terminateCall(callId: string, companyId: string): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log(`[WhatsApp Call] Terminating call ${callId} for company ${companyId}`);
+      
+      // First check if we have the call info in pending calls (has phoneNumberId)
+      const pendingCall = this.pendingCalls.get(callId);
+      
       const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, companyId),
-          eq(channelConnections.channel, 'whatsapp')
+          eq(channelConnections.channel, 'whatsapp'),
+          eq(channelConnections.status, 'active')
         )
       });
 
       if (!connection || !connection.accessTokenEnc) {
+        console.error(`[WhatsApp Call] No active WhatsApp connection found for company ${companyId}`);
         return { success: false, error: 'WhatsApp connection not found' };
       }
 
       const accessToken = decryptToken(connection.accessTokenEnc);
-      const phoneNumberId = connection.phoneNumberId;
+      // Use phoneNumberId from pending call if available, otherwise from connection
+      const phoneNumberId = pendingCall?.phoneNumberId || connection.phoneNumberId;
+      
+      console.log(`[WhatsApp Call] Sending terminate to Meta API for call ${callId}, phoneNumberId: ${phoneNumberId}`);
 
       const response = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/calls`, {
         method: 'POST',
@@ -289,7 +299,13 @@ class WhatsAppCallService {
       });
 
       const result = await response.json();
-      console.log(`[WhatsApp Call] terminate result for ${callId}:`, result);
+      
+      if (!response.ok) {
+        console.error(`[WhatsApp Call] Meta API error for terminate ${callId}:`, result);
+        // Still clean up locally even if Meta API fails
+      } else {
+        console.log(`[WhatsApp Call] terminate success for ${callId}:`, result);
+      }
 
       // Clean up pending call if exists
       const call = this.pendingCalls.get(callId);
