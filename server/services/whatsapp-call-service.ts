@@ -259,6 +259,59 @@ class WhatsAppCallService {
     return { success: true };
   }
 
+  async terminateCall(callId: string, companyId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, companyId),
+          eq(channelConnections.channel, 'whatsapp')
+        )
+      });
+
+      if (!connection || !connection.accessTokenEnc) {
+        return { success: false, error: 'WhatsApp connection not found' };
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const phoneNumberId = connection.phoneNumberId;
+
+      const response = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/calls`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          call_id: callId,
+          action: 'terminate'
+        }),
+      });
+
+      const result = await response.json();
+      console.log(`[WhatsApp Call] terminate result for ${callId}:`, result);
+
+      // Clean up pending call if exists
+      const call = this.pendingCalls.get(callId);
+      if (call) {
+        call.status = 'ended';
+        this.pendingCalls.delete(callId);
+      }
+
+      // Notify all agents that call ended
+      this.notifyAgents(companyId, {
+        type: 'whatsapp_call_ended',
+        callId
+      });
+
+      console.log(`[WhatsApp Call] Call ${callId} terminated`);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[WhatsApp Call] Error terminating call:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   handleCallTerminate(callId: string) {
     const call = this.pendingCalls.get(callId);
     if (call) {

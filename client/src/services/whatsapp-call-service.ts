@@ -58,8 +58,9 @@ class WhatsAppCallService {
   private callStartTime: number | null = null;
   private durationInterval: NodeJS.Timeout | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
-  private ringtoneOscillator: OscillatorNode | null = null;
   private ringtoneInterval: NodeJS.Timeout | null = null;
+  private audioContext: AudioContext | null = null;
+  private lastSdpAnswer: string = '';
 
   connect() {
     if (this.ws?.readyState === WebSocket.OPEN) return;
@@ -102,10 +103,15 @@ class WhatsAppCallService {
         break;
 
       case 'whatsapp_incoming_call':
-        if (!store.activeCall && !store.incomingCall) {
-          store.setIncomingCall(data.call);
-          this.playRingtone();
-        }
+        store.setIncomingCall(data.call);
+        this.playRingtone();
+        
+        import('@/services/webphone').then(({ useWebPhoneStore }) => {
+          const webPhoneStore = useWebPhoneStore.getState();
+          if (!webPhoneStore.dialpadVisible) {
+            webPhoneStore.toggleDialpad();
+          }
+        });
         break;
 
       case 'whatsapp_call_answered':
@@ -138,22 +144,31 @@ class WhatsAppCallService {
 
   private playRingtone() {
     try {
-      const audioContext = new AudioContext();
+      if (!this.audioContext || this.audioContext.state === 'closed') {
+        this.audioContext = new AudioContext();
+      }
+      
+      if (this.audioContext.state === 'suspended') {
+        this.audioContext.resume();
+      }
+      
       const playBeep = () => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        if (!this.audioContext || this.audioContext.state !== 'running') return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
         oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        gainNode.connect(this.audioContext.destination);
         oscillator.frequency.value = 440;
-        gainNode.gain.value = 0.1;
+        gainNode.gain.value = 0.3;
         oscillator.start();
-        setTimeout(() => oscillator.stop(), 200);
+        setTimeout(() => oscillator.stop(), 300);
       };
       
       playBeep();
-      this.ringtoneInterval = setInterval(playBeep, 2000);
+      this.ringtoneInterval = setInterval(playBeep, 1500);
     } catch (e) {
-      console.log('[WhatsApp Call Service] Could not play ringtone');
+      console.error('[WhatsApp Call Service] Could not play ringtone:', e);
     }
   }
 
@@ -218,6 +233,8 @@ class WhatsAppCallService {
       let modifiedSdp = answer.sdp || '';
       modifiedSdp = modifiedSdp.replace(/a=setup:actpass/g, 'a=setup:active');
 
+      this.lastSdpAnswer = modifiedSdp;
+
       this.ws.send(JSON.stringify({
         type: 'answer',
         callId: incomingCall.callId,
@@ -267,8 +284,9 @@ class WhatsAppCallService {
     if (!activeCall || !this.ws) return;
 
     this.ws.send(JSON.stringify({
-      type: 'decline',
-      callId: activeCall.callId
+      type: 'terminate',
+      callId: activeCall.callId,
+      sdpAnswer: this.lastSdpAnswer || ''
     }));
 
     this.handleCallEnd();
@@ -298,6 +316,7 @@ class WhatsAppCallService {
       this.durationInterval = null;
     }
     this.callStartTime = null;
+    this.lastSdpAnswer = '';
   }
 
   private cleanup() {

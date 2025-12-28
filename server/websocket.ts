@@ -332,6 +332,11 @@ function handleWhatsAppCallConnection(ws: AuthenticatedWebSocket, req: IncomingM
             ws.send(JSON.stringify({ type: 'decline_result', callId: msg.callId, ...declineResult }));
             break;
             
+          case 'terminate':
+            const terminateResult = await whatsappCallService.terminateCall(msg.callId, companyId);
+            ws.send(JSON.stringify({ type: 'terminate_result', callId: msg.callId, ...terminateResult }));
+            break;
+            
           case 'get_pending':
             const calls = whatsappCallService.getPendingCallsForCompany(companyId);
             ws.send(JSON.stringify({ type: 'pending_calls', calls }));
