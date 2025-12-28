@@ -122,6 +122,7 @@ import FacebookFlow from "@/pages/integrations/facebook-flow";
 import FacebookPageComponent from "@/pages/integrations/facebook-page";
 import WhatsAppFlow from "@/pages/integrations/whatsapp-flow";
 import WhatsAppPage from "@/pages/integrations/whatsapp";
+import WhatsAppTemplatesPage from "@/pages/integrations/whatsapp-templates";
 import InstagramPage from "@/pages/integrations/instagram-page";
 import InstagramFlow from "@/pages/integrations/instagram-flow";
 import TelegramPage from "@/pages/integrations/telegram-page";
@@ -1767,6 +1768,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <WhatsAppFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/whatsapp/templates/:wabaId">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <WhatsAppTemplatesPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

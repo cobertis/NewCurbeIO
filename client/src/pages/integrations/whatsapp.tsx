@@ -47,7 +47,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SettingsLayout } from "@/components/settings-layout";
 import { SiWhatsapp } from "react-icons/si";
-import { Plus, Search, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2, PlayCircle, AlertCircle, Zap, UserCircle } from "lucide-react";
+import { Plus, Search, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2, PlayCircle, AlertCircle, Zap, UserCircle, FileText } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { ChannelConnection } from "@shared/schema";
@@ -602,6 +602,16 @@ export default function WhatsAppPage() {
                           data-testid={`button-profile-${account.id}`}
                         >
                           <UserCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setLocation(`/settings/whatsapp/templates/${account.wabaId}`)}
+                          title="Message Templates"
+                          data-testid={`button-templates-${account.id}`}
+                        >
+                          <FileText className="h-4 w-4" />
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

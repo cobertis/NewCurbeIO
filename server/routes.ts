@@ -27735,12 +27735,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(400).json({ error: "No company associated with user" });
       }
 
+      // Get wabaId from query params or use default connection
+      const queryWabaId = req.query.wabaId as string | undefined;
+
       // Get WhatsApp channel connection
       const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
-          eq(channelConnections.status, "active")
+          eq(channelConnections.status, "active"),
+          ...(queryWabaId ? [eq(channelConnections.wabaId, queryWabaId)] : [])
         )
       });
 
@@ -27798,6 +27802,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     try {
       const user = req.user as any;
       const { templateName } = req.params;
+      const queryWabaId = req.query.wabaId as string | undefined;
 
       if (!user.companyId) {
         return res.status(400).json({ error: "No company associated with user" });
@@ -27878,7 +27883,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(400).json({ error: "No company associated with user" });
       }
 
-      const { name, language, category, components } = req.body;
+      const { name, language, category, components, wabaId: bodyWabaId } = req.body;
 
       // Validate required fields
       if (!name || !language || !category || !components) {
@@ -27905,7 +27910,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
-          eq(channelConnections.status, "active")
+          eq(channelConnections.status, "active"),
+          ...(bodyWabaId ? [eq(channelConnections.wabaId, bodyWabaId)] : [])
         )
       });
 
@@ -27972,6 +27978,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     try {
       const user = req.user as any;
       const { templateName } = req.params;
+      const queryWabaId = req.query.wabaId as string | undefined;
 
       if (!user.companyId) {
         return res.status(400).json({ error: "No company associated with user" });
@@ -27986,7 +27993,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
-          eq(channelConnections.status, "active")
+          eq(channelConnections.status, "active"),
+          ...(queryWabaId ? [eq(channelConnections.wabaId, queryWabaId)] : [])
         )
       });
 
