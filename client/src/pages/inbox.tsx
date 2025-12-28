@@ -214,6 +214,7 @@ export default function InboxPage() {
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [newConversationPhone, setNewConversationPhone] = useState("");
   const [selectedFromNumber, setSelectedFromNumber] = useState<string>("");
+  const [newConversationChannel, setNewConversationChannel] = useState<"sms" | "whatsapp">("sms");
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [contactInfoOpen, setContactInfoOpen] = useState(true);
   const [insightsOpen, setInsightsOpen] = useState(true);
@@ -271,6 +272,19 @@ export default function InboxPage() {
     enabled: isAuthenticated,
   });
   const companyNumbers = phoneNumbersData?.numbers || [];
+
+  // WhatsApp connection status for new conversation channel selection
+  const { data: whatsappStatusData } = useQuery<{ 
+    connected: boolean; 
+    phoneNumber?: string; 
+    displayName?: string;
+  }>({
+    queryKey: ["/api/integrations/whatsapp/status"],
+    enabled: isAuthenticated,
+  });
+  const whatsappConnected = whatsappStatusData?.connected || false;
+  const whatsappPhoneNumber = whatsappStatusData?.phoneNumber;
+  const whatsappDisplayName = whatsappStatusData?.displayName;
 
   const { data: conversationsData, isLoading: loadingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
@@ -500,6 +514,7 @@ export default function InboxPage() {
       setShowNewConversation(false);
       setNewConversationPhone("");
       setNewMessage("");
+      setNewConversationChannel("sms");
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       if (data.conversationId) {
         setSelectedConversationId(data.conversationId);
@@ -508,6 +523,33 @@ export default function InboxPage() {
     onError: (error: any) => {
       toast({
         title: "Failed to start conversation",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createWhatsAppConversationMutation = useMutation({
+    mutationFn: async ({ phoneNumber, text }: { phoneNumber: string; text: string }) => {
+      return apiRequest("POST", "/api/inbox/conversations/whatsapp", { phoneNumber, text });
+    },
+    onSuccess: (data: any) => {
+      setShowNewConversation(false);
+      setNewConversationPhone("");
+      setNewMessage("");
+      setNewConversationChannel("sms");
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      if (data.conversationId) {
+        setSelectedConversationId(data.conversationId);
+      }
+      toast({
+        title: "Message sent via WhatsApp",
+        description: "Your conversation has been started",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to start WhatsApp conversation",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -1196,7 +1238,7 @@ export default function InboxPage() {
   };
 
   const handleCreateConversation = () => {
-    if (!newConversationPhone.trim() || !selectedFromNumber || !newMessage.trim()) {
+    if (!newConversationPhone.trim() || !newMessage.trim()) {
       toast({
         title: "Missing information",
         description: "Please enter a phone number and message",
@@ -1204,11 +1246,35 @@ export default function InboxPage() {
       });
       return;
     }
-    createConversationMutation.mutate({
-      phoneNumber: newConversationPhone.trim(),
-      fromNumber: selectedFromNumber,
-      text: newMessage.trim(),
-    });
+
+    if (newConversationChannel === "whatsapp") {
+      if (!whatsappConnected) {
+        toast({
+          title: "WhatsApp not connected",
+          description: "Please connect WhatsApp in Settings > Channels first",
+          variant: "destructive",
+        });
+        return;
+      }
+      createWhatsAppConversationMutation.mutate({
+        phoneNumber: newConversationPhone.trim(),
+        text: newMessage.trim(),
+      });
+    } else {
+      if (!selectedFromNumber) {
+        toast({
+          title: "Missing information",
+          description: "Please select a From Number for SMS",
+          variant: "destructive",
+        });
+        return;
+      }
+      createConversationMutation.mutate({
+        phoneNumber: newConversationPhone.trim(),
+        fromNumber: selectedFromNumber,
+        text: newMessage.trim(),
+      });
+    }
   };
 
   const insertVariable = () => {
@@ -3172,22 +3238,55 @@ export default function InboxPage() {
             <SheetTitle>New Conversation</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 mt-6">
+            {/* Channel Selection */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">From Number</label>
-              <Select value={selectedFromNumber} onValueChange={setSelectedFromNumber}>
-                <SelectTrigger data-testid="select-from-number">
-                  <SelectValue placeholder="Select a number" />
+              <label className="text-sm font-medium">Channel</label>
+              <Select value={newConversationChannel} onValueChange={(v: "sms" | "whatsapp") => setNewConversationChannel(v)}>
+                <SelectTrigger data-testid="select-channel">
+                  <SelectValue placeholder="Select channel" />
                 </SelectTrigger>
                 <SelectContent>
-                  {companyNumbers.map((num) => (
-                    <SelectItem key={num.phoneNumber} value={num.phoneNumber}>
-                      {formatForDisplay(num.phoneNumber)}
-                      {num.friendlyName && ` (${num.friendlyName})`}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="sms">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-blue-500" />
+                      <span>SMS / MMS</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="whatsapp" disabled={!whatsappConnected}>
+                    <div className="flex items-center gap-2">
+                      <SiWhatsapp className="h-4 w-4 text-emerald-500" />
+                      <span>WhatsApp {!whatsappConnected && "(Not Connected)"}</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              {newConversationChannel === "whatsapp" && whatsappConnected && (
+                <p className="text-xs text-muted-foreground">
+                  Sending from: {whatsappDisplayName || formatForDisplay(whatsappPhoneNumber || "")}
+                </p>
+              )}
             </div>
+
+            {/* From Number - Only for SMS */}
+            {newConversationChannel === "sms" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">From Number</label>
+                <Select value={selectedFromNumber} onValueChange={setSelectedFromNumber}>
+                  <SelectTrigger data-testid="select-from-number">
+                    <SelectValue placeholder="Select a number" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companyNumbers.map((num) => (
+                      <SelectItem key={num.phoneNumber} value={num.phoneNumber}>
+                        {formatForDisplay(num.phoneNumber)}
+                        {num.friendlyName && ` (${num.friendlyName})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium">To Phone Number</label>
               <Input
@@ -3210,10 +3309,14 @@ export default function InboxPage() {
             <Button
               className="w-full"
               onClick={handleCreateConversation}
-              disabled={createConversationMutation.isPending}
+              disabled={createConversationMutation.isPending || createWhatsAppConversationMutation.isPending}
               data-testid="btn-send-new-conversation"
             >
-              {createConversationMutation.isPending ? "Sending..." : "Send Message"}
+              {(createConversationMutation.isPending || createWhatsAppConversationMutation.isPending) 
+                ? "Sending..." 
+                : newConversationChannel === "whatsapp" 
+                  ? "Send via WhatsApp" 
+                  : "Send Message"}
             </Button>
           </div>
         </SheetContent>
