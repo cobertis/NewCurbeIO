@@ -26131,7 +26131,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
-      const { code } = req.body;
+      const { code, wabaId: embeddedWabaId, phoneNumberId: embeddedPhoneNumberId } = req.body;
+      console.log("[WhatsApp OAuth] Received - code:", code ? "present" : "missing", "wabaId:", embeddedWabaId || "not provided", "phoneNumberId:", embeddedPhoneNumberId || "not provided");
       if (!code) return res.status(400).json({ error: "Authorization code is required" });
 
       // Get Meta credentials
@@ -26173,33 +26174,44 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       let phoneNumberE164: string | null = null;
       let displayName: string | null = null;
       
-      if (wabaData.data && wabaData.data.length > 0) {
-        for (const business of wabaData.data) {
-          if (business.owned_whatsapp_business_accounts?.data?.length > 0) {
-            businessId = business.id;
-            const wabaInfo = business.owned_whatsapp_business_accounts.data[0];
-            wabaId = wabaInfo.id;
-            displayName = wabaInfo.name || "WhatsApp Business";
-            break;
+      // PRIORITY 1: Use embedded signup data if provided (comes from postMessage event in popup)
+      if (embeddedWabaId && embeddedPhoneNumberId) {
+        console.log("[WhatsApp OAuth] Using embedded signup data - WABA:", embeddedWabaId, "Phone:", embeddedPhoneNumberId);
+        wabaId = embeddedWabaId;
+        phoneNumberId = embeddedPhoneNumberId;
+        displayName = "WhatsApp Business";
+      } else {
+        // FALLBACK: Try to find WABA from Graph API
+        console.log("[WhatsApp OAuth] No embedded signup data, querying Graph API for WABAs...");
+        
+        if (wabaData.data && wabaData.data.length > 0) {
+          for (const business of wabaData.data) {
+            if (business.owned_whatsapp_business_accounts?.data?.length > 0) {
+              businessId = business.id;
+              const wabaInfo = business.owned_whatsapp_business_accounts.data[0];
+              wabaId = wabaInfo.id;
+              displayName = wabaInfo.name || "WhatsApp Business";
+              break;
+            }
+          }
+        }
+        
+        if (!wabaId) {
+          // Try shared WABAs
+          const sharedWabaResponse = await fetch(
+            `https://graph.facebook.com/${META_GRAPH_VERSION}/me/whatsapp_shared_business_accounts?fields=id,name&access_token=${accessToken}`
+          );
+          const sharedWabaData = await sharedWabaResponse.json() as any;
+          console.log("[WhatsApp OAuth] Shared WABAs response:", JSON.stringify(sharedWabaData, null, 2));
+          if (sharedWabaData.data?.length > 0) {
+            wabaId = sharedWabaData.data[0].id;
+            displayName = sharedWabaData.data[0].name || "WhatsApp Business";
           }
         }
       }
       
       if (!wabaId) {
-        // Try shared WABAs
-        const sharedWabaResponse = await fetch(
-          `https://graph.facebook.com/${META_GRAPH_VERSION}/me/whatsapp_shared_business_accounts?fields=id,name&access_token=${accessToken}`
-        );
-        const sharedWabaData = await sharedWabaResponse.json() as any;
-        console.log("[WhatsApp OAuth] Shared WABAs response:", JSON.stringify(sharedWabaData, null, 2));
-        if (sharedWabaData.data?.length > 0) {
-          wabaId = sharedWabaData.data[0].id;
-          displayName = sharedWabaData.data[0].name || "WhatsApp Business";
-        }
-      }
-      
-      if (!wabaId) {
-        return res.status(400).json({ error: "No WhatsApp Business Account found" });
+        return res.status(400).json({ error: "No WhatsApp Business Account found. Please complete the Embedded Signup process." });
       }
       
       // Get phone numbers

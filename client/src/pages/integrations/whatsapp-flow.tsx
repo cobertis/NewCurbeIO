@@ -40,6 +40,12 @@ const FB_APP_ID = import.meta.env.VITE_META_APP_ID || "775292408902612";
 const FB_CONFIG_ID = import.meta.env.VITE_META_BUSINESS_LOGIN_CONFIG_ID || "1379775110076042";
 const FB_SDK_VERSION = "v24.0";
 
+// Store embedded signup data from postMessage event
+interface EmbeddedSignupData {
+  wabaId: string;
+  phoneNumberId: string;
+}
+
 export default function WhatsAppFlow() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -47,6 +53,8 @@ export default function WhatsAppFlow() {
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
   const [fbSdkLoaded, setFbSdkLoaded] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [embeddedSignupData, setEmbeddedSignupData] = useState<EmbeddedSignupData | null>(null);
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
 
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/whatsapp/status"],
@@ -89,6 +97,50 @@ export default function WhatsAppFlow() {
     };
   }, []);
 
+  // Listen for WhatsApp Embedded Signup postMessage events
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Only process messages from Facebook domain
+      if (!event.origin.includes('facebook.com')) return;
+      
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        console.log("[WhatsApp Flow] postMessage received:", JSON.stringify(data, null, 2));
+        
+        if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          console.log("[WhatsApp Flow] WA_EMBEDDED_SIGNUP event:", data.event);
+          
+          if (data.event === 'FINISH' || data.event === 'SUBMIT') {
+            const wabaId = data.data?.waba_id;
+            const phoneNumberId = data.data?.phone_number_id;
+            
+            console.log("[WhatsApp Flow] Embedded signup data - WABA ID:", wabaId, "Phone Number ID:", phoneNumberId);
+            
+            if (wabaId && phoneNumberId) {
+              setEmbeddedSignupData({ wabaId, phoneNumberId });
+            }
+          } else if (data.event === 'CANCEL') {
+            console.log("[WhatsApp Flow] User cancelled embedded signup");
+            setIsConnecting(false);
+          } else if (data.event === 'ERROR') {
+            console.error("[WhatsApp Flow] Embedded signup error:", data.data);
+            setIsConnecting(false);
+            toast({
+              variant: "destructive",
+              title: "Setup error",
+              description: data.data?.error_message || "An error occurred during WhatsApp setup.",
+            });
+          }
+        }
+      } catch (e) {
+        // Non-JSON message, ignore
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [toast]);
+
   useEffect(() => {
     if (isConnected) {
       setCurrentStep(3);
@@ -125,8 +177,8 @@ export default function WhatsAppFlow() {
   }, [toast]);
 
   const exchangeCodeMutation = useMutation({
-    mutationFn: async (code: string) => {
-      return apiRequest("POST", "/api/integrations/meta/whatsapp/exchange-code", { code });
+    mutationFn: async (data: { code: string; wabaId?: string; phoneNumberId?: string }) => {
+      return apiRequest("POST", "/api/integrations/meta/whatsapp/exchange-code", data);
     },
     onSuccess: () => {
       toast({
@@ -136,6 +188,8 @@ export default function WhatsAppFlow() {
       queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
       setCurrentStep(3);
       setIsConnecting(false);
+      setPendingCode(null);
+      setEmbeddedSignupData(null);
     },
     onError: (error: any) => {
       toast({
@@ -144,8 +198,22 @@ export default function WhatsAppFlow() {
         description: error.message || "We couldn't complete the connection. Please try again.",
       });
       setIsConnecting(false);
+      setPendingCode(null);
+      setEmbeddedSignupData(null);
     },
   });
+
+  // Effect to process when we have both code and embedded signup data
+  useEffect(() => {
+    if (pendingCode && embeddedSignupData && !exchangeCodeMutation.isPending) {
+      console.log("[WhatsApp Flow] Both code and embedded signup data available, exchanging...");
+      exchangeCodeMutation.mutate({
+        code: pendingCode,
+        wabaId: embeddedSignupData.wabaId,
+        phoneNumberId: embeddedSignupData.phoneNumberId,
+      });
+    }
+  }, [pendingCode, embeddedSignupData]);
 
   const handleLoginWithFacebook = useCallback(() => {
     if (!fbSdkLoaded || !window.FB) {
@@ -158,17 +226,29 @@ export default function WhatsAppFlow() {
     }
 
     setIsConnecting(true);
+    // Reset any previous state
+    setPendingCode(null);
+    setEmbeddedSignupData(null);
 
     window.FB.login(
       (response: FBLoginResponse) => {
         console.log("[WhatsApp Flow] FB.login full response:", JSON.stringify(response, null, 2));
         
         if (response.authResponse?.code) {
-          console.log("[WhatsApp Flow] Got authorization code, exchanging...");
-          exchangeCodeMutation.mutate(response.authResponse.code);
+          console.log("[WhatsApp Flow] Got authorization code, waiting for embedded signup data...");
+          setPendingCode(response.authResponse.code);
+          // The useEffect will trigger the mutation when embeddedSignupData is also available
+          // But also set a fallback timeout in case embedded signup data doesn't come
+          setTimeout(() => {
+            // If no embedded signup data after 3 seconds, try without it (fallback to Graph API lookup)
+            if (!embeddedSignupData) {
+              console.log("[WhatsApp Flow] No embedded signup data received, proceeding with code only");
+              exchangeCodeMutation.mutate({ code: response.authResponse!.code! });
+            }
+          }, 3000);
         } else if (response.authResponse?.accessToken) {
           console.log("[WhatsApp Flow] Got access token directly (no code), sending...");
-          exchangeCodeMutation.mutate(response.authResponse.accessToken);
+          exchangeCodeMutation.mutate({ code: response.authResponse.accessToken });
         } else {
           setIsConnecting(false);
           console.log("[WhatsApp Flow] No code or token in response, status:", response.status);
@@ -198,7 +278,7 @@ export default function WhatsAppFlow() {
         },
       }
     );
-  }, [fbSdkLoaded, toast, exchangeCodeMutation]);
+  }, [fbSdkLoaded, toast, exchangeCodeMutation, embeddedSignupData]);
 
   const handleDiscard = () => {
     setLocation("/settings/whatsapp");
@@ -506,7 +586,7 @@ export default function WhatsAppFlow() {
                               <SiWhatsapp className="h-5 w-5 text-[#25D366]" />
                             </div>
                             <span className="text-base font-medium text-slate-900 dark:text-slate-100">
-                              {connection?.phoneNumber || "+1 555 813 4421"}
+                              {connection?.phoneNumberE164 || connection?.phoneNumberId || "+1 555 813 4421"}
                             </span>
                           </div>
                           <Dialog>
@@ -526,7 +606,7 @@ export default function WhatsAppFlow() {
                                 </p>
                                 <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
                                   <code className="text-sm break-all">
-                                    https://wa.me/{(connection?.phoneNumber || "+15558134421").replace(/\D/g, "")}
+                                    https://wa.me/{(connection?.phoneNumberE164 || connection?.phoneNumberId || "+15558134421").replace(/\D/g, "")}
                                   </code>
                                 </div>
                               </div>
