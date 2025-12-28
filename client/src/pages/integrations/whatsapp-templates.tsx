@@ -49,6 +49,12 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SettingsLayout } from "@/components/settings-layout";
 import { SiWhatsapp } from "react-icons/si";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { 
   Plus, 
   Search, 
@@ -60,7 +66,9 @@ import {
   RefreshCw,
   Sparkles,
   Pencil,
-  Info
+  Info,
+  Library,
+  CheckCircle2
 } from "lucide-react";
 
 interface TemplateComponent {
@@ -388,6 +396,42 @@ export default function WhatsAppTemplatesPage() {
 
   // AI assist state
   const [aiPurpose, setAiPurpose] = useState("");
+
+  // Library state
+  const [createTab, setCreateTab] = useState<"library" | "custom">("library");
+  const [libraryCategory, setLibraryCategory] = useState<string>("all");
+  const [selectedLibraryTemplate, setSelectedLibraryTemplate] = useState<LibraryTemplate | null>(null);
+
+  // Get unique library categories
+  const libraryCategories = Array.from(new Set(TEMPLATE_LIBRARY.map(t => t.categoryLabel)));
+
+  // Filter library templates
+  const filteredLibraryTemplates = TEMPLATE_LIBRARY.filter(t => 
+    libraryCategory === "all" || t.categoryLabel === libraryCategory
+  );
+
+  // Load library template into form
+  const loadLibraryTemplate = (template: LibraryTemplate) => {
+    setFormData({
+      name: template.name,
+      language: template.language,
+      category: template.category,
+      headerType: template.headerType,
+      headerText: template.headerText,
+      bodyText: template.bodyText,
+      footerText: template.footerText,
+      buttonType: template.buttonType,
+      buttons: template.buttons.length > 0 
+        ? template.buttons.map(text => ({ type: "QUICK_REPLY", text }))
+        : [{ type: "QUICK_REPLY", text: "" }],
+    });
+    setSelectedLibraryTemplate(template);
+    setCreateTab("custom");
+    toast({
+      title: "Template loaded",
+      description: "Customize the template and submit to Meta for approval",
+    });
+  };
 
   // Form state for creating template
   const [formData, setFormData] = useState({
@@ -845,53 +889,136 @@ export default function WhatsAppTemplatesPage() {
       </div>
 
       {/* Create Template Sheet */}
-      <Sheet open={createSheetOpen} onOpenChange={setCreateSheetOpen}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" data-testid="sheet-create-template">
+      <Sheet open={createSheetOpen} onOpenChange={(open) => {
+        setCreateSheetOpen(open);
+        if (!open) {
+          setSelectedLibraryTemplate(null);
+          setCreateTab("library");
+        }
+      }}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" data-testid="sheet-create-template">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <SiWhatsapp className="h-5 w-5 text-emerald-500" />
               Create Template
             </SheetTitle>
             <SheetDescription>
-              Templates must be approved by Meta before you can use them
+              Choose a pre-approved template or create a custom one
             </SheetDescription>
           </SheetHeader>
 
-          <div className="space-y-6 mt-6">
-            {/* AI Assist Section */}
-            <div className="p-4 bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900/20 rounded-lg border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-4 w-4 text-blue-600" />
-                <span className="font-medium text-sm">Generate with Pulse</span>
-              </div>
-              <div className="space-y-3">
-                <Textarea
-                  value={aiPurpose}
-                  onChange={(e) => setAiPurpose(e.target.value)}
-                  placeholder="Describe what you need, e.g., 'appointment reminder for dental clinic' or 'order confirmation for online store' or 'promocion de descuento para tienda de ropa'"
-                  rows={3}
-                  className="text-sm"
-                  data-testid="input-ai-purpose"
-                />
-                <Button
-                  variant="default"
-                  className="w-full"
-                  disabled={!aiPurpose.trim() || aiAssistMutation.isPending}
-                  onClick={() => aiAssistMutation.mutate(aiPurpose)}
-                  data-testid="button-ai-generate"
-                >
-                  {aiAssistMutation.isPending ? (
-                    <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
-                  )}
-                  {aiAssistMutation.isPending ? "Generating..." : "Generate Template"}
-                </Button>
-                <p className="text-xs text-slate-500 text-center">Pulse will auto-select the best category, language, and structure</p>
-              </div>
-            </div>
+          <Tabs value={createTab} onValueChange={(v) => setCreateTab(v as "library" | "custom")} className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="library" className="flex items-center gap-2" data-testid="tab-library">
+                <Library className="h-4 w-4" />
+                Library
+              </TabsTrigger>
+              <TabsTrigger value="custom" className="flex items-center gap-2" data-testid="tab-custom">
+                <Sparkles className="h-4 w-4" />
+                Custom
+              </TabsTrigger>
+            </TabsList>
 
-            {/* Template Name */}
+            {/* Library Tab */}
+            <TabsContent value="library" className="mt-4 space-y-4">
+              <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                  These templates follow Meta's guidelines for high approval rates
+                </p>
+              </div>
+
+              {/* Category Filter */}
+              <Select value={libraryCategory} onValueChange={setLibraryCategory}>
+                <SelectTrigger data-testid="select-library-category">
+                  <SelectValue placeholder="Filter by category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {libraryCategories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Template Cards */}
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                {filteredLibraryTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    className="p-4 border rounded-lg hover:border-emerald-500 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                    onClick={() => loadLibraryTemplate(template)}
+                    data-testid={`library-template-${template.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <h4 className="font-medium text-sm">{template.description}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {template.category}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            {LANGUAGES.find(l => l.code === template.language)?.name || template.language}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="shrink-0" data-testid={`button-use-${template.id}`}>
+                        Use
+                      </Button>
+                    </div>
+                    <div className="mt-2 p-2 bg-slate-100 dark:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
+                      {template.bodyText}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* Custom Tab */}
+            <TabsContent value="custom" className="mt-4 space-y-6">
+              {/* AI Assist Section */}
+              <div className="p-4 bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900/20 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium text-sm">Generate with Pulse</span>
+                </div>
+                <div className="space-y-3">
+                  <Textarea
+                    value={aiPurpose}
+                    onChange={(e) => setAiPurpose(e.target.value)}
+                    placeholder="Describe what you need, e.g., 'appointment reminder for dental clinic' or 'order confirmation for online store'"
+                    rows={3}
+                    className="text-sm"
+                    data-testid="input-ai-purpose"
+                  />
+                  <Button
+                    variant="default"
+                    className="w-full"
+                    disabled={!aiPurpose.trim() || aiAssistMutation.isPending}
+                    onClick={() => aiAssistMutation.mutate(aiPurpose)}
+                    data-testid="button-ai-generate"
+                  >
+                    {aiAssistMutation.isPending ? (
+                      <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-2" />
+                    )}
+                    {aiAssistMutation.isPending ? "Generating..." : "Generate Template"}
+                  </Button>
+                  <p className="text-xs text-slate-500 text-center">Pulse will auto-select the best category, language, and structure</p>
+                </div>
+              </div>
+
+              {selectedLibraryTemplate && (
+                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Editing: {selectedLibraryTemplate.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Template Name */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Template Name</label>
               <Input
@@ -1035,20 +1162,21 @@ export default function WhatsAppTemplatesPage() {
               )}
             </div>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button variant="outline" onClick={() => { setCreateSheetOpen(false); resetForm(); }} data-testid="button-cancel-create">
-                Cancel
-              </Button>
-              <Button
-                onClick={() => createMutation.mutate(formData)}
-                disabled={createMutation.isPending || !formData.name || !formData.bodyText}
-                data-testid="button-submit-template"
-              >
-                {createMutation.isPending ? "Creating..." : "Create Template"}
-              </Button>
-            </div>
-          </div>
+              {/* Actions */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => { setCreateSheetOpen(false); resetForm(); }} data-testid="button-cancel-create">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => createMutation.mutate(formData)}
+                  disabled={createMutation.isPending || !formData.name || !formData.bodyText}
+                  data-testid="button-submit-template"
+                >
+                  {createMutation.isPending ? "Creating..." : "Create Template"}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </SheetContent>
       </Sheet>
 
