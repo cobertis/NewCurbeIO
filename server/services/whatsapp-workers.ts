@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { eq, and, lte, sql } from "drizzle-orm";
 import { decryptToken } from "../crypto";
+import { whatsappCallService } from "./whatsapp-call-service";
 
 const WEBHOOK_POLL_INTERVAL_MS = 500;
 const SEND_POLL_INTERVAL_MS = 500;
@@ -85,7 +86,8 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             continue;
           }
 
-          const dedupeKey = `call:${call.id}:${call.status || 'unknown'}`;
+          const callEvent = call.event || call.status || 'unknown';
+          const dedupeKey = `call:${call.id}:${callEvent}`;
           try {
             const result = await db.execute(sql`
               INSERT INTO wa_webhook_dedupe (company_id, dedupe_key, event_type)
@@ -95,7 +97,7 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             `);
             
             if (!result.rows || result.rows.length === 0) {
-              console.log(`[WhatsApp Webhook Worker] Duplicate call event skipped: ${call.id}`);
+              console.log(`[WhatsApp Webhook Worker] Duplicate call event skipped: ${call.id} - ${callEvent}`);
               continue;
             }
           } catch (dedupeErr) {
@@ -106,6 +108,28 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
           const contactName = value.contacts?.[0]?.profile?.name || callerWaId;
           const customerPhone = callerWaId.startsWith("+") ? callerWaId : `+${callerWaId}`;
           const companyPhone = connection.phoneNumberE164 || phoneNumberId;
+
+          // Handle "connect" event - this is an incoming call with SDP offer
+          if (callEvent === "connect" && call.session?.sdp) {
+            console.log(`[WhatsApp Webhook Worker] Incoming call with SDP offer: ${call.id} from ${callerWaId}`);
+            
+            // Notify agents via WebSocket for real-time call handling
+            await whatsappCallService.handleIncomingCall(
+              call.id,
+              customerPhone,
+              companyPhone,
+              contactName !== callerWaId ? contactName : undefined,
+              phoneNumberId,
+              companyId,
+              call.session.sdp,
+              call.direction || 'USER_INITIATED'
+            );
+          }
+
+          // Handle "terminate" event - call ended
+          if (callEvent === "terminate" || callEvent === "ended" || callEvent === "completed" || callEvent === "missed") {
+            whatsappCallService.handleCallTerminate(call.id);
+          }
 
           // Upsert conversation for this WhatsApp call
           let inboxConversation = await db.query.telnyxConversations.findFirst({
@@ -119,12 +143,12 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
 
           // Build call status text with safe fallbacks
           let callStatusText: string;
-          if (call.status === "missed") {
+          if (callEvent === "missed") {
             callStatusText = "Missed WhatsApp call";
-          } else if (call.status === "completed" || call.status === "ended") {
+          } else if (callEvent === "completed" || callEvent === "ended" || callEvent === "terminate") {
             const duration = call.duration || 0;
-            callStatusText = `WhatsApp call (${duration}s)`;
-          } else if (call.status === "ringing") {
+            callStatusText = duration > 0 ? `WhatsApp call (${duration}s)` : "WhatsApp call ended";
+          } else if (callEvent === "connect" || callEvent === "ringing") {
             callStatusText = "Incoming WhatsApp call";
           } else {
             callStatusText = "WhatsApp call";
@@ -175,7 +199,7 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             deliveredAt: callTimestamp,
           });
 
-          console.log(`[WhatsApp Webhook Worker] Saved inbound call to inbox: ${call.id} - ${call.status || 'unknown'}`);
+          console.log(`[WhatsApp Webhook Worker] Saved inbound call to inbox: ${call.id} - ${callEvent}`);
         }
       }
 

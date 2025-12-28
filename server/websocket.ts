@@ -3,6 +3,7 @@ import { Server } from 'http';
 import type { IncomingMessage } from 'http';
 import signature from 'cookie-signature';
 import { extensionCallService } from './services/extension-call-service';
+import { whatsappCallService } from './services/whatsapp-call-service';
 import { db } from './db';
 import { telnyxMessages } from '@shared/schema';
 import { eq, gt, and } from 'drizzle-orm';
@@ -84,7 +85,7 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
     const pathname = request.url || '';
     
     // Only handle our specific authenticated WebSocket paths
-    if (!pathname.startsWith('/ws/sip') && !pathname.startsWith('/ws/chat') && !pathname.startsWith('/ws/pbx')) {
+    if (!pathname.startsWith('/ws/sip') && !pathname.startsWith('/ws/chat') && !pathname.startsWith('/ws/pbx') && !pathname.startsWith('/ws/whatsapp-call')) {
       // Let other handlers (Vite HMR, etc.) handle this upgrade
       // Don't touch it - just return and let Express/Vite handle it
       return;
@@ -120,6 +121,8 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
             handleChatConnection(ws as AuthenticatedWebSocket, request);
           } else if (pathname.startsWith('/ws/pbx')) {
             handlePbxConnection(ws as AuthenticatedWebSocket, request);
+          } else if (pathname.startsWith('/ws/whatsapp-call')) {
+            handleWhatsAppCallConnection(ws as AuthenticatedWebSocket, request);
           }
         });
       }
@@ -257,6 +260,93 @@ function handleSipConnection(clientWs: WebSocket, req: IncomingMessage) {
         clientWs.close(1011, 'Proxy setup error');
       }
     });
+}
+
+// WhatsApp Call WebSocket Handler
+function handleWhatsAppCallConnection(ws: AuthenticatedWebSocket, req: IncomingMessage) {
+  const sessionId = getSessionIdFromRequest(req);
+  
+  if (!sessionId || !sessionStore) {
+    ws.close(1008, 'Unauthorized');
+    return;
+  }
+  
+  sessionStore.get(sessionId, async (err: any, session: SessionData) => {
+    if (err || !session || !session.user?.id) {
+      ws.close(1008, 'Unauthorized');
+      return;
+    }
+    
+    const userId = session.user.id;
+    const companyId = session.user.companyId;
+    
+    if (!companyId) {
+      ws.close(1008, 'No company');
+      return;
+    }
+    
+    ws.userId = userId;
+    ws.companyId = companyId;
+    ws.isAuthenticated = true;
+    
+    whatsappCallService.registerAgent(ws, userId, companyId);
+    
+    ws.send(JSON.stringify({ 
+      type: 'registered',
+      userId,
+      companyId
+    }));
+    
+    // Send any pending calls for this company (including SDP offer)
+    const pendingCalls = whatsappCallService.getPendingCallsForCompany(companyId);
+    if (pendingCalls.length > 0) {
+      for (const call of pendingCalls) {
+        ws.send(JSON.stringify({
+          type: 'whatsapp_incoming_call',
+          call: {
+            callId: call.callId,
+            from: call.from,
+            to: call.to,
+            fromName: call.fromName || call.from,
+            timestamp: call.timestamp.toISOString(),
+            status: call.status,
+            sdpOffer: call.sdpOffer
+          }
+        }));
+      }
+    }
+    
+    ws.on('message', async (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        console.log('[WhatsApp Call WS] Received message:', msg.type);
+        
+        switch (msg.type) {
+          case 'answer':
+            const answerResult = await whatsappCallService.answerCall(msg.callId, userId, msg.sdpAnswer);
+            ws.send(JSON.stringify({ type: 'answer_result', callId: msg.callId, ...answerResult }));
+            break;
+            
+          case 'decline':
+            const declineResult = await whatsappCallService.declineCall(msg.callId);
+            ws.send(JSON.stringify({ type: 'decline_result', callId: msg.callId, ...declineResult }));
+            break;
+            
+          case 'get_pending':
+            const calls = whatsappCallService.getPendingCallsForCompany(companyId);
+            ws.send(JSON.stringify({ type: 'pending_calls', calls }));
+            break;
+        }
+      } catch (error: any) {
+        console.error('[WhatsApp Call WS] Error processing message:', error);
+        ws.send(JSON.stringify({ type: 'error', message: error.message }));
+      }
+    });
+    
+    ws.on('close', () => {
+      console.log(`[WhatsApp Call WS] Agent ${userId} disconnected`);
+    });
+  });
 }
 
 // Chat WebSocket Handler

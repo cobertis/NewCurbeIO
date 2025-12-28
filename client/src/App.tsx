@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
 import { WebPhoneFloatingWindow } from '@/components/WebPhoneFloatingWindow';
+import { WhatsAppCallHandler } from '@/components/whatsapp-call-handler';
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
 import { useTelnyxStore, telnyxWebRTC } from "@/services/telnyx-webrtc";
 import { useExtensionCall } from "@/hooks/useExtensionCall";
@@ -1069,6 +1070,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* WebPhone Floating Window - Visible to admins, superadmins, or users with extensions */}
       {(user?.role === 'admin' || user?.role === 'superadmin' || hasPbxExtension) && <WebPhoneFloatingWindow />}
+
+      {/* WhatsApp Call Handler - Handles incoming WhatsApp voice calls */}
+      {user && <WhatsAppCallHandler />}
 
       {/* Timezone Dialog */}
       <Dialog open={timezoneDialogOpen} onOpenChange={setTimezoneDialogOpen}>
