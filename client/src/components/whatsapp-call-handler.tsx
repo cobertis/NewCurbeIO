@@ -34,6 +34,19 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
   const callStartTimeRef = useRef<number | null>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Use refs to avoid recreating WebSocket on state changes
+  const activeCallRef = useRef<string | null>(null);
+  const incomingCallRef = useRef<IncomingCall | null>(null);
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    activeCallRef.current = activeCall;
+  }, [activeCall]);
+  
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
+
   const connectWebSocket = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
@@ -48,7 +61,12 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
     ws.onclose = () => {
       console.log('[WhatsApp Call] WebSocket disconnected');
       setIsConnected(false);
-      setTimeout(connectWebSocket, 3000);
+      // Only reconnect if component is still mounted
+      setTimeout(() => {
+        if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
+          connectWebSocket();
+        }
+      }, 3000);
     };
 
     ws.onerror = (error) => {
@@ -66,14 +84,15 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
             break;
 
           case 'whatsapp_incoming_call':
-            if (!activeCall && !incomingCall) {
+            // Use refs to check current state without causing reconnects
+            if (!activeCallRef.current && !incomingCallRef.current) {
               setIncomingCall(data.call);
               playRingtone();
             }
             break;
 
           case 'whatsapp_call_answered':
-            if (data.callId === incomingCall?.callId) {
+            if (data.callId === incomingCallRef.current?.callId) {
               setIncomingCall(null);
               stopRingtone();
             }
@@ -82,7 +101,7 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
           case 'whatsapp_call_ended':
           case 'whatsapp_call_declined':
           case 'whatsapp_call_missed':
-            if (data.callId === incomingCall?.callId || data.callId === activeCall) {
+            if (data.callId === incomingCallRef.current?.callId || data.callId === activeCallRef.current) {
               handleCallEnd();
             }
             break;
@@ -108,7 +127,7 @@ export function WhatsAppCallHandler({ onCallStateChange }: WhatsAppCallHandlerPr
     };
 
     wsRef.current = ws;
-  }, [activeCall, incomingCall, toast]);
+  }, [toast]);
 
   useEffect(() => {
     connectWebSocket();
