@@ -1,0 +1,47 @@
+0|curbe-admin  | 4:37:05 AM [express] GET /api/ai/conversations 304 in 2ms
+0|curbe-admin  | 4:37:05 AM [express] GET /api/inbox/conversations/66194c53-9dc9-4657-8cfb-75fd1f5efbb3/messages 200 …
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 4:37:09 AM [express] POST /api/webhooks/meta/whatsapp 200 in 3ms
+0|curbe-admin  | [WhatsApp Webhook Worker] Dedupe check failed for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNjg5OUFGNzgxMzU5MzNFMzAzNURENjJFNUZGRUJEMkEcGAsxNzg2NzYzMTU5MxUCABUaAA==, processing anyway
+0|curbe-admin  | [WhatsApp Webhook Worker] Incoming call with SDP offer: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNjg5OUFGNzgxMzU5MzNFMzAzNURENjJFNUZGRUJEMkEcGAsxNzg2NzYzMTU5MxUCABUaAA== from 17866302522
+0|curbe-admin  | [WhatsApp Call] Incoming call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNjg5OUFGNzgxMzU5MzNFMzAzNURENjJFNUZGRUJEMkEcGAsxNzg2NzYzMTU5MxUCABUaAA== from +17866302522 to +17867631593
+0|curbe-admin  | [WhatsApp Call] Notified 1 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Webhook Worker] Saved inbound call to inbox: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNjg5OUFGNzgxMzU5MzNFMzAzNURENjJFNUZGRUJEMkEcGAsxNzg2NzYzMTU5MxUCABUaAA== - connect
+0|curbe-admin  | [WhatsApp Call WS] Received message: answer
+0|curbe-admin  | [WhatsApp Call] Sending pre_accept for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNjg5OUFGNzgxMzU5MzNFMzAzNURENjJFNUZGRUJEMkEcGAsxNzg2NzYzMTU5MxUCABUaAA==
+0|curbe-admin  | [WhatsApp Call] pre_accept payload: {
+0|curbe-admin  |   "messaging_product": "whatsapp",
+0|curbe-admin  |   "call_id": "wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNjg5OUFGNzgxMzU5MzNFMzAzNURENjJFNUZGRUJEMkEcGAsxNzg2NzYzMTU5MxUCABUaAA==",
+0|curbe-admin  |   "action": "pre_accept",
+0|curbe-admin  |   "session": {
+0|curbe-admin  |     "sdp_type": "answer",
+0|curbe-admin  |     "sdp": "v=0\r\no=- 3741195322422582848 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE audio\r\na=msid-semantic: WMS 1afeffad-d0ec-4e01-82c8-c2a01a2c2816\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111 126\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:IASA\r\na=ice-pwd:iBLQ3jdMYMAScLnfM3uSKFI8\r\na=ice-options:trickle\r\na=fingerprint:sha-256 AB:E2:A3:27:8B:D5:EB:67:AB:D4:19:95:CF:65:72:57:22:6A:16:70:EF:47:6B:72:A7:53:FF:4E:01:BD:AB:7A\r\na=setup:active\r\na=mid:audio\r\na=sendrecv\r\na=msid:1afeffad-d0ec-4e01-82c8-c2a01a2c2816 e0242275-8dc8-4d7b-ba65-89ae72bc8635\r\na=rtcp-mux\r\na=rtpmap:111 opus/48000/2\r\na=rtcp-fb:111 transport-cc\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=rtpmap:126 telephone-event/8000\r\na=ssrc:4092868028 cname:AYpEyA4T6UIubkPB\r\n"
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | [BOUNCE PROCESSOR] IMAP error: Timed out while authenticating with server
+0|curbe-admin  | [BOUNCE PROCESSOR] Error processing bounces: Error: Timed out while authenticating with server
+0|curbe-admin  |     at Timeout._onTimeout (/var/www/curbe/node_modules/imap/lib/Connection.js:139:17)
+0|curbe-admin  |     at listOnTimeout (node:internal/timers:581:17)
+0|curbe-admin  |     at process.processTimers (node:internal/timers:519:7) {
+0|curbe-admin  |   source: 'timeout-auth'
+0|curbe-admin  | }
+0|curbe-admin  | 4:37:11 AM [express] GET /api/ai/autopilot/pending 304 in 30ms :: {"pending":[]}
+0|curbe-admin  | [WhatsApp Call] pre_accept succeeded: { messaging_product: 'whatsapp', success: true }
+0|curbe-admin  | [WhatsApp Call] Sending accept for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggNjg5OUFGNzgxMzU5MzNFMzAzNURENjJFNUZGRUJEMkEcGAsxNzg2NzYzMTU5MxUCABUaAA==
+0|curbe-admin  | [WhatsApp Call] accept failed: {
+0|curbe-admin  |   error: {
+0|curbe-admin  |     message: 'Parameter value is not valid',
+0|curbe-admin  |     type: 'OAuthException',
+0|curbe-admin  |     code: 131009,
+0|curbe-admin  |     error_data: {
+0|curbe-admin  |       messaging_product: 'whatsapp',
+0|curbe-admin  |       details: 'Missing session parameter'
+0|curbe-admin  |     },
+0|curbe-admin  |     error_subcode: 2494010,
+0|curbe-admin  |     is_transient: false,
+0|curbe-admin  |     error_user_title: 'Parameter Invalid',
+0|curbe-admin  |     error_user_msg: 'Check input parameters and retry the request',
+0|curbe-admin  |     fbtrace_id: 'ABBTSahyu_f9n0Ejn90id7q'
+0|curbe-admin  |   }
+0|curbe-admin  | }
+

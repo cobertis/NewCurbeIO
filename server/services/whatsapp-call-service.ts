@@ -178,7 +178,11 @@ class WhatsAppCallService {
       const acceptPayload = {
         messaging_product: 'whatsapp',
         call_id: callId,
-        action: 'accept'
+        action: 'accept',
+        session: {
+          sdp_type: 'answer',
+          sdp: modifiedSdp
+        }
       };
       
       const acceptResponse = await fetch(callsEndpoint, {
