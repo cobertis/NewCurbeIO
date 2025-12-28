@@ -59,9 +59,6 @@ import {
   Eye,
   RefreshCw,
   Sparkles,
-  AlertTriangle,
-  CheckCircle2,
-  Lightbulb,
   Pencil,
   Info
 } from "lucide-react";
@@ -128,15 +125,6 @@ export default function WhatsAppTemplatesPage() {
 
   // AI assist state
   const [aiPurpose, setAiPurpose] = useState("");
-  const [aiBusinessType, setAiBusinessType] = useState("");
-  const [aiSuggestion, setAiSuggestion] = useState<{
-    name?: string;
-    headerText?: string;
-    bodyText?: string;
-    footerText?: string;
-    tips?: string[];
-    warnings?: string[];
-  } | null>(null);
 
   // Form state for creating template
   const [formData, setFormData] = useState({
@@ -314,30 +302,33 @@ export default function WhatsAppTemplatesPage() {
     return editableStatuses.includes(status.toUpperCase());
   };
 
-  // AI assist mutation
+  // AI assist mutation - Pulse handles everything
   const aiAssistMutation = useMutation({
-    mutationFn: async (data: { purpose: string; category: string; language: string; businessType: string }) => {
-      return apiRequest("POST", "/api/whatsapp/meta/templates/ai-assist", data);
+    mutationFn: async (purpose: string) => {
+      return apiRequest("POST", "/api/whatsapp/meta/templates/ai-assist", { purpose });
     },
     onSuccess: (data) => {
       if (data.suggestion) {
-        setAiSuggestion(data.suggestion);
-        // Auto-populate form with AI suggestions
-        setFormData(prev => ({
-          ...prev,
-          name: data.suggestion.name || prev.name,
-          headerType: data.suggestion.headerText ? "text" : "none",
-          headerText: data.suggestion.headerText || "",
-          bodyText: data.suggestion.bodyText || "",
-          footerText: data.suggestion.footerText || "",
-        }));
-        toast({ title: "Template generated", description: "Review and adjust before submitting" });
+        const s = data.suggestion;
+        // Auto-populate ALL form fields from AI
+        setFormData({
+          name: s.name || "",
+          language: s.language || "en",
+          category: s.category || "UTILITY",
+          headerType: s.headerType || (s.headerText ? "text" : "none"),
+          headerText: s.headerText || "",
+          bodyText: s.bodyText || "",
+          footerText: s.footerText || "",
+          buttonType: s.buttonType || (s.buttons?.length > 0 ? "quick_reply" : "none"),
+          buttons: s.buttons?.map((text: string) => ({ type: "QUICK_REPLY", text })) || [{ type: "QUICK_REPLY", text: "" }],
+        });
+        toast({ title: "Template generated", description: "Review and create" });
       }
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "AI generation failed",
+        title: "Generation failed",
         description: error.message || "Please try again",
       });
     },
@@ -356,8 +347,6 @@ export default function WhatsAppTemplatesPage() {
       buttons: [{ type: "QUICK_REPLY", text: "" }],
     });
     setAiPurpose("");
-    setAiBusinessType("");
-    setAiSuggestion(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -616,77 +605,27 @@ export default function WhatsAppTemplatesPage() {
                 <Textarea
                   value={aiPurpose}
                   onChange={(e) => setAiPurpose(e.target.value)}
-                  placeholder="Describe your template purpose, e.g., 'appointment reminder for dental clinic' or 'order confirmation for online store'"
-                  rows={2}
+                  placeholder="Describe what you need, e.g., 'appointment reminder for dental clinic' or 'order confirmation for online store' or 'promocion de descuento para tienda de ropa'"
+                  rows={3}
                   className="text-sm"
                   data-testid="input-ai-purpose"
                 />
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={aiBusinessType}
-                    onChange={(e) => setAiBusinessType(e.target.value)}
-                    placeholder="Business type (optional)"
-                    className="flex-1 text-sm"
-                    data-testid="input-ai-business-type"
-                  />
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled={!aiPurpose.trim() || aiAssistMutation.isPending}
-                    onClick={() => aiAssistMutation.mutate({
-                      purpose: aiPurpose,
-                      category: formData.category,
-                      language: formData.language,
-                      businessType: aiBusinessType,
-                    })}
-                    data-testid="button-ai-generate"
-                  >
-                    {aiAssistMutation.isPending ? (
-                      <LoadingSpinner fullScreen={false} className="h-4 w-4" />
-                    ) : (
-                      <>
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        Generate
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  variant="default"
+                  className="w-full"
+                  disabled={!aiPurpose.trim() || aiAssistMutation.isPending}
+                  onClick={() => aiAssistMutation.mutate(aiPurpose)}
+                  data-testid="button-ai-generate"
+                >
+                  {aiAssistMutation.isPending ? (
+                    <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-2" />
+                  )}
+                  {aiAssistMutation.isPending ? "Generating..." : "Generate Template"}
+                </Button>
+                <p className="text-xs text-slate-500 text-center">Pulse will auto-select the best category, language, and structure</p>
               </div>
-
-              {/* AI Tips and Warnings */}
-              {aiSuggestion && (
-                <div className="mt-4 space-y-2">
-                  {aiSuggestion.tips && aiSuggestion.tips.length > 0 && (
-                    <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
-                      <div className="flex items-center gap-1 text-green-700 dark:text-green-300 text-xs font-medium mb-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Tips for approval
-                      </div>
-                      <ul className="text-xs text-green-600 dark:text-green-400 space-y-1">
-                        {aiSuggestion.tips.map((tip, i) => (
-                          <li key={i} className="flex items-start gap-1">
-                            <Lightbulb className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                            {tip}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {aiSuggestion.warnings && aiSuggestion.warnings.length > 0 && (
-                    <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
-                      <div className="flex items-center gap-1 text-yellow-700 dark:text-yellow-300 text-xs font-medium mb-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        Potential issues
-                      </div>
-                      <ul className="text-xs text-yellow-600 dark:text-yellow-400 space-y-1">
-                        {aiSuggestion.warnings.map((warning, i) => (
-                          <li key={i}>{warning}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Template Name */}

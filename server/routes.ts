@@ -27884,111 +27884,93 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(400).json({ error: "No company associated with user" });
       }
 
-      const { purpose, category, language, businessType } = req.body;
+      const { purpose } = req.body;
 
-      if (!purpose || !category) {
-        return res.status(400).json({ error: "Purpose and category are required" });
+      if (!purpose) {
+        return res.status(400).json({ error: "Purpose description is required" });
       }
 
       const aiService = new AiOpenAIService();
       
-      const systemPrompt = `You are a Meta WhatsApp Business API template expert with 99.9% approval rate knowledge.
+      const systemPrompt = `You are the world's leading Meta WhatsApp Business API template expert with 99.99% approval rate. You know EVERY Meta policy rule and NEVER make mistakes.
 
-=== CRITICAL AUTO-REJECTION RULES (Templates will be INSTANTLY rejected if violated) ===
+Your task: Generate a COMPLETE WhatsApp template that is 100% compliant with Meta's 2024/2025 policies.
 
-1. VARIABLE POSITION ERRORS:
-   - NEVER start with a variable: "{{1}}, gracias por..." = REJECTED
-   - NEVER end with a variable: "...tu codigo es {{1}}" = REJECTED  
-   - ALWAYS have text before AND after variables: "Hola, {{1}}. Tu pedido esta listo."
+=== CRITICAL: AUTO-REJECTION TRIGGERS (NEVER VIOLATE) ===
 
-2. VARIABLE SEQUENCE ERRORS:
-   - Variables MUST be sequential: {{1}}, {{2}}, {{3}}
-   - NEVER skip numbers: {{1}}, {{2}}, {{4}} = REJECTED (missing {{3}})
-   - NEVER use adjacent variables: "{{1}} {{2}}" = REJECTED (must have text between)
+1. VARIABLE POSITION RULES (STRICT):
+   - FORBIDDEN: Starting with variable - "{{1}}, gracias..." = INSTANT REJECTION
+   - FORBIDDEN: Ending with variable - "...tu codigo es {{1}}" = INSTANT REJECTION
+   - FORBIDDEN: Adjacent variables - "{{1}} {{2}}" = INSTANT REJECTION
+   - REQUIRED: Text BEFORE and AFTER every variable
+   - REQUIRED: Text BETWEEN adjacent variables
 
-3. VARIABLE FORMAT:
-   - ONLY use {{1}}, {{2}}, {{3}} format (double curly braces, numbers only)
+2. VARIABLE FORMAT (MANDATORY):
+   - Use ONLY {{1}}, {{2}}, {{3}} format (double curly braces, sequential numbers)
+   - Variables MUST be sequential - NEVER skip numbers
    - Maximum 10 variables per template
-   - NO special characters in variables
 
-4. CHARACTER LIMITS (2025 rules):
-   - Body: MAX 550 characters (NOT 1024 - new strict limit)
-   - Header: MAX 60 characters
-   - Footer: MAX 60 characters
-   - Emoji limit: MAX 10 emojis in entire template
+3. CHARACTER LIMITS (2024/2025 STRICT):
+   - Body: MAXIMUM 550 characters
+   - Header: MAXIMUM 60 characters
+   - Footer: MAXIMUM 60 characters
+   - Button text: MAXIMUM 25 characters per button
+   - Maximum 10 emojis total
 
-5. CATEGORY COMPLIANCE (Auto-reclassification triggers rejection):
-   
-   UTILITY (only for):
-   - Transaction confirmations: "Tu pedido #{{1}} ha sido enviado"
-   - Appointment reminders: "Recordatorio: tienes cita el {{1}}"
-   - Account alerts: "Alerta de seguridad en tu cuenta"
-   - Delivery updates: "Tu paquete llegara el {{1}}"
-   - Payment confirmations: "Pago de ${"$"}{{1}} recibido"
+4. CATEGORY SELECTION (YOU MUST CHOOSE CORRECTLY):
+
+   UTILITY - Use ONLY for:
+   - Order/transaction confirmations
+   - Appointment reminders
+   - Account/security alerts
+   - Delivery/shipping updates
+   - Payment confirmations
+   - Booking confirmations
    
    UTILITY FORBIDDEN:
-   - Generic greetings or conversation starters = REJECTED
-   - "How can we help you?" = REJECTED (not transactional)
-   - Surveys (unless transaction-specific) = REJECTED
-   - Any promotional content = REJECTED
-   
-   MARKETING (required for):
-   - Promotional offers, discounts, sales
-   - Re-engagement messages  
-   - Product announcements
+   - Generic greetings or welcome messages
    - General surveys
-   - MUST include opt-out: "Responde STOP para cancelar"
+   - ANY promotional content
+   
+   MARKETING - Use for:
+   - Promotional offers, sales, discounts
+   - Product announcements
+   - Re-engagement/win-back messages
+   - General surveys
+   - MANDATORY: Include opt-out text "Responde STOP para cancelar" (or English equivalent)
+   
+   AUTHENTICATION - Use ONLY for:
+   - One-time passwords (OTP)
+   - Verification codes
 
-6. CONTENT POLICY VIOLATIONS:
-   - NO requests for: full credit card, bank account, national ID numbers
-   - NO: gambling, adult content, weapons, illegal items
-   - NO health claims or medical advice
-   - NO misleading pricing or false urgency
+5. LANGUAGE DETECTION:
+   - Detect language from user's description
+   - Generate template in THAT language
+   - Use Meta language code (es, en, en_US, es_MX, pt_BR, fr, de, it, etc.)
 
-7. DUPLICATE PREVENTION:
-   - Template name must be unique (use specific descriptive names)
-   - Body text must differ significantly from existing templates
+6. BUTTONS (OPTIONAL):
+   - Quick Reply: Short response options (max 3 buttons, 25 chars each)
+   - Examples: "Confirmar", "Cancelar", "Mas info"
 
-=== TEMPLATE STRUCTURE RULES ===
+=== RESPONSE FORMAT (JSON ONLY) ===
 
-GOOD UTILITY EXAMPLE (appointment reminder):
-Name: cita_recordatorio_clinica
-Header: Recordatorio de Cita
-Body: Hola, te recordamos que tienes una cita programada para el {{1}} a las {{2}} en nuestra clinica. Por favor confirma tu asistencia respondiendo SI o NO.
-Footer: Tu Clinica
+Respond with ONLY valid JSON, no markdown, no explanation:
 
-BAD UTILITY EXAMPLE (will be rejected):
-Body: "{{1}}, gracias por contactarnos. Como podemos ayudarte?" 
-WHY REJECTED: Starts with variable, not transactional, too generic
-
-GOOD CONVERSATION STARTER (must be MARKETING):
-Name: bienvenida_cliente_nuevo
-Category: MARKETING
-Body: Hola, gracias por tu interes en nuestros servicios. Un asesor te contactara pronto para brindarte informacion personalizada. Responde STOP para no recibir mas mensajes.
-Footer: Tu Empresa
-
-=== OUTPUT FORMAT ===
-
-Respond with a JSON object:
 {
-  "name": "descriptive_unique_name_in_snake_case",
-  "headerText": "Optional header under 60 chars",
-  "bodyText": "Message under 550 chars with proper {{1}} variable placement",
-  "footerText": "Brief footer under 60 chars",
-  "tips": ["Specific tips for this template approval"],
-  "warnings": ["Any issues that might cause rejection"],
-  "suggestedCategory": "If different from requested, suggest correct category"
+  "name": "descriptive_snake_case_name",
+  "category": "UTILITY" or "MARKETING" or "AUTHENTICATION",
+  "language": "language_code",
+  "headerType": "none" or "text",
+  "headerText": "Header text or empty string",
+  "bodyText": "Main message under 550 chars",
+  "footerText": "Footer under 60 chars or empty string",
+  "buttonType": "none" or "quick_reply",
+  "buttons": ["Button 1", "Button 2"]
 }
 
-LANGUAGE: Write in the same language as the user's request.`;
+CRITICAL: NEVER start/end body with variable. ALWAYS put text between variables.`;
 
-      const userMessage = `Create a WhatsApp template for:
-Purpose: ${purpose}
-Category: ${category}
-Language: ${language || 'English'}
-Business Type: ${businessType || 'General business'}
-
-Generate a compliant template that will be approved by Meta.`;
+      const userMessage = `Generate a complete WhatsApp template for: ${purpose}`;
 
       const result = await aiService.chat([
         { role: "system", content: systemPrompt },
