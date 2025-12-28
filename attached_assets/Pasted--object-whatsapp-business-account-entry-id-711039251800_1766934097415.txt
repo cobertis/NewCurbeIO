@@ -1,0 +1,42 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "711039251800193",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "17867631593",
+              "phone_number_id": "977042948821102"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "javierlazo"
+                },
+                "wa_id": "17866302522"
+              }
+            ],
+            "calls": [
+              {
+                "id": "wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggMDNDNzM4RDFEOUZGOTEyM0IwNTJGQzczN0Y3RjkyREYcGAsxNzg2NzYzMTU5MxUCABUaAA==",
+                "from": "17866302522",
+                "to": "17867631593",
+                "event": "connect",
+                "timestamp": "1766890661",
+                "direction": "USER_INITIATED",
+                "session": {
+                  "sdp": "v=0\r\no=- 1766890661249 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE audio\r\na=msid-semantic: WMS 284374e3-2b5e-42a3-bfaf-4d7cfcbeae99\r\na=ice-lite\r\nm=audio 3484 UDP/TLS/RTP/SAVPF 111 126\r\nc=IN IP4 57.144.23.49\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:1103581588 1 udp 2122260223 57.144.23.49 3484 typ host generation 0 network-cost 50\r\na=candidate:3041709327 1 udp 2122262783 2a03:2880:f332:131:face:b00c:0:699c 3484 typ host generation 0 network-cost 50\r\na=ice-ufrag:CjaZtVTEywqZoVUx\r\na=ice-pwd:uQ3GWtJe+4LA6WofuXuNCg==\r\na=fingerprint:sha-256 2D:78:54:E6:6B:D6:92:16:9A:40:DD:6A:BC:06:B5:9A:B6:C7:1F:63:3E:32:71:57:CF:79:88:36:62:B0:82:AE\r\na=setup:actpass\r\na=mid:audio\r\na=sendrecv\r\na=msid:284374e3-2b5e-42a3-bfaf-4d7cfcbeae99 WhatsAppTrack1\r\na=rtcp-mux\r\na=rtpmap:111 opus/48000/2\r\na=rtcp-fb:111 transport-cc\r\na=fmtp:111 maxaveragebitrate=20000;maxplaybackrate=16000;minptime=20;sprop-maxcapturerate=16000;useinbandfec=1\r\na=rtpmap:126 telephone-event/8000\r\na=maxptime:20\r\na=ptime:20\r\na=ssrc:1621489918 cname:WhatsAppAudioStream1\r\n",
+                  "sdp_type": "offer"
+                }
+              }
+            ]
+          },
+          "field": "calls"
+        }
+      ]
+    }
+  ]
+}
