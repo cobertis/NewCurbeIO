@@ -1875,7 +1875,7 @@ function Router() {
       <Route path="/settings/email">
         <ProtectedRoute>
           <DashboardLayout>
-            <Settings />
+            <EmailIntegration />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
