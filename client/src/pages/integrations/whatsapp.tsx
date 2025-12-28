@@ -513,7 +513,7 @@ export default function WhatsAppPage() {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setLocation("/settings/whatsapp/flow")}
+            onClick={() => setLocation("/settings/whatsapp/flow?new=true")}
             data-testid="button-new-whatsapp"
           >
             <Plus className="h-4 w-4 mr-2" />

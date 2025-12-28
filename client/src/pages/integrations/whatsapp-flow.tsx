@@ -56,6 +56,9 @@ export default function WhatsAppFlow() {
   const [embeddedSignupData, setEmbeddedSignupData] = useState<EmbeddedSignupData | null>(null);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
   
+  // Check if this is a fresh start (new=true query param)
+  const isNewConnection = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("new") === "true";
+  
   // Refs to prevent race conditions in OAuth code exchange
   const codeExchangedRef = useRef(false);
   const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -63,6 +66,22 @@ export default function WhatsAppFlow() {
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/whatsapp/status"],
   });
+  
+  // Reset state when starting a new connection
+  useEffect(() => {
+    if (isNewConnection) {
+      setCurrentStep(1);
+      setPin(["", "", "", "", "", ""]);
+      setIsConnecting(false);
+      setEmbeddedSignupData(null);
+      setPendingCode(null);
+      codeExchangedRef.current = false;
+      // Clean up URL to remove query param
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [isNewConnection]);
 
   // Get real phone registration status from Meta API
   const { data: phoneStatusData, isLoading: isLoadingPhoneStatus } = useQuery<{ 
