@@ -240,6 +240,10 @@ export default function InboxPage() {
     summary: string;
     suggestions: Array<{ type: string; text: string }>;
   } | null>(null);
+  const [voiceCallDialogOpen, setVoiceCallDialogOpen] = useState(false);
+  const [voiceCallText, setVoiceCallText] = useState("Need to talk? Press the button below to call us.");
+  const [voiceCallButtonText, setVoiceCallButtonText] = useState("Call Now");
+  const [voiceCallTtl, setVoiceCallTtl] = useState(60);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pulseAiMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -546,6 +550,32 @@ export default function InboxPage() {
         variant: "destructive",
       });
     },
+  });
+
+  const sendVoiceCallButtonMutation = useMutation({
+    mutationFn: async ({ conversationId, text, buttonText, ttlMinutes }: { 
+      conversationId: string; 
+      text?: string; 
+      buttonText?: string; 
+      ttlMinutes?: number 
+    }) => {
+      return apiRequest("POST", `/api/inbox/conversations/${conversationId}/voice-call-button`, {
+        text,
+        buttonText,
+        ttlMinutes
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      if (selectedConversationId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] });
+      }
+      setVoiceCallDialogOpen(false);
+      toast({ title: "Call button sent", description: "Voice call button has been sent to the customer." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to send call button", description: error.message, variant: "destructive" });
+    }
   });
 
   const acceptChatMutation = useMutation({
@@ -2001,6 +2031,24 @@ export default function InboxPage() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  {selectedConversation?.channel === "whatsapp" && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setVoiceCallDialogOpen(true)}
+                            className="h-8 w-8"
+                            data-testid="btn-voice-call-button"
+                          >
+                            <Phone className="h-4 w-4 text-emerald-600" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Send Voice Call Button</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
 
                 {/* Right: Internal Note Toggle + Send Button */}
@@ -2984,6 +3032,83 @@ export default function InboxPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Voice Call Button Dialog */}
+      <Dialog open={voiceCallDialogOpen} onOpenChange={setVoiceCallDialogOpen}>
+        <DialogContent className="max-w-md" data-testid="dialog-voice-call-button">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="h-5 w-5 text-emerald-600" />
+              Send Voice Call Button
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="voice-call-text">Message Text</Label>
+              <Textarea
+                id="voice-call-text"
+                value={voiceCallText}
+                onChange={(e) => setVoiceCallText(e.target.value)}
+                placeholder="Need to talk? Press the button below to call us."
+                className="resize-none"
+                rows={3}
+                data-testid="input-voice-call-text"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="voice-call-button-text">Button Text (max 20 characters)</Label>
+              <Input
+                id="voice-call-button-text"
+                value={voiceCallButtonText}
+                onChange={(e) => setVoiceCallButtonText(e.target.value.substring(0, 20))}
+                placeholder="Call Now"
+                maxLength={20}
+                data-testid="input-voice-call-button-text"
+              />
+              <p className="text-xs text-muted-foreground">{voiceCallButtonText.length}/20 characters</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="voice-call-ttl">Link Expiry (minutes)</Label>
+              <Input
+                id="voice-call-ttl"
+                type="number"
+                value={voiceCallTtl}
+                onChange={(e) => setVoiceCallTtl(Math.max(1, parseInt(e.target.value) || 60))}
+                min={1}
+                max={1440}
+                data-testid="input-voice-call-ttl"
+              />
+              <p className="text-xs text-muted-foreground">The call button will expire after this time (1-1440 minutes)</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setVoiceCallDialogOpen(false)}
+                data-testid="btn-cancel-voice-call"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedConversationId) {
+                    sendVoiceCallButtonMutation.mutate({
+                      conversationId: selectedConversationId,
+                      text: voiceCallText,
+                      buttonText: voiceCallButtonText,
+                      ttlMinutes: voiceCallTtl,
+                    });
+                  }
+                }}
+                disabled={sendVoiceCallButtonMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-700"
+                data-testid="btn-send-voice-call"
+              >
+                {sendVoiceCallButtonMutation.isPending ? "Sending..." : "Send Call Button"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Thread Summary Dialog */}
       <Dialog open={threadSummaryOpen} onOpenChange={setThreadSummaryOpen}>

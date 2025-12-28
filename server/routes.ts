@@ -39860,6 +39860,125 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+  // POST /api/inbox/conversations/:id/voice-call-button - Send WhatsApp voice call button message
+  app.post("/api/inbox/conversations/:id/voice-call-button", requireActiveCompany, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { text, buttonText, ttlMinutes } = req.body;
+    const userId = (req.user as any).id;
+    const companyId = (req.user as any).companyId;
+    
+    try {
+      const conversation = await db.query.telnyxConversations.findFirst({
+        where: and(
+          eq(telnyxConversations.id, id),
+          eq(telnyxConversations.companyId, companyId)
+        ),
+      });
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      if (conversation.channel !== "whatsapp") {
+        return res.status(400).json({ message: "Voice call buttons are only available for WhatsApp conversations" });
+      }
+      
+      const waConnection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        ),
+      });
+      
+      if (!waConnection || !waConnection.accessTokenEnc) {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+      
+      const accessToken = decryptToken(waConnection.accessTokenEnc);
+      const phoneNumberId = waConnection.phoneNumberId;
+      const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
+      const recipientWaId = conversation.phoneNumber.replace(/^\+/, "");
+      
+      const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${phoneNumberId}/messages`;
+      
+      const messagePayload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: recipientWaId,
+        type: "interactive",
+        interactive: {
+          type: "voice_call",
+          body: {
+            text: text || "Need to talk? Press the button below to call us."
+          },
+          action: {
+            name: "voice_call",
+            parameters: {
+              display_text: (buttonText || "Call Now").substring(0, 20),
+              ttl_minutes: ttlMinutes || 60
+            }
+          }
+        }
+      };
+      
+      const metaResponse = await fetch(sendUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messagePayload),
+      });
+      
+      const metaData = await metaResponse.json() as any;
+      
+      if (!metaResponse.ok) {
+        console.error("[WhatsApp Voice Call Button] Meta API error:", metaData);
+        return res.status(400).json({ 
+          message: metaData.error?.message || "Failed to send voice call button",
+          error: metaData.error
+        });
+      }
+      
+      const wamid = metaData.messages?.[0]?.id;
+      
+      const [message] = await db
+        .insert(telnyxMessages)
+        .values({
+          conversationId: id,
+          direction: "outbound",
+          messageType: "outgoing",
+          channel: "whatsapp",
+          text: `📞 ${text || "Need to talk? Press the button below to call us."}\n\n[${buttonText || "Call Now"}]`,
+          contentType: "interactive",
+          status: "sent",
+          telnyxMessageId: wamid,
+          sentBy: userId,
+          sentAt: new Date(),
+        })
+        .returning();
+      
+      await db
+        .update(telnyxConversations)
+        .set({ 
+          lastMessage: `📞 Call button sent`, 
+          lastMessageAt: new Date(), 
+          updatedAt: new Date() 
+        })
+        .where(eq(telnyxConversations.id, id));
+      
+      broadcastInboxMessage(companyId, id);
+      
+      console.log(`[WhatsApp Voice Call Button] Sent by ${userId} to ${conversation.phoneNumber}, wamid: ${wamid}`);
+      return res.status(201).json({ success: true, message, wamid });
+      
+    } catch (error: any) {
+      console.error("[WhatsApp Voice Call Button] Error:", error);
+      return res.status(500).json({ message: error.message || "Failed to send voice call button" });
+    }
+  });
+
 
   // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
   app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
