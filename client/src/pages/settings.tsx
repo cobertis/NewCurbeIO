@@ -36,6 +36,7 @@ import { formatDistanceToNow, format, parseISO } from "date-fns";
 import { useTabsState } from "@/hooks/use-tabs-state";
 import { useMemo } from "react";
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
+import { SettingsLayout } from "@/components/settings-layout";
 
 // Business categories
 const categories = [
@@ -1340,7 +1341,17 @@ export default function Settings({ view = 'all' }: SettingsProps) {
     return <LoadingSpinner message="Loading settings..." />;
   }
 
+  // Determine active section for SettingsLayout based on current tab
+  const getActiveSection = () => {
+    if (activeTab === "overview" || activeTab === "profile") return "profile";
+    if (activeTab === "security") return "security";
+    if (activeTab === "team") return "team";
+    if (activeTab === "automations") return "automations";
+    return "profile";
+  };
+
   return (
+    <SettingsLayout activeSection={getActiveSection()}>
     <div className="flex flex-col gap-4 sm:gap-6">
       <div>
         {/* Settings Content */}
@@ -2216,6 +2227,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
         </div>
       </div>
     </div>
+    </SettingsLayout>
   );
 }
 
