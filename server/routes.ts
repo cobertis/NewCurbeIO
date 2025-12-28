@@ -40162,6 +40162,7 @@ CRITICAL REMINDERS:
       );
 
       const metaData = await metaResponse.json() as any;
+      console.log('[WhatsApp Template Send] Meta API response:', JSON.stringify(metaData));
 
       let status: "sent" | "failed" = "sent";
       let errorMessage: string | null = null;
@@ -40184,7 +40185,7 @@ CRITICAL REMINDERS:
           direction: "outbound",
           text: displayText,
           status,
-          wamid: whatsappMessageId,
+          telnyxMessageId: whatsappMessageId,
           sentAt: new Date(),
           createdAt: new Date(),
         })
