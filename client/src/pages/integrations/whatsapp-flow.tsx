@@ -56,8 +56,11 @@ export default function WhatsAppFlow() {
   const [embeddedSignupData, setEmbeddedSignupData] = useState<EmbeddedSignupData | null>(null);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
   
-  // Check if this is a fresh start (new=true query param)
-  const isNewConnection = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("new") === "true";
+  // Flag to force a new connection flow, bypassing existing connection auto-advance
+  const [forceNewConnection, setForceNewConnection] = useState(() => {
+    // Initialize from URL param on first render
+    return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("new") === "true";
+  });
   
   // Refs to prevent race conditions in OAuth code exchange
   const codeExchangedRef = useRef(false);
@@ -67,9 +70,9 @@ export default function WhatsAppFlow() {
     queryKey: ["/api/integrations/whatsapp/status"],
   });
   
-  // Reset state when starting a new connection
+  // Reset state when starting a new connection and clean up URL
   useEffect(() => {
-    if (isNewConnection) {
+    if (forceNewConnection) {
       setCurrentStep(1);
       setPin(["", "", "", "", "", ""]);
       setIsConnecting(false);
@@ -78,10 +81,12 @@ export default function WhatsAppFlow() {
       codeExchangedRef.current = false;
       // Clean up URL to remove query param
       const url = new URL(window.location.href);
-      url.searchParams.delete("new");
-      window.history.replaceState({}, "", url.toString());
+      if (url.searchParams.has("new")) {
+        url.searchParams.delete("new");
+        window.history.replaceState({}, "", url.toString());
+      }
     }
-  }, [isNewConnection]);
+  }, [forceNewConnection]);
 
   // Get real phone registration status from Meta API
   const { data: phoneStatusData, isLoading: isLoadingPhoneStatus } = useQuery<{ 
@@ -181,6 +186,9 @@ export default function WhatsAppFlow() {
   }, [toast]);
 
   useEffect(() => {
+    // Skip auto-advance when user is starting a fresh new connection
+    if (forceNewConnection) return;
+    
     if (isConnected && isPhoneRegistered) {
       // Only go to step 3 if phone is fully registered (PIN was entered)
       setCurrentStep(3);
@@ -190,7 +198,7 @@ export default function WhatsAppFlow() {
     } else if (isPending) {
       setCurrentStep(2);
     }
-  }, [isConnected, isPending, isPhoneRegistered]);
+  }, [isConnected, isPending, isPhoneRegistered, forceNewConnection]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -235,6 +243,8 @@ export default function WhatsAppFlow() {
       setIsConnecting(false);
       setPendingCode(null);
       setEmbeddedSignupData(null);
+      // Clear force flag now that new connection is in progress
+      setForceNewConnection(false);
     },
     onError: (error: any) => {
       toast({
@@ -378,6 +388,7 @@ export default function WhatsAppFlow() {
   }, [fbSdkLoaded, toast, exchangeCodeMutation]);
 
   const handleDiscard = () => {
+    setForceNewConnection(false);
     setLocation("/settings/whatsapp");
   };
 
