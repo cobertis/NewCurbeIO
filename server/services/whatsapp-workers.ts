@@ -180,7 +180,7 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
                 lastMessageAt: callTimestamp,
                 lastMessage: callStatusText,
                 displayName: (contactName !== callerWaId ? contactName : null) || inboxConversation.displayName,
-                status: inboxConversation.status === "solved" ? "open" : inboxConversation.status,
+                status: (inboxConversation.status === "solved" || inboxConversation.status === "archived") ? "open" : inboxConversation.status,
                 updatedAt: new Date(),
               })
               .where(eq(telnyxConversations.id, inboxConversation.id));
@@ -268,7 +268,7 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
                 lastMessageAt: new Date(),
                 lastMessage: msg.text?.body || `[${msg.type}]`,
                 displayName: (contactName !== contactWaId ? contactName : null) || inboxConversation.displayName,
-                status: inboxConversation.status === "solved" ? "open" : inboxConversation.status,
+                status: (inboxConversation.status === "solved" || inboxConversation.status === "archived") ? "open" : inboxConversation.status,
                 updatedAt: new Date(),
               })
               .where(eq(telnyxConversations.id, inboxConversation.id));
