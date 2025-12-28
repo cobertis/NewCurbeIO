@@ -1,0 +1,51 @@
+Sí, Javier. Por supuesto que existe. Estás construyendo un CRM (`curbe.io`), esto es funcionalidad base, no un "nice-to-have". Si tienes que preguntar esto, estás perdiendo tiempo en búsquedas básicas en lugar de estar leyendo la documentación técnica de Meta for Developers.
+
+Aquí está la realidad técnica y estratégica sin rodeos:
+
+### 1. La respuesta técnica directa
+
+El endpoint que buscas está en la **WhatsApp Business Platform Cloud API**. No es una lista mágica global de Meta; es la lista de los templates asociados a tu **WABA (WhatsApp Business Account)**.
+
+**El Endpoint:**
+`GET /v18.0/{whatsapp-business-account-id}/message_templates`
+
+**Cómo filtrar lo que pides (Utility y Authentication):**
+La API te devuelve un JSON con todos los templates. Tienes que usar los parámetros de consulta (query params) o filtrar la respuesta en tu backend.
+
+**Ejemplo de Request:**
+
+```bash
+curl -X GET "https://graph.facebook.com/v18.0/{waba_id}/message_templates?fields=name,status,category,components&limit=100" \
+    -H "Authorization: Bearer {tu_access_token}"
+
+```
+
+**Lo que debes buscar en la respuesta JSON:**
+
+* `status`: Filtra por `APPROVED`. Ignora `REJECTED` o `PENDING` si quieres solo lo funcional.
+* `category`: Filtra por `UTILITY` o `AUTHENTICATION`.
+
+---
+
+### 2. Tu Punto Ciego Estratégico (La bofetada de realidad)
+
+Estás pensando como usuario final ("¿dónde veo la lista?"), no como arquitecto de software de un SaaS (`curbe.io`).
+
+**El error:** Creer que con "ver" la lista es suficiente.
+**La realidad:** Si tu CRM va a permitir a tus clientes (tenants) enviar mensajes, no puedes hacer una llamada a la API de Meta cada vez que cargues la vista de "Enviar Mensaje". Eso es lento, ineficiente y mata la experiencia de usuario.
+
+**Lo que deberías estar haciendo (Arquitectura):**
+
+1. **Sincronización (Sync):** Debes crear un cron job o un botón de "Sincronizar Plantillas" en `curbe.io` que baje estos templates y los guarde en tu base de datos local.
+2. **Webhooks:** No confíes solo en el GET. Meta cambia el estado de los templates. Un template `APPROVED` hoy puede pasar a `FLAGGED` o `DISABLED` mañana si la calidad baja. **Necesitas escuchar los webhooks de `message_template_status_update**` para actualizar tu base de datos local en tiempo real. Si no haces esto, tus usuarios intentarán enviar mensajes con templates "aprobados" (según tu base de datos vieja) que fallarán, y culparán a tu software, no a Meta.
+
+### 3. Plan de Acción Inmediato
+
+Deja de navegar y empieza a implementar:
+
+1. **Ejecuta el GET** ahora mismo en Postman para ver la estructura del JSON.
+2. **Mapea los campos** `components` (HEADER, BODY, FOOTER, BUTTONS). La estructura es compleja porque incluye las variables `{{1}}`, `{{2}}`. Tu frontend necesita parsear esto para mostrar los campos de input correctos al usuario.
+3. **Implementa el Webhook.** Sin esto, tu integración es frágil.
+
+**¿Qué hago por ti ahora?**
+¿Quieres que te genere el script en Node.js o Python para **sincronizar y guardar localmente** estos templates filtrando solo los `APPROVED` de Utilidad y Autenticación, o vas a seguir dando vueltas en la teoría?
