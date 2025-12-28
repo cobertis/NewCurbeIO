@@ -244,6 +244,11 @@ export default function InboxPage() {
   const [voiceCallText, setVoiceCallText] = useState("Need to talk? Press the button below to call us.");
   const [voiceCallButtonText, setVoiceCallButtonText] = useState("Call Now");
   const [voiceCallTtl, setVoiceCallTtl] = useState(60);
+  
+  // WhatsApp Template Picker state
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [selectedTemplateForSend, setSelectedTemplateForSend] = useState<any>(null);
+  const [templateVariables, setTemplateVariables] = useState<Record<number, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pulseAiMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -575,6 +580,50 @@ export default function InboxPage() {
     },
     onError: (error: any) => {
       toast({ title: "Failed to send call button", description: error.message, variant: "destructive" });
+    }
+  });
+
+  // WhatsApp templates query - fetch approved templates for this company
+  const { data: whatsappTemplatesData } = useQuery<{ templates: Array<{
+    id: string;
+    name: string;
+    status: string;
+    category: string;
+    language: string;
+    components: Array<{ type: string; text?: string; format?: string }>;
+  }> }>({
+    queryKey: ["/api/whatsapp/meta/templates"],
+    enabled: isAuthenticated && selectedConversation?.channel === "whatsapp",
+  });
+  const approvedTemplates = (whatsappTemplatesData?.templates || []).filter(t => t.status === "APPROVED");
+
+  // Send WhatsApp template mutation
+  const sendTemplateMutation = useMutation({
+    mutationFn: async ({ conversationId, templateName, languageCode, components }: {
+      conversationId: string;
+      templateName: string;
+      languageCode: string;
+      components?: Array<{ type: string; parameters: Array<{ type: string; text: string }> }>;
+    }) => {
+      return apiRequest("POST", "/api/whatsapp/meta/templates/send", {
+        conversationId,
+        templateName,
+        languageCode,
+        components,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      if (selectedConversationId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] });
+      }
+      setTemplatePickerOpen(false);
+      setSelectedTemplateForSend(null);
+      setTemplateVariables({});
+      toast({ title: "Template sent", description: "WhatsApp template message sent successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to send template", description: error.message || "Please try again", variant: "destructive" });
     }
   });
 
@@ -2141,16 +2190,24 @@ export default function InboxPage() {
                       <TooltipContent>Attach file</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-templates">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Templates</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  {selectedConversation?.channel === "whatsapp" && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8" 
+                            onClick={() => setTemplatePickerOpen(true)}
+                            data-testid="btn-templates"
+                          >
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>WhatsApp Templates</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -3394,6 +3451,168 @@ export default function InboxPage() {
               </p>
             </div>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* WhatsApp Template Picker Dialog */}
+      <Dialog open={templatePickerOpen} onOpenChange={(open) => {
+        setTemplatePickerOpen(open);
+        if (!open) {
+          setSelectedTemplateForSend(null);
+          setTemplateVariables({});
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" data-testid="dialog-template-picker">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SiWhatsapp className="h-5 w-5 text-emerald-500" />
+              Send WhatsApp Template
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto">
+            {!selectedTemplateForSend ? (
+              // Template Selection List
+              <div className="space-y-2">
+                {approvedTemplates.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>No approved templates found</p>
+                    <p className="text-sm mt-1">Create templates in Settings → Channels → WhatsApp Templates</p>
+                  </div>
+                ) : (
+                  approvedTemplates.map((template) => {
+                    const bodyComp = template.components.find(c => c.type === "BODY");
+                    return (
+                      <button
+                        key={template.id}
+                        className="w-full text-left p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          setSelectedTemplateForSend(template);
+                          // Initialize variables with empty strings
+                          const vars: Record<number, string> = {};
+                          const matches = (bodyComp?.text || "").match(/\{\{(\d+)\}\}/g) || [];
+                          matches.forEach(match => {
+                            const num = parseInt(match.replace(/[{}]/g, ''));
+                            vars[num] = "";
+                          });
+                          setTemplateVariables(vars);
+                        }}
+                        data-testid={`btn-select-template-${template.name}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">{template.name.replace(/_/g, ' ')}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                              {bodyComp?.text || "No body text"}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="ml-2 shrink-0">
+                            {template.language}
+                          </Badge>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            ) : (
+              // Template Customization View
+              <div className="space-y-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedTemplateForSend(null);
+                    setTemplateVariables({});
+                  }}
+                  className="mb-2"
+                  data-testid="btn-back-to-templates"
+                >
+                  ← Back to templates
+                </Button>
+                
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium mb-2">{selectedTemplateForSend.name.replace(/_/g, ' ')}</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {(() => {
+                      const bodyComp = selectedTemplateForSend.components.find((c: any) => c.type === "BODY");
+                      let text = bodyComp?.text || "";
+                      // Replace variables with values or placeholders
+                      Object.entries(templateVariables).forEach(([key, value]) => {
+                        const placeholder = `{{${key}}}`;
+                        text = text.replace(placeholder, value || `[Variable ${key}]`);
+                      });
+                      return text;
+                    })()}
+                  </p>
+                </div>
+                
+                {Object.keys(templateVariables).length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm">Fill in the variables:</h4>
+                    {Object.keys(templateVariables).sort((a, b) => Number(a) - Number(b)).map((key) => (
+                      <div key={key} className="space-y-1">
+                        <Label htmlFor={`var-${key}`} className="text-sm">
+                          Variable {key}
+                        </Label>
+                        <Input
+                          id={`var-${key}`}
+                          value={templateVariables[Number(key)]}
+                          onChange={(e) => setTemplateVariables(prev => ({
+                            ...prev,
+                            [key]: e.target.value
+                          }))}
+                          placeholder={`Enter value for {{${key}}}`}
+                          data-testid={`input-template-var-${key}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setTemplatePickerOpen(false);
+                      setSelectedTemplateForSend(null);
+                      setTemplateVariables({});
+                    }}
+                    data-testid="btn-cancel-template"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (!selectedConversationId || !selectedTemplateForSend) return;
+                      
+                      // Build components with variable values
+                      const bodyParams = Object.keys(templateVariables)
+                        .sort((a, b) => Number(a) - Number(b))
+                        .map(key => ({ type: "text", text: templateVariables[Number(key)] || "" }));
+                      
+                      const components = bodyParams.length > 0 
+                        ? [{ type: "body", parameters: bodyParams }]
+                        : undefined;
+                      
+                      sendTemplateMutation.mutate({
+                        conversationId: selectedConversationId,
+                        templateName: selectedTemplateForSend.name,
+                        languageCode: selectedTemplateForSend.language,
+                        components,
+                      });
+                    }}
+                    disabled={sendTemplateMutation.isPending || Object.values(templateVariables).some(v => !v.trim())}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    data-testid="btn-send-template"
+                  >
+                    {sendTemplateMutation.isPending ? "Sending..." : "Send Template"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </MessengerLayout>
