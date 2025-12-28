@@ -229,8 +229,7 @@ export default function PulseAiSettings({ embedded = false }: PulseAiSettingsPro
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: Partial<AiSettings>) => {
-      const res = await apiRequest("PATCH", "/api/ai/settings", data);
-      return res.json();
+      return await apiRequest("PATCH", "/api/ai/settings", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai/settings"] });
