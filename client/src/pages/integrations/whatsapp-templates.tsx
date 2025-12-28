@@ -261,8 +261,7 @@ export default function WhatsAppTemplatesPage() {
   // AI assist mutation
   const aiAssistMutation = useMutation({
     mutationFn: async (data: { purpose: string; category: string; language: string; businessType: string }) => {
-      const res = await apiRequest("POST", "/api/whatsapp/meta/templates/ai-assist", data);
-      return res.json();
+      return apiRequest("POST", "/api/whatsapp/meta/templates/ai-assist", data);
     },
     onSuccess: (data) => {
       if (data.suggestion) {
