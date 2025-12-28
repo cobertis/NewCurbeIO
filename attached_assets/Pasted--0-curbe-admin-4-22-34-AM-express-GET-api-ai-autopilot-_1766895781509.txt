@@ -1,0 +1,37 @@
+
+
+
+0|curbe-admin  | 4:22:34 AM [express] GET /api/ai/autopilot/pending 304 in 23ms :: {"pending":[]}
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 4:22:42 AM [express] POST /api/webhooks/meta/whatsapp 200 in 5ms
+0|curbe-admin  | [WhatsApp Webhook Worker] Dedupe check failed for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggRTg5NjZBNkVEMzEyMUU1MDRDNTUxNzZGMEZEREFCRjYcGAsxNzg2NzYzMTU5MxUCABUaAA==, processing anyway
+0|curbe-admin  | [WhatsApp Webhook Worker] Incoming call with SDP offer: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggRTg5NjZBNkVEMzEyMUU1MDRDNTUxNzZGMEZEREFCRjYcGAsxNzg2NzYzMTU5MxUCABUaAA== from 17866302522
+0|curbe-admin  | [WhatsApp Call] Incoming call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggRTg5NjZBNkVEMzEyMUU1MDRDNTUxNzZGMEZEREFCRjYcGAsxNzg2NzYzMTU5MxUCABUaAA== from +17866302522 to +17867631593
+0|curbe-admin  | [WhatsApp Call] Notified 1 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Webhook Worker] Saved inbound call to inbox: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggRTg5NjZBNkVEMzEyMUU1MDRDNTUxNzZGMEZEREFCRjYcGAsxNzg2NzYzMTU5MxUCABUaAA== - connect
+0|curbe-admin  | 4:22:44 AM [express] GET /api/ai/autopilot/pending 304 in 32ms :: {"pending":[]}
+0|curbe-admin  | [WhatsApp Call WS] Received message: answer
+0|curbe-admin  | [WhatsApp Call] Sending pre_accept for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggRTg5NjZBNkVEMzEyMUU1MDRDNTUxNzZGMEZEREFCRjYcGAsxNzg2NzYzMTU5MxUCABUaAA==
+0|curbe-admin  | [WhatsApp Call] pre_accept failed: {
+0|curbe-admin  |   error: {
+0|curbe-admin  |     message: '(#100) The parameter messaging_product is required.',
+0|curbe-admin  |     type: 'OAuthException',
+0|curbe-admin  |     code: 100,
+0|curbe-admin  |     fbtrace_id: 'Aga9vnYIxGwLQvKF4E-_ccz'
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | 4:22:54 AM [express] GET /api/ai/autopilot/pending 304 in 29ms :: {"pending":[]}
+0|curbe-admin  | [BOUNCE PROCESSOR] IMAP error: Timed out while authenticating with server
+0|curbe-admin  | [BOUNCE PROCESSOR] Error processing bounces: Error: Timed out while authenticating with server
+0|curbe-admin  |     at Timeout._onTimeout (/var/www/curbe/node_modules/imap/lib/Connection.js:139:17)
+0|curbe-admin  |     at listOnTimeout (node:internal/timers:581:17)
+0|curbe-admin  |     at process.processTimers (node:internal/timers:519:7) {
+0|curbe-admin  |   source: 'timeout-auth'
+0|curbe-admin  | }
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 4:22:57 AM [express] POST /api/webhooks/meta/whatsapp 200 in 2ms
+0|curbe-admin  | [WhatsApp Webhook Worker] Dedupe check failed for call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggRTg5NjZBNkVEMzEyMUU1MDRDNTUxNzZGMEZEREFCRjYcGAsxNzg2NzYzMTU5MxUCABUaAA==, processing anyway
+0|curbe-admin  | [WhatsApp Call] Notified 1 agents in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call] Call wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggRTg5NjZBNkVEMzEyMUU1MDRDNTUxNzZGMEZEREFCRjYcGAsxNzg2NzYzMTU5MxUCABUaAA== terminated
+0|curbe-admin  | [WhatsApp Webhook Worker] Saved inbound call to inbox: wacid.HBgPMjY5NDE1Mjc4OTkzNTU3FRIAEhggRTg5NjZBNkVEMzEyMUU1MDRDNTUxNzZGMEZEREFCRjYcGAsxNzg2NzYzMTU5MxUCABUaAA== - terminate
+

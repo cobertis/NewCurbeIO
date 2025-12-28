@@ -152,6 +152,7 @@ class WhatsAppCallService {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          messaging_product: 'whatsapp',
           call_id: callId,
           command: 'pre_accept',
           sdp: modifiedSdp
@@ -172,6 +173,7 @@ class WhatsAppCallService {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          messaging_product: 'whatsapp',
           call_id: callId,
           command: 'accept',
           sdp: modifiedSdp
