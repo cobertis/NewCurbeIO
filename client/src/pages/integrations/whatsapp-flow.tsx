@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,6 +55,10 @@ export default function WhatsAppFlow() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [embeddedSignupData, setEmbeddedSignupData] = useState<EmbeddedSignupData | null>(null);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
+  
+  // Refs to prevent race conditions in OAuth code exchange
+  const codeExchangedRef = useRef(false);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/whatsapp/status"],
@@ -257,15 +261,30 @@ export default function WhatsAppFlow() {
 
   // Effect to process when we have both code and embedded signup data
   useEffect(() => {
-    if (pendingCode && embeddedSignupData && !exchangeCodeMutation.isPending) {
+    if (pendingCode && embeddedSignupData && !exchangeCodeMutation.isPending && !codeExchangedRef.current) {
       console.log("[WhatsApp Flow] Both code and embedded signup data available, exchanging...");
+      // Mark as exchanged to prevent duplicate calls
+      codeExchangedRef.current = true;
+      // Cancel the fallback timeout since we have embedded data
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
       exchangeCodeMutation.mutate({
         code: pendingCode,
         wabaId: embeddedSignupData.wabaId,
         phoneNumberId: embeddedSignupData.phoneNumberId,
       });
     }
-  }, [pendingCode, embeddedSignupData]);
+    
+    // Cleanup fallback timeout on unmount
+    return () => {
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
+    };
+  }, [pendingCode, embeddedSignupData, exchangeCodeMutation]);
 
   const handleLoginWithFacebook = useCallback(() => {
     if (!fbSdkLoaded || !window.FB) {
@@ -278,9 +297,14 @@ export default function WhatsAppFlow() {
     }
 
     setIsConnecting(true);
-    // Reset any previous state
+    // Reset any previous state and refs
     setPendingCode(null);
     setEmbeddedSignupData(null);
+    codeExchangedRef.current = false;
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+      fallbackTimeoutRef.current = null;
+    }
 
     window.FB.login(
       (response: FBLoginResponse) => {
@@ -290,16 +314,18 @@ export default function WhatsAppFlow() {
           console.log("[WhatsApp Flow] Got authorization code, waiting for embedded signup data...");
           setPendingCode(response.authResponse.code);
           // The useEffect will trigger the mutation when embeddedSignupData is also available
-          // But also set a fallback timeout in case embedded signup data doesn't come
-          setTimeout(() => {
-            // If no embedded signup data after 3 seconds, try without it (fallback to Graph API lookup)
-            if (!embeddedSignupData) {
+          // Set a fallback timeout in case embedded signup data doesn't come
+          fallbackTimeoutRef.current = setTimeout(() => {
+            // Only proceed if code hasn't been exchanged yet
+            if (!codeExchangedRef.current) {
               console.log("[WhatsApp Flow] No embedded signup data received, proceeding with code only");
+              codeExchangedRef.current = true;
               exchangeCodeMutation.mutate({ code: response.authResponse!.code! });
             }
           }, 3000);
         } else if (response.authResponse?.accessToken) {
           console.log("[WhatsApp Flow] Got access token directly (no code), sending...");
+          codeExchangedRef.current = true;
           exchangeCodeMutation.mutate({ code: response.authResponse.accessToken });
         } else {
           setIsConnecting(false);
@@ -330,7 +356,7 @@ export default function WhatsAppFlow() {
         },
       }
     );
-  }, [fbSdkLoaded, toast, exchangeCodeMutation, embeddedSignupData]);
+  }, [fbSdkLoaded, toast, exchangeCodeMutation]);
 
   const handleDiscard = () => {
     setLocation("/settings/whatsapp");
