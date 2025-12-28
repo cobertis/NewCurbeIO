@@ -1,0 +1,65 @@
+0|curbe-admin  | [WhatsApp Call WS] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 registered for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [WhatsApp Register] Meta API error: {
+0|curbe-admin  |   error: {
+0|curbe-admin  |     message: '(#10) Application does not have permission for this action',
+0|curbe-admin  |     type: 'OAuthException',
+0|curbe-admin  |     code: 10,
+0|curbe-admin  |     error_data: {
+0|curbe-admin  |       messaging_product: 'whatsapp',
+0|curbe-admin  |       details: 'There was a problem with the access token or permissions you are using for the API call.'
+0|curbe-admin  |     },
+0|curbe-admin  |     fbtrace_id: 'ARSOsrJ-K9hUz9_0fOIrD5C'
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | 4:16:46 PM [express] POST /api/integrations/whatsapp/register 400 in 4276ms :: {"error":"(#10) Appli…
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 4:17:10 PM [express] POST /api/webhooks/meta/whatsapp 200 in 2ms
+0|curbe-admin  | [WhatsApp Webhook Worker] No connection found for phoneNumberId: 977042948821102
+0|curbe-admin  | [WhatsApp Register] Meta API error: {
+0|curbe-admin  |   error: {
+0|curbe-admin  |     message: '(#10) Application does not have permission for this action',
+0|curbe-admin  |     type: 'OAuthException',
+0|curbe-admin  |     code: 10,
+0|curbe-admin  |     error_data: {
+0|curbe-admin  |       messaging_product: 'whatsapp',
+0|curbe-admin  |       details: 'There was a problem with the access token or permissions you are using for the API call.'
+0|curbe-admin  |     },
+0|curbe-admin  |     fbtrace_id: 'A4JHw2ePrUVEY7pxcQZGfiW'
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 registered for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [WhatsApp Register] Meta API error: {
+0|curbe-admin  |   error: {
+0|curbe-admin  |     message: '(#10) Application does not have permission for this action',
+0|curbe-admin  |     type: 'OAuthException',
+0|curbe-admin  |     code: 10,
+0|curbe-admin  |     error_data: {
+0|curbe-admin  |       messaging_product: 'whatsapp',
+0|curbe-admin  |       details: 'There was a problem with the access token or permissions you are using for the API call.'
+0|curbe-admin  |     },
+0|curbe-admin  |     fbtrace_id: 'ARSOsrJ-K9hUz9_0fOIrD5C'
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | 4:16:46 PM [express] POST /api/integrations/whatsapp/register 400 in 4276ms :: {"error":"(#10) Appli…
+00|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 unregistered from company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call WS] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [BOUNCE PROCESSOR] Starting bounce email processing...
+0|curbe-admin  | [LOGIN-DEBUG] Login attempt for email: javier@curbe.io
+

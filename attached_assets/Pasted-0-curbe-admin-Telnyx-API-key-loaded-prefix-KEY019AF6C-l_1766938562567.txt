@@ -1,0 +1,103 @@
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | [TURN Credentials] Returning TURN servers for: gencredeaJuooJUafIZwYGRHNnaB83TKR8gYTAWY16FdUsEIu
+0|curbe-admin  | 4:14:36 PM [express] GET /api/telnyx/turn-credentials 304 in 18ms :: {"username":"gencredeaJuooJUafI…
+0|curbe-admin  | 4:14:36 PM [express] GET /api/pbx/special-extensions 304 in 23ms :: {"ivrExtension":null,"queues":[]}
+0|curbe-admin  | 4:14:36 PM [express] GET /api/webrtc/extension-credentials 304 in 14ms :: {"extensionId":"bd5db414-7…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | 4:14:36 PM [express] GET /api/telnyx/voice-settings/062de1ab-a1e9-47cd-bae7-5759c6d7b02a 304 in 138m…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [BOUNCE PROCESSOR] Starting bounce email processing...
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 4:15:03 PM [express] POST /api/webhooks/meta/whatsapp 200 in 3ms
+0|curbe-admin  | [WhatsApp OAuth] Received - code: present wabaId: 711039251800193 phoneNumberId: 977416115444309
+0|curbe-admin  | [WhatsApp OAuth] Exchanging code from FB SDK popup
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 4:15:29 PM [express] POST /api/webhooks/meta/whatsapp 200 in 3ms
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 4:15:29 PM [express] POST /api/webhooks/meta/whatsapp 200 in 3ms
+0|curbe-admin  | [BOUNCE PROCESSOR] IMAP error: Timed out while authenticating with server
+0|curbe-admin  | [BOUNCE PROCESSOR] Error processing bounces: Error: Timed out while authenticating with server
+0|curbe-admin  |     at Timeout._onTimeout (/var/www/curbe/node_modules/imap/lib/Connection.js:139:17)
+0|curbe-admin  |     at listOnTimeout (node:internal/timers:581:17)
+0|curbe-admin  |     at process.processTimers (node:internal/timers:519:7) {
+0|curbe-admin  |   source: 'timeout-auth'
+0|curbe-admin  | }
+0|curbe-admin  | [WhatsApp OAuth] Got access token for company: 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp OAuth] Using embedded signup data - WABA: 711039251800193 Phone: 977416115444309
+0|curbe-admin  | [WhatsApp OAuth] Phone number lookup attempt 1/3 for WABA 711039251800193
+0|curbe-admin  | [WhatsApp OAuth] phone_numbers response: {
+0|curbe-admin  |   "data": [
+0|curbe-admin  |     {
+0|curbe-admin  |       "id": "977416115444309",
+0|curbe-admin  |       "display_phone_number": "+1 305-393-6666",
+0|curbe-admin  |       "verified_name": "Curbe",
+0|curbe-admin  |       "quality_rating": "UNKNOWN"
+0|curbe-admin  |     },
+0|curbe-admin  |     {
+0|curbe-admin  |       "id": "977042948821102",
+0|curbe-admin  |       "display_phone_number": "+1 786-763-1593",
+0|curbe-admin  |       "verified_name": "Curbe",
+0|curbe-admin  |       "quality_rating": "GREEN"
+0|curbe-admin  |     }
+0|curbe-admin  |   ],
+0|curbe-admin  |   "paging": {
+0|curbe-admin  |     "cursors": {
+0|curbe-admin  |       "before": "QVFIU0hxSTZAJT1M5Mk5NdHk5Sm90VngxZAGtyUl9YWTY1MEdyS0ZAJckFZATzlHNm1vU1NWOS05Y1ZAPVDdvTW9lSlV5VlNBVnlZAdDRiODhZAMjZAXUGxVc19RYU9R",
+0|curbe-admin  |       "after": "QVFIUzJnY0Y4bUFsaXNQbGFIWlVicERybEV6eFhRNHNHdmZAIdGM5Yk9nQjkxZAVF0a3FDLW8zTS1PZAHVCUWhUZAEZA2SWpIZA212bWFtTzZAZAT3JmZAmFtakc4MG53"
+0|curbe-admin  |     }
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | [WhatsApp OAuth] Found phone number: 977416115444309 +13053936666
+0|curbe-admin  | [WhatsApp OAuth] Connection saved successfully for company: 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp OAuth] Received - code: present wabaId: not provided phoneNumberId: not provided
+0|curbe-admin  | [WhatsApp OAuth] Exchanging code from FB SDK popup
+0|curbe-admin  | [WhatsApp OAuth] Could not enable voice calling: (#141000) The phone number is not a valid Cloud API number
+0|curbe-admin  | 4:15:32 PM [express] POST /api/integrations/meta/whatsapp/exchange-code 200 in 3068ms :: {"success":…
+0|curbe-admin  | [WhatsApp OAuth] Token exchange failed: {
+0|curbe-admin  |   message: 'This authorization code has been used.',
+0|curbe-admin  |   type: 'OAuthException',
+0|curbe-admin  |   code: 100,
+0|curbe-admin  |   error_subcode: 36009,
+0|curbe-admin  |   fbtrace_id: 'AibaJN-SH9EwURdxZUQsR7b'
+0|curbe-admin  | }
+0|curbe-admin  | 4:15:32 PM [express] POST /api/integrations/meta/whatsapp/exchange-code 400 in 152ms :: {"error":"Th…
+0|curbe-admin  | 4:15:32 PM [express] GET /api/integrations/whatsapp/status 200 in 15ms :: {"connected":true,"connect…
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 unregistered from company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WhatsApp Call WS] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user 4f49a9c8-a3fb-4724-b96c-5006f773f2c6
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 4f49a9c8-a3fb-4724-b96c-5006f773f2c6 registered for company 4e62c351-05a4-496c-9085-7362c7c08333
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=4f49a9c8-a3fb-4724-b96c-5006f773f2c6, companyId=4e62c351-05a4-496c-9085-7362c7c08333, role=admin
+

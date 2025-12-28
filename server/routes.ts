@@ -27974,6 +27974,94 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+
+  // GET /api/whatsapp/meta/media/:mediaId/stream - Stream WhatsApp media binary directly
+  app.get("/api/whatsapp/meta/media/:mediaId/stream", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const { mediaId } = req.params;
+
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      if (!mediaId) {
+        return res.status(400).json({ error: "Media ID is required" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected" });
+      }
+
+      if (!connection.accessTokenEnc) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete" });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+
+      // Step 1: Get media URL from Meta Graph API
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${mediaId}`;
+      
+      const mediaInfoResponse = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!mediaInfoResponse.ok) {
+        const errorData = await mediaInfoResponse.json() as any;
+        console.error("[WhatsApp Media Stream] Failed to get media info:", errorData);
+        return res.status(400).json({ error: errorData?.error?.message || "Failed to get media info" });
+      }
+
+      const mediaInfo = await mediaInfoResponse.json() as any;
+
+      if (!mediaInfo.url) {
+        return res.status(400).json({ error: "No media URL returned from Meta" });
+      }
+
+      // Step 2: Download the actual media file from Meta's CDN (requires auth)
+      const mediaResponse = await fetch(mediaInfo.url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!mediaResponse.ok) {
+        console.error("[WhatsApp Media Stream] Failed to download media:", mediaResponse.status);
+        return res.status(400).json({ error: "Failed to download media file" });
+      }
+
+      // Step 3: Set response headers
+      const mimeType = mediaInfo.mime_type || "application/octet-stream";
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      
+      if (mediaInfo.file_size) {
+        res.setHeader("Content-Length", mediaInfo.file_size);
+      }
+
+      // Step 4: Stream the binary response
+      const buffer = await mediaResponse.arrayBuffer();
+      res.send(Buffer.from(buffer));
+
+    } catch (error) {
+      console.error("[WhatsApp Media Stream] Error:", error);
+      return res.status(500).json({ error: "Failed to stream media" });
+    }
+  });
   // POST /api/whatsapp/meta/send-media - Send media message using media_id
   app.post("/api/whatsapp/meta/send-media", requireActiveCompany, async (req: Request, res: Response) => {
     try {

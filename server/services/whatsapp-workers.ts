@@ -278,27 +278,35 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
           let textBody = null;
           let mediaUrl = null;
           let mediaMimeType = null;
+          let mediaFileName = null;
+          let mediaFileSize = null;
 
           if (msg.text) {
             textBody = msg.text.body;
           } else if (msg.image) {
             mediaUrl = msg.image.id;
             mediaMimeType = msg.image.mime_type;
+            mediaFileSize = msg.image.file_size;
             textBody = msg.image.caption || null;
           } else if (msg.video) {
             mediaUrl = msg.video.id;
             mediaMimeType = msg.video.mime_type;
+            mediaFileSize = msg.video.file_size;
             textBody = msg.video.caption || null;
           } else if (msg.audio) {
             mediaUrl = msg.audio.id;
             mediaMimeType = msg.audio.mime_type;
+            mediaFileSize = msg.audio.file_size;
           } else if (msg.document) {
             mediaUrl = msg.document.id;
             mediaMimeType = msg.document.mime_type;
-            textBody = msg.document.filename || msg.document.caption || null;
+            mediaFileName = msg.document.filename;
+            mediaFileSize = msg.document.file_size;
+            textBody = msg.document.caption || null;
           } else if (msg.sticker) {
             mediaUrl = msg.sticker.id;
             mediaMimeType = msg.sticker.mime_type;
+            mediaFileSize = msg.sticker.file_size;
           } else if (msg.location) {
             textBody = `Location: ${msg.location.latitude}, ${msg.location.longitude}`;
           } else if (msg.contacts) {
@@ -306,8 +314,21 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
           }
 
           // Store in telnyxMessages for unified inbox
-          const messageText = textBody || (mediaUrl ? `[${messageType}]` : "[message]");
-          const messageMediaUrls = mediaUrl ? [mediaUrl] : null;
+          // For WhatsApp media, store metadata as JSON with wa_media: prefix
+          let messageMediaUrls: string[] | null = null;
+          if (mediaUrl) {
+            // Encode media metadata with wa_media: prefix for frontend parsing
+            const mediaEntry = `wa_media:${JSON.stringify({
+              mediaId: mediaUrl,
+              mediaType: messageType,
+              mimeType: mediaMimeType || "",
+              fileName: mediaFileName || "",
+              fileSize: mediaFileSize || 0
+            })}`;
+            messageMediaUrls = [mediaEntry];
+          }
+          
+          const messageText = textBody || (mediaUrl ? (mediaFileName || `[${messageType}]`) : "[message]");
           
           await db.insert(telnyxMessages).values({
             conversationId: inboxConversation.id,

@@ -1560,6 +1560,148 @@ export default function InboxPage() {
                           {message.mediaUrls && message.mediaUrls.length > 0 && (
                             <div className="flex flex-col gap-2 mt-1">
                               {message.mediaUrls.map((url, idx) => {
+                                // Check if this is WhatsApp media metadata (stored as JSON string with wa_media: prefix)
+                                if (url.startsWith('wa_media:')) {
+                                  try {
+                                    const waMedia = JSON.parse(url.substring(9));
+                                    const { mediaId, mediaType, mimeType, fileName, fileSize } = waMedia;
+                                    const streamUrl = `/api/whatsapp/meta/media/${mediaId}/stream`;
+                                    
+                                    // Render based on media type
+                                    if (mediaType === 'image' || mediaType === 'sticker') {
+                                      return (
+                                        <button 
+                                          key={idx} 
+                                          onClick={() => setPreviewImage(streamUrl)}
+                                          className="block text-left"
+                                          data-testid={`wa-image-${idx}`}
+                                        >
+                                          <img 
+                                            src={streamUrl} 
+                                            alt="WhatsApp Image" 
+                                            className="max-w-[300px] max-h-[300px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                              const parent = target.parentElement;
+                                              if (parent) {
+                                                const fallback = document.createElement('div');
+                                                fallback.className = 'flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg';
+                                                fallback.innerHTML = '<span class="text-sm text-gray-500">Image failed to load</span>';
+                                                parent.appendChild(fallback);
+                                              }
+                                            }}
+                                          />
+                                        </button>
+                                      );
+                                    }
+                                    
+                                    if (mediaType === 'video') {
+                                      return (
+                                        <video 
+                                          key={idx}
+                                          src={streamUrl}
+                                          controls
+                                          className="max-w-[300px] max-h-[300px] rounded-lg"
+                                          data-testid={`wa-video-${idx}`}
+                                        >
+                                          Your browser does not support the video tag.
+                                        </video>
+                                      );
+                                    }
+                                    
+                                    if (mediaType === 'audio') {
+                                      return (
+                                        <audio 
+                                          key={idx}
+                                          src={streamUrl}
+                                          controls
+                                          className="max-w-[300px]"
+                                          data-testid={`wa-audio-${idx}`}
+                                        >
+                                          Your browser does not support the audio tag.
+                                        </audio>
+                                      );
+                                    }
+                                    
+                                    if (mediaType === 'document') {
+                                      const isPdf = mimeType?.includes('pdf');
+                                      return (
+                                        <div 
+                                          key={idx}
+                                          className={cn(
+                                            "flex items-center gap-3 p-3 border rounded-lg max-w-[280px]",
+                                            isPdf 
+                                              ? "bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800"
+                                              : "bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800"
+                                          )}
+                                          data-testid={`wa-document-${idx}`}
+                                        >
+                                          <div className={cn(
+                                            "flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center",
+                                            isPdf ? "bg-red-500" : "bg-blue-500"
+                                          )}>
+                                            <FileText className="h-6 w-6 text-white" />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                              {fileName || 'Document'}
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                              {fileSize ? `${Math.round(fileSize / 1024)} KB` : 'Click to download'}
+                                            </p>
+                                          </div>
+                                          <div className="flex gap-1">
+                                            <a
+                                              href={streamUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className={cn(
+                                                "p-2 rounded-lg transition-colors",
+                                                isPdf ? "hover:bg-red-200 dark:hover:bg-red-700/50" : "hover:bg-blue-200 dark:hover:bg-blue-700/50"
+                                              )}
+                                              title="View"
+                                            >
+                                              <Eye className={cn("h-4 w-4", isPdf ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400")} />
+                                            </a>
+                                            <a
+                                              href={streamUrl}
+                                              download={fileName || 'document'}
+                                              className={cn(
+                                                "p-2 rounded-lg transition-colors",
+                                                isPdf ? "hover:bg-red-200 dark:hover:bg-red-700/50" : "hover:bg-blue-200 dark:hover:bg-blue-700/50"
+                                              )}
+                                              title="Download"
+                                            >
+                                              <Download className={cn("h-4 w-4", isPdf ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400")} />
+                                            </a>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    
+                                    // Fallback for unknown WhatsApp media types
+                                    return (
+                                      <a 
+                                        key={idx}
+                                        href={streamUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        data-testid={`wa-media-${idx}`}
+                                      >
+                                        <FileText className="h-5 w-5 text-gray-500" />
+                                        <span className="text-sm text-gray-700 dark:text-gray-300">Media Attachment</span>
+                                        <Download className="h-4 w-4 text-gray-400" />
+                                      </a>
+                                    );
+                                  } catch (e) {
+                                    console.error('Failed to parse WhatsApp media metadata:', e);
+                                    return null;
+                                  }
+                                }
+                                
+                                // Regular URL handling (for non-WhatsApp media)
                                 const isPdf = url.toLowerCase().includes('.pdf') || url.toLowerCase().includes('application/pdf');
                                 
                                 if (isPdf) {
