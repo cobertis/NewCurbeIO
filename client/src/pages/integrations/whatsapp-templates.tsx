@@ -61,7 +61,9 @@ import {
   Sparkles,
   AlertTriangle,
   CheckCircle2,
-  Lightbulb
+  Lightbulb,
+  Pencil,
+  Info
 } from "lucide-react";
 
 interface TemplateComponent {
@@ -118,9 +120,11 @@ export default function WhatsAppTemplatesPage() {
   const [rowsPerPage, setRowsPerPage] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
 
   // AI assist state
   const [aiPurpose, setAiPurpose] = useState("");
@@ -257,6 +261,58 @@ export default function WhatsAppTemplatesPage() {
       });
     },
   });
+
+  // Edit template mutation
+  const editMutation = useMutation({
+    mutationFn: async (data: { templateId: string; components: any[] }) => {
+      return apiRequest("PATCH", `/api/whatsapp/meta/templates/${data.templateId}`, {
+        wabaId,
+        components: data.components,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Template updated", description: "Changes submitted for review" });
+      setEditSheetOpen(false);
+      setEditingTemplate(null);
+      resetForm();
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/meta/templates", wabaId] });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to update template",
+        description: error.message || "Please try again",
+      });
+    },
+  });
+
+  // Helper to load template data into form for editing
+  const loadTemplateForEdit = (template: Template) => {
+    const headerComp = template.components.find(c => c.type === "HEADER");
+    const bodyComp = template.components.find(c => c.type === "BODY");
+    const footerComp = template.components.find(c => c.type === "FOOTER");
+    const buttonsComp = template.components.find(c => c.type === "BUTTONS");
+
+    setFormData({
+      name: template.name,
+      language: template.language,
+      category: template.category,
+      headerType: headerComp?.format === "TEXT" ? "text" : "none",
+      headerText: headerComp?.text || "",
+      bodyText: bodyComp?.text || "",
+      footerText: footerComp?.text || "",
+      buttonType: buttonsComp?.buttons?.length ? "quick_reply" : "none",
+      buttons: buttonsComp?.buttons?.map(b => ({ type: b.type, text: b.text })) || [{ type: "QUICK_REPLY", text: "" }],
+    });
+    setEditingTemplate(template);
+    setEditSheetOpen(true);
+  };
+
+  // Check if template can be edited
+  const canEditTemplate = (status: string) => {
+    const editableStatuses = ["APPROVED", "REJECTED", "PAUSED"];
+    return editableStatuses.includes(status.toUpperCase());
+  };
 
   // AI assist mutation
   const aiAssistMutation = useMutation({
@@ -456,6 +512,18 @@ export default function WhatsAppTemplatesPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        {canEditTemplate(template.status) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                            onClick={() => loadTemplateForEdit(template)}
+                            title="Edit"
+                            data-testid={`button-edit-${template.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -776,6 +844,154 @@ export default function WhatsAppTemplatesPage() {
                 data-testid="button-submit-template"
               >
                 {createMutation.isPending ? "Creating..." : "Create Template"}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit Template Sheet */}
+      <Sheet open={editSheetOpen} onOpenChange={(open) => {
+        setEditSheetOpen(open);
+        if (!open) {
+          setEditingTemplate(null);
+          resetForm();
+        }
+      }}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" data-testid="sheet-edit-template">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <SiWhatsapp className="h-5 w-5 text-emerald-500" />
+              Edit Template
+            </SheetTitle>
+            <SheetDescription>
+              Update the template and resubmit for review
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-6 mt-6">
+            {/* Edit restrictions info */}
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+                <div className="text-sm text-blue-700 dark:text-blue-300">
+                  <p className="font-medium">Editing Restrictions:</p>
+                  <ul className="mt-1 space-y-1 text-xs">
+                    <li>• You cannot change template name, category, or language</li>
+                    <li>• Max 1 edit per 24 hours</li>
+                    <li>• Max 10 edits in 30 days</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Template Info (Read-only) */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-500">Template Name</label>
+              <Input value={formData.name} disabled className="bg-slate-50 dark:bg-slate-800" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-500">Category</label>
+                <Input value={formData.category} disabled className="bg-slate-50 dark:bg-slate-800" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-500">Language</label>
+                <Input value={formData.language} disabled className="bg-slate-50 dark:bg-slate-800" />
+              </div>
+            </div>
+
+            {/* Editable Header */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Header (Optional)</label>
+              <Input
+                value={formData.headerText}
+                onChange={(e) => setFormData(prev => ({ ...prev, headerText: e.target.value }))}
+                placeholder="Header text (max 60 characters)"
+                maxLength={60}
+                data-testid="input-edit-header"
+              />
+              <p className="text-xs text-slate-500">{formData.headerText.length}/60 characters</p>
+            </div>
+
+            {/* Editable Body */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Body <span className="text-red-500">*</span></label>
+              <Textarea
+                value={formData.bodyText}
+                onChange={(e) => setFormData(prev => ({ ...prev, bodyText: e.target.value }))}
+                placeholder="Message body (max 550 characters)"
+                rows={5}
+                maxLength={550}
+                data-testid="input-edit-body"
+              />
+              <p className="text-xs text-slate-500">{formData.bodyText.length}/550 characters</p>
+            </div>
+
+            {/* Editable Footer */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Footer (Optional)</label>
+              <Input
+                value={formData.footerText}
+                onChange={(e) => setFormData(prev => ({ ...prev, footerText: e.target.value }))}
+                placeholder="Footer text (max 60 characters)"
+                maxLength={60}
+                data-testid="input-edit-footer"
+              />
+              <p className="text-xs text-slate-500">{formData.footerText.length}/60 characters</p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button 
+                variant="outline" 
+                onClick={() => { 
+                  setEditSheetOpen(false); 
+                  setEditingTemplate(null);
+                  resetForm(); 
+                }} 
+                data-testid="button-cancel-edit"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!editingTemplate) return;
+                  
+                  const components: any[] = [];
+
+                  if (formData.headerText) {
+                    components.push({
+                      type: "HEADER",
+                      format: "TEXT",
+                      text: formData.headerText,
+                    });
+                  }
+
+                  if (formData.bodyText) {
+                    components.push({
+                      type: "BODY",
+                      text: formData.bodyText,
+                    });
+                  }
+
+                  if (formData.footerText) {
+                    components.push({
+                      type: "FOOTER",
+                      text: formData.footerText,
+                    });
+                  }
+
+                  editMutation.mutate({
+                    templateId: editingTemplate.id,
+                    components,
+                  });
+                }}
+                disabled={editMutation.isPending || !formData.bodyText}
+                data-testid="button-submit-edit"
+              >
+                {editMutation.isPending ? "Updating..." : "Update Template"}
               </Button>
             </div>
           </div>

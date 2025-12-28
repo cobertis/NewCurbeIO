@@ -28124,6 +28124,106 @@ Generate a compliant template that will be approved by Meta.`;
     }
   });
 
+  // PATCH /api/whatsapp/meta/templates/:templateId - Edit an existing template
+  app.patch("/api/whatsapp/meta/templates/:templateId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const { templateId } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      if (!templateId) {
+        return res.status(400).json({ error: "Template ID is required" });
+      }
+
+      const { components, wabaId: bodyWabaId } = req.body;
+
+      // Validate components is an array
+      if (!components || !Array.isArray(components)) {
+        return res.status(400).json({ error: "Components array is required" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active"),
+          ...(bodyWabaId ? [eq(channelConnections.wabaId, bodyWabaId)] : [])
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected. Please connect your WhatsApp Business account first." });
+      }
+
+      if (!connection.accessTokenEnc || !connection.wabaId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete. Please reconnect your account." });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+
+      console.log(`[WhatsApp Templates] Editing template "${templateId}" for WABA ${connection.wabaId}`);
+
+      // Meta API uses POST to edit templates (not PATCH)
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${templateId}`;
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          components: components
+        })
+      });
+
+      const responseData = await response.json() as any;
+
+      if (!response.ok) {
+        console.error("[WhatsApp Templates] Meta API error editing template:", responseData);
+        const metaError = responseData?.error;
+        
+        // Handle specific Meta errors
+        if (metaError?.code === 100 && metaError?.error_subcode === 2388109) {
+          return res.status(400).json({
+            error: "Template cannot be edited. It may be in review or the edit limit has been reached.",
+            code: "EDIT_NOT_ALLOWED",
+            details: metaError
+          });
+        }
+        
+        if (metaError?.code === 100 && metaError?.error_subcode === 2388108) {
+          return res.status(429).json({
+            error: "Edit limit reached. You can only edit a template once every 24 hours (max 10 times in 30 days).",
+            code: "EDIT_LIMIT_REACHED",
+            details: metaError
+          });
+        }
+
+        return res.status(response.status).json({
+          error: metaError?.message || "Failed to edit template",
+          code: metaError?.code || "META_API_ERROR",
+          details: metaError
+        });
+      }
+
+      console.log("[WhatsApp Templates] Template edited successfully:", responseData);
+
+      return res.json({
+        success: true,
+        template: responseData
+      });
+
+    } catch (error) {
+      console.error("[WhatsApp Templates] Error editing template:", error);
+      return res.status(500).json({ error: "Failed to edit template" });
+    }
+  });
   // DELETE /api/whatsapp/meta/templates/:templateName - Delete a template
   app.delete("/api/whatsapp/meta/templates/:templateName", requireActiveCompany, async (req: Request, res: Response) => {
     try {
