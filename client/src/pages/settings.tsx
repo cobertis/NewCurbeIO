@@ -27,6 +27,8 @@ import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as Phone
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import { insertUserSchema, type User, type CompanySettings } from "@shared/schema";
+import Billing from "@/pages/billing";
+import { WhiteLabelSettings } from "@/components/white-label-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
@@ -4042,49 +4044,11 @@ function AutomationsTab() {
 }
 
 function BillingSection() {
-  const [, setLocation] = useLocation();
-  
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Billing & Subscription</CardTitle>
-        <CardDescription>
-          Manage your subscription, payment methods, and view invoices.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button 
-          onClick={() => setLocation('/billing')} 
-          data-testid="button-go-to-billing"
-        >
-          Go to Billing Dashboard
-        </Button>
-      </CardContent>
-    </Card>
-  );
+  return <Billing />;
 }
 
 function WhiteLabelSection() {
-  const [, setLocation] = useLocation();
-  
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>White Label Settings</CardTitle>
-        <CardDescription>
-          Customize the appearance of your CRM with your own branding.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button 
-          onClick={() => setLocation('/white-label')} 
-          data-testid="button-go-to-white-label"
-        >
-          Go to White Label Settings
-        </Button>
-      </CardContent>
-    </Card>
-  );
+  return <WhiteLabelSettings />;
 }
 
 function NotificationsSection() {

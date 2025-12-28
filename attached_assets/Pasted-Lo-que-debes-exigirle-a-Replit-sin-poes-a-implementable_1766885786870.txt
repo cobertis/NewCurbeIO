@@ -1,0 +1,76 @@
+Lo que debes exigirle a Replit (sin poesía, implementable)
+A) Crear un “finalize activation” después del callback
+
+Cuando termina el embedded signup y tú guardas waba_id + phone_number_id, inmediatamente:
+
+Consultar el estado real del número
+GET /{phone_number_id}?fields=status,quality_rating,name_status,verified_name,code_verification_status,account_mode
+
+Si status != "CONNECTED" o code_verification_status != "VERIFIED" o algo indica “not registered”:
+
+Mostrar en UI un paso obligatorio: “Activar número (PIN)”
+
+B) Implementar registro del número (lo que te falta)
+
+Meta exige two-step verification (PIN) para registrar. 
+Facebook Developers
+
+Implementación (backend):
+
+El usuario define un PIN de 6 dígitos (UI en Curbe).
+
+Backend llama el endpoint de registro:
+
+POST /{phone_number_id}/register con el PIN (según la doc de Registration de Meta). 
+Facebook Developers
+
+Re-consultar estado con el GET del punto A y actualizar en DB.
+
+Resultado esperado: el número pasa de Pending → Connected y ya puede enviar/recibir.
+
+Nota brutal: si ustedes no implementan ese “finalize/register”, vas a seguir viendo “Pending” eternamente en muchos casos.
+
+C) “Re-try / Re-register” automático
+
+Crea un botón interno para soporte: “Reintentar activación” que vuelve a ejecutar:
+
+GET status
+
+si no está OK → /register otra vez (con rate limit y logs)
+
+D) Logging que te diga la verdad
+
+En cada intento guardar:
+
+phone_number_id, waba_id, tenant_id
+
+respuesta completa de Graph error (error.message, error.code, fbtrace_id)
+
+Sin eso, estás ciego.
+
+Lo que debes revisar tú en Meta (2 minutos, sin adivinar)
+
+En WhatsApp Manager → ese número → busca si hay sección de Two-step verification / PIN / “Register”.
+Si no está configurado/registrado, ya encontraste el culpable.
+
+Confirma que el negocio tiene información completa (website, address, etc.). Cuando falta info, Meta deja cosas en “pending” más tiempo de lo razonable. (Esto pasa mucho en WABAs nuevos). 
+eGrow Help Center
+
+Punto estratégico (el que te puede estar matando a escala)
+
+Si TODOS los números que conectas quedan “Owned by: Cuidado de Salud Florida” (tu negocio), estás forzando onboarding a tu Business en vez del del cliente. Eso es un riesgo gigante para multi-tenant (compliance + ownership + offboarding).
+Cada cliente debe quedar con su propio WABA bajo su Business Portfolio; tú solo eres el partner/tech provider.
+
+Texto exacto para Replit (copiar/pegar)
+
+“Los números quedan en WhatsApp Manager como Status: Pending y Name: In Review. Necesitamos completar el paso final de activación del Cloud API number. Implementen un ‘Finalize WhatsApp Number Activation’:
+
+Después del callback (ya tenemos waba_id y phone_number_id), llamar:
+GET /{phone_number_id}?fields=status,name_status,verified_name,code_verification_status,quality_rating,account_mode.
+
+Si no está CONNECTED/REGISTERED, mostrar UI para que el usuario ponga un PIN de 6 dígitos y ejecutar:
+POST /{phone_number_id}/register (según docs de Meta Registration, requiere two-step/PIN).
+
+Re-consultar estado y actualizar DB. Agregar botón ‘Reintentar activación’ y logging con fbtrace_id.”
+
+Si haces esto y aún queda Pending, el siguiente paso ya no es “adivinar”: es mirar el GET /{phone_number_id} + el error exacto de /register y ahí cae el motivo real (display name rechazado, business info incompleto, número ya registrado en otro lado, etc.).
