@@ -407,6 +407,28 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
               .where(eq(telnyxMessages.telnyxMessageId, providerMessageId));
             console.log(`[WhatsApp Webhook Worker] Updated inbox message status: ${providerMessageId} -> ${newStatus}`);
           }
+
+          // Update conversation expiration timestamp from Meta's 24-hour window info
+          // Meta only sends this on "sent" status with a conversation object
+          if (newStatus === "sent" && status.conversation?.expiration_timestamp) {
+            try {
+              // Find the message to get its conversationId
+              const [msg] = await db.select({ conversationId: telnyxMessages.conversationId })
+                .from(telnyxMessages)
+                .where(eq(telnyxMessages.telnyxMessageId, providerMessageId))
+                .limit(1);
+
+              if (msg?.conversationId) {
+                const expiresAt = new Date(parseInt(status.conversation.expiration_timestamp) * 1000);
+                await db.update(telnyxConversations)
+                  .set({ conversationExpiresAt: expiresAt })
+                  .where(eq(telnyxConversations.id, msg.conversationId));
+                console.log(`[WhatsApp Webhook Worker] Updated conversation expiration: ${msg.conversationId} -> ${expiresAt.toISOString()}`);
+              }
+            } catch (convError) {
+              console.error(`[WhatsApp Webhook Worker] Failed to update conversation expiration:`, convError);
+            }
+          }
         }
       }
     }

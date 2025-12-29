@@ -6568,6 +6568,9 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   autopilotEnabled: boolean("autopilot_enabled"), // Override company autopilot setting for this conversation
   copilotEnabled: boolean("copilot_enabled"), // Override company copilot setting for this conversation
   
+  // WhatsApp 24-hour conversation window tracking
+  conversationExpiresAt: timestamp("conversation_expires_at"), // When the 24h free-form messaging window expires
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({

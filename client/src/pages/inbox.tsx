@@ -138,6 +138,7 @@ interface TelnyxConversation {
   visitorCurrentUrl?: string | null;
   visitorBrowser?: string | null;
   visitorOs?: string | null;
+  conversationExpiresAt?: string | null;
 }
 
 const getChannelIcon = (channel?: string) => {
@@ -255,6 +256,11 @@ export default function InboxPage() {
   // New conversation WhatsApp template state
   const [newConvTemplate, setNewConvTemplate] = useState<any>(null);
   const [newConvVars, setNewConvVars] = useState<Record<string, string>>({});
+  
+  // WhatsApp 24-hour window countdown
+  const [waWindowTimeLeft, setWaWindowTimeLeft] = useState<string | null>(null);
+  const [waWindowExpired, setWaWindowExpired] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pulseAiMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -478,6 +484,44 @@ export default function InboxPage() {
       setPulseAiMessages([]);
     }
   }, [pulseAiMessagesData]);
+
+  // WhatsApp 24-hour window countdown timer
+  useEffect(() => {
+    if (selectedConversation?.channel !== "whatsapp" || !selectedConversation?.conversationExpiresAt) {
+      setWaWindowTimeLeft(null);
+      setWaWindowExpired(false);
+      return;
+    }
+
+    const calculateTimeLeft = () => {
+      const expiresAt = new Date(selectedConversation.conversationExpiresAt!).getTime();
+      const now = Date.now();
+      const diff = expiresAt - now;
+
+      if (diff <= 0) {
+        setWaWindowExpired(true);
+        setWaWindowTimeLeft(null);
+        return;
+      }
+
+      setWaWindowExpired(false);
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      if (hours > 0) {
+        setWaWindowTimeLeft(`${hours}h ${minutes}m`);
+      } else if (minutes > 0) {
+        setWaWindowTimeLeft(`${minutes}m ${seconds}s`);
+      } else {
+        setWaWindowTimeLeft(`${seconds}s`);
+      }
+    };
+
+    calculateTimeLeft();
+    const interval = setInterval(calculateTimeLeft, 1000);
+    return () => clearInterval(interval);
+  }, [selectedConversation?.channel, selectedConversation?.conversationExpiresAt]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ conversationId, text, isInternalNote, files, optimisticId }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[]; optimisticId: string }) => {
@@ -2182,6 +2226,46 @@ export default function InboxPage() {
               "absolute bottom-4 left-4 right-4 rounded-lg border bg-white dark:bg-gray-900 shadow-lg min-h-[160px]",
               isInternalNote && "bg-yellow-50 dark:bg-yellow-900/20"
             )}>
+              {/* WhatsApp 24-hour Window Banner */}
+              {selectedConversation?.channel === "whatsapp" && (waWindowTimeLeft || waWindowExpired) && (
+                <div 
+                  className={cn(
+                    "mx-4 mt-3 px-3 py-2 rounded-lg flex items-center justify-between",
+                    waWindowExpired 
+                      ? "bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800" 
+                      : "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800"
+                  )}
+                  data-testid="whatsapp-window-banner"
+                >
+                  <div className="flex items-center gap-2">
+                    <SiWhatsapp className={cn(
+                      "h-4 w-4",
+                      waWindowExpired ? "text-red-500" : "text-emerald-500"
+                    )} />
+                    <span className={cn(
+                      "text-xs font-medium",
+                      waWindowExpired ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"
+                    )}>
+                      {waWindowExpired ? "Conversation window closed" : "Conversation window open"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {waWindowExpired ? (
+                      <span className="text-xs text-red-600 dark:text-red-400">
+                        Use a template to re-open
+                      </span>
+                    ) : (
+                      <>
+                        <Clock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs font-mono font-medium text-emerald-700 dark:text-emerald-300">
+                          {waWindowTimeLeft}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Pending AI Approval Banner */}
               {currentConversationPendingApproval && (
                 <div 
