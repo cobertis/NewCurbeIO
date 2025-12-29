@@ -2304,7 +2304,7 @@ export default function InboxPage() {
                     }
                   }}
                   className={cn(
-                    "min-h-[60px] max-h-32 resize-none border-0 shadow-none focus-visible:ring-0 p-0",
+                    "min-h-[90px] max-h-40 resize-none border-0 shadow-none focus-visible:ring-0 p-0",
                     isInternalNote && "bg-yellow-50"
                   )}
                   data-testid="input-message"
@@ -2342,13 +2342,13 @@ export default function InboxPage() {
               )}
 
               {/* Bottom toolbar row: icons | internal note toggle | send button */}
-              <div className="px-4 pb-3 flex items-center justify-between">
+              <div className="px-4 pb-2 flex items-center justify-between">
                 {/* Left: Toolbar Icons */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-emoji">
-                        <Smile className="h-4 w-4 text-muted-foreground" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7" data-testid="btn-emoji">
+                        <Smile className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 border-0" side="top" align="start">
@@ -2377,11 +2377,11 @@ export default function InboxPage() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8" 
+                          className="h-7 w-7" 
                           onClick={() => fileInputRef.current?.click()}
                           data-testid="btn-attachment"
                         >
-                          <Paperclip className="h-4 w-4 text-muted-foreground" />
+                          <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Attach file</TooltipContent>
@@ -2394,11 +2394,11 @@ export default function InboxPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8" 
+                            className="h-7 w-7" 
                             onClick={() => setTemplatePickerOpen(true)}
                             data-testid="btn-templates"
                           >
-                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>WhatsApp Templates</TooltipContent>
@@ -2411,11 +2411,11 @@ export default function InboxPage() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8" 
+                          className="h-7 w-7" 
                           onClick={insertVariable}
                           data-testid="btn-variables"
                         >
-                          <Braces className="h-4 w-4 text-muted-foreground" />
+                          <Braces className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Insert variable</TooltipContent>
@@ -2424,8 +2424,8 @@ export default function InboxPage() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-calendar">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" data-testid="btn-calendar">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Schedule</TooltipContent>
@@ -2434,8 +2434,8 @@ export default function InboxPage() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-preview">
-                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" data-testid="btn-preview">
+                          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Preview</TooltipContent>
@@ -2447,13 +2447,13 @@ export default function InboxPage() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className={cn("h-8 w-8", copilotDraft && "bg-purple-100 dark:bg-purple-900/30")}
+                          className={cn("h-7 w-7", copilotDraft && "bg-purple-100 dark:bg-purple-900/30")}
                           onClick={handleAiCopilotClick}
                           disabled={copilotDraftMutation.isPending}
                           data-testid="btn-ai"
                         >
                           <Wand2 className={cn(
-                            "h-4 w-4",
+                            "h-3.5 w-3.5",
                             copilotDraft ? "text-purple-600" : "text-muted-foreground",
                             copilotDraftMutation.isPending && "animate-spin"
                           )} />
@@ -2472,10 +2472,10 @@ export default function InboxPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => setVoiceCallDialogOpen(true)}
-                            className="h-8 w-8"
+                            className="h-7 w-7"
                             data-testid="btn-voice-call-button"
                           >
-                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Request a Call</TooltipContent>
@@ -2485,22 +2485,24 @@ export default function InboxPage() {
                 </div>
 
                 {/* Right: Internal Note Toggle + Send Button */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <Switch
                       id="internal-note"
                       checked={isInternalNote}
                       onCheckedChange={setIsInternalNote}
+                      className="scale-90"
                       data-testid="switch-internal-note"
                     />
-                    <Label htmlFor="internal-note" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
+                    <Label htmlFor="internal-note" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
                       Internal note
                     </Label>
                   </div>
                   <Button
+                    size="sm"
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim() && selectedFiles.length === 0}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-600 hover:bg-blue-700 h-7 px-3 text-xs"
                     data-testid="btn-send-message"
                   >
                     Send
