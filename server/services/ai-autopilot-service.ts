@@ -122,6 +122,10 @@ export class AiAutopilotService {
         finalResponse = response.content;
       }
 
+      // Store pending high-risk tool calls for approval workflow
+      const pendingToolCalls: Array<{ name: string; arguments: string }> = [];
+      let hasHighRiskTools = false;
+
       if (response.toolCalls && response.toolCalls.length > 0) {
         for (const toolCall of response.toolCalls) {
           const toolName = toolCall.function.name;
@@ -146,6 +150,32 @@ export class AiAutopilotService {
           
           const args = JSON.parse(toolCall.function.arguments);
           
+          // Check if this is a high-risk tool that requires approval
+          if (aiToolRegistry.isHighRiskTool(toolName)) {
+            console.log(`[Autopilot] High-risk tool "${toolName}" requires approval - deferring execution`);
+            pendingToolCalls.push({
+              name: toolName,
+              arguments: toolCall.function.arguments,
+            });
+            hasHighRiskTools = true;
+            
+            // For send_message, capture the message for display in pending approval
+            if (toolName === "send_message" && args.message) {
+              finalResponse = args.message;
+            }
+            
+            // For transfer_to_human, set needsHuman and capture reason
+            if (toolName === "transfer_to_human") {
+              needsHuman = true;
+              if (!finalResponse && args.reason) {
+                finalResponse = `Te voy a conectar con un agente para ayudarte. Razón: ${args.reason}`;
+              }
+            }
+            
+            continue;
+          }
+          
+          // Execute low-risk tools immediately
           const result = await aiToolRegistry.executeTool(
             toolName,
             args,
@@ -160,18 +190,6 @@ export class AiAutopilotService {
             action: toolName,
             result,
           });
-
-          if (toolName === "send_message" && result.success) {
-            finalResponse = result.data?.message;
-          }
-          
-          if (toolName === "transfer_to_human") {
-            needsHuman = true;
-            // Use the transfer reason as fallback response if no text was provided
-            if (!finalResponse && args.reason) {
-              finalResponse = `Te voy a conectar con un agente para ayudarte. Razón: ${args.reason}`;
-            }
-          }
         }
       }
 
@@ -183,7 +201,12 @@ export class AiAutopilotService {
       
       const responseConfidence = 0.85;
       
-      const requiresApproval = this.checkIfApprovalRequired(
+      // Require approval if:
+      // 1. Any high-risk tools are pending execution
+      // 2. Human intervention is needed (needsHuman flag)
+      // 3. Confidence is below threshold
+      // 4. Escalation rules require human review
+      const requiresApproval = hasHighRiskTools || this.checkIfApprovalRequired(
         needsHuman,
         responseConfidence,
         confidenceThreshold,
@@ -191,7 +214,13 @@ export class AiAutopilotService {
       );
 
       if (requiresApproval) {
-        console.log(`[Autopilot] Response requires approval for run ${runId}`);
+        const approvalReason = hasHighRiskTools 
+          ? `High-risk tools pending: ${pendingToolCalls.map(t => t.name).join(', ')}`
+          : needsHuman 
+            ? 'Human intervention requested'
+            : `Low confidence: ${responseConfidence}`;
+        
+        console.log(`[Autopilot] Response requires approval for run ${runId}. Reason: ${approvalReason}`);
         
         await db
           .update(aiRuns)
@@ -204,6 +233,7 @@ export class AiAutopilotService {
             tokensIn: response.usage?.prompt_tokens || 0,
             tokensOut: response.usage?.completion_tokens || 0,
             latencyMs,
+            pendingToolCalls: pendingToolCalls.length > 0 ? pendingToolCalls : null,
           })
           .where(eq(aiRuns.id, runId));
 
@@ -280,7 +310,7 @@ export class AiAutopilotService {
     companyId: string,
     runId: string,
     approvedBy: string
-  ): Promise<{ success: boolean; error?: string; messageId?: string; alreadyProcessed?: boolean }> {
+  ): Promise<{ success: boolean; error?: string; messageId?: string; alreadyProcessed?: boolean; executedTools?: string[] }> {
     const { aiDeskService } = await import("./ai-desk-service");
     
     const run = await aiDeskService.getRun(companyId, runId);
@@ -302,10 +332,6 @@ export class AiAutopilotService {
       return { success: false, error: `Run is not pending approval (runState: ${run.runState})` };
     }
 
-    if (!run.outputText) {
-      return { success: false, error: "No response to send" };
-    }
-
     if (!run.conversationId) {
       return { success: false, error: "No conversation associated with this run" };
     }
@@ -324,26 +350,130 @@ export class AiAutopilotService {
     }
 
     try {
-      const existingOutbox = await aiDeskService.getOutboxMessageByRunId(companyId, runId);
-      if (existingOutbox) {
-        if (existingOutbox.status === "sent") {
-          console.log(`[Autopilot] Outbox message already sent for run ${runId}`);
-          return { success: true, alreadyProcessed: true, messageId: existingOutbox.sentMessageId || undefined };
+      // Execute all pending tool calls that were stored during initial processing
+      const pendingToolCalls = (run.pendingToolCalls as Array<{ name: string; arguments: string }>) || [];
+      const executedTools: string[] = [];
+      let messageSent = false;
+      let messageId: string | undefined;
+
+      console.log(`[Autopilot] Executing ${pendingToolCalls.length} pending tool calls for approved run ${runId}`);
+
+      for (const toolCall of pendingToolCalls) {
+        const toolName = toolCall.name;
+        const args = JSON.parse(toolCall.arguments);
+        
+        console.log(`[Autopilot] Executing approved tool: ${toolName}`);
+        
+        // Special handling for send_message - needs to go through Telnyx
+        if (toolName === "send_message") {
+          const messageContent = args.message || run.outputText;
+          if (!messageContent) {
+            console.warn(`[Autopilot] No message content for send_message tool`);
+            continue;
+          }
+
+          // Create or get outbox message for idempotency
+          const existingOutbox = await aiDeskService.getOutboxMessageByRunId(companyId, runId);
+          if (existingOutbox?.status === "sent") {
+            console.log(`[Autopilot] Outbox message already sent for run ${runId}`);
+            executedTools.push(toolName);
+            messageSent = true;
+            messageId = existingOutbox.sentMessageId || undefined;
+            continue;
+          }
+
+          let outboxMessage = existingOutbox;
+          if (!outboxMessage) {
+            outboxMessage = await aiDeskService.createOutboxMessage({
+              companyId,
+              runId,
+              conversationId: run.conversationId,
+              messageContent,
+              status: "pending",
+              attempts: 0,
+            });
+          }
+
+          const { sendTelnyxMessage } = await import("./telnyx-messaging-service");
+          const sendResult = await sendTelnyxMessage({
+            from: conversation.companyPhoneNumber,
+            to: conversation.phoneNumber,
+            text: messageContent,
+            companyId,
+          });
+
+          if (!sendResult.success) {
+            console.error(`[Autopilot] Failed to send approved message:`, sendResult.error);
+            await aiDeskService.updateOutboxMessage(companyId, outboxMessage.id, {
+              status: "failed",
+              lastError: sendResult.error || "Failed to send",
+              attempts: (outboxMessage.attempts || 0) + 1,
+            });
+            continue;
+          }
+
+          const [newMessage] = await db.insert(telnyxMessages).values({
+            conversationId: conversation.id,
+            direction: "outbound",
+            messageType: "outgoing",
+            channel: conversation.channel || "sms",
+            text: messageContent,
+            contentType: "text",
+            status: "sent",
+            telnyxMessageId: sendResult.messageId,
+            sentAt: new Date(),
+          }).returning();
+
+          await db
+            .update(telnyxConversations)
+            .set({
+              lastMessage: messageContent.substring(0, 200),
+              lastMessageAt: new Date(),
+            })
+            .where(eq(telnyxConversations.id, conversation.id));
+
+          await aiDeskService.updateOutboxMessage(companyId, outboxMessage.id, {
+            status: "sent",
+            sentMessageId: newMessage?.id,
+            sentAt: new Date(),
+            attempts: (outboxMessage.attempts || 0) + 1,
+          });
+
+          messageSent = true;
+          messageId = newMessage?.id;
+          executedTools.push(toolName);
+        } else {
+          // Execute other high-risk tools (create_ticket, update_contact_field, transfer_to_human)
+          const result = await aiToolRegistry.executeTool(
+            toolName,
+            args,
+            {
+              companyId,
+              conversationId: run.conversationId,
+              runId,
+            }
+          );
+
+          // Log the tool execution
+          await db.insert(aiActionLogs).values({
+            companyId,
+            runId,
+            toolName,
+            args,
+            result,
+            success: result.success,
+            error: result.error || null,
+          });
+
+          if (result.success) {
+            executedTools.push(toolName);
+          } else {
+            console.error(`[Autopilot] Tool ${toolName} failed:`, result.error);
+          }
         }
       }
 
-      let outboxMessage = existingOutbox;
-      if (!outboxMessage) {
-        outboxMessage = await aiDeskService.createOutboxMessage({
-          companyId,
-          runId,
-          conversationId: run.conversationId,
-          messageContent: run.outputText,
-          status: "pending",
-          attempts: 0,
-        });
-      }
-
+      // Update run status to approved_sent
       await db
         .update(aiRuns)
         .set({ 
@@ -351,6 +481,7 @@ export class AiAutopilotService {
           status: "completed",
           approvedByUserId: approvedBy,
           approvedAt: new Date(),
+          pendingToolCalls: null, // Clear pending tool calls after execution
         })
         .where(and(
           eq(aiRuns.id, runId),
@@ -358,75 +489,27 @@ export class AiAutopilotService {
           eq(aiRuns.runState, "pending_approval")
         ));
 
-      const { sendTelnyxMessage } = await import("./telnyx-messaging-service");
-      
-      const sendResult = await sendTelnyxMessage({
-        from: conversation.companyPhoneNumber,
-        to: conversation.phoneNumber,
-        text: run.outputText,
-        companyId,
-      });
-
-      if (!sendResult.success) {
-        console.error(`[Autopilot] Failed to send approved message:`, sendResult.error);
-        await aiDeskService.updateOutboxMessage(companyId, outboxMessage.id, {
-          status: "failed",
-          lastError: sendResult.error || "Failed to send",
-          attempts: (outboxMessage.attempts || 0) + 1,
-        });
-        await db
-          .update(aiRuns)
-          .set({ runState: "send_failed" })
-          .where(eq(aiRuns.id, runId));
-        return { success: false, error: sendResult.error || "Failed to send message" };
-      }
-
-      const [message] = await db.insert(telnyxMessages).values({
-        conversationId: conversation.id,
-        direction: "outbound",
-        messageType: "outgoing",
-        channel: conversation.channel || "sms",
-        text: run.outputText,
-        contentType: "text",
-        status: "sent",
-        telnyxMessageId: sendResult.messageId,
-        sentAt: new Date(),
-      }).returning();
-
-      await db
-        .update(telnyxConversations)
-        .set({
-          lastMessage: run.outputText.substring(0, 200),
-          lastMessageAt: new Date(),
-        })
-        .where(eq(telnyxConversations.id, conversation.id));
-
-      await aiDeskService.updateOutboxMessage(companyId, outboxMessage.id, {
-        status: "sent",
-        sentMessageId: message?.id,
-        sentAt: new Date(),
-        attempts: (outboxMessage.attempts || 0) + 1,
-      });
-
+      // Log approval action
       await db.insert(aiActionLogs).values({
         companyId,
         runId,
-        toolName: "message_approved",
-        args: { approvedBy },
+        toolName: "approval_granted",
+        args: { approvedBy, executedTools },
         result: { 
-          sent: true, 
-          messageId: message?.id,
-          telnyxMessageId: sendResult.messageId 
+          approved: true, 
+          executedTools,
+          messageSent,
+          messageId,
         },
         success: true,
       });
 
-      console.log(`[Autopilot] Approved and sent message for run ${runId}`);
+      console.log(`[Autopilot] Approved run ${runId}. Executed tools: ${executedTools.join(', ')}`);
 
-      return { success: true, messageId: message?.id };
+      return { success: true, messageId, executedTools };
     } catch (error: any) {
-      console.error(`[Autopilot] Error sending approved message:`, error);
-      return { success: false, error: error.message || "Failed to send message" };
+      console.error(`[Autopilot] Error executing approved tools:`, error);
+      return { success: false, error: error.message || "Failed to execute approved tools" };
     }
   }
 

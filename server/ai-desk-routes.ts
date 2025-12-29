@@ -561,7 +561,12 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         return res.status(400).json({ error: result.error });
       }
 
-      res.json({ success: true, messageId: result.messageId });
+      res.json({ 
+        success: true, 
+        messageId: result.messageId,
+        executedTools: result.executedTools,
+        alreadyProcessed: result.alreadyProcessed 
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

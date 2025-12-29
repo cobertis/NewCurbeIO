@@ -237,6 +237,15 @@ const AUTOPILOT_TOOL_LEVELS: Record<number, string[]> = {
   3: ["send_message", "transfer_to_human", "create_task", "update_conversation_status", "assign_conversation", "tag_conversation", "create_ticket", "update_contact_field"],
 };
 
+// High-risk tools that require human approval before execution
+// These tools send external messages, modify CRM data, or affect customer communication
+const HIGH_RISK_TOOLS = [
+  "send_message",      // Sends message to customer
+  "transfer_to_human", // Escalates conversation
+  "create_ticket",     // Creates support tickets
+  "update_contact_field", // Modifies CRM contact data
+];
+
 const COPILOT_TOOLS = [
   "search_knowledge_base",
   "get_customer_info",
@@ -287,6 +296,14 @@ export class AiToolRegistry {
       : AUTOPILOT_TOOL_LEVELS[autopilotLevel] || AUTOPILOT_TOOL_LEVELS[1];
 
     return allowedToolNames.includes(toolName);
+  }
+
+  isHighRiskTool(toolName: string): boolean {
+    return HIGH_RISK_TOOLS.includes(toolName);
+  }
+
+  getHighRiskTools(): string[] {
+    return [...HIGH_RISK_TOOLS];
   }
 
   async executeTool(

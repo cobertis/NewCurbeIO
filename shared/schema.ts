@@ -7235,6 +7235,8 @@ export const aiRuns = pgTable("ai_runs", {
   aiReplyFinal: text("ai_reply_final"),
   wasEdited: boolean("was_edited").default(false),
   editDistance: integer("edit_distance"),
+  // Pending tool calls for approval workflow (stores high-risk tool calls awaiting approval)
+  pendingToolCalls: jsonb("pending_tool_calls"),
   // Approval tracking
   approvedByUserId: varchar("approved_by_user_id").references(() => users.id),
   approvedAt: timestamp("approved_at"),

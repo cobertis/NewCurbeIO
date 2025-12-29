@@ -445,6 +445,7 @@ class SesService {
         .limit(1);
       
       if (suppressed) {
+        console.log(`[SES] Skipping suppressed email: ${request.toEmail} (reason: ${suppressed.reason}, companyId: ${request.companyId})`);
         return { messageId: "", queued: false, error: `Email ${request.toEmail} is suppressed: ${suppressed.reason}` };
       }
       
