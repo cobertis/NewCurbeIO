@@ -1,0 +1,204 @@
+Estoy construyendo un SaaS con registro de usuarios. Quiero bloquear contraseñas que aparecen en filtraciones públicas usando HaveIBeenPwned – Pwned Passwords (Range API con k-anonymity).
+
+Reglas críticas:
+
+Nunca enviar el password en claro a ningún lado.
+
+Calcular SHA-1 del password localmente.
+
+Enviar solo los primeros 5 caracteres del hash (prefix) a HIBP /range/{prefix}.
+
+Comparar localmente el suffix contra la lista devuelta.
+
+Usar header Add-Padding: true por privacidad.
+
+Agregar User-Agent.
+
+No loguear password ni hashes.
+
+Paso 1 — Crear módulo utilitario
+
+Crea el archivo:
+
+src/lib/security/pwnedPassword.ts
+
+Contenido EXACTO (si mi proyecto usa TS). Si uso JS, quita tipos:
+
+import crypto from "crypto";
+
+type PwnedResult = { pwned: boolean; count: number };
+
+const cache = new Map<string, { body: string; expiresAt: number }>();
+const TTL_MS = 60 * 60 * 1000; // 1 hora
+
+async function fetchRange(prefix: string): Promise<string> {
+  const now = Date.now();
+  const hit = cache.get(prefix);
+  if (hit && hit.expiresAt > now) return hit.body;
+
+  const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+    headers: {
+      "User-Agent": "curbe-password-check/1.0",
+      "Add-Padding": "true",
+    },
+  });
+
+  if (!res.ok) throw new Error(`HIBP range request failed: ${res.status}`);
+
+  const body = await res.text();
+  cache.set(prefix, { body, expiresAt: now + TTL_MS });
+  return body;
+}
+
+export async function checkPwnedPassword(password: string): Promise<PwnedResult> {
+  const sha1 = crypto.createHash("sha1").update(password, "utf8").digest("hex").toUpperCase();
+  const prefix = sha1.slice(0, 5);
+  const suffix = sha1.slice(5);
+
+  const body = await fetchRange(prefix);
+
+  for (const line of body.split("\n")) {
+    const [hashSuffix, countStr] = line.trim().split(":");
+    if (hashSuffix === suffix) {
+      return { pwned: true, count: Number(countStr || "0") };
+    }
+  }
+  return { pwned: false, count: 0 };
+}
+
+Paso 2 — Definir política cuando HIBP no responda
+
+Agrega variable de entorno:
+
+PWNED_PASSWORDS_MODE=fail_closed (default)
+
+fail_closed: si HIBP falla → bloquear registro con 503
+
+fail_open: si HIBP falla → permitir registro pero loguear warning (sin datos sensibles)
+
+Crea helper:
+
+src/lib/security/pwnedPolicy.ts
+
+export function getPwnedMode(): "fail_closed" | "fail_open" {
+  const v = (process.env.PWNED_PASSWORDS_MODE || "fail_closed").toLowerCase();
+  return v === "fail_open" ? "fail_open" : "fail_closed";
+}
+
+Paso 3 — Integrarlo en el endpoint de registro (backend)
+
+Encuentra el endpoint real donde se crea el usuario (ejemplos típicos):
+
+Next.js: app/api/auth/register/route.ts o pages/api/auth/register.ts
+
+Express: src/routes/auth.ts o src/controllers/auth.ts
+
+Integración exacta (lógica obligatoria):
+
+Validar password localmente: mínimo 12 caracteres (o tu policy).
+
+Llamar checkPwnedPassword(password) antes de hashear y guardar.
+
+Si pwned === true → responder 400 con código claro.
+
+Si falla HIBP:
+
+si fail_closed → 503
+
+si fail_open → continuar, pero console.warn("HIBP unavailable") sin password/hash.
+
+Snippet de integración (pégalo y ajusta a tu handler)
+import { checkPwnedPassword } from "@/lib/security/pwnedPassword";
+import { getPwnedMode } from "@/lib/security/pwnedPolicy";
+
+function isStrongEnough(pw: string) {
+  return typeof pw === "string" && pw.length >= 12;
+}
+
+export async function registerHandler(req, res) {
+  const { email, password } = req.body;
+
+  if (!isStrongEnough(password)) {
+    return res.status(400).json({ error: "WEAK_PASSWORD", message: "Usa mínimo 12 caracteres." });
+  }
+
+  try {
+    const { pwned, count } = await checkPwnedPassword(password);
+    if (pwned) {
+      return res.status(400).json({
+        error: "PASSWORD_EXPOSED",
+        message: "Esa contraseña aparece en filtraciones públicas. Elige otra diferente.",
+        // opcional: count si lo quieres para métricas internas, pero NO lo muestres al usuario
+      });
+    }
+  } catch (e) {
+    const mode = getPwnedMode();
+    if (mode === "fail_closed") {
+      return res.status(503).json({
+        error: "PASSWORD_CHECK_UNAVAILABLE",
+        message: "Validador de contraseñas temporalmente no disponible. Intenta de nuevo.",
+      });
+    }
+    console.warn("HIBP check failed (fail_open).", (e as Error)?.message);
+  }
+
+  // Continúa con tu flujo normal:
+  // - hash (argon2/bcrypt)
+  // - guardar user
+  // - crear sesión/token
+}
+
+
+Regla: el check tiene que estar antes del hash y del insert del user. No después.
+
+Paso 4 — UX en frontend (para que el usuario entienda)
+
+Cuando el backend responda:
+
+WEAK_PASSWORD → mostrar “mínimo 12 caracteres”
+
+PASSWORD_EXPOSED → mostrar “aparece en filtraciones públicas”
+
+PASSWORD_CHECK_UNAVAILABLE → mostrar “intenta de nuevo”
+
+Importante: no digas “te hackearon”, solo “aparece en filtraciones”.
+
+Paso 5 — Tests mínimos (sin excusas)
+
+Crea test (Vitest/Jest si existe). Si no hay tests, crea script manual:
+
+src/scripts/testPwned.ts
+
+import { checkPwnedPassword } from "../lib/security/pwnedPassword";
+
+(async () => {
+  console.log(await checkPwnedPassword("password")); // debe salir pwned true
+  console.log(await checkPwnedPassword("this-is-a-very-long-unique-password-123!"));
+})();
+
+
+Agrega comando en package.json:
+
+{
+  "scripts": {
+    "test:pwned": "ts-node src/scripts/testPwned.ts"
+  }
+}
+
+Paso 6 — Checklist de “terminado”
+
+Replit, confirma con evidencia:
+
+ Registro bloquea "password" con error PASSWORD_EXPOSED
+
+ Registro permite password fuerte
+
+ No hay logs de password ni hashes
+
+ Add-Padding: true y User-Agent están en el fetch
+
+ Cache por prefix funcionando (Map + TTL)
+
+Nota (para evitar que Replit la cague)
+
+No implementes esto “on keypress” en el frontend. Solo al enviar el form (o al blur), para no generar patrones raros de consultas.
