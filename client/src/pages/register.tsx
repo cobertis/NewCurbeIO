@@ -122,6 +122,13 @@ export default function Register() {
       const result = await response.json();
 
       if (!response.ok) {
+        // Handle specific error codes from the backend
+        if (result.error === "PASSWORD_EXPOSED") {
+          throw new Error("This password appears in known data breaches. Please choose a different password.");
+        }
+        if (result.error === "PASSWORD_CHECK_UNAVAILABLE") {
+          throw new Error("Password validation service temporarily unavailable. Please try again.");
+        }
         throw new Error(result.message || "Registration failed");
       }
 
