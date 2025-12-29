@@ -189,6 +189,32 @@ function detectStopKeyword(messageBody: string): boolean {
   const normalizedBody = messageBody.trim().toUpperCase();
   return stopKeywords.some(keyword => normalizedBody === keyword || normalizedBody.startsWith(keyword + " "));
 }
+
+/**
+ * Validate that a Stripe resource belongs to the authenticated company.
+ * This prevents Company A from accessing Company B's Stripe resources.
+ * 
+ * @param companyStripeId - The stripeCustomerId stored in our database for the company
+ * @param requestedStripeId - The Stripe customerId being accessed/used in the operation
+ * @param resourceType - Description of the resource for error messaging (e.g., "customer", "subscription")
+ * @throws Error with 403-appropriate message if ownership validation fails
+ */
+function validateStripeOwnership(
+  companyStripeId: string | null | undefined,
+  requestedStripeId: string | null | undefined,
+  resourceType: string = "resource"
+): void {
+  if (!companyStripeId) {
+    throw new Error(`Unauthorized: Company has no Stripe ${resourceType} configured`);
+  }
+  if (!requestedStripeId) {
+    throw new Error(`Unauthorized: No Stripe ${resourceType} ID provided`);
+  }
+  if (companyStripeId !== requestedStripeId) {
+    console.error(`[STRIPE SECURITY] Ownership validation failed: company=${companyStripeId}, requested=${requestedStripeId}`);
+    throw new Error(`Unauthorized: Stripe ${resourceType} does not belong to this company`);
+  }
+}
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Serve static files from public folder
   app.use(express.static(path.join(process.cwd(), 'public')));
@@ -464,6 +490,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     req.user = user;
     next();
   };
+  
   // Middleware to check authentication and company active status
   const requireActiveCompany = async (req: Request, res: Response, next: Function) => {
     if (!req.session.userId) {
@@ -535,6 +562,41 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     req.user = user;
     next();
   };
+  
+
+  /**
+   * TENANT ISOLATION: Verify resource ownership
+   * 
+   * Use this helper in all endpoints that access resources by ID to ensure
+   * users can only access resources belonging to their company.
+   * 
+   * @param resourceCompanyId - The companyId of the resource being accessed
+   * @param userCompanyId - The companyId of the authenticated user
+   * @param userRole - The role of the authenticated user (optional - superadmin bypasses check)
+   * @returns true if access is allowed, false otherwise
+   * 
+   * Usage in route handlers:
+   *   if (!ensureOwnership(resource.companyId, currentUser.companyId, currentUser.role)) {
+   *     return res.status(403).json({ message: "Access denied" });
+   *   }
+   */
+  function ensureOwnership(
+    resourceCompanyId: string | null | undefined,
+    userCompanyId: string | null | undefined,
+    userRole?: string
+  ): boolean {
+    // Superadmin can access all resources
+    if (userRole === "superadmin") {
+      return true;
+    }
+    // Both must have companyId set
+    if (!resourceCompanyId || !userCompanyId) {
+      return false;
+    }
+    // Company IDs must match
+    return resourceCompanyId === userCompanyId;
+  }
+
   // ==================== PUBLIC ROUTES (NO AUTH REQUIRED) ====================
   // These routes MUST be defined BEFORE any authenticated routes to ensure
   // they are accessible without authentication
@@ -799,6 +861,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     // Documents
     'application/pdf': 'pdf',
   };
+  
   /**
    * Downloads attachment from BlueBubbles and saves it permanently to local storage
    * Returns the local file path relative to server root
@@ -2715,6 +2778,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     record.count++;
     next();
   };
+  
   // Clean up old rate limit records every 5 minutes
   setInterval(() => {
     const now = Date.now();
@@ -3880,6 +3944,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   script.onerror = function() {
     console.error('[GOOGLE_MAPS] Failed to load Google Maps JavaScript API');
   };
+  
   document.head.appendChild(script);
 })();
 `;
@@ -8266,6 +8331,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Retrieve the payment method from Stripe to get card details
+      
+      // SECURITY: Validate the payment method is attached to the correct customer
+      if (pm.customer && pm.customer !== subscriptionCustomerId) {
+        console.error(`[STRIPE SECURITY] Payment method ${paymentMethodId} belongs to customer ${pm.customer}, not ${subscriptionCustomerId}`);
+        return res.status(403).json({ message: "Payment method does not belong to this company" });
+      }
       const pm = await stripeClient.paymentMethods.retrieve(paymentMethodId);
       
       // Check if this is the first payment method (make it default)
@@ -8320,6 +8391,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Security check: verify ownership
+      
+      // SECURITY: Validate payment method belongs to this company's subscription
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (subscription?.stripeCustomerId && pmRecord.stripeCustomerId && subscription.stripeCustomerId !== pmRecord.stripeCustomerId) {
+        console.error(`[STRIPE SECURITY] Payment method customer mismatch: pm=${pmRecord.stripeCustomerId}, subscription=${subscription.stripeCustomerId}`);
+        return res.status(403).json({ message: "Payment method does not belong to this company" });
+      }
       if (pmRecord.ownerUserId !== currentUser.id) {
         return res.status(403).json({ message: "Not authorized to modify this payment method" });
       }
@@ -8361,6 +8439,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Security check: verify ownership
+      
+      // SECURITY: Validate payment method belongs to this company's subscription
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (subscription?.stripeCustomerId && pmRecord.stripeCustomerId && subscription.stripeCustomerId !== pmRecord.stripeCustomerId) {
+        console.error(`[STRIPE SECURITY] Payment method customer mismatch: pm=${pmRecord.stripeCustomerId}, subscription=${subscription.stripeCustomerId}`);
+        return res.status(403).json({ message: "Payment method does not belong to this company" });
+      }
       if (pmRecord.ownerUserId !== currentUser.id) {
         return res.status(403).json({ message: "Not authorized to delete this payment method" });
       }
@@ -28517,6 +28602,7 @@ CRITICAL REMINDERS:
     document: { maxSize: 100 * 1024 * 1024, mimeTypes: ['application/pdf', 'application/vnd.ms-powerpoint', 'application/msword', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain'] },
     sticker: { maxSize: 500 * 1024, mimeTypes: ['image/webp'] }
   };
+  
 
   // Multer storage for WhatsApp media uploads
   const whatsappMediaStorage = multer.memoryStorage();
