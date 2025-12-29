@@ -20,6 +20,8 @@ import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
 import twilio from "twilio";
 import fetch from "node-fetch";
+import { checkPwnedPassword } from "./lib/security/pwnedPassword";
+import { getPwnedMode } from "./lib/security/pwnedPolicy";
 import { exec } from 'child_process';
 import { promisify } from 'util';
 const execAsync = promisify(exec);
@@ -3453,6 +3455,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const existingUser = await storage.getUserByEmail(adminData.email);
       if (existingUser) {
         return res.status(400).json({ message: "Email already registered" });
+      }
+
+      // Check password against HaveIBeenPwned (only for password-based registration)
+      if (adminData.password) {
+        try {
+          const { pwned } = await checkPwnedPassword(adminData.password);
+          if (pwned) {
+            return res.status(400).json({
+              error: "PASSWORD_EXPOSED",
+              message: "This password appears in known data breaches. Please choose a different password.",
+            });
+          }
+        } catch (hibpError) {
+          const mode = getPwnedMode();
+          if (mode === "fail_closed") {
+            return res.status(503).json({
+              error: "PASSWORD_CHECK_UNAVAILABLE",
+              message: "Password validation service temporarily unavailable. Please try again.",
+            });
+          }
+          console.warn("[HIBP] Check failed (fail_open):", (hibpError as Error)?.message);
+        }
       }
       // Create company first (using admin email as company email)
       const newCompany = await storage.createCompany({
