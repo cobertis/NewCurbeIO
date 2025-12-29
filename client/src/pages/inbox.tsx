@@ -2179,7 +2179,7 @@ export default function InboxPage() {
               </div>
             ) : (
             <div className={cn(
-              "absolute bottom-4 left-4 right-4 rounded-lg border bg-white dark:bg-gray-900 shadow-lg",
+              "absolute bottom-4 left-4 right-4 rounded-lg border bg-white dark:bg-gray-900 shadow-lg min-h-[160px]",
               isInternalNote && "bg-yellow-50 dark:bg-yellow-900/20"
             )}>
               {/* Pending AI Approval Banner */}
