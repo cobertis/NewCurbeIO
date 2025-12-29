@@ -4,6 +4,22 @@ import logo from "@assets/logo no fondo_1760457183587.png";
 import productMockup from "@assets/image_1766258646875.png";
 import { Star } from "lucide-react";
 
+import partnerLogo1 from "@assets/77b640535dffb1a3a12d73103506709fbb276965b2be187431eec30f850b2_1767046239629.webp";
+import partnerLogo2 from "@assets/084f7af56c84d676cb56fa563d9543869db8292a6883c7caf697a60bc159d_1767046243376.webp";
+import partnerLogo3 from "@assets/0401d3f7e9583614c6a07a9c0c073a74077150ce285957b9bf2edaf1092f8_1767046247306.webp";
+import partnerLogo4 from "@assets/a960c99d57404e59dd6cf342d000504a7012dbc2829da8918435fc0433d7e_1767046251215.webp";
+import partnerLogo5 from "@assets/ad1762e2cab6dac864b3fc59aa460cb43bfe0adcac174bd0744332cdf9c41_1767046257018.webp";
+import partnerLogo6 from "@assets/a89b5dba114815b08f2326c3979dff3b4e7216012592c8d16b5e17f6dd10d_1767046260519.webp";
+
+const partnerLogos = [
+  partnerLogo1,
+  partnerLogo2,
+  partnerLogo3,
+  partnerLogo4,
+  partnerLogo5,
+  partnerLogo6,
+];
+
 const testimonials = [
   {
     quote: "The interface and ease of use makes our work so much easier, whilst giving us the professional image we strive to maintain.",
@@ -37,13 +53,6 @@ const testimonials = [
   },
 ];
 
-const partnerLogos = [
-  "FORTO",
-  "QiQ", 
-  "IXICA",
-  "Cataphract",
-  "Marketplace",
-];
 
 interface AuthShellProps {
   title: string;
@@ -217,15 +226,15 @@ export function AuthShell({
           </div>
 
           {/* Logo Row - Footer */}
-          <div className="flex items-center justify-center gap-7 mt-8 flex-wrap">
-            {partnerLogos.map((name, index) => (
-              <span 
+          <div className="flex items-center justify-center gap-8 mt-6 flex-wrap">
+            {partnerLogos.map((logoSrc, index) => (
+              <img 
                 key={index}
-                className="text-gray-500 font-bold text-sm tracking-wide"
-                style={{ opacity: 0.45 }}
-              >
-                {name}
-              </span>
+                src={logoSrc}
+                alt={`Partner ${index + 1}`}
+                className="h-6 w-auto object-contain"
+                style={{ opacity: 0.6 }}
+              />
             ))}
           </div>
         </div>
