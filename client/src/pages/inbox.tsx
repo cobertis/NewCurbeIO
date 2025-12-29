@@ -486,17 +486,39 @@ export default function InboxPage() {
   }, [pulseAiMessagesData]);
 
   // WhatsApp 24-hour window countdown timer
+  // Uses Meta's expiration_timestamp if available, otherwise calculates from last inbound message
   useEffect(() => {
-    if (selectedConversation?.channel !== "whatsapp" || !selectedConversation?.conversationExpiresAt) {
+    if (selectedConversation?.channel !== "whatsapp") {
       setWaWindowTimeLeft(null);
       setWaWindowExpired(false);
       return;
     }
 
+    // Find the last inbound message timestamp to estimate window expiration
+    const lastInboundMessage = messages
+      .filter(m => m.direction === "inbound")
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+
+    // Use Meta's exact expiration if available, otherwise estimate from last inbound message (+24h)
+    let expiresAtTime: number | null = null;
+    
+    if (selectedConversation.conversationExpiresAt) {
+      expiresAtTime = new Date(selectedConversation.conversationExpiresAt).getTime();
+    } else if (lastInboundMessage?.createdAt) {
+      // Estimate: 24 hours from last customer message
+      expiresAtTime = new Date(lastInboundMessage.createdAt).getTime() + (24 * 60 * 60 * 1000);
+    }
+
+    if (!expiresAtTime) {
+      // No inbound messages - window never opened
+      setWaWindowExpired(true);
+      setWaWindowTimeLeft(null);
+      return;
+    }
+
     const calculateTimeLeft = () => {
-      const expiresAt = new Date(selectedConversation.conversationExpiresAt!).getTime();
       const now = Date.now();
-      const diff = expiresAt - now;
+      const diff = expiresAtTime! - now;
 
       if (diff <= 0) {
         setWaWindowExpired(true);
@@ -521,7 +543,7 @@ export default function InboxPage() {
     calculateTimeLeft();
     const interval = setInterval(calculateTimeLeft, 1000);
     return () => clearInterval(interval);
-  }, [selectedConversation?.channel, selectedConversation?.conversationExpiresAt]);
+  }, [selectedConversation?.channel, selectedConversation?.conversationExpiresAt, messages]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ conversationId, text, isInternalNote, files, optimisticId }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[]; optimisticId: string }) => {
@@ -1769,7 +1791,7 @@ export default function InboxPage() {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4 pb-36 bg-[#efeae2] dark:bg-[#0b141a]" onMouseUp={handleTextSelection}>
+            <ScrollArea className="flex-1 p-4 pb-52 bg-[#efeae2] dark:bg-[#0b141a]" onMouseUp={handleTextSelection}>
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
                   <LoadingSpinner message="Loading messages..." fullScreen={false} />
