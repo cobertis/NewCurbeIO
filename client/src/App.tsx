@@ -613,8 +613,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         { title: "Alerts", url: "/system-alerts" },
         { title: "Settings", url: "/settings" },
       ]
-    : hasPhoneSystemAccess
-    ? [...baseAdminItems, { title: "Phone System", url: "/phone-system" }]
     : baseAdminItems;
 
   const circularButtonClass = "h-10 w-10 rounded-full bg-white/90 dark:bg-gray-800/70 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-all duration-200";
