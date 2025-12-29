@@ -40092,9 +40092,24 @@ CRITICAL REMINDERS:
       const companyPhoneNumber = waConnection.phoneNumberE164 || "";
       const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
 
-      // Normalize recipient phone number (remove non-digits, ensure no leading +)
-      const recipientPhone = phoneNumber.replace(/\D/g, "");
-
+      // Normalize recipient phone number to E.164 format with + prefix
+      // This must match the format used in webhook processing for proper conversation matching
+      const digitsOnly = phoneNumber.replace(/\D/g, "");
+      const recipientPhoneE164 = `+${digitsOnly}`;
+      // For Meta API, send without the + prefix
+      const recipientPhoneMeta = digitsOnly;
+      // Normalize recipient phone number to E.164 format with + prefix
+      // This must match the format used in webhook processing for proper conversation matching
+      const digitsOnly = phoneNumber.replace(/\D/g, "");
+      const recipientPhoneE164 = `+${digitsOnly}`;
+      // For Meta API, send without the + prefix
+      const recipientPhoneMeta = digitsOnly;
+      // Normalize recipient phone number to E.164 format with + prefix
+      // This must match the format used in webhook processing for proper conversation matching
+      const digitsOnly = phoneNumber.replace(/\D/g, "");
+      const recipientPhoneE164 = `+${digitsOnly}`;
+      // For Meta API, send without the + prefix
+      const recipientPhoneMeta = digitsOnly;
       // Check if conversation already exists
       let [conversation] = await db
         .select()
