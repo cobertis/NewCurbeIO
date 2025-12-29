@@ -144,55 +144,55 @@ export function AuthShell({
         <div className="auth-diagonal-2" />
         
         {/* Content wrapper */}
-        <div className="relative z-10 flex flex-col justify-between items-center h-full w-full" style={{ padding: 'clamp(32px, 4vw, 56px)' }}>
+        <div className="relative z-10 flex flex-col items-center h-full w-full pt-12 pb-12 px-8">
           
           {/* Testimonial Block - Top */}
-          <div className="flex flex-col items-center text-center max-w-[640px] mt-8">
+          <div className="flex flex-col items-center text-center max-w-[600px]">
             {/* Stars */}
-            <div className="flex gap-1 mb-5">
+            <div className="flex gap-1.5 mb-6">
               {[1, 2, 3, 4, 5].map((i) => (
-                <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />
+                <Star key={i} className="w-6 h-6 fill-amber-400 text-amber-400" />
               ))}
             </div>
             
             {/* Quote */}
             <p 
-              className="text-gray-800 leading-relaxed mb-6 font-medium"
-              style={{ fontSize: 'clamp(18px, 1.6vw, 22px)', lineHeight: '1.5' }}
+              className="text-gray-700 leading-relaxed mb-6 font-medium italic"
+              style={{ fontSize: 'clamp(20px, 2vw, 26px)', lineHeight: '1.45' }}
             >
               "{renderQuoteWithHighlight()}"
             </p>
             
             {/* Author */}
-            <p className="text-[14px] font-bold text-gray-900">{testimonial.authorName}</p>
-            <p className="text-[12px] text-gray-500">{testimonial.authorTitle}</p>
+            <p className="text-[15px] font-bold text-gray-900 mb-1">{testimonial.authorName}</p>
+            <p className="text-[13px] text-gray-500">{testimonial.authorTitle}</p>
           </div>
 
-          {/* Mockup Area - Center/Bottom with floating effect */}
-          <div className="flex-1 flex items-center justify-center w-full mt-4 overflow-hidden">
+          {/* Mockup Area - Center with floating effect */}
+          <div className="flex-1 flex items-center justify-center w-full mt-6 mb-8 overflow-visible">
             <div 
-              className="w-full h-full flex items-center justify-center transform translate-y-[10px]"
+              className="w-full flex items-center justify-center"
               style={{ 
-                filter: 'drop-shadow(0 18px 40px rgba(17,24,39,0.12))'
+                filter: 'drop-shadow(0 25px 50px rgba(17,24,39,0.15))'
               }}
             >
               <img 
                 src={productMockup} 
                 alt="Product Preview" 
-                className="w-full h-full object-contain max-w-none"
+                className="w-full max-w-[90%] h-auto object-contain"
               />
             </div>
           </div>
 
           {/* Logo Row - Footer */}
-          <div className="flex items-center justify-center gap-10 mb-6 flex-wrap">
+          <div className="flex items-center justify-center gap-8 w-full px-4">
             {partnerLogos.map((logoSrc, index) => (
               <img 
                 key={index}
                 src={logoSrc}
                 alt={`Partner ${index + 1}`}
-                className="h-8 w-auto object-contain"
-                style={{ opacity: 0.6 }}
+                className="h-6 w-auto object-contain grayscale"
+                style={{ opacity: 0.5 }}
               />
             ))}
           </div>
