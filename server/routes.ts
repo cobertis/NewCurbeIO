@@ -40098,25 +40098,13 @@ CRITICAL REMINDERS:
       const recipientPhoneE164 = `+${digitsOnly}`;
       // For Meta API, send without the + prefix
       const recipientPhoneMeta = digitsOnly;
-      // Normalize recipient phone number to E.164 format with + prefix
-      // This must match the format used in webhook processing for proper conversation matching
-      const digitsOnly = phoneNumber.replace(/\D/g, "");
-      const recipientPhoneE164 = `+${digitsOnly}`;
-      // For Meta API, send without the + prefix
-      const recipientPhoneMeta = digitsOnly;
-      // Normalize recipient phone number to E.164 format with + prefix
-      // This must match the format used in webhook processing for proper conversation matching
-      const digitsOnly = phoneNumber.replace(/\D/g, "");
-      const recipientPhoneE164 = `+${digitsOnly}`;
-      // For Meta API, send without the + prefix
-      const recipientPhoneMeta = digitsOnly;
       // Check if conversation already exists
       let [conversation] = await db
         .select()
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.companyId, companyId),
-          eq(telnyxConversations.phoneNumber, recipientPhone),
+          eq(telnyxConversations.phoneNumber, recipientPhoneE164),
           eq(telnyxConversations.channel, "whatsapp")
         ));
 
@@ -40128,7 +40116,7 @@ CRITICAL REMINDERS:
           .insert(telnyxConversations)
           .values({
             companyId,
-            phoneNumber: recipientPhone,
+            phoneNumber: recipientPhoneE164,
             companyPhoneNumber,
             channel: "whatsapp",
             displayName: null,
@@ -40150,7 +40138,7 @@ CRITICAL REMINDERS:
       const templatePayload: any = {
         messaging_product: "whatsapp",
         recipient_type: "individual",
-        to: recipientPhone,
+        to: recipientPhoneMeta,
         type: "template",
         template: {
           name: templateName,
@@ -40253,9 +40241,12 @@ CRITICAL REMINDERS:
       const phoneNumberId = waConnection.phoneNumberId;
       const companyPhoneNumber = waConnection.phoneNumberE164 || "";
       const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
-
-      // Normalize recipient phone number (remove non-digits, ensure no leading +)
-      const recipientPhone = phoneNumber.replace(/\D/g, "");
+      // Normalize recipient phone number to E.164 format with + prefix
+      // This must match the format used in webhook processing for proper conversation matching
+      const digitsOnly = phoneNumber.replace(/\D/g, "");
+      const recipientPhoneE164 = `+${digitsOnly}`;
+      // For Meta API, send without the + prefix
+      const recipientPhoneMeta = digitsOnly;
 
       // Check if conversation already exists
       let [conversation] = await db
@@ -40263,7 +40254,7 @@ CRITICAL REMINDERS:
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.companyId, companyId),
-          eq(telnyxConversations.phoneNumber, recipientPhone),
+          eq(telnyxConversations.phoneNumber, recipientPhoneE164),
           eq(telnyxConversations.channel, "whatsapp")
         ));
 
@@ -40273,7 +40264,7 @@ CRITICAL REMINDERS:
           .insert(telnyxConversations)
           .values({
             companyId,
-            phoneNumber: recipientPhone,
+            phoneNumber: recipientPhoneE164,
             companyPhoneNumber,
             channel: "whatsapp",
             displayName: null,
@@ -40303,7 +40294,7 @@ CRITICAL REMINDERS:
           body: JSON.stringify({
             messaging_product: "whatsapp",
             recipient_type: "individual",
-            to: recipientPhone,
+            to: recipientPhoneMeta,
             type: "text",
             text: { body: text },
           }),
