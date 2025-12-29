@@ -22,7 +22,12 @@ const registerSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   workspaceName: z.string().min(2, "Workspace name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Must contain an uppercase letter")
+    .regex(/[a-z]/, "Must contain a lowercase letter")
+    .regex(/[0-9]/, "Must contain a number")
+    .regex(/[^A-Za-z0-9]/, "Must contain a special character (!@#$%...)"),
   termsAccepted: z.boolean().refine((val) => val === true, "Required"),
 });
 
@@ -438,7 +443,7 @@ export default function Register() {
                     <div className="relative">
                       <Input
                         type={showPassword ? "text" : "password"}
-                        placeholder="Min. 8 characters"
+                        placeholder="8+ chars, uppercase, number, symbol"
                         className="h-10 px-3 pr-10 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
                         {...field}
                         autoComplete="new-password"
