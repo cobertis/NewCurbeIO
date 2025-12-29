@@ -201,9 +201,9 @@ export function AuthShell({
           </div>
 
           {/* Mockup Area - Center/Bottom with floating effect */}
-          <div className="flex-1 flex items-end justify-center w-full mt-8">
+          <div className="flex-1 flex items-center justify-center w-full mt-4 overflow-hidden">
             <div 
-              className="w-full max-w-[620px] transform translate-y-[10px]"
+              className="w-full h-full flex items-center justify-center transform translate-y-[10px]"
               style={{ 
                 filter: 'drop-shadow(0 18px 40px rgba(17,24,39,0.12))'
               }}
@@ -211,7 +211,7 @@ export function AuthShell({
               <img 
                 src={productMockup} 
                 alt="Product Preview" 
-                className="w-full object-contain"
+                className="w-full h-full object-contain max-w-none"
               />
             </div>
           </div>
