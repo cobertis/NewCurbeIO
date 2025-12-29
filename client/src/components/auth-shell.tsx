@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import logo from "@assets/logo no fondo_1760457183587.png";
 import productMockup from "@assets/image_1766258646875.png";
-import { Star } from "lucide-react";
+import { Star, Quote, Shield, Users, TrendingUp, Zap } from "lucide-react";
 
 const testimonials = [
   {
@@ -10,31 +10,43 @@ const testimonials = [
     highlightedText: "interface and ease of use",
     authorName: "Ahmet Deveci",
     authorTitle: "Director, CCTV Aware",
+    avatar: "AD",
   },
   {
     quote: "Curbe has transformed how we manage customer relationships. The automation features save us hours every week.",
     highlightedText: "transformed how we manage",
     authorName: "Maria Rodriguez",
     authorTitle: "CEO, InsureMax Solutions",
+    avatar: "MR",
   },
   {
     quote: "The unified inbox is a game changer. All our client communications in one place makes follow-ups effortless.",
     highlightedText: "game changer",
     authorName: "James Chen",
     authorTitle: "Founder, Premier Insurance Group",
+    avatar: "JC",
   },
   {
     quote: "Our team productivity increased by 40% after switching to Curbe. The CRM just works exactly how we need it.",
     highlightedText: "productivity increased by 40%",
     authorName: "Sarah Mitchell",
     authorTitle: "Operations Director, TrustShield Insurance",
+    avatar: "SM",
   },
   {
     quote: "Finally a CRM that understands the insurance industry. Customer support is exceptional and the platform is intuitive.",
     highlightedText: "understands the insurance industry",
     authorName: "Robert Thompson",
     authorTitle: "Managing Partner, SecureLife Agency",
+    avatar: "RT",
   },
+];
+
+const stats = [
+  { icon: Users, value: "10,000+", label: "Active Users" },
+  { icon: TrendingUp, value: "40%", label: "Productivity Boost" },
+  { icon: Shield, value: "99.9%", label: "Uptime SLA" },
+  { icon: Zap, value: "< 1s", label: "Response Time" },
 ];
 
 interface AuthShellProps {
@@ -53,11 +65,16 @@ export function AuthShell({
   children,
 }: AuthShellProps) {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+        setIsTransitioning(false);
+      }, 300);
+    }, 6000);
     return () => clearInterval(interval);
   }, []);
 
@@ -70,7 +87,7 @@ export function AuthShell({
       return (
         <>
           {parts[0]}
-          <span className="text-blue-500">{highlightedText}</span>
+          <span className="text-white font-medium">{highlightedText}</span>
           {parts[1]}
         </>
       );
@@ -130,43 +147,129 @@ export function AuthShell({
         </div>
       </div>
 
-      {/* RIGHT PANEL - Testimonial */}
+      {/* RIGHT PANEL - Modern Dark Theme */}
       <div 
-        className="hidden lg:flex lg:w-1/2 flex-col items-center justify-between py-12 px-8"
-        style={{ background: 'linear-gradient(180deg, #E8F4FD 0%, #DEF0FC 50%, #D4EBFA 100%)' }}
+        className="hidden lg:flex lg:w-1/2 flex-col relative overflow-hidden"
+        style={{ 
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)'
+        }}
       >
-        {/* Testimonial Section - At top */}
-        <div className="flex flex-col items-center text-center max-w-lg pt-4">
-          <div className="flex gap-1 mb-6">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />
-            ))}
-          </div>
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Gradient Orbs */}
+          <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] rounded-full bg-indigo-500/10 blur-3xl" />
+          <div className="absolute top-[40%] left-[30%] w-[300px] h-[300px] rounded-full bg-cyan-500/5 blur-3xl" />
           
-          <p className="text-[20px] text-gray-700 leading-relaxed mb-6 italic font-light">
-            "{renderQuoteWithHighlight()}"
-          </p>
-          
-          <p className="text-[15px] font-semibold text-gray-800">{testimonial.authorName}</p>
-          <p className="text-[13px] text-gray-500">{testimonial.authorTitle}</p>
-        </div>
-
-        {/* Product Mockup Image - Center */}
-        <div className="flex-1 flex items-center justify-center w-full px-4 py-6">
-          <img 
-            src={productMockup} 
-            alt="Product Preview" 
-            className="w-full max-w-lg object-contain"
+          {/* Grid Pattern */}
+          <div 
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                               linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+              backgroundSize: '60px 60px'
+            }}
           />
         </div>
 
-        {/* Company Logos - At bottom */}
-        <div className="flex items-center justify-center gap-8 flex-wrap pb-4">
-          <span className="text-gray-400 font-bold text-sm tracking-wide">FORTO</span>
-          <span className="text-gray-400 font-bold text-sm tracking-wide">QiQ</span>
-          <span className="text-gray-400 font-bold text-sm tracking-wide">IXICA</span>
-          <span className="text-gray-400 font-bold text-sm tracking-wide">Cataphract</span>
-          <span className="text-gray-400 font-bold text-sm tracking-wide">Marketplace</span>
+        {/* Content Container */}
+        <div className="relative z-10 flex flex-col h-full p-10 lg:p-12">
+          
+          {/* Stats Grid - Top */}
+          <div className="grid grid-cols-2 gap-4 mb-10">
+            {stats.map((stat, index) => (
+              <div 
+                key={index}
+                className="group p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-300"
+              >
+                <stat.icon className="w-5 h-5 text-blue-400/80 mb-2 group-hover:text-blue-400 transition-colors" />
+                <div className="text-2xl font-bold text-white tracking-tight">{stat.value}</div>
+                <div className="text-xs text-slate-400 font-medium">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Testimonial Card - Center */}
+          <div className="flex-1 flex items-center justify-center">
+            <div 
+              className={`w-full max-w-md transition-all duration-300 ${
+                isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
+              }`}
+            >
+              {/* Quote Icon */}
+              <div className="mb-6">
+                <Quote className="w-10 h-10 text-blue-500/40 fill-blue-500/20" />
+              </div>
+              
+              {/* Quote Text */}
+              <p className="text-xl lg:text-2xl text-slate-300 leading-relaxed font-light mb-8">
+                "{renderQuoteWithHighlight()}"
+              </p>
+              
+              {/* Author Info */}
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm shadow-lg shadow-blue-500/20">
+                  {testimonial.avatar}
+                </div>
+                <div>
+                  <p className="text-white font-semibold">{testimonial.authorName}</p>
+                  <p className="text-slate-400 text-sm">{testimonial.authorTitle}</p>
+                </div>
+              </div>
+              
+              {/* Rating Stars */}
+              <div className="flex gap-1 mt-6">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                ))}
+                <span className="text-slate-500 text-sm ml-2">5.0</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Testimonial Dots Indicator */}
+          <div className="flex justify-center gap-2 mb-8">
+            {testimonials.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setIsTransitioning(true);
+                  setTimeout(() => {
+                    setCurrentTestimonial(index);
+                    setIsTransitioning(false);
+                  }, 300);
+                }}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  index === currentTestimonial 
+                    ? 'w-8 bg-blue-500' 
+                    : 'w-1.5 bg-slate-600 hover:bg-slate-500'
+                }`}
+                data-testid={`testimonial-dot-${index}`}
+              />
+            ))}
+          </div>
+
+          {/* Product Mockup - Bottom */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-[#0f172a] z-10 h-8 -top-8" />
+            <div className="relative rounded-t-2xl overflow-hidden border border-white/[0.08] border-b-0 bg-white/[0.02] backdrop-blur-sm">
+              <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.02]">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                <div className="w-2.5 h-2.5 rounded-full bg-green-400/80" />
+                <div className="flex-1 mx-4">
+                  <div className="h-5 w-48 mx-auto rounded-md bg-white/[0.05] flex items-center justify-center">
+                    <span className="text-[10px] text-slate-500">app.curbe.io</span>
+                  </div>
+                </div>
+              </div>
+              <img 
+                src={productMockup} 
+                alt="Product Preview" 
+                className="w-full object-cover object-top max-h-[200px]"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

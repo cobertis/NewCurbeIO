@@ -1,0 +1,111 @@
+Rehacer SOLO el panel derecho del signup/login para que se vea como el de Textmagic (dos columnas, panel derecho con gradiente azul suave, diagonales sutiles, quote arriba centrado, mockup grande abajo con flotación, logos en el footer del panel). Mantener el panel izquierdo (form) como está.
+
+1) Layout (grid exacto)
+
+Página: min-height: 100vh
+
+Contenedor principal: display: grid; grid-template-columns: 55% 45%;
+
+Gap: 0
+
+En desktop, panel derecho ocupa 45% y panel izquierdo 55%.
+
+En mobile (< 1024px): ocultar panel derecho o moverlo abajo con display: none (elige una; recomiendo display:none).
+
+2) Panel derecho (estructura)
+
+Crea un componente AuthRightPanel con esta estructura:
+
+RightPanel (wrapper):
+
+position: relative
+
+overflow: hidden
+
+padding: clamp(32px, 4vw, 56px)
+
+display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+
+Fondo: gradiente suave azul (ver sección 3)
+
+Dentro:
+
+TestimonialBlock (arriba, centrado):
+
+estrellas arriba
+
+quote centrado (máx ancho 520px)
+
+author + role
+
+MockupArea (centro/abajo):
+
+imagen grande, centrada, con sombra suave
+
+transform: translateY(10px) para que se sienta flotando
+
+max-width: 620px; width: 100%
+
+LogoRow (footer):
+
+logos en gris claro, opacity 0.45, alineados al centro
+
+gap: 28px
+
+3) Estilos visuales del panel derecho (claves)
+
+Fondo principal:
+
+background: linear-gradient(135deg, #EAF4FF 0%, #E6F2FF 55%, #DFF0FF 100%);
+
+Añade 2 diagonales suaves como en Textmagic usando ::before y ::after:
+
+::before: triángulo grande translúcido (opacity ~0.35) desde top-left hacia el centro
+
+::after: triángulo más sutil desde bottom-right
+
+Ambos con clip-path: polygon(...) y colores rgba(255,255,255,0.55) / rgba(255,255,255,0.35)
+
+Tipografía:
+
+Quote: font-size: clamp(18px, 1.6vw, 22px); line-height: 1.5; font-weight: 500; color: #1f2937;
+
+Resalta una palabra con color azul: #1D4ED8 (igual que “interface” en ejemplo)
+
+Author: font-weight: 700; font-size: 14px
+
+Role: color: #6b7280; font-size: 12px
+
+4) Mockup (posición y sensación “premium”)
+
+Debe estar visualmente grande y anclado al tercio inferior.
+
+filter: drop-shadow(0 18px 40px rgba(17,24,39,0.12));
+
+Si hay 2 imágenes (desktop + phone), colócalas en un solo SVG/PNG o usa position:absolute dentro de MockupArea para replicar el stack.
+
+5) No inventes: assets
+
+Usa temporalmente un placeholder:
+
+mockup.png (puede ser la que ya tengo o una genérica)
+
+logos en svg simples (texto)
+
+Deja TODO parametrizado para reemplazar assets después.
+
+6) Entregable esperado
+
+Un PR/commit con:
+
+AuthLayout.tsx (o equivalente)
+
+AuthRightPanel.tsx
+
+CSS en Tailwind o CSS modules (elige uno, pero consistente)
+
+Responsive probado: desktop 1440px, laptop 1280px, tablet 768px, mobile 390px
+
+Debe quedar visualmente “idéntico en composición” al panel derecho de Textmagic: quote arriba, mockup grande abajo, logos en el footer, diagonales sutiles.
+
+Regla: NO toques el formulario izquierdo excepto para ajustar el grid.
