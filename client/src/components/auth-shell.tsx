@@ -163,7 +163,7 @@ export function AuthShell({
           
           {/* Testimonial Block - Top */}
           <div 
-            className={`flex flex-col items-center text-center max-w-[520px] transition-all duration-300 ${
+            className={`flex flex-col items-center text-center max-w-[640px] mt-8 transition-all duration-300 ${
               isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
             }`}
           >
