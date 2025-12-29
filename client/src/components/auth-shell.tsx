@@ -168,20 +168,16 @@ export function AuthShell({
             <p className="text-[13px] text-gray-500">{testimonial.authorTitle}</p>
           </div>
 
-          {/* Mockup Area - Center with floating effect */}
-          <div className="flex-1 flex items-center justify-center w-full mt-6 mb-8 overflow-visible">
-            <div 
-              className="w-full flex items-center justify-center"
+          {/* Mockup Area - Sized to image */}
+          <div className="mt-6 mb-8">
+            <img 
+              src={productMockup} 
+              alt="Product Preview" 
+              className="max-w-full h-auto object-contain"
               style={{ 
                 filter: 'drop-shadow(0 25px 50px rgba(17,24,39,0.15))'
               }}
-            >
-              <img 
-                src={productMockup} 
-                alt="Product Preview" 
-                className="w-full max-w-[90%] h-auto object-contain"
-              />
-            </div>
+            />
           </div>
 
           {/* Logo Row - Footer */}
