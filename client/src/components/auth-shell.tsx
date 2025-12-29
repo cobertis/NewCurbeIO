@@ -144,7 +144,7 @@ export function AuthShell({
         <div className="auth-diagonal-2" />
         
         {/* Content wrapper */}
-        <div className="relative z-10 flex flex-col items-center h-full w-full pt-12 pb-12 px-8">
+        <div className="relative z-10 flex flex-col items-center justify-center h-full w-full px-8">
           
           {/* Testimonial Block - Top */}
           <div className="flex flex-col items-center text-center max-w-[600px]">
