@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import logo from "@assets/logo no fondo_1760457183587.png";
 import productMockup from "@assets/image_1766258646875.png";
@@ -9,15 +9,12 @@ import partnerLogo2 from "@assets/084f7af56c84d676cb56fa563d9543869db8292a6883c7
 import partnerLogo3 from "@assets/0401d3f7e9583614c6a07a9c0c073a74077150ce285957b9bf2edaf1092f8_1767046247306.webp";
 import partnerLogo4 from "@assets/a960c99d57404e59dd6cf342d000504a7012dbc2829da8918435fc0433d7e_1767046251215.webp";
 import partnerLogo5 from "@assets/ad1762e2cab6dac864b3fc59aa460cb43bfe0adcac174bd0744332cdf9c41_1767046257018.webp";
-import partnerLogo6 from "@assets/a89b5dba114815b08f2326c3979dff3b4e7216012592c8d16b5e17f6dd10d_1767046260519.webp";
-
 const partnerLogos = [
   partnerLogo1,
   partnerLogo2,
   partnerLogo3,
   partnerLogo4,
   partnerLogo5,
-  partnerLogo6,
 ];
 
 const testimonials = [
@@ -69,19 +66,7 @@ export function AuthShell({
   footer,
   children,
 }: AuthShellProps) {
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-        setIsTransitioning(false);
-      }, 300);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, []);
+  const [currentTestimonial] = useState(() => Math.floor(Math.random() * testimonials.length));
 
   const testimonial = testimonials[currentTestimonial];
 
@@ -162,11 +147,7 @@ export function AuthShell({
         <div className="relative z-10 flex flex-col justify-between items-center h-full w-full" style={{ padding: 'clamp(32px, 4vw, 56px)' }}>
           
           {/* Testimonial Block - Top */}
-          <div 
-            className={`flex flex-col items-center text-center max-w-[640px] mt-8 transition-all duration-300 ${
-              isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
-            }`}
-          >
+          <div className="flex flex-col items-center text-center max-w-[640px] mt-8">
             {/* Stars */}
             <div className="flex gap-1 mb-5">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -185,28 +166,6 @@ export function AuthShell({
             {/* Author */}
             <p className="text-[14px] font-bold text-gray-900">{testimonial.authorName}</p>
             <p className="text-[12px] text-gray-500">{testimonial.authorTitle}</p>
-            
-            {/* Dots indicator */}
-            <div className="flex gap-2 mt-6">
-              {testimonials.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    setIsTransitioning(true);
-                    setTimeout(() => {
-                      setCurrentTestimonial(index);
-                      setIsTransitioning(false);
-                    }, 300);
-                  }}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                    index === currentTestimonial 
-                      ? 'bg-blue-600 w-6' 
-                      : 'bg-gray-400/40 hover:bg-gray-400/60'
-                  }`}
-                  data-testid={`testimonial-dot-${index}`}
-                />
-              ))}
-            </div>
           </div>
 
           {/* Mockup Area - Center/Bottom with floating effect */}
@@ -226,13 +185,13 @@ export function AuthShell({
           </div>
 
           {/* Logo Row - Footer */}
-          <div className="flex items-center justify-center gap-8 mt-6 flex-wrap">
+          <div className="flex items-center justify-center gap-10 mb-6 flex-wrap">
             {partnerLogos.map((logoSrc, index) => (
               <img 
                 key={index}
                 src={logoSrc}
                 alt={`Partner ${index + 1}`}
-                className="h-6 w-auto object-contain"
+                className="h-8 w-auto object-contain"
                 style={{ opacity: 0.6 }}
               />
             ))}
