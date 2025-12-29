@@ -531,13 +531,9 @@ export default function InboxPage() {
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      if (hours > 0) {
-        setWaWindowTimeLeft(`${hours}h ${minutes}m`);
-      } else if (minutes > 0) {
-        setWaWindowTimeLeft(`${minutes}m ${seconds}s`);
-      } else {
-        setWaWindowTimeLeft(`${seconds}s`);
-      }
+      // Always show hours:minutes:seconds format for real-time countdown
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      setWaWindowTimeLeft(`${pad(hours)}:${pad(minutes)}:${pad(seconds)}`);
     };
 
     calculateTimeLeft();
