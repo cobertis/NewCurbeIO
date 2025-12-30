@@ -463,14 +463,26 @@ export default function GettingStarted() {
                       <Button 
                           size="sm" 
                           onClick={() => {
-                            const basePath = activeApplication.numberType === '10dlc' 
-                              ? "/settings/sms-voice/10dlc-verification" 
-                              : "/settings/sms-voice/toll-free-verification";
-                            // For draft status, navigate to the correct step based on currentStep
-                            const step = activeApplication.status === 'draft' && activeApplication.currentStep 
-                              ? activeApplication.currentStep 
-                              : 0;
-                            setLocation(`${basePath}?step=${step}`);
+                            // For draft status, navigate to the correct compliance wizard step
+                            if (activeApplication.status === 'draft') {
+                              const appId = activeApplication.id;
+                              const step = activeApplication.currentStep || 0;
+                              // Step mapping: 0=number, 1=info, 2=brand, 3=campaign, 4=review
+                              const stepPaths = [
+                                '/compliance/choose-number',
+                                `/compliance/info/${appId}`,
+                                `/compliance/brand/${appId}`,
+                                `/compliance/campaign/${appId}`,
+                                `/compliance/review/${appId}`
+                              ];
+                              setLocation(stepPaths[Math.min(step, 4)]);
+                            } else {
+                              // For submitted/approved/rejected, go to verification status page
+                              const basePath = activeApplication.numberType === '10dlc' 
+                                ? "/settings/sms-voice/10dlc-verification" 
+                                : "/settings/sms-voice/toll-free-verification";
+                              setLocation(basePath);
+                            }
                           }}
                           className="gap-2 bg-blue-600 hover:bg-blue-700" 
                           data-testid="button-view-status"
