@@ -878,7 +878,8 @@ export default function Settings({ view = 'all' }: SettingsProps) {
   };
 
   // Combined save handler for Overview tab - saves profile, address, and company info
-  const handleSaveOverview = () => {
+  // Save profile info + address only (for Profile view)
+  const handleSaveProfile = () => {
     // Save profile info
     updateProfileInfoMutation.mutate(profileForm);
     
@@ -892,22 +893,39 @@ export default function Settings({ view = 'all' }: SettingsProps) {
       country: countryRef.current?.value || "United States",
     };
     
-    // If admin, also save company information
-    if (isAdmin) {
-      const companyData: any = {
-        ...addressData,
-        name: companyNameRef.current?.value ?? "",
-        slug: slugRef.current?.value ?? "",
-        businessCategory: selectedCategory ?? "",
-        businessNiche: selectedNiche ?? "",
-        email: companyEmailRef.current?.value ?? "",
-        phone: companyPhoneValue ? formatE164(companyPhoneValue) : "",
-        website: websiteValue ?? "",
-        platformLanguage: platformLanguageRef.current?.value ?? "",
-      };
-      updateCompanyMutation.mutate(companyData);
-    } else {
-      updateCompanyMutation.mutate(addressData);
+    updateCompanyMutation.mutate(addressData, {
+      onSuccess: () => {
+        // After saving profile, redirect to company to complete setup
+        if (isAdmin) {
+          setLocation("/settings/company");
+        }
+      }
+    });
+  };
+
+  // Save company info only (for Company view)
+  const handleSaveCompany = () => {
+    if (!isAdmin) return;
+    
+    const companyData: any = {
+      name: companyNameRef.current?.value ?? "",
+      slug: slugRef.current?.value ?? "",
+      businessCategory: selectedCategory ?? "",
+      businessNiche: selectedNiche ?? "",
+      email: companyEmailRef.current?.value ?? "",
+      phone: companyPhoneValue ? formatE164(companyPhoneValue) : "",
+      website: websiteValue ?? "",
+      platformLanguage: platformLanguageRef.current?.value ?? "",
+    };
+    updateCompanyMutation.mutate(companyData);
+  };
+
+  // Legacy function for backwards compatibility
+  const handleSaveOverview = () => {
+    if (currentView === 'profile') {
+      handleSaveProfile();
+    } else if (currentView === 'company') {
+      handleSaveCompany();
     }
   };
 
@@ -1389,11 +1407,22 @@ export default function Settings({ view = 'all' }: SettingsProps) {
   return (
     <SettingsLayout activeSection={getActiveSection()}>
     <div className="flex flex-col gap-4 sm:gap-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-settings">
-        <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{getBreadcrumbTitle()}</span>
+      {/* Breadcrumb with Save Button */}
+      <div className="flex items-center justify-between" data-testid="breadcrumb-settings">
+        <div className="flex items-center gap-2 text-sm">
+          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">{getBreadcrumbTitle()}</span>
+        </div>
+        {(currentView === 'profile' || currentView === 'company') && (
+          <Button
+            onClick={currentView === 'profile' ? handleSaveProfile : handleSaveCompany}
+            disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}
+            data-testid={`button-save-${currentView}`}
+          >
+            {(updateProfileInfoMutation.isPending || updateCompanyMutation.isPending) ? "Saving..." : "Save Changes"}
+          </Button>
+        )}
       </div>
       
       <div>
@@ -1413,17 +1442,6 @@ export default function Settings({ view = 'all' }: SettingsProps) {
 
             {/* Overview Tab - Profile + Company */}
             <TabsContent value="overview" className="space-y-4 mt-0">
-              {/* Save Button - positioned absolutely to align with breadcrumb */}
-              <div className="absolute top-0 right-0">
-                <Button
-                  onClick={handleSaveOverview}
-                  disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}
-                  data-testid="button-save-overview"
-                >
-                  {(updateProfileInfoMutation.isPending || updateCompanyMutation.isPending) ? "Saving..." : "Save Changes"}
-                </Button>
-              </div>
-
               {/* Profile + Company Cards */}
               <div className={currentView === 'profile' ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""}>
                 {/* Profile Information Card */}
