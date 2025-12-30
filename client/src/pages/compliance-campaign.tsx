@@ -141,6 +141,7 @@ export default function ComplianceCampaign() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [openStep, setOpenStep] = useState<number>(1);
+  const [hasInitializedOpenStep, setHasInitializedOpenStep] = useState(false);
   const [step1Complete, setStep1Complete] = useState(false);
   const [step2Complete, setStep2Complete] = useState(false);
   const [step3Complete, setStep3Complete] = useState(false);
@@ -207,11 +208,15 @@ export default function ComplianceCampaign() {
       if (hasStep2) setStep2Complete(true);
       if (hasStep3) setStep3Complete(true);
       
-      if (hasStep3) setOpenStep(3);
-      else if (hasStep2) setOpenStep(3);
-      else if (hasStep1) setOpenStep(2);
+      // Only set the initial open step once to prevent overriding user clicks
+      if (!hasInitializedOpenStep) {
+        if (hasStep3) setOpenStep(3);
+        else if (hasStep2) setOpenStep(2);
+        else if (hasStep1) setOpenStep(2);
+        setHasInitializedOpenStep(true);
+      }
     }
-  }, [application, form]);
+  }, [application, form, hasInitializedOpenStep]);
 
   const autoSaveCurrentStep = async (currentOpenStep: number) => {
     const values = form.getValues();
