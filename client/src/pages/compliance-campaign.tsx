@@ -20,7 +20,6 @@ import {
 import {
   Collapsible,
   CollapsibleContent,
-  CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
   Popover,
@@ -516,9 +515,12 @@ export default function ComplianceCampaign() {
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
           <CardContent className="p-0">
             <Collapsible open={openStep === 1}>
-              <CollapsibleTrigger 
+              <div 
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                 onClick={() => handleStepChange(1)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleStepChange(1)}
               >
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 1: Campaign details
@@ -531,7 +533,7 @@ export default function ComplianceCampaign() {
                   )}
                   <ChevronDown className={cn("w-5 h-5 text-gray-500 transition-transform", openStep === 1 && "rotate-180")} />
                 </div>
-              </CollapsibleTrigger>
+              </div>
               <CollapsibleContent className="px-6 pb-6">
                 <div className="space-y-6 mt-4">
                   <div>
@@ -788,9 +790,12 @@ export default function ComplianceCampaign() {
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
             <Collapsible open={openStep === 2}>
-              <CollapsibleTrigger 
+              <div 
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                 onClick={() => handleStepChange(2)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleStepChange(2)}
               >
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 2: Opt-in flow
@@ -803,7 +808,7 @@ export default function ComplianceCampaign() {
                   )}
                   <ChevronDown className={cn("w-5 h-5 text-gray-500 transition-transform", openStep === 2 && "rotate-180")} />
                 </div>
-              </CollapsibleTrigger>
+              </div>
               <CollapsibleContent className="px-6 pb-6">
                 <div className="space-y-6 mt-4">
                   <div>
@@ -908,9 +913,12 @@ export default function ComplianceCampaign() {
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
             <Collapsible open={openStep === 3}>
-              <CollapsibleTrigger 
+              <div 
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                 onClick={() => handleStepChange(3)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleStepChange(3)}
               >
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 3: Sample messages
@@ -923,7 +931,7 @@ export default function ComplianceCampaign() {
                   )}
                   <ChevronDown className={cn("w-5 h-5 text-gray-500 transition-transform", openStep === 3 && "rotate-180")} />
                 </div>
-              </CollapsibleTrigger>
+              </div>
               <CollapsibleContent className="px-6 pb-6">
                 <p className="text-gray-500 text-sm mt-4 mb-4">
                   Provide sample messages that represent the content you will send to recipients.
