@@ -18,7 +18,6 @@ import {
 import {
   Collapsible,
   CollapsibleContent,
-  CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Check, ArrowLeft, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -506,8 +505,14 @@ export default function ComplianceBrand() {
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
           <CardContent className="p-0">
-            <Collapsible open={openStep === 1} onOpenChange={() => handleStepChange(1)}>
-              <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <Collapsible open={openStep === 1}>
+              <div
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                onClick={() => handleStepChange(1)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleStepChange(1)}
+              >
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 1: Organization details
                 </span>
@@ -519,7 +524,7 @@ export default function ComplianceBrand() {
                   )}
                   <ChevronDown className={cn("w-5 h-5 text-gray-500 transition-transform", openStep === 1 && "rotate-180")} />
                 </div>
-              </CollapsibleTrigger>
+              </div>
               <CollapsibleContent className="px-6 pb-6">
                 <div className="grid grid-cols-2 gap-6 mt-4">
                   <div>
@@ -645,8 +650,14 @@ export default function ComplianceBrand() {
 
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
-            <Collapsible open={openStep === 2} onOpenChange={() => handleStepChange(2)}>
-              <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <Collapsible open={openStep === 2}>
+              <div
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                onClick={() => handleStepChange(2)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleStepChange(2)}
+              >
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 2: Organization address
                 </span>
@@ -658,7 +669,7 @@ export default function ComplianceBrand() {
                   )}
                   <ChevronDown className={cn("w-5 h-5 text-gray-500 transition-transform", openStep === 2 && "rotate-180")} />
                 </div>
-              </CollapsibleTrigger>
+              </div>
               <CollapsibleContent className="px-6 pb-6">
                 <p className="text-gray-500 text-sm mb-4">Enter the address exactly as shown on your IRS documents.</p>
                 <div className="grid grid-cols-3 gap-6">
@@ -788,8 +799,14 @@ export default function ComplianceBrand() {
 
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
-            <Collapsible open={openStep === 3} onOpenChange={() => handleStepChange(3)}>
-              <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <Collapsible open={openStep === 3}>
+              <div
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                onClick={() => handleStepChange(3)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleStepChange(3)}
+              >
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 3: Point of contact
                 </span>
@@ -801,7 +818,7 @@ export default function ComplianceBrand() {
                   )}
                   <ChevronDown className={cn("w-5 h-5 text-gray-500 transition-transform", openStep === 3 && "rotate-180")} />
                 </div>
-              </CollapsibleTrigger>
+              </div>
               <CollapsibleContent className="px-6 pb-6">
                 <div className="grid grid-cols-2 gap-6 mt-4">
                   <div>
