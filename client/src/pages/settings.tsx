@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1366,9 +1366,36 @@ export default function Settings({ view = 'all' }: SettingsProps) {
     return currentView;
   };
 
+  // Get breadcrumb title based on current view
+  const getBreadcrumbTitle = () => {
+    const titles: { [key: string]: string } = {
+      profile: "Profile",
+      company: "Company",
+      team: "Team",
+      security: "Security",
+      automations: "Automations",
+      billing: "Billing",
+      "white-label": "White Label",
+      notifications: "Notifications",
+      webphone: "Webphone",
+      "sms-voice": "SMS & Voice",
+      email: "Email",
+      "pulse-ai": "Pulse AI",
+      overview: "Profile"
+    };
+    return titles[currentView] || "Settings";
+  };
+
   return (
     <SettingsLayout activeSection={getActiveSection()}>
     <div className="flex flex-col gap-4 sm:gap-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-settings">
+        <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium">{getBreadcrumbTitle()}</span>
+      </div>
+      
       <div>
         {/* Settings Content */}
         <div>
