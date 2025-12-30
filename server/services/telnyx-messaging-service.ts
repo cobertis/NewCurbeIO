@@ -208,7 +208,7 @@ export async function sendTelnyxOtpSms(toPhoneNumber: string, otpCode: string): 
       formattedPhone = '+' + formattedPhone;
     }
     
-    const message = `Your Curbe verification code is: ${otpCode}\n\nTu código de verificación Curbe es: ${otpCode}`;
+    const message = `Your Curbe.io verification code is: ${otpCode}`;
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
