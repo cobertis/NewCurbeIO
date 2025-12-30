@@ -367,7 +367,7 @@ export default function ComplianceChooseNumber() {
     },
     onSuccess: (application) => {
       queryClient.invalidateQueries({ queryKey: ["/api/compliance/applications"] });
-      setLocation(`/compliance/info?id=${application.id}`);
+      setLocation(`/compliance/info/${application.id}`);
     },
     onError: (error: any) => {
       toast({
