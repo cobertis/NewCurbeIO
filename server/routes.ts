@@ -41585,6 +41585,61 @@ CRITICAL REMINDERS:
     }
   });
   
+  // POST /api/compliance/applications/:id/campaign-assist - AI-powered campaign content generation
+  app.post("/api/compliance/applications/:id/campaign-assist", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      const { smsUseCase } = req.body;
+      
+      if (!smsUseCase) {
+        return res.status(400).json({ message: "SMS use case is required" });
+      }
+      
+      // Verify the application belongs to this company
+      const [application] = await db
+        .select()
+        .from(complianceApplications)
+        .where(eq(complianceApplications.id, id))
+        .limit(1);
+      
+      if (!application || application.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // Get company info for context
+      const [company] = await db
+        .select()
+        .from(companies)
+        .where(eq(companies.id, user.companyId))
+        .limit(1);
+      
+      // Generate campaign content using AI
+      const { generateCampaignContent } = await import("./services/campaign-assist-service");
+      
+      const result = await generateCampaignContent({
+        smsUseCase,
+        companyName: company?.name || application.businessName || "Business",
+        brandVertical: application.businessVertical || "General Business",
+        numberType: application.numberType || "toll_free"
+      });
+      
+      console.log("[Campaign Assist] Generated content for use case:", smsUseCase);
+      
+      return res.json(result);
+    } catch (error) {
+      console.error("[Campaign Assist] Error:", error);
+      return res.status(500).json({ 
+        message: "Failed to generate campaign content",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
   // GET /api/compliance/applications/:id - Get application by ID
   app.get("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
     try {
