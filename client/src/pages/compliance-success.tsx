@@ -58,7 +58,7 @@ export default function ComplianceSuccess() {
         </Card>
 
         <Button
-          onClick={() => setLocation("/phone-system")}
+          onClick={() => setLocation("/")}
           className="bg-blue-600 hover:bg-blue-700 text-white"
           data-testid="button-back-to-app"
         >
