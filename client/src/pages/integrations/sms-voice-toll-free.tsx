@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,7 @@ export default function SmsVoiceTollFree() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [, setLocation] = useLocation();
 
   const { data: numbersData, isLoading } = useQuery<{ numbers: SmsVoiceNumber[] }>({
     queryKey: ["/api/sms-voice/numbers"],
@@ -68,6 +69,10 @@ export default function SmsVoiceTollFree() {
   const { data: verificationData, isLoading: isLoadingVerification } = useQuery<{ verification: TelnyxVerificationRequest }>({
     queryKey: [`/api/telnyx/verification-request/by-phone/${encodeURIComponent(selectedPhoneNumber || '')}`],
     enabled: !!selectedPhoneNumber,
+  });
+
+  const { data: complianceAppsData } = useQuery<{ applications: Array<{ id: string; selectedPhoneNumber: string; status: string }> }>({
+    queryKey: ["/api/compliance/applications/list"],
   });
 
   const numbers = numbersData?.numbers || [];
@@ -93,6 +98,18 @@ export default function SmsVoiceTollFree() {
   const paginatedNumbers = filteredNumbers.slice(startIndex, endIndex);
 
   const verification = verificationData?.verification;
+  const complianceApps = complianceAppsData?.applications || [];
+
+  const getComplianceAppByPhone = (phone: string) => {
+    return complianceApps.find(app => app.selectedPhoneNumber === phone);
+  };
+
+  const handleEditVerification = (phone: string) => {
+    const app = getComplianceAppByPhone(phone);
+    if (app) {
+      setLocation(`/compliance/campaign/${app.id}`);
+    }
+  };
 
   const handlePageSizeChange = (value: string) => {
     setPageSize(Number(value));
@@ -242,7 +259,9 @@ export default function SmsVoiceTollFree() {
                                 <ExternalLink className="h-4 w-4 mr-2" />
                                 View details
                               </DropdownMenuItem>
-                              <DropdownMenuItem data-testid={`menu-edit-${number.id}`}>
+                              <DropdownMenuItem 
+                                onClick={() => handleEditVerification(number.phoneNumber)}
+                                data-testid={`menu-edit-${number.id}`}>
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit verification
                               </DropdownMenuItem>

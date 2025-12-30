@@ -41562,6 +41562,30 @@ CRITICAL REMINDERS:
     }
   });
   
+  // GET /api/compliance/applications/list - List all compliance applications for company
+  app.get("/api/compliance/applications/list", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const applications = await db
+        .select({
+          id: complianceApplications.id,
+          selectedPhoneNumber: complianceApplications.selectedPhoneNumber,
+          status: complianceApplications.status,
+        })
+        .from(complianceApplications)
+        .where(eq(complianceApplications.companyId, user.companyId));
+      
+      res.json({ applications });
+    } catch (error: any) {
+      console.error("[Compliance] Error listing applications:", error);
+      res.status(500).json({ message: error.message || "Failed to list applications" });
+    }
+  });
+
   // GET /api/compliance/applications/active - Get active application (including draft with phone number)
   app.get("/api/compliance/applications/active", requireAuth, async (req: Request, res: Response) => {
     try {
