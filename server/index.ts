@@ -199,8 +199,8 @@ app.use((req, res, next) => {
     // Start the iMessage campaign processor for automated campaign message delivery
     startImessageCampaignProcessor();
     
-    // Start the bounce email processor for handling bounced emails
-    startBounceProcessor();
+    // Bounce email processor disabled - using AWS SES webhooks for bounce handling instead
+    // startBounceProcessor();
     
     // Start the monthly billing scheduler for telephony fees
     startMonthlyBillingScheduler();

@@ -42017,7 +42017,7 @@ CRITICAL REMINDERS:
     }
   });
   // POST /api/compliance/upload - Upload file for compliance applications
-  // Files are uploaded to object storage with public URLs for carrier verification
+  // Files are uploaded to local disk and served via public URL for carrier verification
   app.post("/api/compliance/upload", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -42025,9 +42025,26 @@ CRITICAL REMINDERS:
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Use multer for file handling
+      // Ensure uploads directory exists
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'compliance');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      // Use multer with disk storage for local file uploads
+      const complianceStorage = multer.diskStorage({
+        destination: (req, file, cb) => {
+          cb(null, uploadsDir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+          const ext = path.extname(file.originalname);
+          cb(null, `compliance-${uniqueSuffix}${ext}`);
+        },
+      });
+      
       const complianceUpload = multer({
-        storage: multer.memoryStorage(),
+        storage: complianceStorage,
         limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
         fileFilter: (req, file, cb) => {
           const allowed = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
@@ -42058,14 +42075,12 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "No file uploaded" });
       }
       
-      // Upload to object storage with public URL for carrier verification
-      const objectStorage = new ObjectStorageService();
-      const { publicUrl } = await objectStorage.uploadComplianceFile(
-        file.buffer,
-        file.mimetype,
-        file.originalname,
-        user.companyId
-      );
+      // Build public URL using the request's host and protocol
+      const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+      const host = req.get('x-forwarded-host') || req.get('host');
+      const publicUrl = `${protocol}://${host}/uploads/compliance/${file.filename}`;
+      
+      console.log(`[Compliance Upload] File saved: ${file.filename}, URL: ${publicUrl}`);
       
       // Return the public URL that carriers can access without login
       res.json({ url: publicUrl });
