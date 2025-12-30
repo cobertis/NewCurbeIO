@@ -4484,7 +4484,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           templateSlug: "otp-verification",
         });
       } else if (method === "sms") {
-        await twilioService.sendOTPSMS(user.phone!, code);
+        const { sendTelnyxOtpSms } = await import("./services/telnyx-messaging-service");
+        const success = await sendTelnyxOtpSms(user.phone!, code);
+        if (!success) {
+          throw new Error("Failed to send OTP via SMS");
+        }
       }
       await logger.logAuth({
         req,
@@ -4687,7 +4691,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           templateSlug: "otp-verification",
         });
       } else if (method === "sms") {
-        await twilioService.sendOTPSMS(user.phone!, code);
+        const { sendTelnyxOtpSms } = await import("./services/telnyx-messaging-service");
+        const success = await sendTelnyxOtpSms(user.phone!, code);
+        if (!success) {
+          throw new Error("Failed to send OTP via SMS");
+        }
       }
       await logger.logAuth({
         req,

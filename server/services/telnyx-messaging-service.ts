@@ -186,3 +186,58 @@ export async function getCompanyMessagingNumbers(companyId: string): Promise<Arr
   
   return numbers;
 }
+
+const OTP_SENDER_PHONE = "+13053936666";
+
+/**
+ * Send OTP SMS using the master Telnyx account
+ * Always uses +13053936666 (master account javier@curbe.io) as the sender
+ */
+export async function sendTelnyxOtpSms(toPhoneNumber: string, otpCode: string): Promise<boolean> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    if (!apiKey) {
+      console.error("[Telnyx OTP] No master API key configured");
+      return false;
+    }
+    
+    const message = `Your Curbe verification code is: ${otpCode}\n\nTu código de verificación Curbe es: ${otpCode}`;
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    
+    const payload = {
+      from: OTP_SENDER_PHONE,
+      to: toPhoneNumber,
+      text: message,
+      type: "SMS",
+    };
+    
+    console.log(`[Telnyx OTP] Sending OTP to ${toPhoneNumber} from ${OTP_SENDER_PHONE}`);
+    
+    const response = await fetch(`${TELNYX_API_BASE}/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx OTP] SEND FAILED: HTTP ${response.status}`);
+      console.error(`[Telnyx OTP] Error details: ${errorText}`);
+      return false;
+    }
+    
+    const result = await response.json();
+    const messageId = result.data?.id;
+    
+    console.log(`[Telnyx OTP] SUCCESS: Message ${messageId} sent to ${toPhoneNumber}`);
+    return true;
+  } catch (error) {
+    console.error("[Telnyx OTP] Error sending OTP:", error);
+    return false;
+  }
+}
