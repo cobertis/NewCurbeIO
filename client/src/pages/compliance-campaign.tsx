@@ -515,8 +515,11 @@ export default function ComplianceCampaign() {
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
           <CardContent className="p-0">
-            <Collapsible open={openStep === 1} onOpenChange={() => handleStepChange(1)}>
-              <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <Collapsible open={openStep === 1}>
+              <CollapsibleTrigger 
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                onClick={() => handleStepChange(1)}
+              >
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 1: Campaign details
                 </span>
@@ -784,8 +787,11 @@ export default function ComplianceCampaign() {
 
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
-            <Collapsible open={openStep === 2} onOpenChange={() => handleStepChange(2)}>
-              <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <Collapsible open={openStep === 2}>
+              <CollapsibleTrigger 
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                onClick={() => handleStepChange(2)}
+              >
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 2: Opt-in flow
                 </span>
@@ -901,8 +907,11 @@ export default function ComplianceCampaign() {
 
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
-            <Collapsible open={openStep === 3} onOpenChange={() => handleStepChange(3)}>
-              <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <Collapsible open={openStep === 3}>
+              <CollapsibleTrigger 
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                onClick={() => handleStepChange(3)}
+              >
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 3: Sample messages
                 </span>

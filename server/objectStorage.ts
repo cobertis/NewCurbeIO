@@ -244,7 +244,43 @@ export class ObjectStorageService {
     return { objectPath: `/objects/${objectName}`, signedUrl };
   }
 
-  private getExtensionFromFilename(filename: string): string {
+  async uploadComplianceFile(
+    buffer: Buffer,
+    mimetype: string,
+    originalName: string,
+    companyId: string
+  ): Promise<{ publicUrl: string; objectPath: string }> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    const extension = this.getExtensionFromFilename(originalName) || this.getExtensionFromMimetype(mimetype) || '';
+    const uniqueId = randomUUID();
+    const safeFilename = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const objectName = `compliance/${companyId}/${uniqueId}_${safeFilename}`;
+    const fullPath = `${privateObjectDir}/${objectName}`;
+    const { bucketName, objectName: storagePath } = parseObjectPath(fullPath);
+    
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      contentType: mimetype,
+      metadata: {
+        cacheControl: "public, max-age=31536000",
+      },
+    });
+    
+    // Generate a long-lived signed URL (1 year) for carrier verification
+    const publicUrl = await signObjectURL({
+      bucketName,
+      objectName: storagePath,
+      method: "GET",
+      ttlSec: 31536000, // 1 year
+    });
+    
+    console.log(`[ObjectStorage] Compliance file uploaded: ${objectName}`);
+    return { publicUrl, objectPath: `/objects/${objectName}` };
+  }
+
+    private getExtensionFromFilename(filename: string): string {
     const match = filename.match(/\.[a-zA-Z0-9]+$/);
     return match ? match[0] : '';
   }

@@ -144,7 +144,7 @@ import { pbxService } from "./services/pbx-service";
 import { AiOpenAIService } from "./services/ai-openai-service";
 import { registerWalletRoutes } from "./wallet-routes";
 import { registerAiDeskRoutes } from "./ai-desk-routes";
-import { objectStorage, objectStorageClient } from "./objectStorage";
+import { objectStorage, objectStorageClient , ObjectStorageService } from "./objectStorage";
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -42017,28 +42017,17 @@ CRITICAL REMINDERS:
     }
   });
   // POST /api/compliance/upload - Upload file for compliance applications
+  // Files are uploaded to object storage with public URLs for carrier verification
   app.post("/api/compliance/upload", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
-      if (!user) {
+      if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      const uploadsDir = path.join(process.cwd(), 'uploads', 'compliance');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      const complianceStorage = multer.diskStorage({
-        destination: (req, file, cb) => {
-          cb(null, uploadsDir);
-        },
-        filename: (req, file, cb) => {
-          const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
-          const ext = path.extname(file.originalname);
-          cb(null, `compliance-${uniqueSuffix}${ext}`);
-        },
-      });
+      
+      // Use multer for file handling
       const complianceUpload = multer({
-        storage: complianceStorage,
+        storage: multer.memoryStorage(),
         limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
         fileFilter: (req, file, cb) => {
           const allowed = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
@@ -42048,6 +42037,7 @@ CRITICAL REMINDERS:
           cb(null, true);
         },
       });
+      
       await new Promise<void>((resolve, reject) => {
         complianceUpload.single('file')(req, res, (err: any) => {
           if (err) {
@@ -42062,12 +42052,23 @@ CRITICAL REMINDERS:
           resolve();
         });
       });
+      
       const file = (req as any).file;
       if (!file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-      const url = `/uploads/compliance/${file.filename}`;
-      res.json({ url });
+      
+      // Upload to object storage with public URL for carrier verification
+      const objectStorage = new ObjectStorageService();
+      const { publicUrl } = await objectStorage.uploadComplianceFile(
+        file.buffer,
+        file.mimetype,
+        file.originalname,
+        user.companyId
+      );
+      
+      // Return the public URL that carriers can access without login
+      res.json({ url: publicUrl });
     } catch (error: any) {
       console.error("[Compliance Upload] Error:", error);
       res.status(500).json({ message: error.message || "Upload failed" });
