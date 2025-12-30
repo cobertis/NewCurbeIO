@@ -79,6 +79,7 @@ export default function PlanSelection() {
       setSelectingPlanId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/session'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/onboarding/progress'] });
       setLocation("/");
     },
     onError: (error: Error) => {
