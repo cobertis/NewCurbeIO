@@ -35,7 +35,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Check, ArrowLeft, ChevronDown, Plus, Trash2, Upload, ChevronsUpDown } from "lucide-react";
+import { Check, ArrowLeft, ChevronDown, Plus, Trash2, Upload, ChevronsUpDown, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { StepIndicator } from "@/components/compliance/step-indicator";
@@ -147,6 +147,7 @@ export default function ComplianceCampaign() {
   const [step3Complete, setStep3Complete] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [useCaseOpen, setUseCaseOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   
   const { data: application, isLoading } = useQuery<ComplianceApplication>({
     queryKey: [`/api/compliance/applications/${applicationId}`],
@@ -582,6 +583,81 @@ export default function ComplianceCampaign() {
                       <p className="text-red-500 text-sm mt-1">{form.formState.errors.smsUseCase.message}</p>
                     )}
                   </div>
+
+                  {form.watch("smsUseCase") && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+                            Need help with your campaign content?
+                          </p>
+                          <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                            Our AI assistant can generate compliant descriptions and sample messages for your "{smsUseCaseOptions.find(o => o.value === form.watch("smsUseCase"))?.label}" campaign.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800/50"
+                            disabled={aiLoading}
+                            data-testid="button-ai-assist"
+                            onClick={async () => {
+                              if (!applicationId) return;
+                              setAiLoading(true);
+                              try {
+                                const result = await apiRequest("POST", `/api/compliance/applications/${applicationId}/campaign-assist`, {
+                                  smsUseCase: form.watch("smsUseCase")
+                                });
+                                
+                                if (result.messageAudience) {
+                                  form.setValue("messageAudience", result.messageAudience);
+                                }
+                                if (result.messageContent) {
+                                  form.setValue("messageContent", result.messageContent);
+                                }
+                                if (result.estimatedVolume) {
+                                  form.setValue("estimatedVolume", result.estimatedVolume);
+                                }
+                                if (result.optInDescription) {
+                                  form.setValue("optInDescription", result.optInDescription);
+                                }
+                                if (result.sampleMessages && Array.isArray(result.sampleMessages) && result.sampleMessages.length > 0) {
+                                  form.setValue("sampleMessages", result.sampleMessages);
+                                }
+                                
+                                toast({
+                                  title: "Content generated",
+                                  description: "AI-suggested content has been filled in. Please review and customize as needed.",
+                                });
+                              } catch (error) {
+                                console.error("AI assist error:", error);
+                                toast({
+                                  title: "Generation failed",
+                                  description: "Could not generate content. Please fill in the fields manually.",
+                                  variant: "destructive",
+                                });
+                              } finally {
+                                setAiLoading(false);
+                              }
+                            }}
+                          >
+                            {aiLoading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Generate with AI
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <Label className="text-gray-700 dark:text-gray-300">
