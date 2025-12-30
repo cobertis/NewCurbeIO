@@ -41968,12 +41968,14 @@ CRITICAL REMINDERS:
           });
           console.log("[Toll-Free Compliance] Full request body:", JSON.stringify(telnyxRequestBody, null, 2));
           
-          // Check if there's an existing verification for this phone number
+          // Check if there's an existing verification for this phone number using the by_phone endpoint
           const phoneE164 = formatPhoneE164(existing.selectedPhoneNumber);
           console.log("[Toll-Free Compliance] Checking for existing verification for:", phoneE164);
           
+          // Use the by_phone lookup endpoint which returns verifications in any state (including approved)
+          const encodedPhone = encodeURIComponent(phoneE164);
           const existingVerifResponse = await fetch(
-            `https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=100`,
+            `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/by_phone/${encodedPhone}`,
             {
               method: "GET",
               headers: {
@@ -41987,36 +41989,16 @@ CRITICAL REMINDERS:
           let existingVerifId: string | null = null;
           if (existingVerifResponse.ok) {
             const existingVerifResult = await existingVerifResponse.json();
-            const existingVerifications = existingVerifResult.data || [];
-            console.log("[Toll-Free Compliance] Found", existingVerifications.length, "existing verifications");
-            
-            // Normalize our phone number for comparison
-            const normalizedPhoneE164 = phoneE164.replace(/[^0-9+]/g, '');
-            const normalizedSelectedPhone = existing.selectedPhoneNumber?.replace(/[^0-9+]/g, '') || '';
-            
-            // Find verification for this phone number
-            // Telnyx returns phone_numbers as array of objects with phone_number property
-            for (const v of existingVerifications) {
-              const phoneNumbers = v.phone_numbers || v.phoneNumbers || [];
-              console.log("[Toll-Free Compliance] Checking verification", v.id, "with phones:", JSON.stringify(phoneNumbers));
-              
-              for (const p of phoneNumbers) {
-                // Handle both string and object format
-                const phoneNum = typeof p === 'string' ? p : (p.phone_number || p.phoneNumber || '');
-                const normalizedP = phoneNum.replace(/[^0-9+]/g, '');
-                
-                if (normalizedP === normalizedPhoneE164 || normalizedP === normalizedSelectedPhone) {
-                  existingVerifId = v.id;
-                  console.log("[Toll-Free Compliance] Found existing verification ID:", existingVerifId, "matching phone:", phoneNum);
-                  break;
-                }
-              }
-              if (existingVerifId) break;
+            // The by_phone endpoint returns the verification directly in data
+            if (existingVerifResult.data && existingVerifResult.data.id) {
+              existingVerifId = existingVerifResult.data.id;
+              console.log("[Toll-Free Compliance] Found existing verification via by_phone:", existingVerifId);
             }
-            
-            if (!existingVerifId) {
-              console.log("[Toll-Free Compliance] No existing verification found for", normalizedPhoneE164);
-            }
+          } else if (existingVerifResponse.status === 404) {
+            console.log("[Toll-Free Compliance] No existing verification found for", phoneE164, "(404)");
+          } else {
+            const errorBody = await existingVerifResponse.text();
+            console.log("[Toll-Free Compliance] Error checking existing verification:", existingVerifResponse.status, errorBody);
           }
           
           // Call Telnyx API - PATCH if existing, POST if new
