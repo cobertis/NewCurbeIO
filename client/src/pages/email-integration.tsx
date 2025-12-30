@@ -543,10 +543,6 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
         <span className="font-medium">Email</span>
       </div>
 
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">Email</h1>
-      </div>
-
       <Card className="border-slate-200 dark:border-slate-800">
         <CardContent className="p-8">
           <div className="grid md:grid-cols-2 gap-8 items-center">
