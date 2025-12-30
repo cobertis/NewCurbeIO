@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link, useRoute } from "wouter";
 import { useForm } from "react-hook-form";
@@ -173,6 +173,7 @@ export default function ComplianceBrand() {
   const [step2Complete, setStep2Complete] = useState(false);
   const [step3Complete, setStep3Complete] = useState(false);
   const [brandNameManuallyEdited, setBrandNameManuallyEdited] = useState(false);
+  const initialLoadDone = useRef(false);
   
   const { data: application, isLoading } = useQuery<ComplianceApplication>({
     queryKey: [`/api/compliance/applications/${applicationId}`],
@@ -219,41 +220,46 @@ export default function ComplianceBrand() {
   // Load saved data from application
   useEffect(() => {
     if (application) {
-      // Step 1 fields
-      if (application.businessName) form.setValue("legalName", application.businessName);
-      if (application.brandDisplayName) form.setValue("brandName", application.brandDisplayName);
-      if (application.businessType) form.setValue("legalForm", application.businessType);
-      if (application.website) form.setValue("website", application.website);
-      if (application.businessVertical) form.setValue("vertical", application.businessVertical);
-      if (application.ein) form.setValue("ein", application.ein);
-      
-      // Step 2 fields
-      if (application.businessAddress) form.setValue("street", application.businessAddress);
-      if (application.businessAddressLine2) form.setValue("streetLine2", application.businessAddressLine2);
-      if (application.businessCity) form.setValue("city", application.businessCity);
-      if (application.businessState) form.setValue("state", application.businessState);
-      if (application.businessZip) form.setValue("postalCode", application.businessZip);
-      if (application.country) form.setValue("country", application.country);
-      
-      // Step 3 fields
-      if (application.contactFirstName) form.setValue("firstName", application.contactFirstName);
-      if (application.contactLastName) form.setValue("lastName", application.contactLastName);
-      if (application.contactPhone) form.setValue("phone", application.contactPhone);
-      if (application.contactEmail) form.setValue("email", application.contactEmail);
-      
-      // Check step completion based on saved data
-      const hasStep1 = application.businessName && application.businessType && application.website && application.businessVertical;
-      const hasStep2 = application.businessAddress && application.businessCity && application.businessState && application.businessZip && application.country;
-      const hasStep3 = application.contactFirstName && application.contactLastName && application.contactPhone && application.contactEmail;
-      
-      if (hasStep1) setStep1Complete(true);
-      if (hasStep2) setStep2Complete(true);
-      if (hasStep3) setStep3Complete(true);
-      
-      // Set open step based on progress
-      if (hasStep3) setOpenStep(3);
-      else if (hasStep2) setOpenStep(3);
-      else if (hasStep1) setOpenStep(2);
+      // Only set form values and open step on initial load
+      if (!initialLoadDone.current) {
+        // Step 1 fields
+        if (application.businessName) form.setValue("legalName", application.businessName);
+        if (application.brandDisplayName) form.setValue("brandName", application.brandDisplayName);
+        if (application.businessType) form.setValue("legalForm", application.businessType);
+        if (application.website) form.setValue("website", application.website);
+        if (application.businessVertical) form.setValue("vertical", application.businessVertical);
+        if (application.ein) form.setValue("ein", application.ein);
+        
+        // Step 2 fields
+        if (application.businessAddress) form.setValue("street", application.businessAddress);
+        if (application.businessAddressLine2) form.setValue("streetLine2", application.businessAddressLine2);
+        if (application.businessCity) form.setValue("city", application.businessCity);
+        if (application.businessState) form.setValue("state", application.businessState);
+        if (application.businessZip) form.setValue("postalCode", application.businessZip);
+        if (application.country) form.setValue("country", application.country);
+        
+        // Step 3 fields
+        if (application.contactFirstName) form.setValue("firstName", application.contactFirstName);
+        if (application.contactLastName) form.setValue("lastName", application.contactLastName);
+        if (application.contactPhone) form.setValue("phone", application.contactPhone);
+        if (application.contactEmail) form.setValue("email", application.contactEmail);
+        
+        // Check step completion based on saved data
+        const hasStep1 = application.businessName && application.businessType && application.website && application.businessVertical;
+        const hasStep2 = application.businessAddress && application.businessCity && application.businessState && application.businessZip && application.country;
+        const hasStep3 = application.contactFirstName && application.contactLastName && application.contactPhone && application.contactEmail;
+        
+        if (hasStep1) setStep1Complete(true);
+        if (hasStep2) setStep2Complete(true);
+        if (hasStep3) setStep3Complete(true);
+        
+        // Set open step based on progress (only on initial load)
+        if (hasStep3) setOpenStep(3);
+        else if (hasStep2) setOpenStep(3);
+        else if (hasStep1) setOpenStep(2);
+        
+        initialLoadDone.current = true;
+      }
     }
   }, [application, form]);
 
