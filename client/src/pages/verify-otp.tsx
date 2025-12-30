@@ -26,7 +26,6 @@ export default function VerifyOTP() {
   const [isLoading, setIsLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [expiryTime, setExpiryTime] = useState(300);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -56,13 +55,6 @@ export default function VerifyOTP() {
   }, [email2FAEnabled, sms2FAEnabled, setLocation]);
 
   useEffect(() => {
-    if (expiryTime > 0) {
-      const timer = setTimeout(() => setExpiryTime(expiryTime - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [expiryTime]);
-
-  useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
       return () => clearTimeout(timer);
@@ -83,7 +75,6 @@ export default function VerifyOTP() {
       if (response.ok) {
         setOtpSent(true);
         setResendCooldown(60);
-        setExpiryTime(300);
         toast({
           title: "Code sent",
           description: `Verification code sent via ${method === "email" ? "email" : "SMS"}`,
@@ -217,7 +208,6 @@ export default function VerifyOTP() {
 
       if (response.ok) {
         setResendCooldown(60);
-        setExpiryTime(300);
         setOtp(["", "", "", "", "", ""]);
         toast({
           title: "Code resent",
@@ -240,12 +230,6 @@ export default function VerifyOTP() {
         duration: 3000,
       });
     }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -393,9 +377,6 @@ export default function VerifyOTP() {
           </Button>
 
           <div className="text-center space-y-1.5">
-            <p className="text-[12px] text-gray-500">
-              Code expires in <span className="font-medium text-gray-700">{formatTime(expiryTime)}</span>
-            </p>
             <button
               onClick={handleResend}
               disabled={resendCooldown > 0}
