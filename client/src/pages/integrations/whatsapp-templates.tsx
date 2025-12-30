@@ -869,6 +869,15 @@ export default function WhatsAppTemplatesPage() {
   return (
     <SettingsLayout>
       <div className="space-y-6">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-whatsapp-templates">
+          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <Link href="/settings/whatsapp" className="text-muted-foreground hover:text-foreground transition-colors">WhatsApp</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">Templates</span>
+        </div>
+        
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

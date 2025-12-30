@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,8 +7,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, ChevronRight } from "lucide-react";
 import { SiFacebook } from "react-icons/si";
+import { SettingsLayout } from "@/components/settings-layout";
 
 export default function FacebookIntegrationPage() {
   const [, setLocation] = useLocation();
@@ -43,12 +44,15 @@ export default function FacebookIntegrationPage() {
   ];
 
   return (
-    <div className="space-y-8" data-testid="page-facebook-integration">
-      <div>
-        <h1 className="text-2xl font-semibold">Facebook</h1>
-      </div>
+    <SettingsLayout activeSection="facebook">
+      <div className="space-y-8" data-testid="page-facebook-integration">
+        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-facebook">
+          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">Facebook</span>
+        </div>
 
-      <Card className="border-slate-200 dark:border-slate-800">
+        <Card className="border-slate-200 dark:border-slate-800">
         <CardContent className="p-8">
           <div className="flex flex-col lg:flex-row gap-8 items-start">
             <div className="flex-1 space-y-6">
@@ -148,6 +152,7 @@ export default function FacebookIntegrationPage() {
           ))}
         </Accordion>
       </div>
-    </div>
+      </div>
+    </SettingsLayout>
   );
 }
