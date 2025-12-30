@@ -14,11 +14,9 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWebSocket } from "@/hooks/use-websocket";
-import { useTabsState } from "@/hooks/use-tabs-state";
 import { 
   CreditCard, 
   FileText, 
@@ -281,7 +279,6 @@ const CardBrandLogo = ({ brand }: { brand: string }) => {
 export default function Billing() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useTabsState(["subscriptions", "payments", "transactions"], "subscriptions");
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [showManageCards, setShowManageCards] = useState(false);
@@ -886,16 +883,8 @@ export default function Billing() {
         </Card>
       )}
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="subscriptions" data-testid="tab-subscriptions">Subscriptions</TabsTrigger>
-          <TabsTrigger value="payments" data-testid="tab-payments">Billing Info</TabsTrigger>
-          <TabsTrigger value="transactions" data-testid="tab-transactions">Transactions</TabsTrigger>
-        </TabsList>
-
-        {/* Subscriptions Tab */}
-        <TabsContent value="subscriptions" className="space-y-6">
+      {/* Subscription Details Section */}
+      <div className="space-y-6">
           <div className="grid galg:grid-cols-2">
             {/* Subscription Details */}
             {isLoadingSubscription ? (
@@ -1139,10 +1128,193 @@ export default function Billing() {
             ) : null}
 
           </div>
-        </TabsContent>
+        </div>
 
-        {/* Transactions Tab */}
-        <TabsContent value="transactions" className="space-y-6">
+        {/* Payment Methods & Billing Info Section */}
+        <div className="space-y-6">
+          <div className="grid galg:grid-cols-2">
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
+              <div>
+                <CardTitle>Payment Methods</CardTitle>
+                <CardDescription>Manage your payment methods and billing information</CardDescription>
+              </div>
+              <Button 
+                onClick={() => setShowAddCard(true)}
+                size="sm"
+                data-testid="button-add-payment-method"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Card
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Payment Methods List */}
+              {paymentMethods && paymentMethods.length > 0 ? (
+                <div className="space-y-4">
+                  {paymentMethods.map((method) => {
+                    if (!method.brand) return null;
+                    return (
+                      <div 
+                        key={method.id} 
+                        className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
+                        data-testid={`payment-method-${method.id}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <CardBrandLogo brand={method.brand} />
+                          <div>
+                            <p className="font-medium">
+                              {method.brand.charAt(0).toUpperCase() + method.brand.slice(1)} •••• {method.last4}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Expires {method.expMonth.toString().padStart(2, '0')}/{method.expYear}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {method.isDefault ? (
+                            <Badge variant="secondary" data-testid="badge-default">
+                              Default
+                            </Badge>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setDefaultPaymentMutation.mutate(method.id)}
+                              disabled={pendingSetDefaultId === method.id}
+                              data-testid={`button-set-default-${method.id}`}
+                            >
+                              {pendingSetDefaultId === method.id ? "Setting..." : "Set Default"}
+                            </Button>
+                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => removePaymentMutation.mutate(method.id)}
+                            disabled={pendingRemoveId === method.id || method.isDefault}
+                            data-testid={`button-remove-${method.id}`}
+                          >
+                            {pendingRemoveId === method.id ? "Removing..." : "Remove"}
+                          </Button>
+                        </div>
+                    </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Payment Methods</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Add a payment method to manage your subscription
+                  </p>
+                </div>
+              )}
+            </CardContent>
+            </Card>
+
+            {/* Billing Information */}
+            <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Billing Information
+              </CardTitle>
+              <CardDescription>Update your billing information</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleBillingFormSubmit} className="space-y-4">
+                {/* Full Name */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Full Name on Card</label>
+                  <Input
+                    placeholder="John Doe"
+                    value={billingForm.fullName}
+                    onChange={(e) => handleBillingFormChange('fullName', e.target.value)}
+                    data-testid="input-billing-name"
+                  />
+                </div>
+
+                {/* Address Line 1 with Google Places Autocomplete */}
+                <GooglePlacesAddressAutocomplete
+                  value={billingForm.addressLine1}
+                  onChange={(value) => handleBillingFormChange('addressLine1', value)}
+                  onAddressSelect={(address) => {
+                    // Auto-populate city, state, and postal code when address is selected
+                    setBillingForm(prev => ({
+                      ...prev,
+                      addressLine1: address.street,
+                      city: address.city,
+                      state: address.state,
+                      postalCode: address.postalCode,
+                    }));
+                  }}
+                  label="Address Line 1"
+                  placeholder="Start typing your address..."
+                  testId="input-billing-address1"
+                />
+
+                {/* Address Line 2 */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Address Line 2</label>
+                  <Input
+                    placeholder="Apt., suite, unit number, etc. (optional)"
+                    value={billingForm.addressLine2}
+                    onChange={(e) => handleBillingFormChange('addressLine2', e.target.value)}
+                    data-testid="input-billing-address2"
+                  />
+                </div>
+
+                {/* City, State and ZIP Code */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">City</label>
+                    <Input
+                      placeholder="New York"
+                      value={billingForm.city}
+                      onChange={(e) => handleBillingFormChange('city', e.target.value)}
+                      data-testid="input-billing-city"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">State</label>
+                    <Input
+                      placeholder="NY"
+                      value={billingForm.state}
+                      onChange={(e) => handleBillingFormChange('state', e.target.value)}
+                      data-testid="input-billing-state"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">ZIP Code</label>
+                    <Input
+                      placeholder="10001"
+                      value={billingForm.postalCode}
+                      onChange={(e) => handleBillingFormChange('postalCode', e.target.value)}
+                      data-testid="input-billing-zip"
+                    />
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="pt-4">
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={saveBillingAddressMutation.isPending}
+                    data-testid="button-billing-save"
+                  >
+                    {saveBillingAddressMutation.isPending ? "Saving..." : "Save Billing Information"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Transaction History Section */}
+        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1287,7 +1459,7 @@ export default function Billing() {
               })()}
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
 
       {/* Add Payment Method Dialog */}
       <Dialog open={showAddCard} onOpenChange={(open) => {
@@ -2150,189 +2322,6 @@ export default function Billing() {
           )}
         </DialogContent>
       </Dialog>
-
-        {/* Payments Tab */}
-        <TabsContent value="payments" className="space-y-6">
-          <div className="grid galg:grid-cols-2">
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-              <div>
-                <CardTitle>Payment Methods</CardTitle>
-                <CardDescription>Manage your payment methods and billing information</CardDescription>
-              </div>
-              <Button 
-                onClick={() => setShowAddCard(true)}
-                size="sm"
-                data-testid="button-add-payment-method"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Card
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Payment Methods List */}
-              {paymentMethods && paymentMethods.length > 0 ? (
-                <div className="space-y-4">
-                  {paymentMethods.map((method) => {
-                    if (!method.brand) return null;
-                    return (
-                      <div 
-                        key={method.id} 
-                        className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
-                        data-testid={`payment-method-${method.id}`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <CardBrandLogo brand={method.brand} />
-                          <div>
-                            <p className="font-medium">
-                              {method.brand.charAt(0).toUpperCase() + method.brand.slice(1)} •••• {method.last4}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Expires {method.expMonth.toString().padStart(2, '0')}/{method.expYear}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {method.isDefault ? (
-                            <Badge variant="secondary" data-testid="badge-default">
-                              Default
-                            </Badge>
-                          ) : (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => setDefaultPaymentMutation.mutate(method.id)}
-                              disabled={pendingSetDefaultId === method.id}
-                              data-testid={`button-set-default-${method.id}`}
-                            >
-                              {pendingSetDefaultId === method.id ? "Setting..." : "Set Default"}
-                            </Button>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => removePaymentMutation.mutate(method.id)}
-                            disabled={pendingRemoveId === method.id || method.isDefault}
-                            data-testid={`button-remove-${method.id}`}
-                          >
-                            {pendingRemoveId === method.id ? "Removing..." : "Remove"}
-                          </Button>
-                        </div>
-                    </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Payment Methods</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Add a payment method to manage your subscription
-                  </p>
-                </div>
-              )}
-            </CardContent>
-            </Card>
-
-            {/* Billing Information */}
-            <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Billing Information
-              </CardTitle>
-              <CardDescription>Update your billing information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleBillingFormSubmit} className="space-y-4">
-                {/* Full Name */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Full Name on Card</label>
-                  <Input
-                    placeholder="John Doe"
-                    value={billingForm.fullName}
-                    onChange={(e) => handleBillingFormChange('fullName', e.target.value)}
-                    data-testid="input-billing-name"
-                  />
-                </div>
-
-                {/* Address Line 1 with Google Places Autocomplete */}
-                <GooglePlacesAddressAutocomplete
-                  value={billingForm.addressLine1}
-                  onChange={(value) => handleBillingFormChange('addressLine1', value)}
-                  onAddressSelect={(address) => {
-                    // Auto-populate city, state, and postal code when address is selected
-                    setBillingForm(prev => ({
-                      ...prev,
-                      addressLine1: address.street,
-                      city: address.city,
-                      state: address.state,
-                      postalCode: address.postalCode,
-                    }));
-                  }}
-                  label="Address Line 1"
-                  placeholder="Start typing your address..."
-                  testId="input-billing-address1"
-                />
-
-                {/* Address Line 2 */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Address Line 2</label>
-                  <Input
-                    placeholder="Apt., suite, unit number, etc. (optional)"
-                    value={billingForm.addressLine2}
-                    onChange={(e) => handleBillingFormChange('addressLine2', e.target.value)}
-                    data-testid="input-billing-address2"
-                  />
-                </div>
-
-                {/* City, State and ZIP Code */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">City</label>
-                    <Input
-                      placeholder="New York"
-                      value={billingForm.city}
-                      onChange={(e) => handleBillingFormChange('city', e.target.value)}
-                      data-testid="input-billing-city"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">State</label>
-                    <Input
-                      placeholder="NY"
-                      value={billingForm.state}
-                      onChange={(e) => handleBillingFormChange('state', e.target.value)}
-                      data-testid="input-billing-state"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">ZIP Code</label>
-                    <Input
-                      placeholder="10001"
-                      value={billingForm.postalCode}
-                      onChange={(e) => handleBillingFormChange('postalCode', e.target.value)}
-                      data-testid="input-billing-zip"
-                    />
-                  </div>
-                </div>
-
-                {/* Save Button */}
-                <div className="pt-4">
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={saveBillingAddressMutation.isPending}
-                    data-testid="button-billing-save"
-                  >
-                    {saveBillingAddressMutation.isPending ? "Saving..." : "Save Billing Information"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
 
       {/* Change Plan Dialog */}
       <Dialog open={showChangePlan} onOpenChange={setShowChangePlan}>
@@ -3269,7 +3258,6 @@ export default function Billing() {
           )}
         </DialogContent>
       </Dialog>
-      </Tabs>
     </div>
   );
 }
