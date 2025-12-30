@@ -32,7 +32,14 @@ export default function Login() {
       }
 
       if (data.requiresOtp) {
-        setLocation(`/verify-otp?email=${encodeURIComponent(email)}&type=login`);
+        const params = new URLSearchParams({
+          userId: data.user.id,
+          email: data.user.email || "",
+          phone: data.user.phone || "",
+          email2FA: String(data.user.twoFactorEmailEnabled || false),
+          sms2FA: String(data.user.twoFactorSmsEnabled || false),
+        });
+        setLocation(`/verify-otp?${params.toString()}`);
         return;
       }
 
