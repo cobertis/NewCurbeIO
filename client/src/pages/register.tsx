@@ -14,13 +14,95 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, ChevronDown } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+const COUNTRIES = [
+  { code: "US", name: "United States", dialCode: "+1", flag: "🇺🇸" },
+  { code: "CA", name: "Canada", dialCode: "+1", flag: "🇨🇦" },
+  { code: "MX", name: "Mexico", dialCode: "+52", flag: "🇲🇽" },
+  { code: "GB", name: "United Kingdom", dialCode: "+44", flag: "🇬🇧" },
+  { code: "DE", name: "Germany", dialCode: "+49", flag: "🇩🇪" },
+  { code: "FR", name: "France", dialCode: "+33", flag: "🇫🇷" },
+  { code: "ES", name: "Spain", dialCode: "+34", flag: "🇪🇸" },
+  { code: "IT", name: "Italy", dialCode: "+39", flag: "🇮🇹" },
+  { code: "PT", name: "Portugal", dialCode: "+351", flag: "🇵🇹" },
+  { code: "BR", name: "Brazil", dialCode: "+55", flag: "🇧🇷" },
+  { code: "AR", name: "Argentina", dialCode: "+54", flag: "🇦🇷" },
+  { code: "CL", name: "Chile", dialCode: "+56", flag: "🇨🇱" },
+  { code: "CO", name: "Colombia", dialCode: "+57", flag: "🇨🇴" },
+  { code: "PE", name: "Peru", dialCode: "+51", flag: "🇵🇪" },
+  { code: "VE", name: "Venezuela", dialCode: "+58", flag: "🇻🇪" },
+  { code: "EC", name: "Ecuador", dialCode: "+593", flag: "🇪🇨" },
+  { code: "UY", name: "Uruguay", dialCode: "+598", flag: "🇺🇾" },
+  { code: "PY", name: "Paraguay", dialCode: "+595", flag: "🇵🇾" },
+  { code: "BO", name: "Bolivia", dialCode: "+591", flag: "🇧🇴" },
+  { code: "CR", name: "Costa Rica", dialCode: "+506", flag: "🇨🇷" },
+  { code: "PA", name: "Panama", dialCode: "+507", flag: "🇵🇦" },
+  { code: "GT", name: "Guatemala", dialCode: "+502", flag: "🇬🇹" },
+  { code: "HN", name: "Honduras", dialCode: "+504", flag: "🇭🇳" },
+  { code: "SV", name: "El Salvador", dialCode: "+503", flag: "🇸🇻" },
+  { code: "NI", name: "Nicaragua", dialCode: "+505", flag: "🇳🇮" },
+  { code: "DO", name: "Dominican Republic", dialCode: "+1", flag: "🇩🇴" },
+  { code: "PR", name: "Puerto Rico", dialCode: "+1", flag: "🇵🇷" },
+  { code: "CU", name: "Cuba", dialCode: "+53", flag: "🇨🇺" },
+  { code: "JM", name: "Jamaica", dialCode: "+1", flag: "🇯🇲" },
+  { code: "TT", name: "Trinidad and Tobago", dialCode: "+1", flag: "🇹🇹" },
+  { code: "AU", name: "Australia", dialCode: "+61", flag: "🇦🇺" },
+  { code: "NZ", name: "New Zealand", dialCode: "+64", flag: "🇳🇿" },
+  { code: "JP", name: "Japan", dialCode: "+81", flag: "🇯🇵" },
+  { code: "KR", name: "South Korea", dialCode: "+82", flag: "🇰🇷" },
+  { code: "CN", name: "China", dialCode: "+86", flag: "🇨🇳" },
+  { code: "HK", name: "Hong Kong", dialCode: "+852", flag: "🇭🇰" },
+  { code: "TW", name: "Taiwan", dialCode: "+886", flag: "🇹🇼" },
+  { code: "SG", name: "Singapore", dialCode: "+65", flag: "🇸🇬" },
+  { code: "MY", name: "Malaysia", dialCode: "+60", flag: "🇲🇾" },
+  { code: "TH", name: "Thailand", dialCode: "+66", flag: "🇹🇭" },
+  { code: "VN", name: "Vietnam", dialCode: "+84", flag: "🇻🇳" },
+  { code: "PH", name: "Philippines", dialCode: "+63", flag: "🇵🇭" },
+  { code: "ID", name: "Indonesia", dialCode: "+62", flag: "🇮🇩" },
+  { code: "IN", name: "India", dialCode: "+91", flag: "🇮🇳" },
+  { code: "PK", name: "Pakistan", dialCode: "+92", flag: "🇵🇰" },
+  { code: "BD", name: "Bangladesh", dialCode: "+880", flag: "🇧🇩" },
+  { code: "AE", name: "United Arab Emirates", dialCode: "+971", flag: "🇦🇪" },
+  { code: "SA", name: "Saudi Arabia", dialCode: "+966", flag: "🇸🇦" },
+  { code: "IL", name: "Israel", dialCode: "+972", flag: "🇮🇱" },
+  { code: "TR", name: "Turkey", dialCode: "+90", flag: "🇹🇷" },
+  { code: "EG", name: "Egypt", dialCode: "+20", flag: "🇪🇬" },
+  { code: "ZA", name: "South Africa", dialCode: "+27", flag: "🇿🇦" },
+  { code: "NG", name: "Nigeria", dialCode: "+234", flag: "🇳🇬" },
+  { code: "KE", name: "Kenya", dialCode: "+254", flag: "🇰🇪" },
+  { code: "GH", name: "Ghana", dialCode: "+233", flag: "🇬🇭" },
+  { code: "MA", name: "Morocco", dialCode: "+212", flag: "🇲🇦" },
+  { code: "RU", name: "Russia", dialCode: "+7", flag: "🇷🇺" },
+  { code: "UA", name: "Ukraine", dialCode: "+380", flag: "🇺🇦" },
+  { code: "PL", name: "Poland", dialCode: "+48", flag: "🇵🇱" },
+  { code: "NL", name: "Netherlands", dialCode: "+31", flag: "🇳🇱" },
+  { code: "BE", name: "Belgium", dialCode: "+32", flag: "🇧🇪" },
+  { code: "CH", name: "Switzerland", dialCode: "+41", flag: "🇨🇭" },
+  { code: "AT", name: "Austria", dialCode: "+43", flag: "🇦🇹" },
+  { code: "SE", name: "Sweden", dialCode: "+46", flag: "🇸🇪" },
+  { code: "NO", name: "Norway", dialCode: "+47", flag: "🇳🇴" },
+  { code: "DK", name: "Denmark", dialCode: "+45", flag: "🇩🇰" },
+  { code: "FI", name: "Finland", dialCode: "+358", flag: "🇫🇮" },
+  { code: "IE", name: "Ireland", dialCode: "+353", flag: "🇮🇪" },
+  { code: "CZ", name: "Czech Republic", dialCode: "+420", flag: "🇨🇿" },
+  { code: "RO", name: "Romania", dialCode: "+40", flag: "🇷🇴" },
+  { code: "HU", name: "Hungary", dialCode: "+36", flag: "🇭🇺" },
+  { code: "GR", name: "Greece", dialCode: "+30", flag: "🇬🇷" },
+];
 
 const registerSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   workspaceName: z.string().min(2, "Workspace name must be at least 2 characters"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits").regex(/^\d+$/, "Only numbers allowed"),
   email: z.string().email("Invalid email address"),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
@@ -70,12 +152,16 @@ export default function Register() {
     googleId: string;
   } | null>(initialGoogleSSO);
 
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
+  const [countryOpen, setCountryOpen] = useState(false);
+
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       firstName: "",
       lastName: "",
       workspaceName: "",
+      phone: "",
       email: "",
       password: "",
       termsAccepted: false,
@@ -110,6 +196,7 @@ export default function Register() {
           lastName: data.lastName,
           email: data.email,
           password: data.password,
+          phone: `${selectedCountry.dialCode}${data.phone}`,
         },
       };
       
@@ -401,6 +488,76 @@ export default function Register() {
                       autoComplete="organization"
                       data-testid="input-workspace-name"
                     />
+                  </FormControl>
+                  <div className="h-3">
+                    <FormMessage className="text-[10px]" />
+                  </div>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
+              Phone number
+            </label>
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <div className="flex">
+                      <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 h-10 px-2 bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg text-[14px] text-gray-700 hover:bg-gray-100 transition-colors min-w-[80px]"
+                            data-testid="button-country-selector"
+                          >
+                            <span className="text-lg">{selectedCountry.flag}</span>
+                            <span className="text-[13px] font-medium">{selectedCountry.dialCode}</span>
+                            <ChevronDown className="h-3 w-3 text-gray-400" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[280px] p-0" align="start">
+                          <ScrollArea className="h-[300px]">
+                            <div className="p-1">
+                              {COUNTRIES.map((country) => (
+                                <button
+                                  key={country.code}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedCountry(country);
+                                    setCountryOpen(false);
+                                  }}
+                                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-[13px] rounded hover:bg-gray-100 transition-colors ${
+                                    selectedCountry.code === country.code ? "bg-gray-100" : ""
+                                  }`}
+                                  data-testid={`country-option-${country.code}`}
+                                >
+                                  <span className="text-lg">{country.flag}</span>
+                                  <span className="flex-1 text-gray-900">{country.name}</span>
+                                  <span className="text-gray-500">{country.dialCode}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
+                      <Input
+                        type="tel"
+                        placeholder="(555) 123-4567"
+                        className="h-10 px-3 bg-white border border-gray-200 rounded-l-none rounded-r-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none flex-1"
+                        {...field}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '');
+                          field.onChange(value);
+                        }}
+                        autoComplete="tel-national"
+                        data-testid="input-phone"
+                      />
+                    </div>
                   </FormControl>
                   <div className="h-3">
                     <FormMessage className="text-[10px]" />
