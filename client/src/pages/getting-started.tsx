@@ -411,6 +411,12 @@ export default function GettingStarted() {
                     <>
                       <div className="flex items-center gap-2 mb-2">
                         <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Your Toll-Free Number</p>
+                        {activeApplication.status === 'draft' && (
+                          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            Registration in progress
+                          </Badge>
+                        )}
                         {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && (
                           <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
                             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -445,6 +451,8 @@ export default function GettingStarted() {
                         </Button>
                       </div>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        {activeApplication.status === 'draft' && 
+                          "We've assigned a toll-free number to your account. Please complete the registration to start texting."}
                         {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && 
                           "We've assigned a toll-free number to your account for 1 month for free, so you can start engaging with your audience sooner. Please complete a free verification to start texting."}
                         {activeApplication.status === 'approved' && 
@@ -454,15 +462,20 @@ export default function GettingStarted() {
                       </p>
                       <Button 
                           size="sm" 
-                          onClick={() => setLocation(
-                            activeApplication.numberType === '10dlc' 
+                          onClick={() => {
+                            const basePath = activeApplication.numberType === '10dlc' 
                               ? "/settings/sms-voice/10dlc-verification" 
-                              : "/settings/sms-voice/toll-free-verification"
-                          )} 
+                              : "/settings/sms-voice/toll-free-verification";
+                            // For draft status, navigate to the correct step based on currentStep
+                            const step = activeApplication.status === 'draft' && activeApplication.currentStep 
+                              ? activeApplication.currentStep 
+                              : 0;
+                            setLocation(`${basePath}?step=${step}`);
+                          }}
                           className="gap-2 bg-blue-600 hover:bg-blue-700" 
                           data-testid="button-view-status"
                         >
-                          View status
+                          {activeApplication.status === 'draft' ? 'Continue registration' : 'View status'}
                           <ChevronRight className="w-4 h-4" />
                         </Button>
                     </>
