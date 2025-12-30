@@ -41988,13 +41988,34 @@ CRITICAL REMINDERS:
           if (existingVerifResponse.ok) {
             const existingVerifResult = await existingVerifResponse.json();
             const existingVerifications = existingVerifResult.data || [];
+            console.log("[Toll-Free Compliance] Found", existingVerifications.length, "existing verifications");
+            
+            // Normalize our phone number for comparison
+            const normalizedPhoneE164 = phoneE164.replace(/[^0-9+]/g, '');
+            const normalizedSelectedPhone = existing.selectedPhoneNumber?.replace(/[^0-9+]/g, '') || '';
+            
             // Find verification for this phone number
-            const matchingVerif = existingVerifications.find((v: any) => 
-              v.phoneNumbers?.some((p: any) => p === phoneE164 || p === existing.selectedPhoneNumber)
-            );
-            if (matchingVerif) {
-              existingVerifId = matchingVerif.id;
-              console.log("[Toll-Free Compliance] Found existing verification ID:", existingVerifId);
+            // Telnyx returns phone_numbers as array of objects with phone_number property
+            for (const v of existingVerifications) {
+              const phoneNumbers = v.phone_numbers || v.phoneNumbers || [];
+              console.log("[Toll-Free Compliance] Checking verification", v.id, "with phones:", JSON.stringify(phoneNumbers));
+              
+              for (const p of phoneNumbers) {
+                // Handle both string and object format
+                const phoneNum = typeof p === 'string' ? p : (p.phone_number || p.phoneNumber || '');
+                const normalizedP = phoneNum.replace(/[^0-9+]/g, '');
+                
+                if (normalizedP === normalizedPhoneE164 || normalizedP === normalizedSelectedPhone) {
+                  existingVerifId = v.id;
+                  console.log("[Toll-Free Compliance] Found existing verification ID:", existingVerifId, "matching phone:", phoneNum);
+                  break;
+                }
+              }
+              if (existingVerifId) break;
+            }
+            
+            if (!existingVerifId) {
+              console.log("[Toll-Free Compliance] No existing verification found for", normalizedPhoneE164);
             }
           }
           
