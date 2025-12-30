@@ -128,7 +128,7 @@ const campaignFormSchema = z.object({
   privacyPolicyUrl: z.string().optional(),
   sampleMessages: z.array(z.string().min(1, "Sample message is required")).min(1, "At least one sample message is required"),
   additionalInformation: z.string().optional(),
-  isvReseller: z.string().min(1, "Please select an option"),
+  
   entityType: z.string().min(1, "Please select the legal form of your organization"),
 });
 
@@ -177,7 +177,7 @@ export default function ComplianceCampaign() {
       privacyPolicyUrl: "",
       sampleMessages: [""],
       additionalInformation: "",
-      isvReseller: "",
+      
       entityType: "",
     },
   });
@@ -195,7 +195,7 @@ export default function ComplianceCampaign() {
       if (application.smsTermsUrl) form.setValue("smsTermsUrl", application.smsTermsUrl);
       if (application.privacyPolicyUrl) form.setValue("privacyPolicyUrl", application.privacyPolicyUrl);
       if (application.additionalInformation) form.setValue("additionalInformation", application.additionalInformation);
-      if (application.isvReseller) form.setValue("isvReseller", application.isvReseller);
+      
       if (application.entityType) form.setValue("entityType", application.entityType);
       
       const savedMessages = application.sampleMessages as string[] | null;
@@ -203,7 +203,7 @@ export default function ComplianceCampaign() {
         form.setValue("sampleMessages", savedMessages);
       }
       
-      const hasStep1 = application.smsUseCase && application.messageAudience && application.messageContent && application.estimatedVolume && application.canadianTraffic && application.isvReseller && application.entityType;
+      const hasStep1 = application.smsUseCase && application.messageAudience && application.messageContent && application.estimatedVolume && application.canadianTraffic && application.entityType;
       const hasStep2 = application.optInDescription && application.optInEvidence;
       const hasStep3 = savedMessages && savedMessages.length > 0 && savedMessages[0];
       
@@ -225,15 +225,14 @@ export default function ComplianceCampaign() {
     const values = form.getValues();
     try {
       if (currentOpenStep === 1) {
-        const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, isvReseller, entityType, additionalInformation } = values;
-        if (smsUseCase || messageAudience || messageContent || estimatedVolume || canadianTraffic || isvReseller || entityType) {
+        const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, entityType, additionalInformation } = values;
+        if (smsUseCase || messageAudience || messageContent || estimatedVolume || canadianTraffic || entityType) {
           await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
             smsUseCase,
             messageAudience,
             messageContent,
             estimatedVolume,
             canadianTraffic,
-            isvReseller,
             entityType,
             additionalInformation,
           });
@@ -271,11 +270,11 @@ export default function ComplianceCampaign() {
   };
 
   const handleStep1Save = async () => {
-    const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, isvReseller, entityType, additionalInformation } = form.getValues();
+    const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, entityType, additionalInformation } = form.getValues();
     const audienceValid = messageAudience.trim().split(/\s+/).length >= 5;
     const contentValid = messageContent.trim().split(/\s+/).length >= 10;
     
-    if (smsUseCase && audienceValid && contentValid && estimatedVolume && canadianTraffic && isvReseller && entityType) {
+    if (smsUseCase && audienceValid && contentValid && estimatedVolume && canadianTraffic && entityType) {
       try {
         await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
           smsUseCase,
@@ -297,7 +296,7 @@ export default function ComplianceCampaign() {
         });
       }
     } else {
-      form.trigger(["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "isvReseller", "entityType"]);
+      form.trigger(["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "entityType"]);
     }
   };
 
@@ -430,7 +429,7 @@ export default function ComplianceCampaign() {
       const errors = form.formState.errors;
       const errorFields = Object.keys(errors);
       if (errorFields.length > 0) {
-        const step1Fields = ["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "isvReseller", "entityType"];
+        const step1Fields = ["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "entityType"];
         const step2Fields = ["optInDescription", "optInEvidence"];
         const step3Fields = ["sampleMessages"];
         
@@ -471,7 +470,6 @@ export default function ComplianceCampaign() {
         privacyPolicyUrl: values.privacyPolicyUrl,
         sampleMessages: values.sampleMessages.filter(m => m.trim()),
         additionalInformation: values.additionalInformation,
-        isvReseller: values.isvReseller,
         entityType: values.entityType,
         currentStep: 5,
         status: "step_4_complete",
@@ -748,29 +746,6 @@ export default function ComplianceCampaign() {
                     </RadioGroup>
                     {form.formState.errors.canadianTraffic && (
                       <p className="text-red-500 text-sm mt-1">{form.formState.errors.canadianTraffic.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label className="text-gray-700 dark:text-gray-300">
-                      Are you an ISV/Reseller? <span className="text-red-500">*</span>
-                    </Label>
-                    <RadioGroup
-                      value={form.watch("isvReseller")}
-                      onValueChange={(value) => form.setValue("isvReseller", value)}
-                      className="flex gap-6 mt-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Yes" id="isv-yes" data-testid="radio-isv-yes" />
-                        <Label htmlFor="isv-yes" className="font-normal">Yes</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="No" id="isv-no" data-testid="radio-isv-no" />
-                        <Label htmlFor="isv-no" className="font-normal">No</Label>
-                      </div>
-                    </RadioGroup>
-                    {form.formState.errors.isvReseller && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.isvReseller.message}</p>
                     )}
                   </div>
 

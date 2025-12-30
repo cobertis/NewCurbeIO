@@ -41867,8 +41867,6 @@ CRITICAL REMINDERS:
             || existing.campaignDescription
             || `SMS messaging for ${existing.smsUseCase || "business communications"}`;
 
-          telnyxRequestBody.isvReseller = existing.isvReseller || "No";
-
           // Optional fields
           if (existing.businessAddressLine2) {
             telnyxRequestBody.businessAddr2 = existing.businessAddressLine2;
@@ -41938,7 +41936,8 @@ CRITICAL REMINDERS:
             useCase: telnyxRequestBody.useCase,
             optInWorkflowImageURLs: telnyxRequestBody.optInWorkflowImageURLs,
             additionalInformation: telnyxRequestBody.additionalInformation,
-            isvReseller: telnyxRequestBody.isvReseller,
+            entityType: telnyxRequestBody.entityType,
+            messageVolume: telnyxRequestBody.messageVolume,
           });
           console.log("[Toll-Free Compliance] Full request body:", JSON.stringify(telnyxRequestBody, null, 2));
           
