@@ -8,7 +8,7 @@ export default function SmsVoiceSenderSettings() {
     <SettingsLayout activeSection="sms-voice">
       <div className="space-y-6" data-testid="page-sms-voice-sender-settings">
         <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-sms-sender">
-          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <Link href="/settings/sms-voice" className="text-muted-foreground hover:text-foreground transition-colors">SMS & Voice</Link>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">Sender Settings</span>
         </div>
