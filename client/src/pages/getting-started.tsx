@@ -160,7 +160,7 @@ export default function GettingStarted() {
 
   const user = sessionData?.user;
   const progress = progressData || {
-    profileCompleted: !!(user?.firstName && user?.lastName && user?.phone),
+    profileCompleted: false, // Requires user info + company address, determined by backend
     planSelected: false,
     phoneSetup: false,
     emailSetup: false,

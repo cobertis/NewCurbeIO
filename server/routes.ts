@@ -3657,18 +3657,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get skipped onboarding steps from user record
       const skippedSteps = (user.skippedOnboardingSteps as string[]) || [];
       
-      // Check profile completion (firstName, lastName, phone) OR skipped
-      const profileNaturallyCompleted = !!(user.firstName && user.lastName && user.phone);
-      const profileCompleted = profileNaturallyCompleted || skippedSteps.includes('profile');
-      
       // Check if company has phone setup
       let phoneSetupNatural = false;
       let emailSetupNatural = false;
       let messagingSetupNatural = false;
       let planSelectedNatural = false;
+      let company: any = null;
       
       if (user.companyId) {
-        const company = await storage.getCompany(user.companyId);
+        company = await storage.getCompany(user.companyId);
+      }
+      
+      // Check profile completion: user info + company address required
+      const hasUserInfo = !!(user.firstName && user.lastName && user.phone);
+      const hasCompanyAddress = !!(company?.address && company?.city && company?.state && company?.postalCode);
+      const profileNaturallyCompleted = hasUserInfo && hasCompanyAddress;
+      const profileCompleted = profileNaturallyCompleted || skippedSteps.includes('profile');
+      
+      if (user.companyId && company) {
         
         // Check phone setup: company phone, user sipEnabled, or active compliance application with phone number
         const hasCompanyPhone = !!(company?.phone);
