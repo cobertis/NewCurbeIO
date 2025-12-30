@@ -499,15 +499,13 @@ class EmailService {
     companyId: string;
     userId: string;
   }): Promise<boolean> {
-    const formatValue = (value: string | null | undefined) => value || 'N/A';
-    
     const html = `
       <!DOCTYPE html>
       <html>
         <head>
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-            .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
             .header h1 { margin: 0; font-size: 24px; }
             .header p { margin: 10px 0 0; opacity: 0.9; font-size: 14px; }
@@ -516,12 +514,11 @@ class EmailService {
             .section-title { font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 0 0 15px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef; }
             .info-grid { display: table; width: 100%; }
             .info-row { display: table-row; }
-            .info-label { display: table-cell; padding: 8px 10px 8px 0; font-weight: 600; color: #495057; width: 140px; vertical-align: top; }
+            .info-label { display: table-cell; padding: 8px 10px 8px 0; font-weight: 600; color: #495057; width: 120px; vertical-align: top; }
             .info-value { display: table-cell; padding: 8px 0; color: #212529; }
             .highlight { background: #e8f4f8; padding: 15px; border-radius: 6px; margin-top: 15px; border-left: 4px solid #0d6efd; }
             .highlight strong { color: #0d6efd; }
             .footer { text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px; }
-            .badge { display: inline-block; padding: 4px 10px; background: #28a745; color: white; border-radius: 4px; font-size: 12px; font-weight: 600; }
           </style>
         </head>
         <body>
@@ -532,66 +529,14 @@ class EmailService {
             </div>
             <div class="content">
               <div class="section">
-                <div class="section-title">Información de la Empresa</div>
+                <div class="section-title">Datos del Registro</div>
                 <div class="info-grid">
                   <div class="info-row">
-                    <div class="info-label">Nombre:</div>
+                    <div class="info-label">Empresa:</div>
                     <div class="info-value"><strong>${data.companyName}</strong></div>
                   </div>
                   <div class="info-row">
-                    <div class="info-label">Slug:</div>
-                    <div class="info-value">${data.companySlug}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Teléfono:</div>
-                    <div class="info-value">${formatValue(data.companyPhone)}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Email:</div>
-                    <div class="info-value">${formatValue(data.companyEmail)}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Sitio Web:</div>
-                    <div class="info-value">${formatValue(data.companyWebsite)}</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="section">
-                <div class="section-title">Dirección</div>
-                <div class="info-grid">
-                  <div class="info-row">
-                    <div class="info-label">Dirección:</div>
-                    <div class="info-value">${formatValue(data.companyAddress)}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Línea 2:</div>
-                    <div class="info-value">${formatValue(data.companyAddressLine2)}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Ciudad:</div>
-                    <div class="info-value">${formatValue(data.companyCity)}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Estado:</div>
-                    <div class="info-value">${formatValue(data.companyState)}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Código Postal:</div>
-                    <div class="info-value">${formatValue(data.companyPostalCode)}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">País:</div>
-                    <div class="info-value">${formatValue(data.companyCountry)}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="section">
-                <div class="section-title">Administrador de la Cuenta</div>
-                <div class="info-grid">
-                  <div class="info-row">
-                    <div class="info-label">Nombre:</div>
+                    <div class="info-label">Administrador:</div>
                     <div class="info-value"><strong>${data.adminFirstName} ${data.adminLastName}</strong></div>
                   </div>
                   <div class="info-row">
@@ -600,17 +545,16 @@ class EmailService {
                   </div>
                   <div class="info-row">
                     <div class="info-label">Teléfono:</div>
-                    <div class="info-value">${formatValue(data.adminPhone)}</div>
+                    <div class="info-value">${data.adminPhone || 'No proporcionado'}</div>
                   </div>
                 </div>
               </div>
 
               <div class="highlight">
-                <strong>Detalles del Sistema:</strong><br>
+                <strong>IDs del Sistema:</strong><br>
                 <span style="font-size: 13px;">
-                  Company ID: ${data.companyId}<br>
-                  User ID: ${data.userId}<br>
-                  Fecha de Registro: ${data.registrationDate}
+                  Company ID: ${data.companyId} | User ID: ${data.userId}<br>
+                  Fecha: ${data.registrationDate}
                 </span>
               </div>
             </div>
