@@ -671,6 +671,9 @@ export default function ComplianceBrand() {
                         onChange={(value) => form.setValue("street", value)}
                         onAddressSelect={(address) => {
                           form.setValue("street", address.street);
+                          if (address.streetLine2) {
+                            form.setValue("streetLine2", address.streetLine2);
+                          }
                           form.setValue("city", address.city);
                           form.setValue("postalCode", address.postalCode);
                           form.setValue("state", normalizeStateCode(address.state));

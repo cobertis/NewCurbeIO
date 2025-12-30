@@ -4111,6 +4111,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log("[GOOGLE_PLACES] Got place details");
       // Parse address components
       let street = '';
+      let streetLine2 = '';
       let city = '';
       let state = '';
       let county = '';
@@ -4124,6 +4125,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
           if (types.includes('route')) {
             street = street + component.longText;
+          }
+          if (types.includes('subpremise')) {
+            streetLine2 = component.longText;
           }
           if (types.includes('locality')) {
             city = component.longText;
@@ -4145,6 +4149,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       street = street.trim();
       const address = {
         street,
+        streetLine2,
         city,
         state,
         county,

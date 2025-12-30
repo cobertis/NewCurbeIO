@@ -16,6 +16,7 @@ interface GooglePlacesAddressAutocompleteProps {
   onChange: (value: string) => void;
   onAddressSelect: (address: {
     street: string;
+    streetLine2?: string;
     city: string;
     state: string;
     county?: string;
@@ -123,6 +124,7 @@ export function GooglePlacesAddressAutocomplete({
         // Call the callback with all address components and place details
         onAddressSelect({
           street: address.street,
+          streetLine2: address.streetLine2,
           city: address.city,
           state: address.state,
           county: address.county,
