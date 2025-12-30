@@ -3690,6 +3690,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ))
           .limit(1);
         const hasCompliancePhone = activeApp.length > 0;
+        // Only consider messaging setup complete if application is submitted/pending/approved (not draft)
+        const hasComplianceSubmitted = activeApp.length > 0 && 
+          ['submitted', 'pending_review', 'approved'].includes(activeApp[0].status);
         
         phoneSetupNatural = hasCompanyPhone || hasSipEnabled || hasCompliancePhone;
         
@@ -3713,7 +3716,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Check if company has any BulkVS phone numbers (messaging channels)
         const bulkvsNumbers = await storage.getBulkvsPhoneNumbersByCompany(user.companyId);
-        messagingSetupNatural = bulkvsNumbers.length > 0 || hasSipEnabled || hasCompliancePhone;
+        // Messaging setup is only complete if compliance application is fully submitted (not just draft)
+        messagingSetupNatural = bulkvsNumbers.length > 0 || hasSipEnabled || hasComplianceSubmitted;
         
         // Check if user has selected a plan (has subscription)
         const subscription = await storage.getSubscriptionByCompany(user.companyId);
