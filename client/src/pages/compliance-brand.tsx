@@ -466,12 +466,13 @@ export default function ComplianceBrand() {
     }
   };
 
-  const handleStepChange = async (targetStep: number) => {
-    // Save current step before switching
+  const handleStepChange = (targetStep: number) => {
+    // Save current step in background (non-blocking)
     if (openStep !== 0 && openStep !== targetStep) {
-      await autoSaveCurrentStep(openStep);
+      autoSaveCurrentStep(openStep);
     }
-    setOpenStep(openStep === targetStep ? 0 : targetStep);
+    // Use functional update to avoid stale closure issues
+    setOpenStep(prev => prev === targetStep ? 0 : targetStep);
   };
 
   if (isLoading) {
