@@ -41968,37 +41968,83 @@ CRITICAL REMINDERS:
           });
           console.log("[Toll-Free Compliance] Full request body:", JSON.stringify(telnyxRequestBody, null, 2));
           
-          // Check if there's an existing verification for this phone number using the by_phone endpoint
+          // Check if there's an existing verification for this phone number
           const phoneE164 = formatPhoneE164(existing.selectedPhoneNumber);
           console.log("[Toll-Free Compliance] Checking for existing verification for:", phoneE164);
           
-          // Use the by_phone lookup endpoint which returns verifications in any state (including approved)
-          const encodedPhone = encodeURIComponent(phoneE164);
-          const existingVerifResponse = await fetch(
-            `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/by_phone/${encodedPhone}`,
-            {
-              method: "GET",
-              headers: {
-                "Accept": "application/json",
-                "Authorization": `Bearer ${telnyxApiKey}`,
-                "x-managed-account-id": managedAccountId,
-              },
-            }
+          let existingVerifId: string | null = null;
+          
+          // Strategy 1: Try list endpoint with managed account to find existing verifications
+          const listHeaders: Record<string, string> = {
+            "Accept": "application/json",
+            "Authorization": `Bearer ${telnyxApiKey}`,
+          };
+          if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+            listHeaders["x-managed-account-id"] = managedAccountId;
+          }
+          
+          console.log("[Toll-Free Compliance] Querying verification list with managed account...");
+          const listResponse = await fetch(
+            "https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page[size]=250",
+            { method: "GET", headers: listHeaders }
           );
           
-          let existingVerifId: string | null = null;
-          if (existingVerifResponse.ok) {
-            const existingVerifResult = await existingVerifResponse.json();
-            // The by_phone endpoint returns the verification directly in data
-            if (existingVerifResult.data && existingVerifResult.data.id) {
-              existingVerifId = existingVerifResult.data.id;
-              console.log("[Toll-Free Compliance] Found existing verification via by_phone:", existingVerifId);
+          if (listResponse.ok) {
+            const listResult = await listResponse.json();
+            const verifications = listResult.data || [];
+            console.log("[Toll-Free Compliance] Found", verifications.length, "verifications in managed account");
+            
+            // Search for matching phone number
+            for (const v of verifications) {
+              const phones = v.phone_numbers || v.phoneNumbers || [];
+              for (const p of phones) {
+                const pNum = typeof p === 'string' ? p : (p.phone_number || p.phoneNumber || '');
+                if (pNum.replace(/[^0-9+]/g, '') === phoneE164.replace(/[^0-9+]/g, '')) {
+                  existingVerifId = v.id;
+                  console.log("[Toll-Free Compliance] Found existing verification:", existingVerifId, "status:", v.status);
+                  break;
+                }
+              }
+              if (existingVerifId) break;
             }
-          } else if (existingVerifResponse.status === 404) {
-            console.log("[Toll-Free Compliance] No existing verification found for", phoneE164, "(404)");
-          } else {
-            const errorBody = await existingVerifResponse.text();
-            console.log("[Toll-Free Compliance] Error checking existing verification:", existingVerifResponse.status, errorBody);
+          }
+          
+          // Strategy 2: If not found in managed account, try master account
+          if (!existingVerifId) {
+            console.log("[Toll-Free Compliance] Not found in managed account, trying master account...");
+            const masterResponse = await fetch(
+              "https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page[size]=250",
+              {
+                method: "GET",
+                headers: {
+                  "Accept": "application/json",
+                  "Authorization": `Bearer ${telnyxApiKey}`,
+                },
+              }
+            );
+            
+            if (masterResponse.ok) {
+              const masterResult = await masterResponse.json();
+              const masterVerifs = masterResult.data || [];
+              console.log("[Toll-Free Compliance] Found", masterVerifs.length, "verifications in master account");
+              
+              for (const v of masterVerifs) {
+                const phones = v.phone_numbers || v.phoneNumbers || [];
+                for (const p of phones) {
+                  const pNum = typeof p === 'string' ? p : (p.phone_number || p.phoneNumber || '');
+                  if (pNum.replace(/[^0-9+]/g, '') === phoneE164.replace(/[^0-9+]/g, '')) {
+                    existingVerifId = v.id;
+                    console.log("[Toll-Free Compliance] Found existing verification in master:", existingVerifId, "status:", v.status);
+                    break;
+                  }
+                }
+                if (existingVerifId) break;
+              }
+            }
+          }
+          
+          if (!existingVerifId) {
+            console.log("[Toll-Free Compliance] No existing verification found for", phoneE164);
           }
           
           // Call Telnyx API - PATCH if existing, POST if new
