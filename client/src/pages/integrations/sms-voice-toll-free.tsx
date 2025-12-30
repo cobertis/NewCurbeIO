@@ -130,7 +130,7 @@ export default function SmsVoiceTollFree() {
         </div>
 
         <div className="flex items-center justify-between gap-4">
-          <Link href="/phone/buy">
+          <Link href="/getting-started">
             <Button variant="outline" size="sm" className="gap-2" data-testid="button-buy-number">
               <Plus className="h-4 w-4" />
               Buy a new number
