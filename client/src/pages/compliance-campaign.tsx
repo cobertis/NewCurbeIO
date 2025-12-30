@@ -282,7 +282,7 @@ export default function ComplianceCampaign() {
           messageContent,
           estimatedVolume,
           canadianTraffic,
-          isvReseller,
+          entityType,
           additionalInformation,
         });
         queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
