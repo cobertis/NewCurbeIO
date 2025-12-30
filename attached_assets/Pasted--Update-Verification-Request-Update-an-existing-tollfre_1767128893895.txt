@@ -1,0 +1,684 @@
+# Update Verification Request
+
+> Update an existing tollfree verification request. This is particularly useful when there are pending customer actions to be taken.
+
+
+
+## OpenAPI
+
+````yaml https://telnyx-openapi-ng.s3.us-east-1.amazonaws.com/real-time-communications/toll-free-verification.yml patch /messaging_tollfree/verification/requests/{id}
+openapi: 3.1.0
+info:
+  title: Telnyx Toll-free Verification API
+  version: 2.0.0
+  description: API for Toll-free verification.
+  contact:
+    email: support@telnyx.com
+servers:
+  - url: https://api.telnyx.com/v2
+security:
+  - bearerAuth: []
+paths:
+  /messaging_tollfree/verification/requests/{id}:
+    patch:
+      tags:
+        - Verification Requests
+      summary: Update Verification Request
+      description: >-
+        Update an existing tollfree verification request. This is particularly
+        useful when there are pending customer actions to be taken.
+      operationId: UpdateVerificationRequest
+      parameters:
+        - required: true
+          schema:
+            title: Id
+            type: string
+            format: uuid
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TFVerificationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationRequestEgress'
+        4XX:
+          $ref: '#/components/responses/toll-free-verification_GenericErrorResponse'
+components:
+  schemas:
+    TFVerificationRequest:
+      title: VerificationRequest
+      required:
+        - businessName
+        - corporateWebsite
+        - businessAddr1
+        - businessCity
+        - businessState
+        - businessZip
+        - businessContactFirstName
+        - businessContactLastName
+        - businessContactEmail
+        - businessContactPhone
+        - messageVolume
+        - phoneNumbers
+        - useCase
+        - useCaseSummary
+        - productionMessageContent
+        - optInWorkflow
+        - optInWorkflowImageURLs
+        - additionalInformation
+        - isvReseller
+      type: object
+      properties:
+        businessName:
+          title: Businessname
+          type: string
+          maxLength: 500
+          description: Name of the business; there are no specific formatting requirements
+          example: Telnyx LLC
+        corporateWebsite:
+          title: Corporatewebsite
+          type: string
+          maxLength: 500
+          description: A URL, including the scheme, pointing to the corporate website
+          example: http://example.com
+        businessAddr1:
+          title: Businessaddr1
+          type: string
+          maxLength: 500
+          description: Line 1 of the business address
+          example: 600 Congress Avenue
+        businessAddr2:
+          title: Businessaddr2
+          type: string
+          maxLength: 500
+          description: Line 2 of the business address
+          example: 14th Floor
+        businessCity:
+          title: Businesscity
+          type: string
+          maxLength: 500
+          description: >-
+            The city of the business address; the first letter should be
+            capitalized
+          example: Austin
+        businessState:
+          title: Businessstate
+          type: string
+          maxLength: 500
+          description: >-
+            The full name of the state (not the 2 letter code) of the business
+            address; the first letter should be capitalized
+          example: Texas
+        businessZip:
+          title: Businesszip
+          type: string
+          maxLength: 500
+          description: The ZIP code of the business address
+          example: '78701'
+        businessContactFirstName:
+          title: Businesscontactfirstname
+          type: string
+          maxLength: 500
+          description: >-
+            First name of the business contact; there are no specific
+            requirements on formatting
+          example: John
+        businessContactLastName:
+          title: Businesscontactlastname
+          type: string
+          maxLength: 500
+          description: >-
+            Last name of the business contact; there are no specific
+            requirements on formatting
+          example: Doe
+        businessContactEmail:
+          title: Businesscontactemail
+          type: string
+          maxLength: 500
+          description: The email address of the business contact
+          example: email@example.com
+        businessContactPhone:
+          title: Businesscontactphone
+          type: string
+          maxLength: 500
+          description: The phone number of the business contact in E.164 format
+          example: '+18005550100'
+        messageVolume:
+          allOf:
+            - $ref: '#/components/schemas/Volume'
+          description: Estimated monthly volume of messages from the given phone numbers
+          example: 100,000
+        phoneNumbers:
+          title: Phonenumbers
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TFPhoneNumber'
+          description: The phone numbers to request the verification of
+          example:
+            - phoneNumber: '+18773554398'
+            - phoneNumber: '+18773554399'
+        useCase:
+          allOf:
+            - $ref: '#/components/schemas/UseCaseCategories'
+          description: Machine-readable use-case for the phone numbers
+          example: 2FA
+        useCaseSummary:
+          title: Usecasesummary
+          type: string
+          maxLength: 500
+          description: Human-readable summary of the desired use-case
+          example: >-
+            This is a use case where Telnyx sends out 2FA codes to portal users
+            to verify their identity in order to sign into the portal
+        productionMessageContent:
+          title: Productionmessagecontent
+          type: string
+          maxLength: 1000
+          description: >-
+            An example of a message that will be sent from the given phone
+            numbers
+          example: Your Telnyx OTP is XXXX
+        optInWorkflow:
+          title: Optinworkflow
+          type: string
+          maxLength: 500
+          description: >-
+            Human-readable description of how end users will opt into receiving
+            messages from the given phone numbers
+          example: >-
+            User signs into the Telnyx portal, enters a number and is prompted
+            to select whether they want to use 2FA verification for security
+            purposes. If they've opted in a confirmation message is sent out to
+            the handset
+        optInWorkflowImageURLs:
+          title: Optinworkflowimageurls
+          minItems: 1
+          type: array
+          items:
+            $ref: '#/components/schemas/Url'
+          description: Images showing the opt-in workflow
+          example:
+            - url: https://telnyx.com/sign-up
+            - url: https://telnyx.com/company/data-privacy
+        additionalInformation:
+          title: Additionalinformation
+          type: string
+          maxLength: 500
+          description: Any additional information
+        isvReseller:
+          title: Isvreseller
+          type: string
+          maxLength: 500
+          description: ISV name
+        webhookUrl:
+          title: Webhookurl
+          type: string
+          maxLength: 500
+          description: >-
+            URL that should receive webhooks relating to this verification
+            request
+          example: http://example-webhook.com
+        businessRegistrationNumber:
+          title: Businessregistrationnumber
+          type:
+            - string
+            - 'null'
+          maxLength: 500
+          description: >-
+            Official business registration number (e.g., Employer Identification
+            Number (EIN) in the U.S.). Required from January 2026.
+          example: 12-3456789
+        businessRegistrationType:
+          title: Businessregistrationtype
+          type:
+            - string
+            - 'null'
+          maxLength: 500
+          description: >-
+            Type of business registration being provided. Required from January
+            2026.
+          example: EIN
+        businessRegistrationCountry:
+          title: Businessregistrationcountry
+          type:
+            - string
+            - 'null'
+          maxLength: 2
+          pattern: ^[A-Z]{2}$
+          description: >-
+            ISO 3166-1 alpha-2 country code of the issuing business authority.
+            Must be exactly 2 letters. Automatically converted to uppercase.
+            Required from January 2026.
+          example: US
+        doingBusinessAs:
+          title: Doingbusinessas
+          type:
+            - string
+            - 'null'
+          maxLength: 500
+          description: Doing Business As (DBA) name if different from legal name
+          example: Acme Services
+        entityType:
+          anyOf:
+            - $ref: '#/components/schemas/toll-free-verification_EntityType'
+            - type: 'null'
+          description: >-
+            Business entity classification. Must be one of the 5 valid enum
+            values.
+        optInConfirmationResponse:
+          title: Optinconfirmationresponse
+          type:
+            - string
+            - 'null'
+          maxLength: 500
+          description: Message sent to users confirming their opt-in to receive messages
+          example: You have successfully opted in to receive messages from Acme Corp
+        helpMessageResponse:
+          title: Helpmessageresponse
+          type:
+            - string
+            - 'null'
+          maxLength: 500
+          description: The message returned when users text 'HELP'
+          example: >-
+            Reply HELP for assistance or STOP to unsubscribe. Contact:
+            support@example.com
+        privacyPolicyURL:
+          title: Privacypolicyurl
+          type:
+            - string
+            - 'null'
+          maxLength: 500
+          description: >-
+            URL pointing to the business's privacy policy. Plain string, no URL
+            format validation.
+          example: https://example.com/privacy
+        termsAndConditionURL:
+          title: Termsandconditionurl
+          type:
+            - string
+            - 'null'
+          maxLength: 500
+          description: >-
+            URL pointing to the business's terms and conditions. Plain string,
+            no URL format validation.
+          example: https://example.com/terms
+        ageGatedContent:
+          title: Agegatedcontent
+          type: boolean
+          default: false
+          description: >-
+            Indicates if messaging content requires age gating (e.g., 18+).
+            Defaults to false if not provided.
+        optInKeywords:
+          title: Optinkeywords
+          type:
+            - string
+            - 'null'
+          maxLength: 500
+          description: Keywords used to collect and process consumer opt-ins
+          example: START, YES, SUBSCRIBE
+      description: The body of a tollfree verification request
+    VerificationRequestEgress:
+      title: VerificationRequestEgress
+      required:
+        - businessName
+        - corporateWebsite
+        - businessAddr1
+        - businessCity
+        - businessState
+        - businessZip
+        - businessContactFirstName
+        - businessContactLastName
+        - businessContactEmail
+        - businessContactPhone
+        - messageVolume
+        - phoneNumbers
+        - useCase
+        - useCaseSummary
+        - productionMessageContent
+        - optInWorkflow
+        - optInWorkflowImageURLs
+        - additionalInformation
+        - isvReseller
+        - id
+        - verificationRequestId
+      type: object
+      properties:
+        businessName:
+          title: Businessname
+          type: string
+          example: Telnyx LLC
+        corporateWebsite:
+          title: Corporatewebsite
+          type: string
+          example: http://example.com
+        businessAddr1:
+          title: Businessaddr1
+          type: string
+          example: 600 Congress Avenue
+        businessAddr2:
+          title: Businessaddr2
+          type: string
+          example: 14th Floor
+        businessCity:
+          title: Businesscity
+          type: string
+          example: Austin
+        businessState:
+          title: Businessstate
+          type: string
+          example: Texas
+        businessZip:
+          title: Businesszip
+          type: string
+          example: '78701'
+        businessContactFirstName:
+          title: Businesscontactfirstname
+          type: string
+          example: John
+        businessContactLastName:
+          title: Businesscontactlastname
+          type: string
+          example: Doe
+        businessContactEmail:
+          title: Businesscontactemail
+          type: string
+          example: email@example.com
+        businessContactPhone:
+          title: Businesscontactphone
+          type: string
+          example: '+18005550100'
+        messageVolume:
+          allOf:
+            - $ref: '#/components/schemas/Volume'
+          description: >-
+            One of the following exact values: 10; 100; 1,000; 10,000; 100,000;
+            250,000; 500,000; 750,000; 1,000,000; 5,000,000; 10,000,000+
+          example: 100,000
+        phoneNumbers:
+          title: Phonenumbers
+          type: array
+          items:
+            $ref: '#/components/schemas/TFPhoneNumber'
+          example:
+            - phoneNumber: '+18773554398'
+            - phoneNumber: '+18773554399'
+        useCase:
+          allOf:
+            - $ref: '#/components/schemas/UseCaseCategories'
+          example: 2FA
+        useCaseSummary:
+          title: Usecasesummary
+          type: string
+          example: >-
+            This is a use case where Telnyx sends out 2FA codes to portal users
+            to verify their identity in order to sign into the portal
+        productionMessageContent:
+          title: Productionmessagecontent
+          type: string
+          example: Your Telnyx OTP is XXXX
+        optInWorkflow:
+          title: Optinworkflow
+          type: string
+          example: >-
+            User signs into the Telnyx portal, enters number and is prompted to
+            select whether they want to use 2FA verification for security
+            purposes. If they've opted in a confirmation message is sent out to
+            the handset
+        optInWorkflowImageURLs:
+          title: Optinworkflowimageurls
+          type: array
+          items:
+            $ref: '#/components/schemas/Url'
+          example:
+            - url: https://telnyx.com/sign-up
+            - url: https://telnyx.com/company/data-privacy
+        additionalInformation:
+          title: Additionalinformation
+          type: string
+          example: This is for security purposes, blah blah blah
+        isvReseller:
+          title: Isvreseller
+          type: string
+          example: 'Yes'
+        webhookUrl:
+          title: Webhookurl
+          type: string
+          example: http://example-webhook.com
+        businessRegistrationNumber:
+          title: Businessregistrationnumber
+          type: string
+          example: 12-3456789
+        businessRegistrationType:
+          title: Businessregistrationtype
+          type: string
+          example: EIN
+        businessRegistrationCountry:
+          title: Businessregistrationcountry
+          type: string
+          example: US
+        doingBusinessAs:
+          title: Doingbusinessas
+          type: string
+          example: Acme Services
+        entityType:
+          allOf:
+            - $ref: '#/components/schemas/toll-free-verification_EntityType'
+          example: PRIVATE_PROFIT
+        optInConfirmationResponse:
+          title: Optinconfirmationresponse
+          type: string
+          example: You have successfully opted in to receive messages from Acme Corp
+        helpMessageResponse:
+          title: Helpmessageresponse
+          type: string
+          example: >-
+            Reply HELP for assistance or STOP to unsubscribe. Contact:
+            support@example.com
+        privacyPolicyURL:
+          title: Privacypolicyurl
+          type: string
+          example: https://example.com/privacy
+        termsAndConditionURL:
+          title: Termsandconditionurl
+          type: string
+          example: https://example.com/terms
+        ageGatedContent:
+          title: Agegatedcontent
+          type: boolean
+          example: false
+        optInKeywords:
+          title: Optinkeywords
+          type: string
+          example: START, YES, SUBSCRIBE
+        id:
+          title: Id
+          type: string
+          format: uuid
+        verificationRequestId:
+          title: Verificationrequestid
+          type: string
+        verificationStatus:
+          allOf:
+            - $ref: '#/components/schemas/TFVerificationStatus'
+          default: In Progress
+      description: A verification request as it comes out of the database
+    Volume:
+      title: Volume
+      enum:
+        - '10'
+        - '100'
+        - 1,000
+        - 10,000
+        - 100,000
+        - 250,000
+        - 500,000
+        - 750,000
+        - 1,000,000
+        - 5,000,000
+        - 10,000,000+
+      type: string
+      description: Message Volume Enums
+      x-stainless-renameMap:
+        V_10: '10'
+        V_100: '100'
+        V_1000: 1,000
+        V_10000: 10,000
+        V_100000: 100,000
+        V_250000: 250,000
+        V_500000: 500,000
+        V_750000: 750,000
+        V_1000000: 1,000,000
+        V_5000000: 5,000,000
+        V_10000000_PLUS: 10,000,000+
+    TFPhoneNumber:
+      title: PhoneNumber
+      required:
+        - phoneNumber
+      type: object
+      properties:
+        phoneNumber:
+          title: Phonenumber
+          type: string
+      description: A phone number
+    UseCaseCategories:
+      title: UseCaseCategories
+      enum:
+        - 2FA
+        - App Notifications
+        - Appointments
+        - Auctions
+        - Auto Repair Services
+        - Bank Transfers
+        - Billing
+        - Booking Confirmations
+        - Business Updates
+        - COVID-19 Alerts
+        - Career Training
+        - Chatbot
+        - Conversational / Alerts
+        - Courier Services & Deliveries
+        - Emergency Alerts
+        - Events & Planning
+        - Financial Services
+        - Fraud Alerts
+        - Fundraising
+        - General Marketing
+        - General School Updates
+        - HR / Staffing
+        - Healthcare Alerts
+        - Housing Community Updates
+        - Insurance Services
+        - Job Dispatch
+        - Legal Services
+        - Mixed
+        - Motivational Reminders
+        - Notary Notifications
+        - Order Notifications
+        - Political
+        - Public Works
+        - Real Estate Services
+        - Religious Services
+        - Repair and Diagnostics Alerts
+        - Rewards Program
+        - Surveys
+        - System Alerts
+        - Voting Reminders
+        - Waitlist Alerts
+        - Webinar Reminders
+        - Workshop Alerts
+      type: string
+      description: Tollfree usecase categories
+      x-stainless-renameMap:
+        TWO_FA: 2FA
+    Url:
+      title: Url
+      required:
+        - url
+      type: object
+      properties:
+        url:
+          title: Url
+          maxLength: 2083
+          minLength: 1
+          type: string
+          format: uri
+    toll-free-verification_EntityType:
+      title: EntityType
+      type: string
+      enum:
+        - SOLE_PROPRIETOR
+        - PRIVATE_PROFIT
+        - PUBLIC_PROFIT
+        - NON_PROFIT
+        - GOVERNMENT
+      description: Business entity classification
+    TFVerificationStatus:
+      title: VerificationStatus
+      enum:
+        - Verified
+        - Rejected
+        - Waiting For Vendor
+        - Waiting For Customer
+        - Waiting For Telnyx
+        - In Progress
+      type: string
+      description: Tollfree verification status
+    toll-free-verification_Errors:
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/toll-free-verification_Error'
+      type: object
+    toll-free-verification_Error:
+      required:
+        - code
+        - title
+      properties:
+        code:
+          type: string
+        title:
+          type: string
+        detail:
+          type: string
+        source:
+          type: object
+          properties:
+            pointer:
+              description: JSON pointer (RFC6901) to the offending entity.
+              type: string
+            parameter:
+              description: Indicates which query parameter caused the error.
+              type: string
+        meta:
+          type: object
+          additionalProperties: true
+      type: object
+  responses:
+    toll-free-verification_GenericErrorResponse:
+      description: Generic error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/toll-free-verification_Errors'
+  securitySchemes:
+    bearerAuth:
+      scheme: bearer
+      type: http
+
+````
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://developers.telnyx.com/llms.txt

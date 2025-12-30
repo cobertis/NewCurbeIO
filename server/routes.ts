@@ -41965,20 +41965,69 @@ CRITICAL REMINDERS:
           });
           console.log("[Toll-Free Compliance] Full request body:", JSON.stringify(telnyxRequestBody, null, 2));
           
-          // Call Telnyx API
-          const telnyxResponse = await fetch(
-            "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
+          // Check if there's an existing verification for this phone number
+          const phoneE164 = formatPhoneE164(existing.selectedPhoneNumber);
+          console.log("[Toll-Free Compliance] Checking for existing verification for:", phoneE164);
+          
+          const existingVerifResponse = await fetch(
+            `https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=100`,
             {
-              method: "POST",
+              method: "GET",
               headers: {
-                "Content-Type": "application/json",
                 "Accept": "application/json",
                 "Authorization": `Bearer ${telnyxApiKey}`,
                 "x-managed-account-id": managedAccountId,
               },
-              body: JSON.stringify(telnyxRequestBody),
             }
           );
+          
+          let existingVerifId: string | null = null;
+          if (existingVerifResponse.ok) {
+            const existingVerifResult = await existingVerifResponse.json();
+            const existingVerifications = existingVerifResult.data || [];
+            // Find verification for this phone number
+            const matchingVerif = existingVerifications.find((v: any) => 
+              v.phoneNumbers?.some((p: any) => p === phoneE164 || p === existing.selectedPhoneNumber)
+            );
+            if (matchingVerif) {
+              existingVerifId = matchingVerif.id;
+              console.log("[Toll-Free Compliance] Found existing verification ID:", existingVerifId);
+            }
+          }
+          
+          // Call Telnyx API - PATCH if existing, POST if new
+          let telnyxResponse: Response;
+          if (existingVerifId) {
+            console.log("[Toll-Free Compliance] Updating existing verification:", existingVerifId);
+            telnyxResponse = await fetch(
+              `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/${existingVerifId}`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "Authorization": `Bearer ${telnyxApiKey}`,
+                  "x-managed-account-id": managedAccountId,
+                },
+                body: JSON.stringify(telnyxRequestBody),
+              }
+            );
+          } else {
+            console.log("[Toll-Free Compliance] Creating new verification");
+            telnyxResponse = await fetch(
+              "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "Authorization": `Bearer ${telnyxApiKey}`,
+                  "x-managed-account-id": managedAccountId,
+                },
+                body: JSON.stringify(telnyxRequestBody),
+              }
+            );
+          }
           
           const telnyxResult = await telnyxResponse.json();
           
