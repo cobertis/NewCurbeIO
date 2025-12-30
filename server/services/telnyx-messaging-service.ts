@@ -202,6 +202,12 @@ export async function sendTelnyxOtpSms(toPhoneNumber: string, otpCode: string): 
       return false;
     }
     
+    // Ensure phone number is in E.164 format (starts with +)
+    let formattedPhone = toPhoneNumber.replace(/\D/g, ''); // Remove non-digits
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = '+' + formattedPhone;
+    }
+    
     const message = `Your Curbe verification code is: ${otpCode}\n\nTu código de verificación Curbe es: ${otpCode}`;
     
     const headers: Record<string, string> = {
@@ -211,12 +217,12 @@ export async function sendTelnyxOtpSms(toPhoneNumber: string, otpCode: string): 
     
     const payload = {
       from: OTP_SENDER_PHONE,
-      to: toPhoneNumber,
+      to: formattedPhone,
       text: message,
       type: "SMS",
     };
     
-    console.log(`[Telnyx OTP] Sending OTP to ${toPhoneNumber} from ${OTP_SENDER_PHONE}`);
+    console.log(`[Telnyx OTP] Sending OTP to ${formattedPhone} from ${OTP_SENDER_PHONE}`);
     
     const response = await fetch(`${TELNYX_API_BASE}/messages`, {
       method: "POST",
