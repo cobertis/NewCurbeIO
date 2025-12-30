@@ -228,6 +228,16 @@ app.use((req, res, next) => {
       console.error("[EMAIL] Error importing email service:", error);
     });
     
+    // CRITICAL: Repair managed accounts to allow toll-free number purchases
+    // This fixes "Can only order local numbers" errors for existing managed accounts
+    import("./services/telnyx-managed-accounts").then(({ repairManagedAccountsForTollFree }) => {
+      repairManagedAccountsForTollFree().catch((error) => {
+        console.error("[Toll-Free Repair] Error:", error);
+      });
+    }).catch((error) => {
+      console.error("[Toll-Free Repair] Import error:", error);
+    });
+    
     // CRITICAL: Auto-repair SRTP settings and migrate to Call Control on startup
     // This fixes 488 "Not Acceptable Here" errors and USER_BUSY hangup issues
     import("./services/telephony-provisioning-service").then(({ telephonyProvisioningService }) => {

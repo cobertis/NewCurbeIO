@@ -232,12 +232,6 @@ export interface PurchaseNumberResult {
   error?: string;
 }
 
-function isTollFreeNumber(phoneNumber: string): boolean {
-  const normalized = phoneNumber.replace(/^\+1/, '').replace(/\D/g, '');
-  const areaCode = normalized.slice(0, 3);
-  return ['800', '833', '844', '855', '866', '877', '888'].includes(areaCode);
-}
-
 export async function purchasePhoneNumber(
   phoneNumber: string, 
   companyId: string
@@ -255,21 +249,15 @@ export async function purchasePhoneNumber(
       };
     }
     
-    // Check if this is a toll-free number - these must be purchased via master account
-    // due to Telnyx managed account restrictions on new accounts
-    const isTollFree = isTollFreeNumber(phoneNumber);
-    
-    console.log(`[Telnyx Numbers] Purchasing ${phoneNumber} for company ${companyId}${managedAccountId ? ` (managed account: ${managedAccountId})` : ''}${isTollFree ? ' [TOLL-FREE - using master account]' : ''}`);
+    console.log(`[Telnyx Numbers] Purchasing ${phoneNumber} for company ${companyId}${managedAccountId ? ` (managed account: ${managedAccountId})` : ''}`);
 
-    // Build headers - include managed account header only for local numbers
-    // Toll-free numbers must be purchased via master account due to managed account restrictions
+    // Build headers - include managed account header if available
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
     
-    // Only add managed account header for local numbers, not toll-free
-    if (!isTollFree && managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
       headers["x-managed-account-id"] = managedAccountId;
     }
 

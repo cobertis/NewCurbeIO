@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { wallets, companies } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, isNotNull, sql } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
@@ -115,6 +115,37 @@ export async function createManagedAccount(
     }
     console.log(`[Telnyx Managed] Managed account enabled successfully`);
 
+    // Step 2.5: Configure managed account to allow toll-free number purchases
+    // By default, new managed accounts can only order local numbers
+    console.log(`[Telnyx Managed] Configuring account to allow toll-free number purchases: ${accountId}`);
+    const configResponse = await fetch(`${TELNYX_API_BASE}/managed_accounts/${accountId}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        allowed_products: {
+          number_ordering: {
+            enabled: true,
+            number_types: ["local", "toll_free", "national", "mobile"],
+            countries: ["US", "CA"]
+          }
+        }
+      }),
+    });
+
+    if (!configResponse.ok) {
+      const errorText = await configResponse.text();
+      console.error(`[Telnyx Managed] Config error: ${configResponse.status} - ${errorText}`);
+      // Don't fail - account is still usable for local numbers
+    } else {
+      const configResult = await configResponse.json();
+      console.log(`[Telnyx Managed] Account configured for toll-free purchases:`, 
+        JSON.stringify(configResult.data?.allowed_products || {}, null, 2));
+    }
+
     // Step 3: Wait and poll for API key (Telnyx generates it async after enable)
     let accountDetails: GetManagedAccountResult | null = null;
     for (let attempt = 1; attempt <= 5; attempt++) {
@@ -143,6 +174,81 @@ export async function createManagedAccount(
       success: false,
       error: error instanceof Error ? error.message : "Failed to create managed account",
     };
+  }
+}
+
+export async function configureManagedAccountForTollFree(accountId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+
+    console.log(`[Telnyx Managed] Configuring account ${accountId} to allow toll-free number purchases`);
+    
+    const configResponse = await fetch(`${TELNYX_API_BASE}/managed_accounts/${accountId}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        allowed_products: {
+          number_ordering: {
+            enabled: true,
+            number_types: ["local", "toll_free", "national", "mobile"],
+            countries: ["US", "CA"]
+          }
+        }
+      }),
+    });
+
+    if (!configResponse.ok) {
+      const errorText = await configResponse.text();
+      console.error(`[Telnyx Managed] Config error for ${accountId}: ${configResponse.status} - ${errorText}`);
+      return { success: false, error: errorText };
+    }
+    
+    const configResult = await configResponse.json();
+    console.log(`[Telnyx Managed] Account ${accountId} configured for toll-free purchases:`, 
+      JSON.stringify(configResult.data?.allowed_products || {}, null, 2));
+    
+    return { success: true };
+  } catch (error) {
+    console.error(`[Telnyx Managed] Config error for ${accountId}:`, error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function repairManagedAccountsForTollFree(): Promise<void> {
+  try {
+    console.log(`[Toll-Free Repair] Starting managed account toll-free configuration repair...`);
+    
+    const accountsResult = await db
+      .selectDistinct({ telnyxAccountId: wallets.telnyxAccountId })
+      .from(wallets)
+      .where(isNotNull(wallets.telnyxAccountId));
+    
+    const uniqueAccountIds = accountsResult
+      .map(r => r.telnyxAccountId)
+      .filter((id): id is string => id !== null && id !== "MASTER_ACCOUNT");
+    
+    console.log(`[Toll-Free Repair] Found ${uniqueAccountIds.length} unique managed accounts to check`);
+    
+    for (const accountId of uniqueAccountIds) {
+      try {
+        const result = await configureManagedAccountForTollFree(accountId);
+        if (result.success) {
+          console.log(`[Toll-Free Repair] Successfully configured account ${accountId} for toll-free`);
+        } else {
+          console.log(`[Toll-Free Repair] Could not configure account ${accountId}: ${result.error}`);
+        }
+      } catch (err) {
+        console.error(`[Toll-Free Repair] Error configuring account ${accountId}:`, err);
+      }
+    }
+    
+    console.log(`[Toll-Free Repair] Repair complete`);
+  } catch (error) {
+    console.error(`[Toll-Free Repair] Error during repair:`, error);
   }
 }
 
