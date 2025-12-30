@@ -363,8 +363,7 @@ export default function ComplianceChooseNumber() {
 
   const createApplicationMutation = useMutation({
     mutationFn: async (data: { numberType: string; selectedPhoneNumber: string; areaCode: string; country: string }) => {
-      const response = await apiRequest("POST", "/api/compliance/applications", data);
-      return response.json();
+      return await apiRequest("POST", "/api/compliance/applications", data);
     },
     onSuccess: (application) => {
       queryClient.invalidateQueries({ queryKey: ["/api/compliance/applications"] });
