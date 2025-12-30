@@ -129,6 +129,7 @@ const campaignFormSchema = z.object({
   sampleMessages: z.array(z.string().min(1, "Sample message is required")).min(1, "At least one sample message is required"),
   additionalInformation: z.string().optional(),
   isvReseller: z.string().min(1, "Please select an option"),
+  entityType: z.string().min(1, "Please select the legal form of your organization"),
 });
 
 type CampaignFormData = z.infer<typeof campaignFormSchema>;
@@ -177,6 +178,7 @@ export default function ComplianceCampaign() {
       sampleMessages: [""],
       additionalInformation: "",
       isvReseller: "",
+      entityType: "",
     },
   });
 
@@ -194,13 +196,14 @@ export default function ComplianceCampaign() {
       if (application.privacyPolicyUrl) form.setValue("privacyPolicyUrl", application.privacyPolicyUrl);
       if (application.additionalInformation) form.setValue("additionalInformation", application.additionalInformation);
       if (application.isvReseller) form.setValue("isvReseller", application.isvReseller);
+      if (application.entityType) form.setValue("entityType", application.entityType);
       
       const savedMessages = application.sampleMessages as string[] | null;
       if (savedMessages && Array.isArray(savedMessages) && savedMessages.length > 0) {
         form.setValue("sampleMessages", savedMessages);
       }
       
-      const hasStep1 = application.smsUseCase && application.messageAudience && application.messageContent && application.estimatedVolume && application.canadianTraffic && application.isvReseller;
+      const hasStep1 = application.smsUseCase && application.messageAudience && application.messageContent && application.estimatedVolume && application.canadianTraffic && application.isvReseller && application.entityType;
       const hasStep2 = application.optInDescription && application.optInEvidence;
       const hasStep3 = savedMessages && savedMessages.length > 0 && savedMessages[0];
       
@@ -222,8 +225,8 @@ export default function ComplianceCampaign() {
     const values = form.getValues();
     try {
       if (currentOpenStep === 1) {
-        const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, isvReseller, additionalInformation } = values;
-        if (smsUseCase || messageAudience || messageContent || estimatedVolume || canadianTraffic || isvReseller) {
+        const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, isvReseller, entityType, additionalInformation } = values;
+        if (smsUseCase || messageAudience || messageContent || estimatedVolume || canadianTraffic || isvReseller || entityType) {
           await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
             smsUseCase,
             messageAudience,
@@ -231,6 +234,7 @@ export default function ComplianceCampaign() {
             estimatedVolume,
             canadianTraffic,
             isvReseller,
+            entityType,
             additionalInformation,
           });
         }
@@ -267,11 +271,11 @@ export default function ComplianceCampaign() {
   };
 
   const handleStep1Save = async () => {
-    const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, isvReseller, additionalInformation } = form.getValues();
+    const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, isvReseller, entityType, additionalInformation } = form.getValues();
     const audienceValid = messageAudience.trim().split(/\s+/).length >= 5;
     const contentValid = messageContent.trim().split(/\s+/).length >= 10;
     
-    if (smsUseCase && audienceValid && contentValid && estimatedVolume && canadianTraffic && isvReseller) {
+    if (smsUseCase && audienceValid && contentValid && estimatedVolume && canadianTraffic && isvReseller && entityType) {
       try {
         await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
           smsUseCase,
@@ -293,7 +297,7 @@ export default function ComplianceCampaign() {
         });
       }
     } else {
-      form.trigger(["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "isvReseller"]);
+      form.trigger(["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "isvReseller", "entityType"]);
     }
   };
 
@@ -426,7 +430,7 @@ export default function ComplianceCampaign() {
       const errors = form.formState.errors;
       const errorFields = Object.keys(errors);
       if (errorFields.length > 0) {
-        const step1Fields = ["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "isvReseller"];
+        const step1Fields = ["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "isvReseller", "entityType"];
         const step2Fields = ["optInDescription", "optInEvidence"];
         const step3Fields = ["sampleMessages"];
         
@@ -468,6 +472,7 @@ export default function ComplianceCampaign() {
         sampleMessages: values.sampleMessages.filter(m => m.trim()),
         additionalInformation: values.additionalInformation,
         isvReseller: values.isvReseller,
+        entityType: values.entityType,
         currentStep: 5,
         status: "step_4_complete",
       });
@@ -766,6 +771,30 @@ export default function ComplianceCampaign() {
                     </RadioGroup>
                     {form.formState.errors.isvReseller && (
                       <p className="text-red-500 text-sm mt-1">{form.formState.errors.isvReseller.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      What type of legal form is the organization? <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={form.watch("entityType")}
+                      onValueChange={(value) => form.setValue("entityType", value)}
+                    >
+                      <SelectTrigger className="mt-1.5" data-testid="select-entity-type">
+                        <SelectValue placeholder="Select organization type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Private Company">Private Company</SelectItem>
+                        <SelectItem value="Publicly Traded Company">Publicly Traded Company</SelectItem>
+                        <SelectItem value="Charity/ Non-Profit Organization">Charity/ Non-Profit Organization</SelectItem>
+                        <SelectItem value="Sole Proprietor">Sole Proprietor</SelectItem>
+                        <SelectItem value="Government">Government</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.entityType && (
+                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.entityType.message}</p>
                     )}
                   </div>
 
