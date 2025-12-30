@@ -184,24 +184,25 @@ export default function ComplianceCampaign() {
 
   useEffect(() => {
     if (application) {
-      if (application.smsUseCase) form.setValue("smsUseCase", application.smsUseCase);
-      if (application.messageAudience) form.setValue("messageAudience", application.messageAudience);
-      if (application.messageContent) form.setValue("messageContent", application.messageContent);
-      if (application.estimatedVolume) form.setValue("estimatedVolume", application.estimatedVolume);
-      if (application.canadianTraffic) form.setValue("canadianTraffic", application.canadianTraffic);
-      if (application.optInDescription) form.setValue("optInDescription", application.optInDescription);
-      if (application.optInScreenshotUrl) form.setValue("optInScreenshotUrl", application.optInScreenshotUrl);
-      if (application.optInEvidence) form.setValue("optInEvidence", application.optInEvidence);
-      if (application.smsTermsUrl) form.setValue("smsTermsUrl", application.smsTermsUrl);
-      if (application.privacyPolicyUrl) form.setValue("privacyPolicyUrl", application.privacyPolicyUrl);
-      if (application.additionalInformation) form.setValue("additionalInformation", application.additionalInformation);
-      
-      if (application.entityType) form.setValue("entityType", application.entityType);
-      
       const savedMessages = application.sampleMessages as string[] | null;
-      if (savedMessages && Array.isArray(savedMessages) && savedMessages.length > 0) {
-        form.setValue("sampleMessages", savedMessages);
-      }
+      
+      // Use form.reset to properly update all form values at once
+      // This ensures Select components properly reflect the saved values
+      form.reset({
+        smsUseCase: application.smsUseCase || "",
+        messageAudience: application.messageAudience || "",
+        messageContent: application.messageContent || "",
+        estimatedVolume: application.estimatedVolume || "",
+        canadianTraffic: application.canadianTraffic || "",
+        optInDescription: application.optInDescription || "",
+        optInScreenshotUrl: application.optInScreenshotUrl || "",
+        optInEvidence: application.optInEvidence || "",
+        smsTermsUrl: application.smsTermsUrl || "",
+        privacyPolicyUrl: application.privacyPolicyUrl || "",
+        additionalInformation: application.additionalInformation || "",
+        entityType: application.entityType || "",
+        sampleMessages: (savedMessages && savedMessages.length > 0) ? savedMessages : [""],
+      });
       
       const hasStep1 = application.smsUseCase && application.messageAudience && application.messageContent && application.estimatedVolume && application.canadianTraffic && application.entityType;
       const hasStep2 = application.optInDescription && application.optInEvidence;
@@ -219,7 +220,7 @@ export default function ComplianceCampaign() {
         setHasInitializedOpenStep(true);
       }
     }
-  }, [application, form, hasInitializedOpenStep]);
+  }, [application, hasInitializedOpenStep]);
 
   const autoSaveCurrentStep = async (currentOpenStep: number) => {
     const values = form.getValues();
