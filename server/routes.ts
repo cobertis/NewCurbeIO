@@ -41983,9 +41983,11 @@ CRITICAL REMINDERS:
             listHeaders["x-managed-account-id"] = managedAccountId;
           }
           
-          console.log("[Toll-Free Compliance] Querying verification list with managed account...");
+          // Use phone_number query parameter for more accurate lookup
+          const encodedPhone = encodeURIComponent(phoneE164);
+          console.log("[Toll-Free Compliance] Querying verification list with phone_number filter...");
           const listResponse = await fetch(
-            "https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page[size]=250",
+            `https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=50&phone_number=${encodedPhone}`,
             { method: "GET", headers: listHeaders }
           );
           
@@ -42011,9 +42013,9 @@ CRITICAL REMINDERS:
           
           // Strategy 2: If not found in managed account, try master account
           if (!existingVerifId) {
-            console.log("[Toll-Free Compliance] Not found in managed account, trying master account...");
+            console.log("[Toll-Free Compliance] Not found in managed account, trying master account with phone_number filter...");
             const masterResponse = await fetch(
-              "https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page[size]=250",
+              `https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=50&phone_number=${encodedPhone}`,
               {
                 method: "GET",
                 headers: {
@@ -42094,6 +42096,32 @@ CRITICAL REMINDERS:
               meta: e.meta
             }));
             console.error("[Toll-Free Compliance] Validation details:", JSON.stringify(validationErrors, null, 2));
+            
+            // Special handling for error 10012 (duplicate resource)
+            // This means the number is already verified - treat as success
+            const isDuplicateError = errors.some((e: any) => e.code === "10012");
+            if (isDuplicateError) {
+              console.log("[Toll-Free Compliance] Number is already on a verified request - treating as successful submission");
+              
+              // Update application to mark as submitted (already verified)
+              const [updated] = await db
+                .update(complianceApplications)
+                .set({
+                  ...req.body,
+                  status: "submitted",
+                  submittedAt: new Date(),
+                  updatedAt: new Date(),
+                })
+                .where(eq(complianceApplications.id, id))
+                .returning();
+              
+              return res.json({
+                ...updated,
+                message: "This phone number is already verified with Telnyx. Your application has been marked as submitted.",
+                alreadyVerified: true
+              });
+            }
+            
             return res.status(telnyxResponse.status).json({
               message: telnyxResult.errors?.[0]?.detail || "Failed to submit toll-free verification to Telnyx",
               telnyxError: telnyxResult,
