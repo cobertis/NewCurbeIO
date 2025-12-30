@@ -41953,6 +41953,9 @@ CRITICAL REMINDERS:
           // Age-gated content
           telnyxRequestBody.ageGatedContent = existing.ageGatedContent || false;
           
+          // isvReseller - required by Telnyx API but leave blank
+          telnyxRequestBody.isvReseller = "";
+          
           console.log("[Toll-Free Compliance] Submitting verification request:", {
             managedAccountId: managedAccountId,
             businessName: telnyxRequestBody.businessName,
