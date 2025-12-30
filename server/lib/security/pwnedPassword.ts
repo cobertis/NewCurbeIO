@@ -29,13 +29,18 @@ export async function checkPwnedPassword(password: string): Promise<PwnedResult>
   const prefix = sha1.slice(0, 5);
   const suffix = sha1.slice(5);
 
+  console.log(`[HIBP] Checking password with prefix: ${prefix}`);
+
   const body = await fetchRange(prefix);
+  console.log(`[HIBP] Got ${body.split("\n").length} entries from API`);
 
   for (const line of body.split("\n")) {
     const [hashSuffix, countStr] = line.trim().split(":");
     if (hashSuffix === suffix) {
+      console.log(`[HIBP] Password FOUND in breach database (count: ${countStr})`);
       return { pwned: true, count: Number(countStr || "0") };
     }
   }
+  console.log(`[HIBP] Password NOT found in breach database`);
   return { pwned: false, count: 0 };
 }
