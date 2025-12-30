@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft, Mail, MessageSquare, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AuthLayout } from "@/components/auth-layout";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function VerifyOTP() {
   const [, setLocation] = useLocation();
@@ -87,6 +87,7 @@ export default function VerifyOTP() {
         toast({
           title: "Code sent",
           description: `Verification code sent via ${method === "email" ? "email" : "SMS"}`,
+          duration: 3000,
         });
       } else {
         const data = await response.json();
@@ -94,6 +95,7 @@ export default function VerifyOTP() {
           variant: "destructive",
           title: "Error",
           description: data.message || "Failed to send verification code",
+          duration: 3000,
         });
       }
     } catch (error) {
@@ -101,6 +103,7 @@ export default function VerifyOTP() {
         variant: "destructive",
         title: "Error",
         description: "Failed to send verification code",
+        duration: 3000,
       });
     } finally {
       setIsLoading(false);
@@ -152,6 +155,7 @@ export default function VerifyOTP() {
         variant: "destructive",
         title: "Invalid code",
         description: "Please enter all 6 digits",
+        duration: 3000,
       });
       return;
     }
@@ -171,6 +175,7 @@ export default function VerifyOTP() {
         toast({
           title: "Success!",
           description: "You have been logged in successfully",
+          duration: 3000,
         });
         if (data.requiresOnboarding) {
           setLocation("/onboarding");
@@ -182,6 +187,7 @@ export default function VerifyOTP() {
           variant: "destructive",
           title: "Verification failed",
           description: data.message || "Invalid or expired code",
+          duration: 3000,
         });
       }
     } catch (error) {
@@ -189,6 +195,7 @@ export default function VerifyOTP() {
         variant: "destructive",
         title: "Error",
         description: "An error occurred. Please try again.",
+        duration: 3000,
       });
     } finally {
       setIsLoading(false);
@@ -215,12 +222,14 @@ export default function VerifyOTP() {
         toast({
           title: "Code resent",
           description: `New verification code sent via ${method === "email" ? "email" : "SMS"}`,
+          duration: 3000,
         });
       } else {
         toast({
           variant: "destructive",
           title: "Error",
           description: data.message || "Failed to resend code",
+          duration: 3000,
         });
       }
     } catch (error) {
@@ -228,6 +237,7 @@ export default function VerifyOTP() {
         variant: "destructive",
         title: "Error",
         description: "An error occurred. Please try again.",
+        duration: 3000,
       });
     }
   };
@@ -239,7 +249,7 @@ export default function VerifyOTP() {
   };
 
   return (
-    <AuthLayout
+    <AuthShell
       title={otpSent ? "Enter verification code" : "Two-factor authentication"}
       subtitle={
         otpSent 
@@ -263,9 +273,9 @@ export default function VerifyOTP() {
       {!otpSent ? (
         <div className="space-y-5">
           <div>
-            <Label className="text-[12px] font-medium text-gray-500 tracking-wide mb-3 block">
+            <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase mb-3">
               Verification method
-            </Label>
+            </label>
             <RadioGroup 
               value={method} 
               onValueChange={(value) => setMethod(value as "email" | "sms")}
@@ -273,32 +283,38 @@ export default function VerifyOTP() {
               data-testid="radio-group-method"
             >
               {email2FAEnabled && (
-                <div className={`flex items-center space-x-3 p-3.5 rounded-lg border transition-all cursor-pointer ${
-                  method === "email" 
-                    ? "border-gray-900 bg-gray-50" 
-                    : "border-gray-200 hover:border-gray-300"
-                }`}>
+                <label 
+                  htmlFor="email-method"
+                  className={`flex items-center space-x-3 p-3.5 rounded-lg border transition-all cursor-pointer ${
+                    method === "email" 
+                      ? "border-gray-900 bg-gray-50" 
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
                   <RadioGroupItem value="email" id="email-method" data-testid="radio-email" />
-                  <Label htmlFor="email-method" className="flex items-center flex-1 cursor-pointer">
+                  <div className="flex items-center flex-1">
                     <Mail className="h-5 w-5 text-gray-500 mr-3" />
                     <div>
                       <div className="text-[14px] font-medium text-gray-900">Email</div>
                       <div className="text-[12px] text-gray-500">{maskedEmail}</div>
                     </div>
-                  </Label>
-                </div>
+                  </div>
+                </label>
               )}
 
               {sms2FAEnabled && (
-                <div className={`flex items-center space-x-3 p-3.5 rounded-lg border transition-all ${
-                  !hasPhone 
-                    ? "opacity-50 cursor-not-allowed border-gray-200" 
-                    : method === "sms" 
-                      ? "border-gray-900 bg-gray-50 cursor-pointer" 
-                      : "border-gray-200 hover:border-gray-300 cursor-pointer"
-                }`}>
+                <label 
+                  htmlFor="sms-method"
+                  className={`flex items-center space-x-3 p-3.5 rounded-lg border transition-all ${
+                    !hasPhone 
+                      ? "opacity-50 cursor-not-allowed border-gray-200" 
+                      : method === "sms" 
+                        ? "border-gray-900 bg-gray-50 cursor-pointer" 
+                        : "border-gray-200 hover:border-gray-300 cursor-pointer"
+                  }`}
+                >
                   <RadioGroupItem value="sms" id="sms-method" disabled={!hasPhone} data-testid="radio-sms" />
-                  <Label htmlFor="sms-method" className={`flex items-center flex-1 ${hasPhone ? "cursor-pointer" : "cursor-not-allowed"}`}>
+                  <div className="flex items-center flex-1">
                     <MessageSquare className="h-5 w-5 text-gray-500 mr-3" />
                     <div>
                       <div className="text-[14px] font-medium text-gray-900">SMS</div>
@@ -306,8 +322,8 @@ export default function VerifyOTP() {
                         {hasPhone ? maskedPhone : "No phone number on file"}
                       </div>
                     </div>
-                  </Label>
-                </div>
+                  </div>
+                </label>
               )}
             </RadioGroup>
           </div>
@@ -330,7 +346,6 @@ export default function VerifyOTP() {
         </div>
       ) : (
         <div className="space-y-5">
-          {/* OTP Input Grid */}
           <div className="flex gap-2.5 justify-center" onPaste={handlePaste}>
             {otp.map((digit, index) => (
               <Input
@@ -348,7 +363,6 @@ export default function VerifyOTP() {
             ))}
           </div>
 
-          {/* Remember device */}
           <div className="flex items-center space-x-2.5">
             <Checkbox
               id="remember"
@@ -378,7 +392,6 @@ export default function VerifyOTP() {
             )}
           </Button>
 
-          {/* Expiry and resend */}
           <div className="text-center space-y-1.5">
             <p className="text-[12px] text-gray-500">
               Code expires in <span className="font-medium text-gray-700">{formatTime(expiryTime)}</span>
@@ -398,6 +411,6 @@ export default function VerifyOTP() {
           </div>
         </div>
       )}
-    </AuthLayout>
+    </AuthShell>
   );
 }
