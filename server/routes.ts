@@ -41562,7 +41562,7 @@ CRITICAL REMINDERS:
     }
   });
   
-  // GET /api/compliance/applications/active - Get active (non-draft) application
+  // GET /api/compliance/applications/active - Get active application (including draft with phone number)
   app.get("/api/compliance/applications/active", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
@@ -41570,7 +41570,8 @@ CRITICAL REMINDERS:
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const [application] = await db
+      // First try to find a submitted/pending/approved application
+      let [application] = await db
         .select()
         .from(complianceApplications)
         .where(
@@ -41581,6 +41582,22 @@ CRITICAL REMINDERS:
         )
         .orderBy(desc(complianceApplications.createdAt))
         .limit(1);
+      
+      // If no submitted application, check for draft with selected phone number
+      if (!application) {
+        [application] = await db
+          .select()
+          .from(complianceApplications)
+          .where(
+            and(
+              eq(complianceApplications.companyId, user.companyId),
+              eq(complianceApplications.status, "draft"),
+              isNotNull(complianceApplications.selectedPhoneNumber)
+            )
+          )
+          .orderBy(desc(complianceApplications.createdAt))
+          .limit(1);
+      }
       
       res.json({ application: application || null });
     } catch (error: any) {

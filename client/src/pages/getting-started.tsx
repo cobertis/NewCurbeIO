@@ -411,7 +411,7 @@ export default function GettingStarted() {
                     <>
                       <div className="flex items-center gap-2 mb-2">
                         <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Your Toll-Free Number</p>
-                        {activeApplication.status === 'draft' && (
+                        {!['submitted', 'pending_review', 'approved', 'rejected'].includes(activeApplication.status) && (
                           <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                             Registration in progress
@@ -451,7 +451,7 @@ export default function GettingStarted() {
                         </Button>
                       </div>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                        {activeApplication.status === 'draft' && 
+                        {!['submitted', 'pending_review', 'approved', 'rejected'].includes(activeApplication.status) && 
                           "We've assigned a toll-free number to your account. Please complete the registration to start texting."}
                         {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && 
                           "We've assigned a toll-free number to your account for 1 month for free, so you can start engaging with your audience sooner. Please complete a free verification to start texting."}
@@ -463,8 +463,9 @@ export default function GettingStarted() {
                       <Button 
                           size="sm" 
                           onClick={() => {
-                            // For draft status, navigate to the correct compliance wizard step
-                            if (activeApplication.status === 'draft') {
+                            // For in-progress status, navigate to the correct compliance wizard step
+                            const inProgressStatuses = ['draft', 'step_1_complete', 'step_2_complete', 'step_3_complete'];
+                            if (inProgressStatuses.includes(activeApplication.status) || !['submitted', 'pending_review', 'approved', 'rejected'].includes(activeApplication.status)) {
                               const appId = activeApplication.id;
                               const step = activeApplication.currentStep || 0;
                               // Step mapping: 0=number, 1=info, 2=brand, 3=campaign, 4=review
@@ -487,7 +488,7 @@ export default function GettingStarted() {
                           className="gap-2 bg-blue-600 hover:bg-blue-700" 
                           data-testid="button-view-status"
                         >
-                          {activeApplication.status === 'draft' ? 'Continue registration' : 'View status'}
+                          {!['submitted', 'pending_review', 'approved', 'rejected'].includes(activeApplication.status) ? 'Continue registration' : 'View status'}
                           <ChevronRight className="w-4 h-4" />
                         </Button>
                     </>
