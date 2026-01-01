@@ -42098,17 +42098,66 @@ CRITICAL REMINDERS:
             console.error("[Toll-Free Compliance] Validation details:", JSON.stringify(validationErrors, null, 2));
             
             // Special handling for error 10012 (duplicate resource)
-            // This means the number is already verified - treat as success
+            // This means the number is already verified - we need to find the existing verification ID
             const isDuplicateError = errors.some((e: any) => e.code === "10012");
             if (isDuplicateError) {
-              console.log("[Toll-Free Compliance] Number is already on a verified request - treating as successful submission");
+              console.log("[Toll-Free Compliance] Number is already on a verified request - fetching existing verification ID");
               
-              // Update application to mark as submitted (already verified)
+              // Fetch the existing verification request to get its ID
+              let existingVerificationId: string | null = null;
+              try {
+                const listHeaders: Record<string, string> = {
+                  "Authorization": `Bearer ${telnyxApiKey}`,
+                  "Accept": "application/json",
+                };
+                if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+                  listHeaders["x-managed-account-id"] = managedAccountId;
+                }
+                
+                const listResponse = await fetch(
+                  `https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=50&phone_number=${encodeURIComponent(existing.selectedPhoneNumber)}`,
+                  { method: "GET", headers: listHeaders }
+                );
+                
+                if (listResponse.ok) {
+                  const listResult = await listResponse.json();
+                  const records = listResult.records || listResult.data || [];
+                  if (records.length > 0) {
+                    existingVerificationId = records[0].id;
+                    console.log(`[Toll-Free Compliance] Found existing verification ID: ${existingVerificationId}`);
+                  }
+                }
+                
+                // If not found in managed account, try master account
+                if (!existingVerificationId) {
+                  const masterHeaders: Record<string, string> = {
+                    "Authorization": `Bearer ${telnyxApiKey}`,
+                    "Accept": "application/json",
+                  };
+                  const masterListResponse = await fetch(
+                    `https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=50&phone_number=${encodeURIComponent(existing.selectedPhoneNumber)}`,
+                    { method: "GET", headers: masterHeaders }
+                  );
+                  if (masterListResponse.ok) {
+                    const masterListResult = await masterListResponse.json();
+                    const masterRecords = masterListResult.records || masterListResult.data || [];
+                    if (masterRecords.length > 0) {
+                      existingVerificationId = masterRecords[0].id;
+                      console.log(`[Toll-Free Compliance] Found existing verification ID in master account: ${existingVerificationId}`);
+                    }
+                  }
+                }
+              } catch (lookupError: any) {
+                console.error("[Toll-Free Compliance] Error looking up existing verification:", lookupError.message);
+              }
+              
+              // Update application to mark as submitted with the verification ID
               const [updated] = await db
                 .update(complianceApplications)
                 .set({
                   ...req.body,
                   status: "submitted",
+                  telnyxVerificationRequestId: existingVerificationId,
                   submittedAt: new Date(),
                   updatedAt: new Date(),
                 })
@@ -42118,7 +42167,8 @@ CRITICAL REMINDERS:
               return res.json({
                 ...updated,
                 message: "This phone number is already verified with Telnyx. Your application has been marked as submitted.",
-                alreadyVerified: true
+                alreadyVerified: true,
+                telnyxVerificationRequestId: existingVerificationId
               });
             }
             
