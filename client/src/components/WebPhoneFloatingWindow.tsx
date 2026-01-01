@@ -2047,7 +2047,7 @@ export function WebPhoneFloatingWindow() {
     if (isExtensionCall) {
       extToggleMute();
     } else if (isTelnyxCall) {
-      telnyxWebRTC.toggleMute();
+      telnyxWebRTC.muteToggle();
     } else {
       isMuted ? webPhone.unmuteCall() : webPhone.muteCall();
     }
@@ -2074,7 +2074,7 @@ export function WebPhoneFloatingWindow() {
         }
         
         // Toggle local hold state via Telnyx SDK
-        telnyxWebRTC.toggleHold();
+        telnyxWebRTC.holdToggle();
       } catch (error) {
         console.error('[WebPhone] Hold toggle error:', error);
         toast({
@@ -2084,7 +2084,7 @@ export function WebPhoneFloatingWindow() {
         });
       }
     } else if (isTelnyxCall) {
-      telnyxWebRTC.toggleHold();
+      telnyxWebRTC.holdToggle();
     } else {
       isOnHold ? webPhone.unholdCall() : webPhone.holdCall();
     }
@@ -2098,7 +2098,7 @@ export function WebPhoneFloatingWindow() {
     if (isExtensionCall) {
       extEndCall();
     } else if (isTelnyxCall) {
-      telnyxWebRTC.hangup();
+      telnyxWebRTC.hangupCall();
     } else {
       webPhone.hangupCall();
     }
@@ -2917,7 +2917,13 @@ export function WebPhoneFloatingWindow() {
                         {/* Transfer Action Buttons */}
                         <div className="grid grid-cols-2 gap-3 px-2 sm:px-4">
                           <Button
-                            onClick={() => webPhone.completeAttendedTransfer()}
+                            onClick={() => {
+                              if (effectiveCall.isTelnyx) {
+                                telnyxWebRTC.completeConsultTransfer(attendedTransferNumber);
+                              } else {
+                                webPhone.completeAttendedTransfer();
+                              }
+                            }}
                             className="bg-green-600 hover:bg-green-700 text-white h-12"
                             data-testid="button-complete-transfer"
                           >
@@ -2926,7 +2932,13 @@ export function WebPhoneFloatingWindow() {
                           </Button>
                           
                           <Button
-                            onClick={() => webPhone.cancelAttendedTransfer()}
+                            onClick={() => {
+                              if (effectiveCall.isTelnyx) {
+                                telnyxWebRTC.cancelConsultTransfer();
+                              } else {
+                                webPhone.cancelAttendedTransfer();
+                              }
+                            }}
                             variant="outline"
                             className="h-12 border-2"
                             data-testid="button-cancel-transfer"
@@ -3177,7 +3189,7 @@ export function WebPhoneFloatingWindow() {
                               <Button
                                 onClick={async () => {
                                   if (effectiveCall.isTelnyx) {
-                                    await telnyxWebRTC.startAttendedTransfer(attendedTransferNumber);
+                                    await telnyxWebRTC.startConsultTransfer(attendedTransferNumber);
                                   } else {
                                     webPhone.attendedTransfer(attendedTransferNumber);
                                   }
