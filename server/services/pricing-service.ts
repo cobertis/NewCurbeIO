@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { callRates, wallets, walletTransactions, callLogs, telephonySettings } from "@shared/schema";
-import { eq, and, desc, sql, isNull, or } from "drizzle-orm";
+import { callRates, wallets, walletTransactions, callLogs, telephonySettings, users } from "@shared/schema";
+import { eq, and, desc, sql, isNull, isNotNull, or } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { PRICING } from "./pricing-config";
 
@@ -181,15 +181,80 @@ export async function chargeCallToWallet(
     console.log(`[PricingService] Total cost: $${totalCostWithFeatures.toFixed(4)} (base: $${costResult.totalCost.toFixed(4)}, recording: $${recordingCost.toFixed(4)}, cnam: $${cnamCost.toFixed(4)})`);
     
     const result = await db.transaction(async (tx) => {
-      const [wallet] = await tx
-        .select()
-        .from(wallets)
-        .where(eq(wallets.companyId, companyId))
-        .for("update");
+      // Find the right wallet in order of preference:
+      // 1. User-specific wallet if userId provided
+      // 2. Company owner's wallet (deterministic fallback)
+      // 3. Any wallet for this company (last resort)
+      let wallet;
+      
+      if (callData.userId) {
+        // Find user-specific wallet
+        const [userWallet] = await tx
+          .select()
+          .from(wallets)
+          .where(and(
+            eq(wallets.companyId, companyId),
+            eq(wallets.ownerUserId, callData.userId)
+          ))
+          .for("update");
+        wallet = userWallet;
+      }
+      
+      if (!wallet) {
+        // Find the company admin's wallet (deterministic - the first admin for this company)
+        const [adminUser] = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(and(
+            eq(users.companyId, companyId),
+            eq(users.role, "admin")
+          ))
+          .orderBy(users.createdAt)
+          .limit(1);
+        
+        if (adminUser?.id) {
+          const [adminWallet] = await tx
+            .select()
+            .from(wallets)
+            .where(and(
+              eq(wallets.companyId, companyId),
+              eq(wallets.ownerUserId, adminUser.id)
+            ))
+            .for("update");
+          wallet = adminWallet;
+        }
+      }
+      
+      if (!wallet) {
+        // Fallback: company-level wallet (ownerUserId IS NULL)
+        const [companyWallet] = await tx
+          .select()
+          .from(wallets)
+          .where(and(
+            eq(wallets.companyId, companyId),
+            isNull(wallets.ownerUserId)
+          ))
+          .for("update");
+        wallet = companyWallet;
+      }
+      
+      if (!wallet) {
+        // Last resort: oldest user wallet (deterministic order by createdAt)
+        const [oldestUserWallet] = await tx
+          .select()
+          .from(wallets)
+          .where(eq(wallets.companyId, companyId))
+          .orderBy(wallets.createdAt)
+          .limit(1)
+          .for("update");
+        wallet = oldestUserWallet;
+      }
       
       if (!wallet) {
         throw new Error(`Wallet not found for company ${companyId}`);
       }
+      
+      console.log(`[PricingService] Using wallet ${wallet.id} (owner: ${wallet.ownerUserId || 'none'}, balance: ${wallet.balance})`);
       
       const currentBalance = new Decimal(wallet.balance);
       const newBalance = currentBalance.minus(totalCostWithFeatures);

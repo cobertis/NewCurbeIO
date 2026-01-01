@@ -1772,16 +1772,14 @@ export function WebPhoneFloatingWindow() {
   }, [telnyxIncomingCall, incomingExtCall, queueCall, isVisible, toggleDialpad, playRingtone, stopRingtone]);
   
   // Ringback tone effect for outgoing calls (when dialing, before answer)
+  // NOTE: For Telnyx PSTN calls, the server generates ringback tone (generate_ringback_tone: true)
+  // so we only play client-side ringback for extension-to-extension calls
   useEffect(() => {
-    // Play ringback ONLY when there's an outgoing call that hasn't been answered yet
-    const hasOutgoingRinging = !!telnyxOutgoingCall && !telnyxCurrentCall && !telnyxIncomingCall;
-    
-    // For extension calls: play ringback when calling or ringing (before connected)
+    // For extension calls only: play ringback when calling or ringing (before connected)
+    // Telnyx outbound calls already have server-generated ringback, so skip client-side
     const hasExtOutgoingRinging = !!currentExtCall && (currentExtCall.state === 'calling' || currentExtCall.state === 'ringing');
     
-    const shouldPlayRingback = hasOutgoingRinging || hasExtOutgoingRinging;
-    
-    if (shouldPlayRingback) {
+    if (hasExtOutgoingRinging) {
       playRingback();
     } else {
       stopRingback();
@@ -1790,7 +1788,7 @@ export function WebPhoneFloatingWindow() {
     return () => {
       stopRingback();
     };
-  }, [telnyxOutgoingCall, telnyxCurrentCall, telnyxIncomingCall, currentExtCall, playRingback, stopRingback]);
+  }, [currentExtCall, playRingback, stopRingback]);
   
   // Check if phone is available (either SIP extension, Telnyx number, or PBX extension)
   const hasPhoneCapability = !!sipExtension || hasTelnyxNumber || !!extMyExtension;
