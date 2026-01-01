@@ -31188,7 +31188,7 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "No company associated" });
       }
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByUser(user.companyId, user.id);
+      const wallet = await getWalletByCompany(user.companyId);
       
       if (!wallet) {
         return res.json({ balance: "0.0000", currency: "USD" });
