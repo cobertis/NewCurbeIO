@@ -29,12 +29,13 @@ export function WalletTopupDialog({ open, onOpenChange }: WalletTopupDialogProps
   const [amount, setAmount] = useState<string>("25");
   const [selectedPreset, setSelectedPreset] = useState<number | null>(25);
 
-  const { data: paymentMethods, isLoading: isLoadingPaymentMethods } = useQuery<any[]>({
+  const { data: paymentMethodsData, isLoading: isLoadingPaymentMethods } = useQuery<{ paymentMethods: any[] }>({
     queryKey: ['/api/billing/payment-methods'],
     enabled: open,
   });
 
-  const defaultMethod = paymentMethods?.find(pm => pm.isDefault) || paymentMethods?.[0];
+  const paymentMethods = paymentMethodsData?.paymentMethods || [];
+  const defaultMethod = paymentMethods.find(pm => pm.isDefault) || paymentMethods[0];
 
   const topupMutation = useMutation({
     mutationFn: async (topupAmount: number) => {
