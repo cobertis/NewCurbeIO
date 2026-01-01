@@ -42268,9 +42268,23 @@ CRITICAL REMINDERS:
               if (!volume) return "10";
               const num = parseInt(volume.replace(/\D/g, ''), 10);
               if (isNaN(num)) return "10";
-              const validVolumes = [10, 100, 1000, 10000, 100000, 250000, 500000, 750000, 1000000, 5000000, 10000000];
+              // Telnyx requires exact format WITH COMMAS
+              const volumeMap: Record<number, string> = {
+                10: "10",
+                100: "100",
+                1000: "1,000",
+                10000: "10,000",
+                100000: "100,000",
+                250000: "250,000",
+                500000: "500,000",
+                750000: "750,000",
+                1000000: "1,000,000",
+                5000000: "5,000,000",
+                10000000: "10,000,000+"
+              };
+              const validVolumes = Object.keys(volumeMap).map(Number);
               const closest = validVolumes.reduce((prev, curr) => Math.abs(curr - num) < Math.abs(prev - num) ? curr : prev);
-              return String(closest);
+              return volumeMap[closest] || "10";
             };
             
             const baseUrl = process.env.REPLIT_DEV_DOMAIN 
