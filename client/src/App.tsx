@@ -696,23 +696,26 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     data-testid="button-user-menu"
                   >
                     <div className="relative">
-                      <Avatar className="h-9 w-9">
+                      <Avatar className="h-10 w-10">
                         <AvatarImage src={user?.avatar || undefined} alt={userName} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                        <AvatarFallback className="bg-amber-100 text-amber-700 text-base font-semibold">
                           {userInitial}
                         </AvatarFallback>
                       </Avatar>
                       <span 
                         className={cn(
-                          "absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-gray-800 z-10",
+                          "absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-gray-800 z-10",
                           getStatusColor(availabilityData?.status || "offline")
                         )}
                         data-testid="avatar-status-indicator"
                       />
                     </div>
                     <div className="text-left hidden sm:block">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[120px]" data-testid="header-user-name">{userName}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]" data-testid="header-user-email">{user?.email}</p>
+                      <div className="flex items-center gap-1">
+                        <p className="text-base font-medium text-gray-900 dark:text-white truncate max-w-[140px]" data-testid="header-user-name">{userName}</p>
+                        <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[160px]" data-testid="header-user-email">{user?.email}</p>
                     </div>
                   </button>
                 </DropdownMenuTrigger>
