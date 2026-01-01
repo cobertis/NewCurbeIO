@@ -1703,9 +1703,12 @@ export class TelephonyProvisioningService {
         return { success: false, error: "Company has no Telnyx managed account" };
       }
 
-      // Get company's outbound voice profile for the credential connection
+      // Get company's telephony settings including existing credential connection
       const [settings] = await db
-        .select({ outboundVoiceProfileId: telephonySettings.outboundVoiceProfileId })
+        .select({ 
+          outboundVoiceProfileId: telephonySettings.outboundVoiceProfileId,
+          credentialConnectionId: telephonySettings.credentialConnectionId,
+        })
         .from(telephonySettings)
         .where(eq(telephonySettings.companyId, companyId));
 
@@ -1722,67 +1725,126 @@ export class TelephonyProvisioningService {
       // Password: 8-128 chars, secure
       const sipPassword = `Curbe${Date.now().toString(36)}${Math.random().toString(36).substring(2, 10)}!`;
 
-      // Step 1: Create Credential Connection for this extension
-      console.log(`[TelephonyProvisioning] Creating Credential Connection for extension ${extension.extension}...`);
+      let credentialConnectionId: string;
+      let sipDomain: string = "sip.telnyx.com";
+
+      // Step 1: Check if company already has a Credential Connection - REUSE IT
+      if (settings.credentialConnectionId) {
+        console.log(`[TelephonyProvisioning] Reusing existing Credential Connection: ${settings.credentialConnectionId}`);
+        credentialConnectionId = settings.credentialConnectionId;
+        
+        // Get the existing connection details to extract SIP domain
+        const existingConnResponse = await this.makeApiRequest(
+          managedAccountId,
+          `/credential_connections/${credentialConnectionId}`,
+          "GET"
+        );
+        
+        if (existingConnResponse.ok) {
+          const existingConnData = await existingConnResponse.json();
+          const returnedSipUri = existingConnData.data?.sip_uri;
+          sipDomain = returnedSipUri 
+            ? returnedSipUri.replace(/^sip:[^@]+@/, '') 
+            : "sip.telnyx.com";
+          console.log(`[TelephonyProvisioning] Existing connection SIP domain: ${sipDomain}`);
+        }
+      } else {
+        // No existing connection - create a new one
+        console.log(`[TelephonyProvisioning] Creating new Credential Connection for company...`);
+        
+        const connectionName = `${company?.name || 'Company'} - WebRTC`;
+        
+        const connResponse = await this.makeApiRequest(
+          managedAccountId,
+          "/credential_connections",
+          "POST",
+          {
+            connection_name: connectionName.substring(0, 100), // Telnyx limit
+            user_name: sipUsername, // Required by Telnyx API
+            password: sipPassword, // Required by Telnyx API
+            active: true,
+            anchorsite_override: "Latency",
+            // CRITICAL: Enable RTCP-MUX for WebRTC compatibility
+            // Browser WebRTC requires RTCP-MUX or setRemoteDescription fails with:
+            // "RTCP-MUX is not enabled when it is required"
+            rtcp_mux_enabled: true,
+            outbound: {
+              outbound_voice_profile_id: settings.outboundVoiceProfileId,
+              channel_limit: 10, // Allow multiple extensions
+            },
+            inbound: {
+              channel_limit: 10,
+              codecs: ["G722", "G711U", "G711A"],
+              simultaneous_ringing: "enabled",
+            },
+            sip_uri_calling_preference: "unrestricted",
+            webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/voice/status`,
+          }
+        );
+
+        if (!connResponse.ok) {
+          const errorText = await connResponse.text();
+          console.error(`[TelephonyProvisioning] Failed to create credential connection: ${errorText}`);
+          return { success: false, error: `Failed to create SIP connection: ${errorText}` };
+        }
+
+        const connData = await connResponse.json();
+        credentialConnectionId = connData.data?.id;
+        // Get the SIP domain from the connection - Telnyx returns sip_uri in format "sip:user@domain"
+        const returnedSipUri = connData.data?.sip_uri;
+        sipDomain = returnedSipUri 
+          ? returnedSipUri.replace(/^sip:[^@]+@/, '') 
+          : "sip.telnyx.com";
+
+        console.log(`[TelephonyProvisioning] Credential Connection created: ${credentialConnectionId}, domain: ${sipDomain}`);
+        
+        // Save the connection ID to telephony settings for future reuse
+        await db
+          .update(telephonySettings)
+          .set({ credentialConnectionId, updatedAt: new Date() })
+          .where(eq(telephonySettings.companyId, companyId));
+        
+        console.log(`[TelephonyProvisioning] Saved Credential Connection to telephony settings`);
+      }
+
+      // Step 2: Create SIP credential for this extension on the shared connection
+      console.log(`[TelephonyProvisioning] Creating SIP credential for extension ${extension.extension}...`);
       
-      const connectionName = `${company?.name || 'Company'} - Ext ${extension.extension} - ${displayName}`;
-      
-      const connResponse = await this.makeApiRequest(
+      const credResponse = await this.makeApiRequest(
         managedAccountId,
-        "/credential_connections",
+        "/telephony_credentials",
         "POST",
         {
-          connection_name: connectionName.substring(0, 100), // Telnyx limit
-          user_name: sipUsername, // Required by Telnyx API
-          password: sipPassword, // Required by Telnyx API
-          active: true,
-          anchorsite_override: "Latency",
-          // CRITICAL: Enable RTCP-MUX for WebRTC compatibility
-          // Browser WebRTC requires RTCP-MUX or setRemoteDescription fails with:
-          // "RTCP-MUX is not enabled when it is required"
-          rtcp_mux_enabled: true,
-          outbound: {
-            outbound_voice_profile_id: settings.outboundVoiceProfileId,
-            channel_limit: 2, // Single extension needs only a couple channels
-          },
-          inbound: {
-            channel_limit: 2,
-            codecs: ["G722", "G711U", "G711A"],
-            simultaneous_ringing: "enabled",
-          },
-          sip_uri_calling_preference: "unrestricted",
-          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/voice/status`,
+          connection_id: credentialConnectionId,
+          name: `Ext ${extension.extension} - ${displayName}`,
+          user_name: sipUsername,
+          password: sipPassword,
         }
       );
 
-      if (!connResponse.ok) {
-        const errorText = await connResponse.text();
-        console.error(`[TelephonyProvisioning] Failed to create credential connection: ${errorText}`);
-        return { success: false, error: `Failed to create SIP connection: ${errorText}` };
+      let sipCredentialId = credentialConnectionId; // Default fallback
+      if (credResponse.ok) {
+        const credData = await credResponse.json();
+        sipCredentialId = credData.data?.id || credentialConnectionId;
+        console.log(`[TelephonyProvisioning] SIP credential created: ${sipCredentialId}`);
+      } else {
+        // If telephony_credentials fails, the connection's default credential can still be used
+        const errorText = await credResponse.text();
+        console.warn(`[TelephonyProvisioning] Could not create separate credential, using connection default: ${errorText}`);
       }
 
-      const connData = await connResponse.json();
-      const credentialConnectionId = connData.data?.id;
-      // Get the SIP domain from the connection - Telnyx returns sip_uri in format "sip:user@domain"
-      const returnedSipUri = connData.data?.sip_uri;
-      const sipDomain = returnedSipUri 
-        ? returnedSipUri.replace(/^sip:[^@]+@/, '') 
-        : "sip.telnyx.com";
-
-      console.log(`[TelephonyProvisioning] Credential Connection created: ${credentialConnectionId}, domain: ${sipDomain}`);
-
-      // Step 2: Disable SRTP for WebRTC compatibility
+      // Step 3: Disable SRTP for WebRTC compatibility (only if connection is new)
       await this.disableSrtpEncryption(managedAccountId, credentialConnectionId);
 
       console.log(`[TelephonyProvisioning] SIP Credentials ready: ${sipUsername}`);
 
-      // Step 3: Update extension record with SIP connection details
+      // Step 4: Update extension record with SIP connection details
       // IMPORTANT: Store password in plain text per user requirement (see replit.md)
       await db
         .update(pbxExtensions)
         .set({
           telnyxCredentialConnectionId: credentialConnectionId,
-          sipCredentialId: credentialConnectionId, // Use connection ID as credential ID
+          sipCredentialId: sipCredentialId,
           sipUsername: sipUsername,
           sipPassword: sipPassword,
           sipDomain: sipDomain,
@@ -1795,7 +1857,7 @@ export class TelephonyProvisioningService {
       return {
         success: true,
         credentialConnectionId,
-        sipCredentialId: credentialConnectionId,
+        sipCredentialId,
         sipUsername,
         sipPassword,
         sipDomain,
@@ -1809,13 +1871,14 @@ export class TelephonyProvisioningService {
   }
 
   /**
-   * Delete SIP Connection for an extension (cleanup)
+   * Delete SIP credentials for an extension (cleanup)
+   * NOTE: Only deletes the extension's SIP credentials, NOT the shared connection
    */
   async deprovisionExtensionSipConnection(
     companyId: string,
     extensionId: string
   ): Promise<{ success: boolean; error?: string }> {
-    console.log(`[TelephonyProvisioning] Deprovisioning SIP Connection for extension: ${extensionId}`);
+    console.log(`[TelephonyProvisioning] Deprovisioning SIP credentials for extension: ${extensionId}`);
 
     try {
       const [extension] = await db
@@ -1830,7 +1893,7 @@ export class TelephonyProvisioningService {
         return { success: false, error: "Extension not found" };
       }
 
-      if (!extension.telnyxCredentialConnectionId) {
+      if (!extension.sipCredentialId) {
         return { success: true }; // Nothing to deprovision
       }
 
@@ -1841,24 +1904,22 @@ export class TelephonyProvisioningService {
         return { success: false, error: "Company has no Telnyx managed account" };
       }
 
-      // Delete SIP credentials first
-      if (extension.sipCredentialId) {
+      // Only delete the SIP credential for this extension
+      // DO NOT delete the shared credential connection - it's used by other extensions
+      if (extension.sipCredentialId && extension.sipCredentialId !== extension.telnyxCredentialConnectionId) {
         try {
           await this.makeApiRequest(
             managedAccountId,
             `/telephony_credentials/${extension.sipCredentialId}`,
             "DELETE"
           );
-          console.log(`[TelephonyProvisioning] SIP credentials deleted: ${extension.sipCredentialId}`);
+          console.log(`[TelephonyProvisioning] SIP credential deleted: ${extension.sipCredentialId}`);
         } catch (error) {
-          console.error(`[TelephonyProvisioning] Failed to delete SIP credentials:`, error);
+          console.error(`[TelephonyProvisioning] Failed to delete SIP credential:`, error);
         }
       }
 
-      // Delete credential connection
-      await this.rollbackCredentialConnection(managedAccountId, extension.telnyxCredentialConnectionId);
-
-      // Clear extension SIP fields
+      // Clear extension SIP fields (but don't touch the shared connection)
       await db
         .update(pbxExtensions)
         .set({
