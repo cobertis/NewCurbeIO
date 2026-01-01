@@ -304,7 +304,7 @@ class TelnyxWebRTCManager {
         body: JSON.stringify({
           status: finalStatus,
           endedAt: endTime.toISOString(),
-          durationSeconds,
+          duration: durationSeconds,
           telnyxCallId: this.currentTelnyxLegId || null,
         }),
       });
