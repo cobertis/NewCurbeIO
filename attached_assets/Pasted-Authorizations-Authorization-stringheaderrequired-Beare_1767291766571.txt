@@ -1,0 +1,531 @@
+Authorizations
+​
+Authorization
+stringheaderrequired
+Bearer authentication header of the form Bearer <token>, where <token> is your auth token.
+
+Path Parameters
+​
+id
+string<uuid>required
+Body
+application/json
+The body of a tollfree verification request
+
+​
+businessName
+stringrequired
+Name of the business; there are no specific formatting requirements
+
+Maximum string length: 500
+Example:
+"Telnyx LLC"
+
+​
+corporateWebsite
+stringrequired
+A URL, including the scheme, pointing to the corporate website
+
+Maximum string length: 500
+Example:
+"http://example.com"
+
+​
+businessAddr1
+stringrequired
+Line 1 of the business address
+
+Maximum string length: 500
+Example:
+"600 Congress Avenue"
+
+​
+businessCity
+stringrequired
+The city of the business address; the first letter should be capitalized
+
+Maximum string length: 500
+Example:
+"Austin"
+
+​
+businessState
+stringrequired
+The full name of the state (not the 2 letter code) of the business address; the first letter should be capitalized
+
+Maximum string length: 500
+Example:
+"Texas"
+
+​
+businessZip
+stringrequired
+The ZIP code of the business address
+
+Maximum string length: 500
+Example:
+"78701"
+
+​
+businessContactFirstName
+stringrequired
+First name of the business contact; there are no specific requirements on formatting
+
+Maximum string length: 500
+Example:
+"John"
+
+​
+businessContactLastName
+stringrequired
+Last name of the business contact; there are no specific requirements on formatting
+
+Maximum string length: 500
+Example:
+"Doe"
+
+​
+businessContactEmail
+stringrequired
+The email address of the business contact
+
+Maximum string length: 500
+Example:
+"email@example.com"
+
+​
+businessContactPhone
+stringrequired
+The phone number of the business contact in E.164 format
+
+Maximum string length: 500
+Example:
+"+18005550100"
+
+​
+messageVolume
+enum<string>required
+Estimated monthly volume of messages from the given phone numbers
+
+Available options: 10, 100, 1,000, 10,000, 100,000, 250,000, 500,000, 750,000, 1,000,000, 5,000,000, 10,000,000+ 
+Example:
+"100,000"
+
+​
+phoneNumbers
+PhoneNumber · object[]required
+The phone numbers to request the verification of
+
+Minimum array length: 1
+Show child attributes
+
+Example:
+[
+  { "phoneNumber": "+18773554398" },
+  { "phoneNumber": "+18773554399" }
+]
+​
+useCase
+enum<string>required
+Machine-readable use-case for the phone numbers
+
+Available options: 2FA, App Notifications, Appointments, Auctions, Auto Repair Services, Bank Transfers, Billing, Booking Confirmations, Business Updates, COVID-19 Alerts, Career Training, Chatbot, Conversational / Alerts, Courier Services & Deliveries, Emergency Alerts, Events & Planning, Financial Services, Fraud Alerts, Fundraising, General Marketing, General School Updates, HR / Staffing, Healthcare Alerts, Housing Community Updates, Insurance Services, Job Dispatch, Legal Services, Mixed, Motivational Reminders, Notary Notifications, Order Notifications, Political, Public Works, Real Estate Services, Religious Services, Repair and Diagnostics Alerts, Rewards Program, Surveys, System Alerts, Voting Reminders, Waitlist Alerts, Webinar Reminders, Workshop Alerts 
+Example:
+"2FA"
+
+​
+useCaseSummary
+stringrequired
+Human-readable summary of the desired use-case
+
+Maximum string length: 500
+Example:
+"This is a use case where Telnyx sends out 2FA codes to portal users to verify their identity in order to sign into the portal"
+
+​
+productionMessageContent
+stringrequired
+An example of a message that will be sent from the given phone numbers
+
+Maximum string length: 1000
+Example:
+"Your Telnyx OTP is XXXX"
+
+​
+optInWorkflow
+stringrequired
+Human-readable description of how end users will opt into receiving messages from the given phone numbers
+
+Maximum string length: 500
+Example:
+"User signs into the Telnyx portal, enters a number and is prompted to select whether they want to use 2FA verification for security purposes. If they've opted in a confirmation message is sent out to the handset"
+
+​
+optInWorkflowImageURLs
+Url · object[]required
+Images showing the opt-in workflow
+
+Minimum array length: 1
+Show child attributes
+
+Example:
+[
+  { "url": "https://telnyx.com/sign-up" },
+  {
+    "url": "https://telnyx.com/company/data-privacy"
+  }
+]
+​
+additionalInformation
+stringrequired
+Any additional information
+
+Maximum string length: 500
+​
+isvReseller
+stringrequired
+ISV name
+
+Maximum string length: 500
+​
+businessAddr2
+string
+Line 2 of the business address
+
+Maximum string length: 500
+Example:
+"14th Floor"
+
+​
+webhookUrl
+string
+URL that should receive webhooks relating to this verification request
+
+Maximum string length: 500
+Example:
+"http://example-webhook.com"
+
+​
+businessRegistrationNumber
+string | null
+Official business registration number (e.g., Employer Identification Number (EIN) in the U.S.). Required from January 2026.
+
+Maximum string length: 500
+Example:
+"12-3456789"
+
+​
+businessRegistrationType
+string | null
+Type of business registration being provided. Required from January 2026.
+
+Maximum string length: 500
+Example:
+"EIN"
+
+​
+businessRegistrationCountry
+string | null
+ISO 3166-1 alpha-2 country code of the issuing business authority. Must be exactly 2 letters. Automatically converted to uppercase. Required from January 2026.
+
+Maximum string length: 2
+Example:
+"US"
+
+​
+doingBusinessAs
+string | null
+Doing Business As (DBA) name if different from legal name
+
+Maximum string length: 500
+Example:
+"Acme Services"
+
+​
+entityType
+enum<string> | null
+Business entity classification. Must be one of the 5 valid enum values.
+
+Available options: SOLE_PROPRIETOR, PRIVATE_PROFIT, PUBLIC_PROFIT, NON_PROFIT, GOVERNMENT 
+​
+optInConfirmationResponse
+string | null
+Message sent to users confirming their opt-in to receive messages
+
+Maximum string length: 500
+Example:
+"You have successfully opted in to receive messages from Acme Corp"
+
+​
+helpMessageResponse
+string | null
+The message returned when users text 'HELP'
+
+Maximum string length: 500
+Example:
+"Reply HELP for assistance or STOP to unsubscribe. Contact: support@example.com"
+
+​
+privacyPolicyURL
+string | null
+URL pointing to the business's privacy policy. Plain string, no URL format validation.
+
+Maximum string length: 500
+Example:
+"https://example.com/privacy"
+
+​
+termsAndConditionURL
+string | null
+URL pointing to the business's terms and conditions. Plain string, no URL format validation.
+
+Maximum string length: 500
+Example:
+"https://example.com/terms"
+
+​
+ageGatedContent
+booleandefault:false
+Indicates if messaging content requires age gating (e.g., 18+). Defaults to false if not provided.
+
+​
+optInKeywords
+string | null
+Keywords used to collect and process consumer opt-ins
+
+Maximum string length: 500
+Example:
+"START, YES, SUBSCRIBE"
+
+Response
+
+200
+
+application/json
+Successful Response
+
+A verification request as it comes out of the database
+
+​
+businessName
+stringrequired
+Example:
+"Telnyx LLC"
+
+​
+corporateWebsite
+stringrequired
+Example:
+"http://example.com"
+
+​
+businessAddr1
+stringrequired
+Example:
+"600 Congress Avenue"
+
+​
+businessCity
+stringrequired
+Example:
+"Austin"
+
+​
+businessState
+stringrequired
+Example:
+"Texas"
+
+​
+businessZip
+stringrequired
+Example:
+"78701"
+
+​
+businessContactFirstName
+stringrequired
+Example:
+"John"
+
+​
+businessContactLastName
+stringrequired
+Example:
+"Doe"
+
+​
+businessContactEmail
+stringrequired
+Example:
+"email@example.com"
+
+​
+businessContactPhone
+stringrequired
+Example:
+"+18005550100"
+
+​
+messageVolume
+enum<string>required
+One of the following exact values: 10; 100; 1,000; 10,000; 100,000; 250,000; 500,000; 750,000; 1,000,000; 5,000,000; 10,000,000+
+
+Available options: 10, 100, 1,000, 10,000, 100,000, 250,000, 500,000, 750,000, 1,000,000, 5,000,000, 10,000,000+ 
+Example:
+"100,000"
+
+​
+phoneNumbers
+PhoneNumber · object[]required
+Show child attributes
+
+Example:
+[
+  { "phoneNumber": "+18773554398" },
+  { "phoneNumber": "+18773554399" }
+]
+​
+useCase
+enum<string>required
+Tollfree usecase categories
+
+Available options: 2FA, App Notifications, Appointments, Auctions, Auto Repair Services, Bank Transfers, Billing, Booking Confirmations, Business Updates, COVID-19 Alerts, Career Training, Chatbot, Conversational / Alerts, Courier Services & Deliveries, Emergency Alerts, Events & Planning, Financial Services, Fraud Alerts, Fundraising, General Marketing, General School Updates, HR / Staffing, Healthcare Alerts, Housing Community Updates, Insurance Services, Job Dispatch, Legal Services, Mixed, Motivational Reminders, Notary Notifications, Order Notifications, Political, Public Works, Real Estate Services, Religious Services, Repair and Diagnostics Alerts, Rewards Program, Surveys, System Alerts, Voting Reminders, Waitlist Alerts, Webinar Reminders, Workshop Alerts 
+Example:
+"2FA"
+
+​
+useCaseSummary
+stringrequired
+Example:
+"This is a use case where Telnyx sends out 2FA codes to portal users to verify their identity in order to sign into the portal"
+
+​
+productionMessageContent
+stringrequired
+Example:
+"Your Telnyx OTP is XXXX"
+
+​
+optInWorkflow
+stringrequired
+Example:
+"User signs into the Telnyx portal, enters number and is prompted to select whether they want to use 2FA verification for security purposes. If they've opted in a confirmation message is sent out to the handset"
+
+​
+optInWorkflowImageURLs
+Url · object[]required
+Show child attributes
+
+Example:
+[
+  { "url": "https://telnyx.com/sign-up" },
+  {
+    "url": "https://telnyx.com/company/data-privacy"
+  }
+]
+​
+additionalInformation
+stringrequired
+Example:
+"This is for security purposes, blah blah blah"
+
+​
+isvReseller
+stringrequired
+Example:
+"Yes"
+
+​
+id
+string<uuid>required
+​
+verificationRequestId
+stringrequired
+​
+businessAddr2
+string
+Example:
+"14th Floor"
+
+​
+webhookUrl
+string
+Example:
+"http://example-webhook.com"
+
+​
+businessRegistrationNumber
+string
+Example:
+"12-3456789"
+
+​
+businessRegistrationType
+string
+Example:
+"EIN"
+
+​
+businessRegistrationCountry
+string
+Example:
+"US"
+
+​
+doingBusinessAs
+string
+Example:
+"Acme Services"
+
+​
+entityType
+enum<string>
+Business entity classification
+
+Available options: SOLE_PROPRIETOR, PRIVATE_PROFIT, PUBLIC_PROFIT, NON_PROFIT, GOVERNMENT 
+Example:
+"PRIVATE_PROFIT"
+
+​
+optInConfirmationResponse
+string
+Example:
+"You have successfully opted in to receive messages from Acme Corp"
+
+​
+helpMessageResponse
+string
+Example:
+"Reply HELP for assistance or STOP to unsubscribe. Contact: support@example.com"
+
+​
+privacyPolicyURL
+string
+Example:
+"https://example.com/privacy"
+
+​
+termsAndConditionURL
+string
+Example:
+"https://example.com/terms"
+
+​
+ageGatedContent
+boolean
+Example:
+false
+
+​
+optInKeywords
+string
+Example:
+"START, YES, SUBSCRIBE"
+
+​
+verificationStatus
+enum<string>default:In Progress
+Tollfree verification status
+
+Available options: Verified, Rejected, Waiting For Vendor, Waiting For Customer, Waiting For Telnyx, In Progress 
