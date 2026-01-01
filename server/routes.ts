@@ -42162,6 +42162,62 @@ CRITICAL REMINDERS:
         .where(eq(complianceApplications.id, id))
         .returning();
       
+      // If there's an existing Telnyx verification request and entityType was updated, sync to Telnyx
+      if (existing.telnyxVerificationRequestId && req.body.entityType) {
+        try {
+          const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+          const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+          const managedAccountId = await getCompanyManagedAccountId(user.companyId);
+          
+          if (telnyxApiKey) {
+            // Map entity type to Telnyx enum
+            const entityTypeMap = {
+              "Private Company": "PRIVATE_PROFIT",
+              "Publicly Traded Company": "PUBLIC_PROFIT",
+              "Charity/ Non-Profit Organization": "NON_PROFIT",
+              "Sole Proprietor": "SOLE_PROPRIETOR",
+              "Government": "GOVERNMENT",
+              "PRIVATE_PROFIT": "PRIVATE_PROFIT",
+              "PUBLIC_PROFIT": "PUBLIC_PROFIT",
+              "NON_PROFIT": "NON_PROFIT",
+              "SOLE_PROPRIETOR": "SOLE_PROPRIETOR",
+              "GOVERNMENT": "GOVERNMENT"
+            };
+            
+            const telnyxEntityType = entityTypeMap[req.body.entityType] || "PRIVATE_PROFIT";
+            
+            const patchHeaders = {
+              "Authorization": `Bearer ${telnyxApiKey}`,
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            };
+            if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+              patchHeaders["x-managed-account-id"] = managedAccountId;
+            }
+            
+            console.log(`[Toll-Free Compliance] Updating entityType in Telnyx: ${existing.telnyxVerificationRequestId} -> ${telnyxEntityType}`);
+            
+            const patchResponse = await fetch(
+              `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/${existing.telnyxVerificationRequestId}`,
+              {
+                method: "PATCH",
+                headers: patchHeaders,
+                body: JSON.stringify({ entityType: telnyxEntityType }),
+              }
+            );
+            
+            if (!patchResponse.ok) {
+              const patchError = await patchResponse.json();
+              console.error("[Toll-Free Compliance] Failed to update Telnyx verification:", patchError);
+            } else {
+              console.log("[Toll-Free Compliance] Successfully updated entityType in Telnyx");
+            }
+          }
+        } catch (telnyxUpdateError) {
+          console.error("[Toll-Free Compliance] Error updating Telnyx:", telnyxUpdateError.message);
+        }
+      }
+      
       res.json(updated);
     } catch (error: any) {
       console.error("[Compliance] Error updating application:", error);
