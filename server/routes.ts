@@ -37364,8 +37364,8 @@ CRITICAL REMINDERS:
       if (!user.companyId) {
         return res.status(400).json({ canCall: false, message: "No company associated with user" });
       }
-      const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const { getOrCreateWallet } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       
       const MINIMUM_BALANCE_FOR_CALLS = 0.50;
       const currentBalance = wallet ? parseFloat(wallet.balance) : 0;
