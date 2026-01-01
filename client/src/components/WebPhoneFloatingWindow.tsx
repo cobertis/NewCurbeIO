@@ -3428,26 +3428,7 @@ export function WebPhoneFloatingWindow() {
                   {viewMode === 'keypad' && (
                     /* Dialpad Content */
                     <div className="flex flex-col justify-between py-2 sm:py-4 px-3 sm:px-6 min-h-full">
-                      {/* Dialpad Grid */}
-                      <div className="grid grid-cols-3 gap-2 sm:gap-3 px-1 sm:px-2">
-                        {digits.map((digit, index) => (
-                          <button
-                            key={digit}
-                            onClick={() => handleDial(digit)}
-                            className="w-14 h-14 sm:w-20 sm:h-20 mx-auto rounded-full bg-muted/40 hover:bg-muted/60 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
-                            data-testid={`button-dialpad-${digit}`}
-                          >
-                            <span className="text-2xl sm:text-3xl text-foreground font-normal">
-                              {digit}
-                            </span>
-                            <span className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-widest font-medium h-[12px] sm:h-[14px]">
-                              {letters[index] || '\u00A0'}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                      
-                      {/* Number Display - Above Call Button */}
+                      {/* Number Display */}
                       <div className="text-center py-2 sm:py-3">
                         <input
                           ref={dialInputRef}
@@ -3467,6 +3448,25 @@ export function WebPhoneFloatingWindow() {
                           data-testid="input-dial-number"
                           autoComplete="off"
                         />
+                      </div>
+                      
+                      {/* Dialpad Grid */}
+                      <div className="grid grid-cols-3 gap-2 sm:gap-3 px-1 sm:px-2">
+                        {digits.map((digit, index) => (
+                          <button
+                            key={digit}
+                            onClick={() => handleDial(digit)}
+                            className="w-14 h-14 sm:w-20 sm:h-20 mx-auto rounded-full bg-muted/40 hover:bg-muted/60 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
+                            data-testid={`button-dialpad-${digit}`}
+                          >
+                            <span className="text-2xl sm:text-3xl text-foreground font-normal">
+                              {digit}
+                            </span>
+                            <span className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-widest font-medium h-[12px] sm:h-[14px]">
+                              {letters[index] || '\u00A0'}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                       
                       {/* Bottom Row - Call and Delete Buttons */}
