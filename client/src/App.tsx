@@ -692,7 +692,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button 
-                    className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/90 dark:bg-gray-800/70 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-all duration-200"
+                    className="flex items-center gap-3 px-2 py-1 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
                     data-testid="button-user-menu"
                   >
                     <div className="relative">
