@@ -5084,6 +5084,7 @@ export const walletTransactionTypes = [
   "NUMBER_RENTAL",
   "NUMBER_PURCHASE",
   "MONTHLY_FEE",
+  "DID_MONTHLY",
   "CNAM_MONTHLY",
   "E911_MONTHLY",
   "SUBSCRIPTION",

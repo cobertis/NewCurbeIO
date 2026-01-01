@@ -1078,6 +1078,9 @@ export async function updateCallForwarding(
       }
       
       // Create local record with call forwarding settings
+      const now = new Date();
+      const nextBilling = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
       await db.insert(telnyxPhoneNumbers).values({
         companyId,
         ownerUserId: ownerUserId || null,
@@ -1087,6 +1090,8 @@ export async function updateCallForwarding(
         callForwardingEnabled: enabled,
         callForwardingDestination: normalizedDest,
         callForwardingKeepCallerId: keepCallerId,
+        purchasedAt: now,
+        nextBillingAt: nextBilling,
       });
       
       console.log(`[Call Forwarding] Created local record and saved settings. Number: ${phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
@@ -1432,6 +1437,9 @@ export async function syncPhoneNumbersFromTelnyx(companyId: string): Promise<{
         const numberType = tn.phone_number_type === 'toll_free' ? 'toll_free' : 'local';
         const monthlyRate = numberType === 'toll_free' ? '1.50' : '1.00';
         
+        const purchasedDate = tn.purchased_at ? new Date(tn.purchased_at) : new Date();
+        const nextBilling = new Date(purchasedDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        
         await db.insert(telnyxPhoneNumbers).values({
           companyId,
           phoneNumber,
@@ -1441,7 +1449,8 @@ export async function syncPhoneNumbersFromTelnyx(companyId: string): Promise<{
           numberType,
           retailMonthlyRate: monthlyRate,
           telnyxMonthlyCost: tn.billing?.cost_information?.monthly_cost || '0',
-          purchasedAt: tn.purchased_at ? new Date(tn.purchased_at) : new Date(),
+          purchasedAt: purchasedDate,
+          nextBillingAt: nextBilling,
         });
         syncedCount++;
         console.log(`[Telnyx Sync] Added number ${phoneNumber} to company ${companyId}`);
