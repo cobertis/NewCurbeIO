@@ -674,16 +674,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <TooltipContent>New Policy</TooltipContent>
               </Tooltip>
 
-              {/* Search Icon */}
-              <button data-testid="button-search" className={circularButtonClass}>
-                <Search className="h-[18px] w-[18px]" />
-              </button>
-
-              {/* Messages Icon */}
-              <button data-testid="button-messages" className={circularButtonClass}>
-                <Mail className="h-[18px] w-[18px]" />
-              </button>
-
               {/* Notifications Button */}
               <button 
                 onClick={() => setNotificationsOpen(true)}
