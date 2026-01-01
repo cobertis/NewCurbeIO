@@ -218,40 +218,6 @@ export async function configureManagedAccountForTollFree(accountId: string): Pro
   }
 }
 
-export async function repairManagedAccountsForTollFree(): Promise<void> {
-  try {
-    console.log(`[Toll-Free Repair] Starting managed account toll-free configuration repair...`);
-    
-    const accountsResult = await db
-      .selectDistinct({ telnyxAccountId: wallets.telnyxAccountId })
-      .from(wallets)
-      .where(isNotNull(wallets.telnyxAccountId));
-    
-    const uniqueAccountIds = accountsResult
-      .map(r => r.telnyxAccountId)
-      .filter((id): id is string => id !== null && id !== "MASTER_ACCOUNT");
-    
-    console.log(`[Toll-Free Repair] Found ${uniqueAccountIds.length} unique managed accounts to check`);
-    
-    for (const accountId of uniqueAccountIds) {
-      try {
-        const result = await configureManagedAccountForTollFree(accountId);
-        if (result.success) {
-          console.log(`[Toll-Free Repair] Successfully configured account ${accountId} for toll-free`);
-        } else {
-          console.log(`[Toll-Free Repair] Could not configure account ${accountId}: ${result.error}`);
-        }
-      } catch (err) {
-        console.error(`[Toll-Free Repair] Error configuring account ${accountId}:`, err);
-      }
-    }
-    
-    console.log(`[Toll-Free Repair] Repair complete`);
-  } catch (error) {
-    console.error(`[Toll-Free Repair] Error during repair:`, error);
-  }
-}
-
 export async function getManagedAccount(accountId: string): Promise<GetManagedAccountResult> {
   try {
     const apiKey = await getTelnyxMasterApiKey();
