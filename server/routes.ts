@@ -8434,13 +8434,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Retrieve the payment method from Stripe to get card details
+      const pm = await stripeClient.paymentMethods.retrieve(paymentMethodId);
       
       // SECURITY: Validate the payment method is attached to the correct customer
       if (pm.customer && pm.customer !== subscriptionCustomerId) {
         console.error(`[STRIPE SECURITY] Payment method ${paymentMethodId} belongs to customer ${pm.customer}, not ${subscriptionCustomerId}`);
         return res.status(403).json({ message: "Payment method does not belong to this company" });
       }
-      const pm = await stripeClient.paymentMethods.retrieve(paymentMethodId);
       
       // Check if this is the first payment method (make it default)
       const existingMethods = await storage.getUserPaymentMethods(companyId, currentUser.id);
