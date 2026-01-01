@@ -225,6 +225,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   });
   const hasImessageAccess = imessageAccessData?.hasAccess || false;
 
+  // Query for wallet balance (phone credits)
+  const { data: walletBalanceData } = useQuery<{ balance: string; currency: string }>({
+    queryKey: ['/api/wallet/balance'],
+    enabled: !!user,
+    refetchInterval: 60000, // Refetch every minute
+  });
+  const phoneBalance = walletBalanceData?.balance ? parseFloat(walletBalanceData.balance) : 0;
+
   // Query for user phone status - check if user can make calls
   const { data: userPhoneStatusData } = useQuery<{ hasAssignedNumber: boolean; canMakeCalls: boolean; reason: string; message?: string; phoneNumber?: string; hasPbxExtension?: boolean; pbxExtension?: string }>({
     queryKey: ['/api/telnyx/user-phone-status'],
@@ -673,6 +681,26 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </TooltipTrigger>
                 <TooltipContent>New Policy</TooltipContent>
               </Tooltip>
+
+              {/* Phone Credits Balance */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800">
+                  <Wallet className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-phone-balance">
+                    ${phoneBalance.toFixed(2)}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setLocation("/settings/billing")}
+                  className="h-8 text-xs font-medium"
+                  data-testid="button-buy-credits"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Buy Credits
+                </Button>
+              </div>
 
               {/* Notifications Button */}
               <button 
