@@ -42221,7 +42221,7 @@ CRITICAL REMINDERS:
           
           if (telnyxApiKey) {
             // Map entity type to Telnyx enum
-            const entityTypeMap = {
+            const entityTypeMap: Record<string, string> = {
               "Private Company": "PRIVATE_PROFIT",
               "Publicly Traded Company": "PUBLIC_PROFIT",
               "Charity/ Non-Profit Organization": "NON_PROFIT",
@@ -42236,7 +42236,100 @@ CRITICAL REMINDERS:
             
             const telnyxEntityType = entityTypeMap[req.body.entityType] || "PRIVATE_PROFIT";
             
-            const patchHeaders = {
+            // Build FULL payload - Telnyx PATCH requires all mandatory fields, not just changed ones
+            const stateNames: Record<string, string> = {
+              AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
+              CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
+              HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+              KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+              MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri",
+              MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey",
+              NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+              OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+              SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont",
+              VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+              DC: "District of Columbia", PR: "Puerto Rico"
+            };
+            const getFullStateName = (stateAbbr: string | null | undefined): string => {
+              if (!stateAbbr) return "Florida";
+              const upper = stateAbbr.toUpperCase().trim();
+              return stateNames[upper] || stateAbbr;
+            };
+            
+            const formatPhoneE164Patch = (phone: string | null | undefined): string => {
+              if (!phone) return "";
+              const digits = phone.replace(/\D/g, '');
+              if (digits.length === 10) return `+1${digits}`;
+              if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+              return phone.startsWith('+') ? phone : `+${digits}`;
+            };
+            
+            const formatMessageVolumePatch = (volume: string | null | undefined): string => {
+              if (!volume) return "10";
+              const num = parseInt(volume.replace(/\D/g, ''), 10);
+              if (isNaN(num)) return "10";
+              const validVolumes = [10, 100, 1000, 10000, 100000, 250000, 500000, 750000, 1000000, 5000000, 10000000];
+              const closest = validVolumes.reduce((prev, curr) => Math.abs(curr - num) < Math.abs(prev - num) ? curr : prev);
+              return String(closest);
+            };
+            
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+              : (process.env.REPLIT_DEPLOYMENT_URL || 'https://example.com');
+            
+            const makeAbsoluteUrlPatch = (url: string): string => {
+              if (!url) return '';
+              if (url.startsWith('http://') || url.startsWith('https://')) return url;
+              return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+            };
+            
+            // Build full payload from existing + updated data
+            const patchPayload: any = {
+              businessName: updated.businessName,
+              corporateWebsite: updated.website,
+              businessAddr1: updated.businessAddress,
+              businessCity: updated.businessCity,
+              businessState: getFullStateName(updated.businessState),
+              businessZip: updated.businessZip,
+              businessContactFirstName: updated.contactFirstName,
+              businessContactLastName: updated.contactLastName,
+              businessContactEmail: updated.contactEmail,
+              businessContactPhone: formatPhoneE164Patch(updated.contactPhone),
+              messageVolume: formatMessageVolumePatch(updated.estimatedVolume),
+              phoneNumbers: [{ phoneNumber: updated.selectedPhoneNumber }],
+              useCase: updated.smsUseCase || updated.useCase || "Mixed",
+              useCaseSummary: updated.campaignDescription || updated.messageContent || "SMS messaging campaign",
+              productionMessageContent: updated.messageContent || "Sample message content",
+              optInWorkflow: updated.optInDescription || updated.optInMethod || "User opts in via web form",
+              entityType: telnyxEntityType,
+            };
+            
+            // Add optional fields
+            if (updated.optInScreenshotUrl) {
+              patchPayload.optInWorkflowImageURLs = [{ url: makeAbsoluteUrlPatch(updated.optInScreenshotUrl) }];
+            }
+            patchPayload.additionalInformation = updated.additionalInformation || updated.campaignDescription || `SMS messaging for ${updated.smsUseCase || "business communications"}`;
+            if (updated.businessAddressLine2) {
+              patchPayload.businessAddr2 = updated.businessAddressLine2;
+            }
+            if (updated.ein) {
+              patchPayload.businessRegistrationNumber = updated.ein;
+              patchPayload.businessRegistrationType = updated.businessRegistrationType || "EIN";
+              patchPayload.businessRegistrationCountry = updated.businessRegistrationCountry || "US";
+            }
+            if (updated.doingBusinessAs || updated.brandDisplayName) {
+              patchPayload.doingBusinessAs = updated.doingBusinessAs || updated.brandDisplayName;
+            }
+            if (updated.privacyPolicyUrl) {
+              patchPayload.privacyPolicyURL = makeAbsoluteUrlPatch(updated.privacyPolicyUrl);
+            }
+            if (updated.smsTermsUrl) {
+              patchPayload.termsAndConditionURL = makeAbsoluteUrlPatch(updated.smsTermsUrl);
+            }
+            patchPayload.ageGatedContent = updated.ageGatedContent || false;
+            patchPayload.isvReseller = "";
+            
+            const patchHeaders: Record<string, string> = {
               "Authorization": `Bearer ${telnyxApiKey}`,
               "Content-Type": "application/json",
               "Accept": "application/json",
@@ -42245,14 +42338,15 @@ CRITICAL REMINDERS:
               patchHeaders["x-managed-account-id"] = managedAccountId;
             }
             
-            console.log(`[Toll-Free Compliance] Updating entityType in Telnyx: ${existing.telnyxVerificationRequestId} -> ${telnyxEntityType}`);
+            console.log(`[Toll-Free Compliance] Updating verification in Telnyx: ${existing.telnyxVerificationRequestId}`);
+            console.log(`[Toll-Free Compliance] PATCH payload:`, JSON.stringify(patchPayload, null, 2));
             
             const patchResponse = await fetch(
               `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/${existing.telnyxVerificationRequestId}`,
               {
                 method: "PATCH",
                 headers: patchHeaders,
-                body: JSON.stringify({ entityType: telnyxEntityType }),
+                body: JSON.stringify(patchPayload),
               }
             );
             
@@ -42260,10 +42354,10 @@ CRITICAL REMINDERS:
               const patchError = await patchResponse.json();
               console.error("[Toll-Free Compliance] Failed to update Telnyx verification:", patchError);
             } else {
-              console.log("[Toll-Free Compliance] Successfully updated entityType in Telnyx");
+              console.log("[Toll-Free Compliance] Successfully updated verification in Telnyx");
             }
           }
-        } catch (telnyxUpdateError) {
+        } catch (telnyxUpdateError: any) {
           console.error("[Toll-Free Compliance] Error updating Telnyx:", telnyxUpdateError.message);
         }
       }
