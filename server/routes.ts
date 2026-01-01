@@ -36807,7 +36807,44 @@ CRITICAL REMINDERS:
         console.error("[TURN Credentials] No companyId for user:", user.id);
         return res.status(400).json({ message: "No company associated with user" });
       }
-      // Use the SAME method as /api/webrtc/token - query telephonyCredentials table directly (user-scoped)
+      
+      // First try: Get SIP credentials from user's PBX extension (preferred - user-specific)
+      const [extension] = await db
+        .select({ 
+          sipUsername: pbxExtensions.sipUsername,
+          sipPassword: pbxExtensions.sipPassword
+        })
+        .from(pbxExtensions)
+        .where(
+          and(
+            eq(pbxExtensions.companyId, user.companyId),
+            eq(pbxExtensions.userId, user.id),
+            eq(pbxExtensions.isActive, true)
+          )
+        )
+        .limit(1);
+      
+      if (extension?.sipUsername && extension?.sipPassword) {
+        console.log("[TURN Credentials] Using extension credentials for:", extension.sipUsername);
+        return res.json({
+          username: extension.sipUsername,
+          credential: extension.sipPassword,
+          iceServers: [
+            {
+              urls: "turn:turn.telnyx.com:3478?transport=udp",
+              username: extension.sipUsername,
+              credential: extension.sipPassword
+            },
+            {
+              urls: "turn:turn.telnyx.com:443?transport=tcp",
+              username: extension.sipUsername,
+              credential: extension.sipPassword
+            }
+          ]
+        });
+      }
+      
+      // Fallback: Get any active company-level telephony credentials
       const [credential] = await db
         .select({ 
           sipUsername: telephonyCredentials.sipUsername,
@@ -36817,21 +36854,20 @@ CRITICAL REMINDERS:
         .where(
           and(
             eq(telephonyCredentials.companyId, user.companyId),
-            eq(telephonyCredentials.userId, user.id),
             eq(telephonyCredentials.isActive, true)
           )
         )
         .orderBy(desc(telephonyCredentials.lastUsedAt))
         .limit(1);
+      
       if (!credential || !credential.sipUsername || !credential.sipPassword) {
         console.error("[TURN Credentials] No active credentials found for company:", user.companyId);
         return res.status(404).json({ 
           message: "No SIP credentials found. Please provision WebRTC infrastructure first." 
         });
       }
+      
       console.log("[TURN Credentials] Returning TURN servers for:", credential.sipUsername);
-      // Per Telnyx documentation: SIP credentials work for TURN authentication
-      // TURN servers provide relay candidates that bypass NAT/firewall issues
       res.json({
         username: credential.sipUsername,
         credential: credential.sipPassword,
@@ -38023,7 +38059,7 @@ CRITICAL REMINDERS:
       }
       const updateData: any = {};
       if (status !== undefined) updateData.status = status;
-      if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
+      // unreadCount removed - not applicable for call logs
       if (duration !== undefined) updateData.duration = duration;
       if (answeredAt !== undefined) updateData.answeredAt = new Date(answeredAt);
       if (endedAt !== undefined) updateData.endedAt = new Date(endedAt);
@@ -41216,7 +41252,7 @@ CRITICAL REMINDERS:
       if (jobTitle !== undefined) updateData.jobTitle = jobTitle || null;
       if (organization !== undefined) updateData.organization = organization || null;
       if (status !== undefined) updateData.status = status;
-      if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
+      // unreadCount removed - not applicable for call logs
       
       await db.update(telnyxConversations)
         .set(updateData)
