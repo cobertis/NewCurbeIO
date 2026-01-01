@@ -883,9 +883,9 @@ export default function Billing() {
         </Card>
       )}
 
-      {/* Subscription Details Section */}
+      {/* Subscription & Payment Methods Section */}
       <div className="space-y-6">
-          <div className="grid galg:grid-cols-2">
+          <div className="grid lg:grid-cols-2 gap-6">
             {/* Subscription Details */}
             {isLoadingSubscription ? (
               <Card>
@@ -1127,12 +1127,7 @@ export default function Billing() {
               </Card>
             ) : null}
 
-          </div>
-        </div>
-
-        {/* Payment Methods & Billing Info Section */}
-        <div className="space-y-6">
-          <div className="grid galg:grid-cols-2">
+            {/* Payment Methods - Right Column */}
             <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
               <div>
@@ -1213,7 +1208,12 @@ export default function Billing() {
             </CardContent>
             </Card>
 
-            {/* Billing Information */}
+          </div>
+        </div>
+
+        {/* Billing Information Section */}
+        <div className="space-y-6">
+          <div className="grid lg:grid-cols-1 gap-6">
             <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
