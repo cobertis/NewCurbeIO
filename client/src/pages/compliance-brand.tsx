@@ -313,6 +313,7 @@ export default function ComplianceBrand() {
           businessName: legalName,
           brandDisplayName: brandName || legalName,
           businessType: legalForm,
+          entityType: legalForm,
           website: website,
           businessVertical: vertical,
           ein: ein,
