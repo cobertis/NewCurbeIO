@@ -1010,16 +1010,12 @@ class TelnyxWebRTCManager {
           store.setMuted(false);
           store.setOnHold(false);
           
-          // For outbound calls, don't start timer yet - wait for PSTN to answer
-          // The timer will be started when we receive outbound_call_answered from server
-          if (isOutgoing) {
-            console.log("[SIP.js WebRTC] Outbound call - waiting for PSTN to answer before starting timer");
-            store.setOutboundPstnRinging(true);
-            // Don't set callActiveTimestamp - it will be set when PSTN answers
-          } else {
-            // Inbound call - timer starts now
-            store.setCallActiveTimestamp(Date.now());
-          }
+          // For WebRTC calls, SessionState.Established means the call IS connected
+          // (Telnyx sent 200 OK which means remote party answered)
+          // Start the timer immediately for both inbound and outbound calls
+          console.log("[SIP.js WebRTC] Call established - starting timer now");
+          store.setOutboundPstnRinging(false);
+          store.setCallActiveTimestamp(Date.now());
           
           // Update store with Telnyx Leg ID if found
           if (this.currentTelnyxLegId) {
