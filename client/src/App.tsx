@@ -130,6 +130,7 @@ import TelegramFlow from "@/pages/integrations/telegram-flow";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
+import { WalletTopupDialog } from "@/components/wallet-topup-dialog";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -142,6 +143,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [timezoneDialogOpen, setTimezoneDialogOpen] = useState(false);
   const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
+  const [walletTopupOpen, setWalletTopupOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState<string>("");
   
   // WebPhone state for floating button
@@ -693,7 +695,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setLocation("/settings/billing")}
+                  onClick={() => setWalletTopupOpen(true)}
                   className="h-8 text-xs font-medium"
                   data-testid="button-buy-credits"
                 >
@@ -1440,6 +1442,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         onOpenChange={setUploadAvatarOpen}
         currentAvatar={user?.avatar || ""}
         userInitial={userInitial}
+      />
+
+      {/* Wallet Top-up Dialog */}
+      <WalletTopupDialog
+        open={walletTopupOpen}
+        onOpenChange={setWalletTopupOpen}
       />
     </SidebarProvider>
   );
