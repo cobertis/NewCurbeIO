@@ -144,13 +144,26 @@ export async function processTransaction(params: ProcessTransactionParams): Prom
         throw new Error("Insufficient funds");
       }
 
+      // Lift suspension if this is a deposit and balance becomes positive
+      const liftSuspension = type === "DEPOSIT" && amount > 0 && newBalance > 0;
+      
       await tx
         .update(wallets)
         .set({
           balance: newBalance.toFixed(4),
           updatedAt: new Date(),
+          // Lift suspension when deposit brings balance positive
+          ...(liftSuspension && {
+            suspended: false,
+            suspendedAt: null,
+            suspensionReason: null,
+          }),
         })
         .where(eq(wallets.id, walletId));
+      
+      if (liftSuspension) {
+        console.log(`[Wallet] Lifted suspension for wallet ${walletId} after deposit (new balance: $${newBalance.toFixed(2)})`);
+      }
 
       const [transaction] = await tx
         .insert(walletTransactions)

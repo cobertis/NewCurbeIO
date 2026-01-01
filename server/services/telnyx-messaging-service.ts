@@ -29,6 +29,21 @@ export async function sendTelnyxMessage(params: SendMessageParams): Promise<Send
   try {
     const { from, to, text, mediaUrls, companyId } = params;
     
+    // Check if company's telephony is suspended
+    const [wallet] = await db
+      .select({ suspended: wallets.suspended, suspensionReason: wallets.suspensionReason })
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId))
+      .limit(1);
+    
+    if (wallet?.suspended) {
+      console.warn(`[Telnyx Messaging] BLOCKED: Company ${companyId} is suspended (${wallet.suspensionReason})`);
+      return { 
+        success: false, 
+        error: "Your phone service is suspended due to unpaid bills. Please add funds to restore service." 
+      };
+    }
+    
     const apiKey = await getTelnyxMasterApiKey();
     const managedAccountId = await getCompanyTelnyxAccountId(companyId);
     const messagingProfileId = await getCompanyMessagingProfileId(companyId);

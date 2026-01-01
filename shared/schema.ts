@@ -5106,6 +5106,12 @@ export const wallets = pgTable("wallets", {
   autoRecharge: boolean("auto_recharge").notNull().default(false),
   autoRechargeThreshold: numeric("auto_recharge_threshold", { precision: 10, scale: 4 }),
   autoRechargeAmount: numeric("auto_recharge_amount", { precision: 10, scale: 4 }),
+  
+  // Suspension - When unpaid bills accumulate, telephony is suspended
+  suspended: boolean("suspended").notNull().default(false),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  suspensionReason: text("suspension_reason"), // "unpaid_did_fees", "insufficient_balance", etc.
+  
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

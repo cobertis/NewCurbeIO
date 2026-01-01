@@ -37367,12 +37367,25 @@ CRITICAL REMINDERS:
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
       
+      // Check if wallet is suspended due to unpaid bills
+      if (wallet?.suspended) {
+        return res.json({
+          canCall: false,
+          suspended: true,
+          currentBalance: parseFloat(wallet.balance).toFixed(2),
+          minimumRequired: "0.50",
+          message: "Your phone service is suspended due to unpaid bills. Please add funds to restore service.",
+          suspensionReason: wallet.suspensionReason,
+        });
+      }
+      
       const MINIMUM_BALANCE_FOR_CALLS = 0.50;
       const currentBalance = wallet ? parseFloat(wallet.balance) : 0;
       const canCall = currentBalance >= MINIMUM_BALANCE_FOR_CALLS;
       
       res.json({
         canCall,
+        suspended: false,
         currentBalance: currentBalance.toFixed(2),
         minimumRequired: MINIMUM_BALANCE_FOR_CALLS.toFixed(2),
         message: canCall ? null : `Insufficient balance. Current: ${currentBalance.toFixed(2)}, Required: ${MINIMUM_BALANCE_FOR_CALLS.toFixed(2)}`,

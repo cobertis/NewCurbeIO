@@ -163,6 +163,19 @@ async function processPerNumberBilling(): Promise<PhoneNumberBillingResult[]> {
         if (newBalance.lessThan(-10)) {
           console.warn(`[DID BILLING] ${pn.phoneNumber}: INSUFFICIENT BALANCE - current: $${currentBalance}, required: $${totalCharge}`);
           
+          // Suspend the wallet due to unpaid DID fees
+          await tx
+            .update(wallets)
+            .set({
+              suspended: true,
+              suspendedAt: now,
+              suspensionReason: "unpaid_did_fees",
+              updatedAt: now,
+            })
+            .where(eq(wallets.id, wallet.id));
+          
+          console.warn(`[DID BILLING] SUSPENDED wallet ${wallet.id} for company ${company.name} due to unpaid DID fees`);
+          
           return {
             phoneNumberId: pn.id,
             phoneNumber: pn.phoneNumber,
@@ -172,7 +185,7 @@ async function processPerNumberBilling(): Promise<PhoneNumberBillingResult[]> {
             e911Fee: e911Fee.toFixed(4),
             totalCharged: "0.0000",
             success: false,
-            error: `Insufficient balance: $${currentBalance.toFixed(2)}`,
+            error: `Insufficient balance: $${currentBalance.toFixed(2)} - TELEPHONY SUSPENDED`,
             newBalance: currentBalance.toFixed(4),
           };
         }
@@ -181,6 +194,10 @@ async function processPerNumberBilling(): Promise<PhoneNumberBillingResult[]> {
           .update(wallets)
           .set({
             balance: newBalance.toFixed(4),
+            // Lift suspension when payment succeeds
+            suspended: false,
+            suspendedAt: null,
+            suspensionReason: null,
             updatedAt: new Date(),
           })
           .where(eq(wallets.id, wallet.id));
