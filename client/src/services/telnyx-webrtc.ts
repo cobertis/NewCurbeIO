@@ -1409,6 +1409,25 @@ class TelnyxWebRTCManager {
 
     const pc = sdh.peerConnection as RTCPeerConnection;
     
+    // CRITICAL: Monitor ICE connection state for debugging
+    console.log("[SIP.js WebRTC] ICE connection state:", pc.iceConnectionState);
+    console.log("[SIP.js WebRTC] ICE gathering state:", pc.iceGatheringState);
+    console.log("[SIP.js WebRTC] Connection state:", pc.connectionState);
+    console.log("[SIP.js WebRTC] Signaling state:", pc.signalingState);
+    
+    pc.oniceconnectionstatechange = () => {
+      console.log("[SIP.js WebRTC] ICE connection state changed:", pc.iceConnectionState);
+      if (pc.iceConnectionState === 'failed') {
+        console.error("[SIP.js WebRTC] ICE connection FAILED - no audio possible!");
+      } else if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        console.log("[SIP.js WebRTC] ICE connected - audio should flow now");
+      }
+    };
+    
+    pc.onconnectionstatechange = () => {
+      console.log("[SIP.js WebRTC] Connection state changed:", pc.connectionState);
+    };
+    
     // Ensure audio element exists
     if (!this.audioElement) {
       const audioElements = ensureTelnyxAudioElements();
@@ -1663,7 +1682,8 @@ class TelnyxWebRTCManager {
         console.log("[SIP.js WebRTC] Call established - setting up media");
         // Add local tracks and setup remote audio
         this.addLocalTracksToConnection(invitation, localStream);
-        this.setupRemoteMedia(invitation);
+        // CRITICAL: Use the same robust audio setup as outbound calls
+        this.setupAudioOnPeerConnection(invitation);
         store.setIsAnswering(false);
       } else if (newState === SessionState.Terminated) {
         store.setIsAnswering(false);
