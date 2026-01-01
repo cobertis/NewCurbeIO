@@ -39,8 +39,7 @@ export function WalletTopupDialog({ open, onOpenChange }: WalletTopupDialogProps
 
   const topupMutation = useMutation({
     mutationFn: async (topupAmount: number) => {
-      const response = await apiRequest("POST", "/api/wallet/top-up", { amount: topupAmount });
-      return response.json();
+      return await apiRequest("POST", "/api/wallet/top-up", { amount: topupAmount });
     },
     onSuccess: (data) => {
       toast({
