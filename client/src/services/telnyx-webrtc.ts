@@ -725,18 +725,40 @@ class TelnyxWebRTCManager {
     const store = useTelnyxStore.getState();
     const call = store.currentCall;
 
-    if (!call) return;
+    if (!call) {
+      console.warn("[TelnyxRTC] No active call for mute toggle");
+      return;
+    }
 
     const newMutedState = !store.isMuted;
     
-    if (newMutedState) {
-      call.mute();
-    } else {
-      call.unmute();
+    try {
+      if (newMutedState) {
+        // Try different mute methods available in SDK
+        if (typeof (call as any).muteAudio === 'function') {
+          (call as any).muteAudio();
+        } else if (typeof call.mute === 'function') {
+          call.mute();
+        } else {
+          console.error("[TelnyxRTC] No mute method available on call object");
+          return;
+        }
+      } else {
+        if (typeof (call as any).unmuteAudio === 'function') {
+          (call as any).unmuteAudio();
+        } else if (typeof call.unmute === 'function') {
+          call.unmute();
+        } else {
+          console.error("[TelnyxRTC] No unmute method available on call object");
+          return;
+        }
+      }
+      
+      store.setMuted(newMutedState);
+      console.log("[TelnyxRTC] Mute toggled:", newMutedState);
+    } catch (error) {
+      console.error("[TelnyxRTC] Mute toggle error:", error);
     }
-    
-    store.setMuted(newMutedState);
-    console.log("[TelnyxRTC] Mute toggled:", newMutedState);
   }
 
   public toggleMute(): void {
@@ -751,18 +773,35 @@ class TelnyxWebRTCManager {
     const store = useTelnyxStore.getState();
     const call = store.currentCall;
 
-    if (!call) return;
+    if (!call) {
+      console.warn("[TelnyxRTC] No active call for hold toggle");
+      return;
+    }
 
     const newHoldState = !store.isOnHold;
     
-    if (newHoldState) {
-      call.hold();
-    } else {
-      call.unhold();
+    try {
+      if (newHoldState) {
+        if (typeof call.hold === 'function') {
+          call.hold();
+        } else {
+          console.error("[TelnyxRTC] No hold method available on call object");
+          return;
+        }
+      } else {
+        if (typeof call.unhold === 'function') {
+          call.unhold();
+        } else {
+          console.error("[TelnyxRTC] No unhold method available on call object");
+          return;
+        }
+      }
+      
+      store.setOnHold(newHoldState);
+      console.log("[TelnyxRTC] Hold toggled:", newHoldState);
+    } catch (error) {
+      console.error("[TelnyxRTC] Hold toggle error:", error);
     }
-    
-    store.setOnHold(newHoldState);
-    console.log("[TelnyxRTC] Hold toggled:", newHoldState);
   }
 
   public toggleHold(): void {
