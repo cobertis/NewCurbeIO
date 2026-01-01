@@ -3899,6 +3899,62 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .set({ sipEnabled: true })
         .where(eq(users.id, user.id));
 
+      // Step 7: Assign company's phone numbers to the credential connection
+      console.log(`[BrowserCalling] Assigning phone numbers to credential connection...`);
+      try {
+        const companyPhones = await db
+          .select()
+          .from(telnyxPhoneNumbers)
+          .where(eq(telnyxPhoneNumbers.companyId, user.companyId));
+
+        if (companyPhones.length > 0 && sipResult.credentialConnectionId) {
+          const { getCompanyManagedAccountId, getTelnyxApiKey } = await import("./services/telnyx-managed-accounts");
+          const managedAccountId = await getCompanyManagedAccountId(user.companyId);
+          
+          if (managedAccountId) {
+            const apiKey = await getTelnyxApiKey(managedAccountId);
+            
+            for (const phone of companyPhones) {
+              if (phone.telnyxPhoneNumberId) {
+                try {
+                  const updateResponse = await fetch(
+                    `https://api.telnyx.com/v2/phone_numbers/${phone.telnyxPhoneNumberId}`,
+                    {
+                      method: "PATCH",
+                      headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        connection_id: sipResult.credentialConnectionId,
+                      }),
+                    }
+                  );
+
+                  if (updateResponse.ok) {
+                    await db
+                      .update(telnyxPhoneNumbers)
+                      .set({ 
+                        connectionId: sipResult.credentialConnectionId,
+                        updatedAt: new Date() 
+                      })
+                      .where(eq(telnyxPhoneNumbers.id, phone.id));
+                    console.log(`[BrowserCalling] Assigned ${phone.phoneNumber} to credential connection`);
+                  } else {
+                    const errorText = await updateResponse.text();
+                    console.warn(`[BrowserCalling] Could not assign ${phone.phoneNumber}: ${errorText}`);
+                  }
+                } catch (phoneError) {
+                  console.warn(`[BrowserCalling] Error assigning ${phone.phoneNumber}:`, phoneError);
+                }
+              }
+            }
+          }
+        }
+      } catch (phoneAssignError) {
+        console.warn(`[BrowserCalling] Phone assignment step failed:`, phoneAssignError);
+      }
+
       console.log(`[BrowserCalling] Successfully provisioned browser calling for user ${user.id}, extension ${extension.extension}`);
       
       return res.json({ 
