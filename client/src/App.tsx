@@ -692,22 +692,28 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button 
-                    className={cn(circularButtonClass, "p-0 relative")}
+                    className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/90 dark:bg-gray-800/70 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-all duration-200"
                     data-testid="button-user-menu"
                   >
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={user?.avatar || undefined} alt={userName} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-                        {userInitial}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span 
-                      className={cn(
-                        "absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-gray-800 z-10",
-                        getStatusColor(availabilityData?.status || "offline")
-                      )}
-                      data-testid="avatar-status-indicator"
-                    />
+                    <div className="relative">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={user?.avatar || undefined} alt={userName} />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                          {userInitial}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span 
+                        className={cn(
+                          "absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-gray-800 z-10",
+                          getStatusColor(availabilityData?.status || "offline")
+                        )}
+                        data-testid="avatar-status-indicator"
+                      />
+                    </div>
+                    <div className="text-left hidden sm:block">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[120px]" data-testid="header-user-name">{userName}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]" data-testid="header-user-email">{user?.email}</p>
+                    </div>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-72 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-0 shadow-xl rounded-xl">
