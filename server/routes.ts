@@ -36831,14 +36831,19 @@ CRITICAL REMINDERS:
           credential: extension.sipPassword,
           iceServers: [
             {
+              urls: "stun:stun.telnyx.com:3478"
+            },
+            {
               urls: "turn:turn.telnyx.com:3478?transport=udp",
               username: extension.sipUsername,
-              credential: extension.sipPassword
+              credential: extension.sipPassword,
+              credentialType: "password"
             },
             {
               urls: "turn:turn.telnyx.com:443?transport=tcp",
               username: extension.sipUsername,
-              credential: extension.sipPassword
+              credential: extension.sipPassword,
+              credentialType: "password"
             }
           ]
         });
@@ -36873,14 +36878,19 @@ CRITICAL REMINDERS:
         credential: credential.sipPassword,
         iceServers: [
           {
+            urls: "stun:stun.telnyx.com:3478"
+          },
+          {
             urls: "turn:turn.telnyx.com:3478?transport=udp",
             username: credential.sipUsername,
-            credential: credential.sipPassword
+            credential: credential.sipPassword,
+            credentialType: "password"
           },
           {
             urls: "turn:turn.telnyx.com:443?transport=tcp",
             username: credential.sipUsername,
-            credential: credential.sipPassword
+            credential: credential.sipPassword,
+            credentialType: "password"
           }
         ]
       });
