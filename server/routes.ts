@@ -31723,9 +31723,22 @@ CRITICAL REMINDERS:
         const callerId = callForwardingKeepCallerId ? from : to;
         console.log(`[Telnyx Voice] Forwarding to ${callForwardingDestination}`);
         
+        // Get base URL for action callback
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers.host || req.hostname;
+        const baseUrl = `${protocol}://${host}`;
+        
+        // Encode forwarding info in action URL for billing
+        const forwardParams = new URLSearchParams({
+          from: from || '',
+          to: to || '',
+          destination: callForwardingDestination,
+          callSid: callSid || ''
+        }).toString();
+        
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial answerOnBridge="true" callerId="${callerId}" timeout="30" ringback="us-ring">
+  <Dial answerOnBridge="true" callerId="${callerId}" timeout="30" ringback="us-ring" action="${baseUrl}/webhooks/telnyx/forward-complete/${companyId}?${forwardParams}">
     <Number>${callForwardingDestination}</Number>
   </Dial>
 </Response>`;
@@ -31766,6 +31779,91 @@ CRITICAL REMINDERS:
   app.post("/webhooks/telnyx/dial-complete/:companyId", async (_req: Request, res: Response) => {
     res.set("Content-Type", "application/xml");
     res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+  });
+  // POST /webhooks/telnyx/forward-complete/:companyId - Handle forwarded call completion and billing
+  app.post("/webhooks/telnyx/forward-complete/:companyId", async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      const { from, to, destination, callSid } = req.query;
+      
+      // TeXML Dial action callback fields
+      const { DialCallStatus, DialCallDuration, DialCallSid } = req.body;
+      
+      console.log("[Telnyx Forward Complete] Forwarded call ended:", {
+        companyId,
+        from,
+        to,
+        destination,
+        callSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+        dialCallSid: DialCallSid,
+      });
+      
+      const durationSeconds = parseInt(DialCallDuration as string) || 0;
+      
+      // Only bill if call was answered (has duration)
+      if (durationSeconds > 0 && DialCallStatus === 'completed') {
+        const { chargeCallToWallet } = await import("./services/pricing-service");
+        const { broadcastWalletUpdate, broadcastNewCallLog } = await import("./websocket");
+        
+        // DUAL BILLING for forwarded calls:
+        // 1. Charge INBOUND rate (caller -> our toll-free)
+        console.log("[Telnyx Forward Complete] Charging INBOUND leg (caller -> toll-free)");
+        const inboundResult = await chargeCallToWallet(companyId, {
+          telnyxCallId: `fwd-in-${callSid || DialCallSid}`,
+          fromNumber: from as string || '',
+          toNumber: to as string || '',
+          direction: 'inbound',
+          durationSeconds,
+          status: 'completed',
+          startedAt: new Date(Date.now() - durationSeconds * 1000),
+          endedAt: new Date(),
+          callerName: 'Forwarded Call',
+        });
+        console.log("[Telnyx Forward Complete] Inbound charge result:", inboundResult);
+        
+        // 2. Charge OUTBOUND rate (our system -> forwarding destination)
+        console.log("[Telnyx Forward Complete] Charging OUTBOUND leg (system -> destination)");
+        const outboundResult = await chargeCallToWallet(companyId, {
+          telnyxCallId: `fwd-out-${callSid || DialCallSid}`,
+          fromNumber: to as string || '',
+          toNumber: destination as string || '',
+          direction: 'outbound',
+          durationSeconds,
+          status: 'completed',
+          startedAt: new Date(Date.now() - durationSeconds * 1000),
+          endedAt: new Date(),
+          callerName: 'Forwarded Call',
+        });
+        console.log("[Telnyx Forward Complete] Outbound charge result:", outboundResult);
+        
+        // Broadcast wallet update to frontend
+        if (inboundResult.success || outboundResult.success) {
+          const [wallet] = await db
+            .select()
+            .from(wallets)
+            .where(eq(wallets.companyId, companyId))
+            .limit(1);
+          
+          if (wallet) {
+            broadcastWalletUpdate(companyId, {
+              balance: wallet.balance,
+              currency: wallet.currency,
+            });
+          }
+        }
+      } else {
+        console.log("[Telnyx Forward Complete] Call not answered or no duration, skipping billing");
+      }
+      
+      res.set("Content-Type", "application/xml");
+      res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+    } catch (error: any) {
+      console.error("[Telnyx Forward Complete] Error:", error);
+      res.set("Content-Type", "application/xml");
+      res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+    }
   });
   // ==== CALL CONTROL API WEBHOOKS (WebSocket-based routing) ====
   // These handle inbound calls via Call Control Application
