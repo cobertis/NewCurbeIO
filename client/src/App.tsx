@@ -228,7 +228,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const hasImessageAccess = imessageAccessData?.hasAccess || false;
 
   // Query for wallet balance (phone credits)
-  const { data: walletBalanceData } = useQuery<{ balance: string; currency: string }>({
+  const { data: walletBalanceData, isLoading: isLoadingBalance } = useQuery<{ balance: string; currency: string }>({
     queryKey: ['/api/wallet/balance'],
     enabled: !!user,
     refetchInterval: 60000, // Refetch every minute
@@ -702,7 +702,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 >
                   <Wallet className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   <span className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-phone-balance">
-                    ${phoneBalance.toFixed(2)}
+                    {isLoadingBalance ? (
+                      <span className="inline-block w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                    ) : (
+                      `$${phoneBalance.toFixed(2)}`
+                    )}
                   </span>
                 </div>
                 <Button
