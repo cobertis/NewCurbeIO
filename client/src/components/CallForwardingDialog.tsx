@@ -109,6 +109,7 @@ export function CallForwardingDialog({
           : "Call forwarding has been disabled.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/numbers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sms-voice/numbers"] });
       onOpenChange(false);
       onSuccess?.();
     },
