@@ -1210,19 +1210,9 @@ export async function updateCallForwarding(
       console.log(`[Call Forwarding] Created local record and saved settings. Number: ${phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     }
     
-    // CRITICAL: When enabling call forwarding, reassign number to Call Control App
-    // This ensures inbound calls pass through Call Control webhook where forwarding is handled
-    if (enabled) {
-      console.log(`[Call Forwarding] Reassigning number to Call Control App for webhook routing...`);
-      const reassignResult = await reassignNumberToCallControlApp(phoneNumberId, companyId);
-      if (!reassignResult.success) {
-        console.error(`[Call Forwarding] Failed to reassign number to Call Control: ${reassignResult.error}`);
-        // Don't fail the whole operation, but log warning - forwarding may not work
-        console.warn(`[Call Forwarding] WARNING: Number may not be properly configured for forwarding`);
-      } else {
-        console.log(`[Call Forwarding] Number successfully reassigned to Call Control App`);
-      }
-    }
+    // NOTE: Native call forwarding requires credential_connection, NOT Call Control App
+    // The number stays on credential_connection when forwarding is enabled
+    // This means NO dual-leg billing (Telnyx handles forwarding directly)
     
     return { success: true };
   } catch (error) {
