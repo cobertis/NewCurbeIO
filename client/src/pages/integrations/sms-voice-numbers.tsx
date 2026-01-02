@@ -347,14 +347,28 @@ export default function SmsVoiceNumbers() {
                           : format(addMonths(new Date(), 1), "d MMM yyyy")}
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="h-7 text-xs"
-                          data-testid={`button-activate-forward-${number.id}`}
-                        >
-                          Activate
-                        </Button>
+                        {number.callForwardingEnabled ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20"
+                            onClick={() => setCallForwardingNumber(number)}
+                            data-testid={`button-forwarding-active-${number.id}`}
+                          >
+                            <PhoneForwarded className="h-3 w-3 mr-1" />
+                            Active
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setCallForwardingNumber(number)}
+                            data-testid={`button-activate-forward-${number.id}`}
+                          >
+                            Activate
+                          </Button>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
