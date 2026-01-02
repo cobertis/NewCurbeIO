@@ -2524,7 +2524,17 @@ export function WebPhoneFloatingWindow() {
         }
         
         console.log('[WebPhone] Making call via Telnyx WebRTC to:', digits);
-        const formattedNumber = digits.startsWith('+') ? digits : `+1${digits}`;
+        // Format number for E.164: if 11 digits starting with 1, just add +
+        // If 10 digits, add +1
+        let formattedNumber: string;
+        if (digits.length === 11 && digits.startsWith('1')) {
+          formattedNumber = `+${digits}`;
+        } else if (digits.length === 10) {
+          formattedNumber = `+1${digits}`;
+        } else {
+          formattedNumber = digits.startsWith('+') ? digits : `+${digits}`;
+        }
+        console.log('[WebPhone] Formatted number for call:', formattedNumber);
         await telnyxWebRTC.makeCall(formattedNumber);
       } else {
         await webPhone.makeCall(digits);
