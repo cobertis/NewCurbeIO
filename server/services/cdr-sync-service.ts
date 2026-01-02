@@ -179,52 +179,145 @@ async function fetchDetailRecords(
   forwardedTo?: string
 ): Promise<TelnyxDetailRecord[]> {
   const records: TelnyxDetailRecord[] = [];
+  
+  // Try multiple record types since forwarded calls may be logged differently
+  // Note: voice-api is not a valid record type according to Telnyx API
+  const recordTypes = ["sip-trunking", "call-control"];
 
-  try {
-    const queryParams = new URLSearchParams({
-      "filter[record_type]": "sip-trunking",
-      "filter[date_range]": "last_7_days",
-      "filter[direction]": direction,
-      "page[size]": "100",
-    });
+  for (const recordType of recordTypes) {
+    try {
+      const queryParams = new URLSearchParams({
+        "filter[record_type]": recordType,
+        "filter[date_range]": "last_7_days",
+        "filter[direction]": direction,
+        "page[size]": "100",
+      });
 
-    if (direction === "inbound") {
-      queryParams.set("filter[cld]", ourNumber);
-    } else if (direction === "outbound" && forwardedTo) {
-      queryParams.set("filter[cli]", ourNumber);
-      queryParams.set("filter[cld]", forwardedTo);
-    } else {
-      queryParams.set("filter[cli]", ourNumber);
+      if (direction === "inbound") {
+        queryParams.set("filter[cld]", ourNumber);
+      } else if (direction === "outbound" && forwardedTo) {
+        queryParams.set("filter[cli]", ourNumber);
+        queryParams.set("filter[cld]", forwardedTo);
+      } else {
+        queryParams.set("filter[cli]", ourNumber);
+      }
+
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+
+      const managedAccountId = getManagedAccountHeader(accountId);
+      if (managedAccountId) {
+        headers["X-Telnyx-Account-Id"] = managedAccountId;
+      }
+
+      const url = `${TELNYX_API_BASE}/detail_records?${queryParams}`;
+      console.log(`[CDR Sync] Fetching ${direction} records with type=${recordType}`);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers,
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error(`[CDR Sync] Failed to fetch ${direction} ${recordType} records: ${response.status} - ${text}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const foundRecords = data.data || [];
+      
+      console.log(`[CDR Sync] ${recordType} ${direction}: ${foundRecords.length} records found`);
+      if (foundRecords.length > 0) {
+        records.push(...foundRecords);
+      }
+    } catch (error) {
+      console.error(`[CDR Sync] Error fetching ${direction} ${recordType} records:`, error);
     }
-
-    const headers: Record<string, string> = {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    };
-
-    const managedAccountId = getManagedAccountHeader(accountId);
-    if (managedAccountId) {
-      headers["X-Telnyx-Account-Id"] = managedAccountId;
-    }
-
-    const response = await fetch(`${TELNYX_API_BASE}/detail_records?${queryParams}`, {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error(`[CDR Sync] Failed to fetch ${direction} records: ${response.status} - ${text}`);
-      return records;
-    }
-
-    const data = await response.json();
-    records.push(...(data.data || []));
-  } catch (error) {
-    console.error(`[CDR Sync] Error fetching ${direction} records:`, error);
   }
 
   return records;
+}
+
+// Fetch all records without filters for diagnostic purposes
+export async function fetchAllDetailRecords(
+  phoneNumber: string,
+  forwardedTo: string
+): Promise<{ raw: any[]; analysis: string }> {
+  const apiKey = await getTelnyxMasterApiKey();
+  const allRecords: any[] = [];
+  const analysis: string[] = [];
+  
+  // Find the phone number to get telnyxAccountId
+  const [phoneData] = await db
+    .select()
+    .from(telnyxPhoneNumbers)
+    .where(eq(telnyxPhoneNumbers.phoneNumber, phoneNumber))
+    .limit(1);
+  
+  let accountId: string | null = null;
+  if (phoneData) {
+    accountId = await getCompanyTelnyxAccountId(phoneData.companyId);
+    analysis.push(`Phone number found: ${phoneNumber}, Company: ${phoneData.companyId}`);
+    analysis.push(`Telnyx Account ID: ${accountId || "using master account"}`);
+  } else {
+    analysis.push(`Phone number NOT found in database: ${phoneNumber}`);
+  }
+
+  const recordTypes = ["sip-trunking", "call-control"];
+  
+  for (const recordType of recordTypes) {
+    try {
+      // Fetch without direction or specific filters to see ALL records
+      const queryParams = new URLSearchParams({
+        "filter[record_type]": recordType,
+        "filter[date_range]": "last_7_days",
+        "page[size]": "50",
+      });
+
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+
+      const managedAccountId = getManagedAccountHeader(accountId);
+      if (managedAccountId) {
+        headers["X-Telnyx-Account-Id"] = managedAccountId;
+      }
+
+      const response = await fetch(`${TELNYX_API_BASE}/detail_records?${queryParams}`, {
+        method: "GET",
+        headers,
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        analysis.push(`${recordType}: API error ${response.status} - ${text.substring(0, 200)}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const records = data.data || [];
+      analysis.push(`${recordType}: ${records.length} total records`);
+      
+      // Check for matching records
+      const matchingRecords = records.filter((r: any) => 
+        r.cli === phoneNumber || r.cld === phoneNumber ||
+        r.cli === forwardedTo || r.cld === forwardedTo
+      );
+      
+      if (matchingRecords.length > 0) {
+        analysis.push(`${recordType}: ${matchingRecords.length} records match ${phoneNumber} or ${forwardedTo}`);
+        allRecords.push(...matchingRecords);
+      }
+    } catch (error) {
+      analysis.push(`${recordType}: Error - ${error instanceof Error ? error.message : "Unknown"}`);
+    }
+  }
+
+  return { raw: allRecords, analysis: analysis.join("\n") };
 }
 
 async function getExistingRecordIds(companyId: string): Promise<Set<string>> {

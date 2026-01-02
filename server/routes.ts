@@ -42633,6 +42633,51 @@ CRITICAL REMINDERS:
   // Register SES routes
   registerSesRoutes(app, requireActiveCompany);
 
+  // CDR Sync diagnostic endpoint (admin only)
+  app.post("/api/admin/cdr-sync/diagnose", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as Express.User;
+      if (user.role !== "admin" && user.role !== "super_admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { phoneNumber, forwardedTo } = req.body;
+      if (!phoneNumber || !forwardedTo) {
+        return res.status(400).json({ message: "phoneNumber and forwardedTo required" });
+      }
+
+      const { fetchAllDetailRecords } = await import("./services/cdr-sync-service");
+      const result = await fetchAllDetailRecords(phoneNumber, forwardedTo);
+      
+      res.json({
+        analysis: result.analysis,
+        recordsFound: result.raw.length,
+        records: result.raw
+      });
+    } catch (error: any) {
+      console.error("[CDR Diagnose] Error:", error);
+      res.status(500).json({ message: error.message || "Diagnostic failed" });
+    }
+  });
+
+  // Manual CDR sync trigger (admin only)
+  app.post("/api/admin/cdr-sync/run", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as Express.User;
+      if (user.role !== "admin" && user.role !== "super_admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { runManualCDRSync } = await import("./cdr-sync-scheduler");
+      const result = await runManualCDRSync();
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[CDR Sync] Manual run error:", error);
+      res.status(500).json({ message: error.message || "Sync failed" });
+    }
+  });
+
 
   // ============================================
 
