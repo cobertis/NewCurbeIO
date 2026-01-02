@@ -4,6 +4,8 @@ import { extensionCallService } from "./extension-call-service";
 import { getCompanyManagedAccountId } from "./telnyx-managed-accounts";
 import { SecretsService } from "./secrets-service";
 import { getUserSipCredentials } from "./telnyx-e911-service";
+import { chargeCallToWallet } from "./pricing-service";
+import { broadcastWalletUpdate, broadcastNewCallLog } from "../websocket";
 import {
   pbxSettings,
   pbxQueues,
@@ -49,6 +51,21 @@ const pendingBridges = new Map<string, PendingBridge>();
 // Ring-All tracking: Map caller call_control_id to all agent legs
 // When one agent answers, we cancel all the other legs
 const ringAllLegs = new Map<string, Set<string>>();
+
+// =====================================================
+// Call Forwarding Billing Tracking
+// =====================================================
+interface ForwardingBillingData {
+  companyId: string;
+  inboundCallControlId: string;
+  outboundCallControlId: string;
+  originalCallerNumber: string; // The customer who called
+  forwardedToNumber: string; // The destination number
+  ourNumber: string; // Our DID that received the call
+  bridgedAt: Date; // When the bridge was established (billing starts here)
+  managedAccountId: string | null;
+}
+const forwardingBillingMap = new Map<string, ForwardingBillingData>();
 
 // =====================================================
 // Hold Playback Manager - Music + Ads for Queue Hold
@@ -576,6 +593,21 @@ export class CallControlWebhookService {
     console.log(`[CallControl] Call initiated: from=${from}, to=${to}, direction=${direction}`);
 
     if (direction !== "incoming") {
+      // Check if this is an outbound leg from call forwarding
+      // Match by from (original caller) and to (forwarding destination)
+      for (const [inboundId, billingData] of forwardingBillingMap.entries()) {
+        if (billingData.originalCallerNumber === from && 
+            billingData.forwardedToNumber === to &&
+            billingData.outboundCallControlId === "") {
+          // This is the outbound leg of the forwarding call
+          billingData.outboundCallControlId = call_control_id;
+          console.log(`[CallControl] Captured forwarding outbound leg: ${call_control_id} for inbound: ${inboundId}`);
+          
+          // Also store reverse mapping for easy lookup on hangup
+          forwardingBillingMap.set(call_control_id, billingData);
+          return;
+        }
+      }
       console.log(`[CallControl] Ignoring outgoing call initiated event (direction=${direction})`);
       return;
     }
@@ -642,6 +674,20 @@ export class CallControlWebhookService {
       // Unlike dial, transfer works on the existing call and passes through caller ID
       const originalCallerId = phoneNumber.callForwardingKeepCallerId !== false ? from : to;
       console.log(`[CallControl] Transferring call to ${phoneNumber.callForwardingDestination} with caller ID: ${originalCallerId}`);
+      
+      // Store forwarding billing data - we'll populate outboundCallControlId when we get the call.initiated for the outbound leg
+      // For now, store with inbound call_control_id as key
+      forwardingBillingMap.set(call_control_id, {
+        companyId: phoneNumber.companyId,
+        inboundCallControlId: call_control_id,
+        outboundCallControlId: "", // Will be set when outbound call.initiated arrives
+        originalCallerNumber: from,
+        forwardedToNumber: phoneNumber.callForwardingDestination,
+        ourNumber: to,
+        bridgedAt: new Date(), // Will be updated when call.bridged arrives
+        managedAccountId,
+      });
+      console.log(`[CallControl] Stored forwarding billing data for inbound leg: ${call_control_id}`);
       
       await this.transferCallWithCallerId(
         call_control_id, 
@@ -988,6 +1034,93 @@ export class CallControlWebhookService {
         console.log(`[CallControl] Could not parse client_state on hangup`);
       }
     }
+    
+    // ========================================
+    // DUAL-LEG BILLING FOR CALL FORWARDING
+    // ========================================
+    const billingData = forwardingBillingMap.get(call_control_id);
+    if (billingData) {
+      const hangupTime = new Date();
+      const durationMs = hangupTime.getTime() - billingData.bridgedAt.getTime();
+      const durationSeconds = Math.ceil(durationMs / 1000);
+      
+      console.log(`[CallControl] Call forwarding ended - calculating billing`);
+      console.log(`[CallControl] Bridge started: ${billingData.bridgedAt.toISOString()}`);
+      console.log(`[CallControl] Hangup time: ${hangupTime.toISOString()}`);
+      console.log(`[CallControl] Duration: ${durationSeconds} seconds`);
+      
+      // Only bill if the call was actually connected (bridged)
+      if (durationSeconds > 0) {
+        // INBOUND LEG: Customer calling our number
+        console.log(`[CallControl] Charging INBOUND leg: ${billingData.originalCallerNumber} -> ${billingData.ourNumber}`);
+        const inboundResult = await chargeCallToWallet(billingData.companyId, {
+          telnyxCallId: billingData.inboundCallControlId,
+          fromNumber: billingData.originalCallerNumber,
+          toNumber: billingData.ourNumber,
+          direction: "inbound",
+          durationSeconds,
+          status: hangup_cause === "normal_clearing" ? "completed" : "failed",
+          startedAt: billingData.bridgedAt,
+          endedAt: hangupTime,
+        });
+        
+        if (inboundResult.success) {
+          console.log(`[CallControl] Inbound leg billed: $${inboundResult.chargedAmount}`);
+          broadcastWalletUpdate(billingData.companyId, inboundResult.balance?.toString() || "0");
+          if (inboundResult.callLogId) {
+            broadcastNewCallLog(billingData.companyId, {
+              id: inboundResult.callLogId,
+              fromNumber: billingData.originalCallerNumber,
+              toNumber: billingData.ourNumber,
+              direction: "inbound",
+              duration: durationSeconds,
+              cost: inboundResult.chargedAmount || "0.0000",
+              status: "completed"
+            });
+          }
+        } else {
+          console.error(`[CallControl] Inbound billing failed: ${inboundResult.error}`);
+        }
+        
+        // OUTBOUND LEG: Our number calling the forwarding destination
+        console.log(`[CallControl] Charging OUTBOUND leg: ${billingData.ourNumber} -> ${billingData.forwardedToNumber}`);
+        const outboundResult = await chargeCallToWallet(billingData.companyId, {
+          telnyxCallId: billingData.outboundCallControlId || `fwd-out-${billingData.inboundCallControlId}`,
+          fromNumber: billingData.ourNumber,
+          toNumber: billingData.forwardedToNumber,
+          direction: "outbound",
+          durationSeconds,
+          status: hangup_cause === "normal_clearing" ? "completed" : "failed",
+          startedAt: billingData.bridgedAt,
+          endedAt: hangupTime,
+        });
+        
+        if (outboundResult.success) {
+          console.log(`[CallControl] Outbound leg billed: $${outboundResult.chargedAmount}`);
+          broadcastWalletUpdate(billingData.companyId, outboundResult.balance?.toString() || "0");
+          if (outboundResult.callLogId) {
+            broadcastNewCallLog(billingData.companyId, {
+              id: outboundResult.callLogId,
+              fromNumber: billingData.ourNumber,
+              toNumber: billingData.forwardedToNumber,
+              direction: "outbound",
+              duration: durationSeconds,
+              cost: outboundResult.chargedAmount || "0.0000",
+              status: "completed"
+            });
+          }
+        } else {
+          console.error(`[CallControl] Outbound billing failed: ${outboundResult.error}`);
+        }
+      }
+      
+      // Clean up both entries in the map
+      forwardingBillingMap.delete(billingData.inboundCallControlId);
+      if (billingData.outboundCallControlId) {
+        forwardingBillingMap.delete(billingData.outboundCallControlId);
+      }
+      console.log(`[CallControl] Forwarding billing data cleaned up`);
+    }
   }
 
   private async handleGatherEnded(payload: CallControlEvent["data"]["payload"]): Promise<void> {
@@ -1146,7 +1279,16 @@ export class CallControlWebhookService {
   }
 
   private async handleCallBridged(payload: CallControlEvent["data"]["payload"]): Promise<void> {
-    console.log(`[CallControl] Call bridged: ${payload.call_control_id}`);
+    const { call_control_id } = payload;
+    console.log(`[CallControl] Call bridged: ${call_control_id}`);
+    
+    // Check if this is a forwarding call - update bridgedAt timestamp for billing
+    const billingData = forwardingBillingMap.get(call_control_id);
+    if (billingData) {
+      billingData.bridgedAt = new Date();
+      console.log(`[CallControl] Forwarding call bridged - billing starts NOW: ${billingData.bridgedAt.toISOString()}`);
+      console.log(`[CallControl] Inbound: ${billingData.inboundCallControlId}, Outbound: ${billingData.outboundCallControlId}`);
+    }
   }
 
   private async handleRecordingSaved(payload: CallControlEvent["data"]["payload"]): Promise<void> {
