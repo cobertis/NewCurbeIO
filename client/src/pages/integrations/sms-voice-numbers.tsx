@@ -351,7 +351,7 @@ export default function SmsVoiceNumbers() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20 whitespace-nowrap"
+                            className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20 whitespace-nowrap min-w-[140px] justify-start"
                             onClick={() => setCallForwardingNumber(number)}
                             data-testid={`button-forwarding-active-${number.id}`}
                           >
@@ -364,7 +364,7 @@ export default function SmsVoiceNumbers() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            className="h-7 text-xs"
+                            className="h-7 text-xs min-w-[140px] justify-start"
                             onClick={() => setCallForwardingNumber(number)}
                             data-testid={`button-activate-forward-${number.id}`}
                           >
