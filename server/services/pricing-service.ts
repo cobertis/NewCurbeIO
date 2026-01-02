@@ -1,8 +1,11 @@
 import { db } from "../db";
-import { callRates, wallets, walletTransactions, callLogs, telephonySettings, users } from "@shared/schema";
+import { callRates, wallets, walletTransactions, callLogs, telephonySettings, users, telnyxPhoneNumbers, telnyxGlobalPricing } from "@shared/schema";
 import { eq, and, desc, sql, isNull, isNotNull, or } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { PRICING } from "./pricing-config";
+
+// Toll-free prefixes (US/Canada)
+const TOLL_FREE_PREFIXES = ["1800", "1888", "1877", "1866", "1855", "1844", "1833"];
 
 Decimal.set({ precision: 10, rounding: Decimal.ROUND_HALF_UP });
 
@@ -45,6 +48,80 @@ const DEFAULT_RATE: RateLookupResult = {
 };
 
 const MINIMUM_BALANCE_THRESHOLD = new Decimal("0.00");
+
+/**
+ * Check if a phone number is a toll-free number based on prefix
+ */
+function isTollFreeNumber(phoneNumber: string): boolean {
+  const cleanNumber = phoneNumber.replace(/\D/g, '');
+  return TOLL_FREE_PREFIXES.some(prefix => cleanNumber.startsWith(prefix));
+}
+
+/**
+ * Determine the number type by looking up in telnyxNumbers table or checking prefix
+ */
+async function getNumberType(phoneNumber: string, companyId: string): Promise<"local" | "toll_free"> {
+  const cleanNumber = phoneNumber.replace(/\D/g, '');
+  const formattedNumber = cleanNumber.startsWith('1') ? `+${cleanNumber}` : `+1${cleanNumber}`;
+  
+  // First check if we have this number in our database with explicit type
+  const [telnyxNumber] = await db
+    .select({ numberType: telnyxPhoneNumbers.numberType })
+    .from(telnyxPhoneNumbers)
+    .where(and(
+      eq(telnyxPhoneNumbers.companyId, companyId),
+      eq(telnyxPhoneNumbers.phoneNumber, formattedNumber)
+    ))
+    .limit(1);
+  
+  if (telnyxNumber?.numberType) {
+    return telnyxNumber.numberType;
+  }
+  
+  // Fallback to prefix-based detection
+  return isTollFreeNumber(phoneNumber) ? "toll_free" : "local";
+}
+
+/**
+ * Get the voice rate from global pricing based on number type and direction
+ */
+async function getVoiceRate(
+  companyId: string,
+  numberType: "local" | "toll_free",
+  direction: "inbound" | "outbound"
+): Promise<{ rate: Decimal; description: string }> {
+  // Get global pricing (first row, as there should be only one)
+  const [pricing] = await db
+    .select()
+    .from(telnyxGlobalPricing)
+    .limit(1);
+  
+  let rate: string;
+  let description: string;
+  
+  if (numberType === "toll_free") {
+    if (direction === "outbound") {
+      rate = pricing?.voiceTollfreeOutbound || "0.0180";
+      description = "Toll-Free Outbound";
+    } else {
+      rate = pricing?.voiceTollfreeInbound || "0.0130";
+      description = "Toll-Free Inbound";
+    }
+  } else {
+    if (direction === "outbound") {
+      rate = pricing?.voiceLocalOutbound || "0.0100";
+      description = "Local Outbound";
+    } else {
+      rate = pricing?.voiceLocalInbound || "0.0080";
+      description = "Local Inbound";
+    }
+  }
+  
+  return {
+    rate: new Decimal(rate),
+    description
+  };
+}
 
 export async function findRateByPrefix(destinationNumber: string, companyId?: string): Promise<RateLookupResult> {
   const cleanNumber = destinationNumber.replace(/\D/g, '');
@@ -153,12 +230,34 @@ export async function chargeCallToWallet(
     const recordingEnabled = settings?.recordingEnabled ?? false;
     const cnamEnabled = settings?.cnamEnabled ?? false;
     
-    // For inbound calls, use fromNumber (where the call originated)
-    // For outbound calls, use toNumber (the destination being called)
-    const rateNumber = callData.direction === "inbound" ? callData.fromNumber : callData.toNumber;
-    console.log(`[PricingService] Rate lookup for ${callData.direction} call using number: ${rateNumber}`);
+    // Determine OUR number (the one we own) to check if it's toll-free or local
+    // For outbound calls: fromNumber is ours (we're calling from it)
+    // For inbound calls: toNumber is ours (they're calling us)
+    const ourNumber = callData.direction === "outbound" ? callData.fromNumber : callData.toNumber;
+    const theirNumber = callData.direction === "outbound" ? callData.toNumber : callData.fromNumber;
     
-    const rate = await findRateByPrefix(rateNumber, companyId);
+    // Determine the number type (toll-free or local) based on OUR number
+    const numberType = await getNumberType(ourNumber, companyId);
+    
+    // Get the correct rate based on number type and direction
+    const voiceRateInfo = await getVoiceRate(companyId, numberType, callData.direction);
+    
+    console.log(`[PricingService] Rate lookup for ${callData.direction} call:`);
+    console.log(`  - Our number: ${ourNumber} (${numberType})`);
+    console.log(`  - Their number: ${theirNumber}`);
+    console.log(`  - Rate type: ${voiceRateInfo.description}`);
+    console.log(`  - Rate: $${voiceRateInfo.rate.toFixed(4)}/min`);
+    
+    // Create rate object for cost calculation
+    const rate: RateLookupResult = {
+      ratePerMinute: voiceRateInfo.rate,
+      connectionFee: new Decimal(0),
+      minBillableSeconds: 60,
+      billingIncrement: 60,
+      prefix: numberType === "toll_free" ? "toll-free" : "local",
+      description: voiceRateInfo.description
+    };
+    
     const costResult = calculateCallCost(callData.durationSeconds, rate);
     
     // Calculate additional feature costs
@@ -363,11 +462,12 @@ export async function chargeCallToWallet(
         console.log(`[PricingService] Created new call log: ${callLog.id}`);
       }
       
-      // Build description with feature costs if applicable
+      // Build description with rate type and feature costs
       const billableMinutesInt = costResult.billableSeconds / 60;
-      let costBreakdown = `${callData.durationSeconds}s actual → ${billableMinutesInt} min billed @ $${rate.ratePerMinute.toFixed(4)}/min`;
-      if (recordingEnabled) costBreakdown += ` + recording`;
-      if (cnamEnabled && callData.direction === "inbound") costBreakdown += ` + CNAM`;
+      const rateTypeLabel = rate.description || "Voice";
+      let costBreakdown = `${callData.durationSeconds}s → ${billableMinutesInt}m @ $${rate.ratePerMinute.toFixed(4)}/min [${rateTypeLabel}]`;
+      if (recordingEnabled) costBreakdown += ` +rec`;
+      if (cnamEnabled && callData.direction === "inbound") costBreakdown += ` +CNAM`;
       
       const [transaction] = await tx
         .insert(walletTransactions)
