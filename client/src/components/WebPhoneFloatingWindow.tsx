@@ -2555,12 +2555,14 @@ export function WebPhoneFloatingWindow() {
     }
   };
   
-  const missedCallsCount = backendCallLogs.filter((c: any) => c.status === 'missed').length;
+  // Only count inbound missed calls as "missed" - outbound unanswered calls are normal outbound
+  const missedCallsCount = backendCallLogs.filter((c: any) => c.status === 'missed' && c.direction === 'inbound').length;
   
   // Filter calls based on selected filter
   const filteredCallHistory = backendCallLogs.filter((call: any) => {
     if (callFilter === 'all') return true;
-    if (callFilter === 'missed') return call.status === 'missed';
+    // Only inbound missed calls count as "missed"
+    if (callFilter === 'missed') return call.status === 'missed' && call.direction === 'inbound';
     if (callFilter === 'answered') return call.status === 'answered' || call.status === 'ended';
     return true;
   });
@@ -3396,7 +3398,9 @@ export function WebPhoneFloatingWindow() {
                               const timeStr = format(new Date(call.startedAt), 'h:mma');
                               const dateStr = format(new Date(call.startedAt), 'MMM d');
                               const isSelected = selectedCallIds.has(call.id);
-                              const isMissed = call.status === 'missed' || call.status === 'failed';
+                              // Only inbound calls that weren't answered count as "missed" (red)
+                              // Outbound calls that weren't answered are just normal outbound calls
+                              const isMissed = (call.status === 'missed' || call.status === 'failed') && call.direction === 'inbound';
                               const DirectionIcon = isMissed ? PhoneMissed : (call.direction === 'inbound' ? PhoneIncoming : PhoneOutgoing);
                               
                               return (
