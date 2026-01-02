@@ -1476,6 +1476,8 @@ export function WebPhoneFloatingWindow() {
   const [showBuyNumbers, setShowBuyNumbers] = useState(false);
   const [showInCallKeypad, setShowInCallKeypad] = useState(false);
   const [transferTab, setTransferTab] = useState<'blind' | 'attended'>('blind');
+  const [isManualRecording, setIsManualRecording] = useState(false);
+  const [recordingLoading, setRecordingLoading] = useState(false);
   const [attendedTransferNumber, setAttendedTransferNumber] = useState('');
   const [telnyxCallerName, setTelnyxCallerName] = useState<string | null>(null);
   const [telnyxCallerLookupPhone, setTelnyxCallerLookupPhone] = useState<string | null>(null);
@@ -1894,6 +1896,7 @@ export function WebPhoneFloatingWindow() {
         status: 'answered', // currentCall means call is ACTIVE
         direction: telnyxCurrentCallInfo.direction || 'outbound',
         isTelnyx: true,
+        callControlId: telnyxCurrentCallInfo.telnyxCallLegId,
       };
     }
     if (telnyxOutgoingCall && telnyxOutgoingCallInfo) {
@@ -1904,6 +1907,7 @@ export function WebPhoneFloatingWindow() {
         status: 'ringing', // Use 'ringing' to show "Calling..." text
         direction: 'outbound',
         isTelnyx: true,
+        callControlId: telnyxOutgoingCallInfo.telnyxCallLegId,
       };
     }
     if (telnyxIncomingCall && telnyxIncomingCallInfo) {
@@ -1931,6 +1935,7 @@ export function WebPhoneFloatingWindow() {
         status: 'ringing',
         direction: 'inbound',
         isTelnyx: true,
+        callControlId: telnyxIncomingCallInfo.telnyxCallLegId,
       };
     }
     // Fallback: if we have session but no callInfo (shouldn't happen)
@@ -2104,6 +2109,49 @@ export function WebPhoneFloatingWindow() {
       isOnHold ? webPhone.unholdCall() : webPhone.holdCall();
     }
   }, [isTelnyxCall, isOnHold, queueCall, toast]);
+
+  const handleRecordingToggle = useCallback(async () => {
+    if (!effectiveCall?.callControlId) {
+      toast({
+        title: "Recording not available",
+        description: "Recording is only available for Telnyx calls",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setRecordingLoading(true);
+    try {
+      const endpoint = isManualRecording ? 'stop' : 'start';
+      const response = await fetch(`/api/calls/${effectiveCall.callControlId}/recording/${endpoint}`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        setIsManualRecording(!isManualRecording);
+        toast({
+          title: isManualRecording ? 'Recording stopped' : 'Recording started',
+          description: isManualRecording ? 'Call recording has been stopped' : 'This call is now being recorded'
+        });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: 'Recording error',
+          description: errorData.error || 'Failed to toggle recording',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to toggle recording', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setRecordingLoading(false);
+    }
+  }, [effectiveCall?.callControlId, isManualRecording, toast]);
   
   const handleHangup = useCallback(() => {
     if (effectiveCall?.isWhatsApp) {
@@ -3152,25 +3200,25 @@ export function WebPhoneFloatingWindow() {
                         />
                       </div>
                     ) : (
-                      /* Normal Call Controls - 4 buttons */
-                      <div className="grid grid-cols-4 gap-2 sm:gap-4 px-2 sm:px-4">
+                      /* Normal Call Controls - 5 buttons */
+                      <div className="grid grid-cols-5 gap-1.5 sm:gap-3 px-2 sm:px-4">
                         <button
                           onClick={handleMuteToggle}
                           className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80"
                           data-testid="button-mute-call"
                         >
                           <div className={cn(
-                            "w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-md",
+                            "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md",
                             effectiveMuted ? "bg-red-500" : "bg-muted/80"
                           )}>
                             {effectiveMuted ? (
-                              <MicOff className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                              <MicOff className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                             ) : (
-                              <Mic className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
+                              <Mic className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
                             )}
                           </div>
                           <span className={cn(
-                            "text-[9px] sm:text-[10px]",
+                            "text-[8px] sm:text-[9px]",
                             effectiveMuted ? "text-red-500 font-medium" : "text-muted-foreground"
                           )}>
                             {effectiveMuted ? 'muted' : 'mute'}
@@ -3182,10 +3230,37 @@ export function WebPhoneFloatingWindow() {
                           className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80"
                           data-testid="button-keypad-incall"
                         >
-                          <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
-                            <Grid3x3 className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                            <Grid3x3 className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
                           </div>
-                          <span className="text-[9px] sm:text-[10px] text-muted-foreground">keypad</span>
+                          <span className="text-[8px] sm:text-[9px] text-muted-foreground">keypad</span>
+                        </button>
+                        
+                        <button
+                          onClick={handleRecordingToggle}
+                          disabled={recordingLoading || !effectiveCall?.isTelnyx}
+                          className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80 disabled:opacity-50"
+                          data-testid="button-record-call"
+                        >
+                          <div className={cn(
+                            "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md",
+                            isManualRecording ? "bg-red-500" : "bg-muted/80"
+                          )}>
+                            {recordingLoading ? (
+                              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-foreground" />
+                            ) : (
+                              <Circle className={cn(
+                                "h-4 w-4 sm:h-5 sm:w-5",
+                                isManualRecording ? "text-white fill-white" : "text-foreground"
+                              )} />
+                            )}
+                          </div>
+                          <span className={cn(
+                            "text-[8px] sm:text-[9px]",
+                            isManualRecording ? "text-red-500 font-medium" : "text-muted-foreground"
+                          )}>
+                            {isManualRecording ? 'rec' : 'record'}
+                          </span>
                         </button>
                         
                         <button
@@ -3193,10 +3268,10 @@ export function WebPhoneFloatingWindow() {
                           className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80"
                           data-testid="button-transfer"
                         >
-                          <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
-                            <PhoneForwarded className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                            <PhoneForwarded className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
                           </div>
-                          <span className="text-[9px] sm:text-[10px] text-muted-foreground">transfer</span>
+                          <span className="text-[8px] sm:text-[9px] text-muted-foreground">transfer</span>
                         </button>
                         
                         <button
@@ -3205,12 +3280,12 @@ export function WebPhoneFloatingWindow() {
                           data-testid="button-hold-call"
                         >
                           <div className={cn(
-                            "w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-md",
+                            "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md",
                             effectiveOnHold ? "bg-foreground" : "bg-muted/80"
                           )}>
-                            <Pause className={cn("h-5 w-5 sm:h-6 sm:w-6", effectiveOnHold ? "text-background" : "text-foreground")} />
+                            <Pause className={cn("h-4 w-4 sm:h-5 sm:w-5", effectiveOnHold ? "text-background" : "text-foreground")} />
                           </div>
-                          <span className="text-[9px] sm:text-[10px] text-muted-foreground">hold</span>
+                          <span className="text-[8px] sm:text-[9px] text-muted-foreground">hold</span>
                         </button>
                       </div>
                     )}
@@ -3521,6 +3596,26 @@ export function WebPhoneFloatingWindow() {
                                       {call.callerName || "Unknown Caller"}
                                     </span>
                                   </div>
+                                  
+                                  {/* Recording Play Button */}
+                                  {call.recordingUrl && !isEditMode && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const audio = new Audio(call.recordingUrl);
+                                        audio.play();
+                                        toast({
+                                          title: 'Playing recording',
+                                          description: 'Call recording is now playing'
+                                        });
+                                      }}
+                                      className="p-1.5 rounded-full bg-blue-500 hover:bg-blue-600 flex-shrink-0 transition-colors"
+                                      title="Play recording"
+                                      data-testid={`button-play-recording-${call.id}`}
+                                    >
+                                      <Play className="h-3 w-3 text-white" />
+                                    </button>
+                                  )}
                                   
                                   {/* Time and Date */}
                                   {!isEditMode && (

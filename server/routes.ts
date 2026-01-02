@@ -38152,7 +38152,117 @@ CRITICAL REMINDERS:
       res.status(500).json({ message: "Failed to clear call history" });
     }
   });
+
   // =====================================================
+  // CALL RECORDING (Manual Start/Stop)
+  // =====================================================
+  
+  // POST /api/calls/:callControlId/recording/start - Start manual recording
+  app.post("/api/calls/:callControlId/recording/start", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { callControlId } = req.params;
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Security: Verify the call belongs to the user's company
+      const [callLog] = await db
+        .select()
+        .from(callLogs)
+        .where(and(
+          eq(callLogs.telnyxCallId, callControlId),
+          eq(callLogs.companyId, user.companyId)
+        ));
+      
+      if (!callLog) {
+        return res.status(403).json({ success: false, error: "Call not found or access denied" });
+      }
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      
+      if (!telnyxApiKey) {
+        return res.status(500).json({ success: false, error: "Telnyx API key not configured" });
+      }
+      
+      const response = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/record_start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${telnyxApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          format: 'mp3',
+          channels: 'dual',
+          play_beep: true
+        })
+      });
+      
+      if (response.ok) {
+        console.log(`[Call Recording] Started recording for call ${callControlId}`);
+        return res.json({ success: true });
+      } else {
+        const errorText = await response.text();
+        console.error(`[Call Recording] Failed to start recording for call ${callControlId}:`, errorText);
+        return res.status(500).json({ success: false, error: errorText });
+      }
+    } catch (error: any) {
+      console.error("[Call Recording] Start error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+  
+  // POST /api/calls/:callControlId/recording/stop - Stop manual recording
+  app.post("/api/calls/:callControlId/recording/stop", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { callControlId } = req.params;
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Security: Verify the call belongs to the user's company
+      const [callLog] = await db
+        .select()
+        .from(callLogs)
+        .where(and(
+          eq(callLogs.telnyxCallId, callControlId),
+          eq(callLogs.companyId, user.companyId)
+        ));
+      
+      if (!callLog) {
+        return res.status(403).json({ success: false, error: "Call not found or access denied" });
+      }
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      
+      if (!telnyxApiKey) {
+        return res.status(500).json({ success: false, error: "Telnyx API key not configured" });
+      }
+      
+      const response = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/record_stop`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${telnyxApiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        console.log(`[Call Recording] Stopped recording for call ${callControlId}`);
+        return res.json({ success: true });
+      } else {
+        const errorText = await response.text();
+        console.error(`[Call Recording] Failed to stop recording for call ${callControlId}:`, errorText);
+        return res.status(500).json({ success: false, error: errorText });
+      }
+    } catch (error: any) {
+      console.error("[Call Recording] Stop error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
   // VOICEMAILS
   // =====================================================
   // GET /api/voicemails - Get voicemails for company
