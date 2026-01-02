@@ -35131,7 +35131,7 @@ CRITICAL REMINDERS:
         // Don't fail the purchase, but log the error - number is already purchased from Telnyx
         // The monthly billing job will pick it up later if local record is missing
       } else {
-        console.log(`[Billing] Successfully charged $${billingResult.amountCharged?.toFixed(2)} for ${encodedPhone}`);
+        console.log(`[Billing] Successfully charged $${billingResult.amountCharged?.toFixed(2)} for ${phoneNumber}`);
       }
       // Auto-enable CNAM listing with company name (truncated to 15 chars)
       if (result.phoneNumberId) {
@@ -35143,7 +35143,7 @@ CRITICAL REMINDERS:
               console.log(`[Telnyx CNAM] Auto-enabling CNAM for ${phoneNumber} with name: "${cnamName}"`);
               const cnamResult = await updateCnamListing(result.phoneNumberId, user.companyId, true, cnamName);
               if (cnamResult.success) {
-                console.log(`[Telnyx CNAM] Auto-enabled CNAM successfully for ${encodedPhone}`);
+                console.log(`[Telnyx CNAM] Auto-enabled CNAM successfully for ${phoneNumber}`);
               } else {
                 console.warn(`[Telnyx CNAM] Failed to auto-enable CNAM: ${cnamResult.error}`);
               }
