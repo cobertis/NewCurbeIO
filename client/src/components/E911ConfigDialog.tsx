@@ -342,9 +342,12 @@ export function E911ConfigDialog({
             <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 mb-4">
               <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-amber-800 dark:text-amber-200">Important</p>
+                <p className="font-medium text-amber-800 dark:text-amber-200">Important - FCC Requirement</p>
                 <p className="text-amber-700 dark:text-amber-300 text-xs mt-1">
                   Enter the physical address where you will use this phone number. Emergency responders will be dispatched to this location if you call 911.
+                </p>
+                <p className="text-red-600 dark:text-red-400 text-xs mt-2 font-medium">
+                  Calling 911 without a registered E911 address may result in fines up to $100 per occurrence, as required by the FCC for VoIP services.
                 </p>
               </div>
             </div>
