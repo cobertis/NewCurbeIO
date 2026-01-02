@@ -717,20 +717,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </Button>
               </div>
 
-              {/* Notifications Button */}
-              <button 
-                onClick={() => setNotificationsOpen(true)}
-                data-testid="button-notifications" 
-                className={cn(circularButtonClass, "relative")}
-              >
-                <Bell className="h-[18px] w-[18px]" />
-                {unreadCount > 0 && (
-                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-[9px] font-bold">{unreadCount > 9 ? '!' : unreadCount}</span>
-                  </div>
-                )}
-              </button>
-
               {/* User Profile with Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1025,6 +1011,24 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Bottom Icons */}
           <Tooltip>
             <TooltipTrigger asChild>
+              <button 
+                onClick={() => setNotificationsOpen(true)}
+                data-testid="sidebar-button-notifications" 
+                className={cn(circularButtonClass, "relative")}
+              >
+                <Bell className="h-[18px] w-[18px]" />
+                {unreadCount > 0 && (
+                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-[9px] font-bold">{unreadCount > 9 ? '!' : unreadCount}</span>
+                  </div>
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Notifications</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
               <button
                 onClick={() => setLocation("/settings/notifications")}
                 data-testid="sidebar-button-history"
@@ -1033,7 +1037,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <Clock className="h-[18px] w-[18px]" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">Notifications</TooltipContent>
+            <TooltipContent side="right" className="font-medium">History</TooltipContent>
           </Tooltip>
 
           <Tooltip>
