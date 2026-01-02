@@ -467,6 +467,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         description: `The phone number ${message.phoneNumber} has been reassigned. Your phone will disconnect.`,
         variant: "destructive",
       });
+    } else if (message.type === 'wallet_updated') {
+      // Wallet balance changed (call charged, SMS sent, top-up, etc.)
+      console.log('[WEBSOCKET] Wallet updated');
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
+    } else if (message.type === 'new_call_log') {
+      // New call log created or updated
+      console.log('[WEBSOCKET] New call log');
+      queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
     }
   }, [playNotificationSound, user]);
 

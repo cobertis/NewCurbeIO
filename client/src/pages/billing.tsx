@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -1211,153 +1212,244 @@ export default function Billing() {
           </div>
         </div>
 
-        {/* Transaction History Section */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Transaction History
-              </CardTitle>
-              <CardDescription>Complete history of all your invoices and wallet top-ups</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {(isLoadingInvoices || isLoadingWalletTransactions) ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
-                </div>
-              ) : (() => {
-                // Combine invoices and wallet transactions into unified list
-                const unifiedTransactions: Array<{
-                  id: string;
-                  type: 'invoice' | 'wallet';
-                  description: string;
-                  date: Date;
-                  amount: number;
-                  currency: string;
-                  status: string;
-                  receiptUrl?: string | null;
-                  pdfUrl?: string | null;
-                }> = [];
+        {/* Transaction History Section with Tabs */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FileText className="h-5 w-5" />
+              Transaction History
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Tabs defaultValue="billing" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="billing" className="text-sm">
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Billing
+                </TabsTrigger>
+                <TabsTrigger value="phone" className="text-sm">
+                  <Phone className="h-4 w-4 mr-2" />
+                  Phone Usage
+                </TabsTrigger>
+              </TabsList>
 
-                // Add invoices
-                invoices
-                  .filter(inv => inv.status !== 'void' && inv.total !== 0)
-                  .forEach(inv => {
-                    unifiedTransactions.push({
-                      id: `inv-${inv.id}`,
-                      type: 'invoice',
-                      description: inv.invoiceNumber || 'Subscription Invoice',
-                      date: new Date(inv.invoiceDate),
-                      amount: inv.total,
-                      currency: inv.currency,
-                      status: inv.status,
-                      receiptUrl: inv.stripeHostedInvoiceUrl,
-                      pdfUrl: inv.stripeInvoicePdf,
+              {/* Billing Tab - Invoices & Top-ups */}
+              <TabsContent value="billing" className="mt-0">
+                {(isLoadingInvoices || isLoadingWalletTransactions) ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
+                  </div>
+                ) : (() => {
+                  const unifiedTransactions: Array<{
+                    id: string;
+                    type: 'invoice' | 'wallet';
+                    description: string;
+                    date: Date;
+                    amount: number;
+                    currency: string;
+                    status: string;
+                    receiptUrl?: string | null;
+                    pdfUrl?: string | null;
+                  }> = [];
+
+                  invoices
+                    .filter(inv => inv.status !== 'void' && inv.total !== 0)
+                    .forEach(inv => {
+                      unifiedTransactions.push({
+                        id: `inv-${inv.id}`,
+                        type: 'invoice',
+                        description: inv.invoiceNumber || 'Subscription',
+                        date: new Date(inv.invoiceDate),
+                        amount: inv.total,
+                        currency: inv.currency,
+                        status: inv.status,
+                        receiptUrl: inv.stripeHostedInvoiceUrl,
+                        pdfUrl: inv.stripeInvoicePdf,
+                      });
                     });
-                  });
 
-                // Add wallet deposits (type can be 'deposit' or 'DEPOSIT')
-                // Note: Wallet amounts are in dollars, but formatCurrency expects cents, so multiply by 100
-                walletTransactions
-                  .filter(tx => tx.type.toLowerCase() === 'deposit')
-                  .forEach(tx => {
-                    unifiedTransactions.push({
-                      id: `wallet-${tx.id}`,
-                      type: 'wallet',
-                      description: tx.description || 'Wallet Top-up',
-                      date: new Date(tx.createdAt),
-                      amount: parseFloat(tx.amount) * 100,
-                      currency: 'usd',
-                      status: 'paid',
-                      receiptUrl: (tx as any).receiptUrl || null,
-                      pdfUrl: null,
+                  walletTransactions
+                    .filter(tx => tx.type.toLowerCase() === 'deposit')
+                    .forEach(tx => {
+                      unifiedTransactions.push({
+                        id: `wallet-${tx.id}`,
+                        type: 'wallet',
+                        description: tx.description || 'Top-up',
+                        date: new Date(tx.createdAt),
+                        amount: parseFloat(tx.amount) * 100,
+                        currency: 'usd',
+                        status: 'paid',
+                        receiptUrl: (tx as any).receiptUrl || null,
+                        pdfUrl: null,
+                      });
                     });
-                  });
 
-                // Sort by date descending
-                unifiedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+                  unifiedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-                return unifiedTransactions.length > 0 ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {unifiedTransactions.map((tx) => (
-                          <TableRow key={tx.id} data-testid={`tx-row-${tx.id}`}>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {tx.type === 'invoice' ? (
-                                  <FileText className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <Wallet className="h-4 w-4 text-green-500" />
-                                )}
-                                <span className="capitalize">{tx.type === 'invoice' ? 'Subscription' : 'Wallet Top-up'}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {tx.description}
-                            </TableCell>
-                            <TableCell>{formatDate(tx.date)}</TableCell>
-                            <TableCell>
-                              <Badge variant={tx.status === 'paid' ? 'default' : tx.status === 'open' ? 'secondary' : 'outline'}>
-                                {tx.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatCurrency(tx.amount, tx.currency)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {tx.receiptUrl && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => window.open(tx.receiptUrl!, '_blank')}
-                                    data-testid={`button-view-receipt-${tx.id}`}
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                {tx.pdfUrl && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => window.open(tx.pdfUrl!, '_blank')}
-                                    data-testid={`button-download-pdf-${tx.id}`}
-                                  >
-                                    <Download className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
+                  return unifiedTransactions.length > 0 ? (
+                    <div className="rounded-md border max-h-[300px] overflow-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">Type</TableHead>
+                            <TableHead className="text-xs">Date</TableHead>
+                            <TableHead className="text-xs">Status</TableHead>
+                            <TableHead className="text-right text-xs">Amount</TableHead>
+                            <TableHead className="text-right text-xs w-16"></TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {unifiedTransactions.map((tx) => (
+                            <TableRow key={tx.id} className="text-sm">
+                              <TableCell className="py-2">
+                                <div className="flex items-center gap-1.5">
+                                  {tx.type === 'invoice' ? (
+                                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                  ) : (
+                                    <ArrowUpCircle className="h-3.5 w-3.5 text-green-500" />
+                                  )}
+                                  <span className="text-xs">{tx.type === 'invoice' ? 'Invoice' : 'Top-up'}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-2 text-xs text-muted-foreground">{formatDate(tx.date)}</TableCell>
+                              <TableCell className="py-2">
+                                <Badge variant={tx.status === 'paid' ? 'default' : 'secondary'} className="text-xs px-1.5 py-0">
+                                  {tx.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="py-2 text-right text-xs font-medium">
+                                {formatCurrency(tx.amount, tx.currency)}
+                              </TableCell>
+                              <TableCell className="py-2 text-right">
+                                {(tx.receiptUrl || tx.pdfUrl) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => window.open(tx.receiptUrl || tx.pdfUrl!, '_blank')}
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No billing transactions yet</p>
+                    </div>
+                  );
+                })()}
+              </TabsContent>
+
+              {/* Phone Usage Tab - Calls & SMS */}
+              <TabsContent value="phone" className="mt-0">
+                {isLoadingWalletTransactions ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
                   </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Transactions Yet</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Invoices and wallet top-ups will appear here.
-                    </p>
-                  </div>
-                );
-              })()}
-            </CardContent>
-          </Card>
-        </div>
+                ) : (() => {
+                  const phoneTransactions = walletTransactions
+                    .filter(tx => {
+                      const type = tx.type.toUpperCase();
+                      return type === 'CALL_COST' || type === 'SMS_COST' || type === 'MMS_COST';
+                    })
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+                  const totalCalls = phoneTransactions.filter(tx => tx.type.toUpperCase() === 'CALL_COST').length;
+                  const totalSms = phoneTransactions.filter(tx => tx.type.toUpperCase() === 'SMS_COST' || tx.type.toUpperCase() === 'MMS_COST').length;
+                  const totalSpent = phoneTransactions.reduce((sum, tx) => sum + Math.abs(parseFloat(tx.amount)), 0);
+
+                  return (
+                    <>
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Phone className="h-4 w-4 text-blue-600" />
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Calls</span>
+                          </div>
+                          <p className="text-lg font-bold text-blue-900 dark:text-blue-100">{totalCalls}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                          <div className="flex items-center gap-2 mb-1">
+                            <FileText className="h-4 w-4 text-green-600" />
+                            <span className="text-xs font-medium text-green-700 dark:text-green-400">SMS</span>
+                          </div>
+                          <p className="text-lg font-bold text-green-900 dark:text-green-100">{totalSms}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-center gap-2 mb-1">
+                            <DollarSign className="h-4 w-4 text-orange-600" />
+                            <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Spent</span>
+                          </div>
+                          <p className="text-lg font-bold text-orange-900 dark:text-orange-100">${totalSpent.toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      {/* Transactions Table */}
+                      {phoneTransactions.length > 0 ? (
+                        <div className="rounded-md border max-h-[250px] overflow-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">Type</TableHead>
+                                <TableHead className="text-xs">Details</TableHead>
+                                <TableHead className="text-xs">Date</TableHead>
+                                <TableHead className="text-right text-xs">Cost</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {phoneTransactions.map((tx) => {
+                                const isCall = tx.type.toUpperCase() === 'CALL_COST';
+                                const isSms = tx.type.toUpperCase() === 'SMS_COST';
+                                return (
+                                  <TableRow key={tx.id} className="text-sm">
+                                    <TableCell className="py-2">
+                                      <div className="flex items-center gap-1.5">
+                                        {isCall ? (
+                                          <Phone className="h-3.5 w-3.5 text-blue-500" />
+                                        ) : (
+                                          <FileText className="h-3.5 w-3.5 text-green-500" />
+                                        )}
+                                        <span className="text-xs">{isCall ? 'Call' : isSms ? 'SMS' : 'MMS'}</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="py-2 text-xs text-muted-foreground max-w-[150px] truncate">
+                                      {tx.description || '-'}
+                                    </TableCell>
+                                    <TableCell className="py-2 text-xs text-muted-foreground">
+                                      {formatDate(new Date(tx.createdAt))}
+                                    </TableCell>
+                                    <TableCell className="py-2 text-right">
+                                      <span className="text-xs font-medium text-red-600">
+                                        -${Math.abs(parseFloat(tx.amount)).toFixed(4)}
+                                      </span>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Phone className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">No phone usage yet</p>
+                          <p className="text-xs text-muted-foreground mt-1">Call and SMS charges will appear here</p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
 
       {/* Add Payment Method Dialog */}
       <Dialog open={showAddCard} onOpenChange={(open) => {
