@@ -39,11 +39,13 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 Implements Telnyx WebRTC with specific call options and audio settings. Uses a dual SIP domain architecture: company subdomain for registration/inbound, and `sip.telnyx.com` for outbound PSTN calls. Call control is webhook-driven, and telephony billing includes immediate purchase and monthly recurring charges. Extension-to-extension calling uses pure WebRTC, and SIP forking is enabled.
 
 **Manual Call Recording:**
+- **Language Selection**: When starting recording, agent selects English or Spanish; plays corresponding audio announcement to both parties
 - **WebPhone UI**: Record button in call controls grid (5 buttons: mute, keypad, record, transfer, hold)
 - **API Endpoints**: POST `/api/calls/:callControlId/recording/start` and `/recording/stop`
-- **Recording Format**: MP3, dual channel, audible beep notification to both parties
+- **Recording Format**: MP3, dual channel, custom announcement audio (no beep)
 - **Storage**: Recording URLs stored in `call_logs.recordingUrl` via `call.recording.saved` webhook
 - **Playback**: Blue play button in call history (Recents tab) for calls with recordings
+- **Announcement Media**: Stored in Telnyx Media Storage; env vars `TELNYX_RECORDING_MEDIA_EN` and `TELNYX_RECORDING_MEDIA_ES`
 
 **Wallet System Architecture:**
 Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, and APNs push notifications for proactive payment collection. Key components include dedicated services, PassKit Web Service, and a scheduler for daily payment reminders. The "Cenicienta Strategy" ensures lock-screen persistence for passes by setting `relevantDate` to the end of the day. Pass images are "baked in," with only text/data updated via push notifications.
