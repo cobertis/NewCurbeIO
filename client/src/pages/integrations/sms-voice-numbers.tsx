@@ -4,7 +4,8 @@ import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ export default function SmsVoiceNumbers() {
   const [editCallerIdNumber, setEditCallerIdNumber] = useState<SmsVoiceNumber | null>(null);
   const [callerIdValue, setCallerIdValue] = useState("");
   const [showBuyDialog, setShowBuyDialog] = useState(false);
+  const [releaseNumber, setReleaseNumber] = useState<SmsVoiceNumber | null>(null);
   const { toast } = useToast();
 
   const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: SmsVoiceNumber[] }>({
@@ -125,6 +127,27 @@ export default function SmsVoiceNumbers() {
   const handleSaveCallerId = () => {
     if (editCallerIdNumber) {
       updateCallerIdMutation.mutate({ phoneNumber: editCallerIdNumber.phoneNumber, callerIdName: callerIdValue.trim() });
+    }
+  };
+
+  const releaseNumberMutation = useMutation({
+    mutationFn: async (numberId: string) => {
+      return await apiRequest("DELETE", `/api/telnyx/my-numbers/${numberId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sms-voice/numbers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      toast({ title: "Number released", description: "The phone number has been released. Monthly billing has stopped." });
+      setReleaseNumber(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to release phone number", variant: "destructive" });
+    },
+  });
+
+  const handleConfirmRelease = () => {
+    if (releaseNumber) {
+      releaseNumberMutation.mutate(releaseNumber.id);
     }
   };
 
@@ -319,6 +342,7 @@ export default function SmsVoiceNumbers() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               className="text-red-600 dark:text-red-400"
+                              onClick={() => setReleaseNumber(number)}
                               data-testid={`menu-release-${number.id}`}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
@@ -488,6 +512,32 @@ export default function SmsVoiceNumbers() {
             setShowBuyDialog(false);
           }}
         />
+
+        <AlertDialog open={!!releaseNumber} onOpenChange={(open) => !open && setReleaseNumber(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Release Phone Number</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to release {releaseNumber ? formatPhoneNumber(releaseNumber.phoneNumber) : ""}?
+                <br /><br />
+                This will permanently delete the number from your account. The $10/month billing will stop immediately.
+                <br /><br />
+                <strong>This action cannot be undone.</strong>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-release">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmRelease}
+                disabled={releaseNumberMutation.isPending}
+                className="bg-red-600 hover:bg-red-700"
+                data-testid="button-confirm-release"
+              >
+                {releaseNumberMutation.isPending ? "Releasing..." : "Release Number"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SettingsLayout>
   );

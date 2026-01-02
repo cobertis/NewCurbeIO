@@ -2058,3 +2058,94 @@ export async function assignMessagingProfileToAllNumbers(companyId: string): Pro
     };
   }
 }
+
+export interface ReleaseNumberResult {
+  success: boolean;
+  phoneNumber?: string;
+  error?: string;
+}
+
+export async function releasePhoneNumber(
+  phoneNumberId: string,
+  companyId: string
+): Promise<ReleaseNumberResult> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    // Get the company's managed account ID
+    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+    
+    if (!managedAccountId) {
+      return {
+        success: false,
+        error: "Company Telnyx account not found.",
+      };
+    }
+    
+    // First, get the phone number details from local DB
+    const [localNumber] = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(and(
+        eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId),
+        eq(telnyxPhoneNumbers.companyId, companyId)
+      ))
+      .limit(1);
+    
+    const phoneNumber = localNumber?.phoneNumber || phoneNumberId;
+    
+    console.log(`[Telnyx Numbers] Releasing ${phoneNumber} (ID: ${phoneNumberId}) for company ${companyId}`);
+    
+    // Build headers
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+    
+    // Delete the phone number from Telnyx
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "DELETE",
+      headers,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Numbers] Release error: ${response.status} - ${errorText}`);
+      
+      // If 404, the number doesn't exist in Telnyx - still clean up local DB
+      if (response.status !== 404) {
+        return {
+          success: false,
+          error: `Failed to release number from Telnyx: ${response.status}`,
+        };
+      }
+      console.log(`[Telnyx Numbers] Number not found in Telnyx (404), cleaning up local record anyway`);
+    }
+    
+    // Delete from local database if exists
+    if (localNumber) {
+      await db
+        .delete(telnyxPhoneNumbers)
+        .where(eq(telnyxPhoneNumbers.id, localNumber.id));
+      
+      console.log(`[Telnyx Numbers] Deleted local record for ${phoneNumber}`);
+    }
+    
+    console.log(`[Telnyx Numbers] Successfully released ${phoneNumber}`);
+    
+    return {
+      success: true,
+      phoneNumber,
+    };
+  } catch (error) {
+    console.error("[Telnyx Numbers] Release error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to release phone number",
+    };
+  }
+}

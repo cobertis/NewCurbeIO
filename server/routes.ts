@@ -139,7 +139,7 @@ import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
 import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-service";
-import { getTelnyxMasterApiKey } from "./services/telnyx-numbers-service";
+import { getTelnyxMasterApiKey, releasePhoneNumber } from "./services/telnyx-numbers-service";
 import { pbxService } from "./services/pbx-service";
 import { AiOpenAIService } from "./services/ai-openai-service";
 import { registerWalletRoutes } from "./wallet-routes";
@@ -32976,6 +32976,50 @@ CRITICAL REMINDERS:
     } catch (error) {
       console.error("[Telnyx] Error updating phone number display name:", error);
       res.status(500).json({ message: "Failed to update display name" });
+    }
+  });
+
+  // DELETE /api/telnyx/my-numbers/:id - Release (delete) a phone number
+  app.delete("/api/telnyx/my-numbers/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      const companyId = currentUser.companyId;
+      const { id } = req.params;
+      
+      if (!companyId) {
+        return res.status(403).json({ message: "Company not found" });
+      }
+      
+      // Verify the phone number belongs to this company and get Telnyx ID
+      const [phoneNumber] = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(and(
+          eq(telnyxPhoneNumbers.id, id),
+          eq(telnyxPhoneNumbers.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+      
+      console.log(`[Telnyx Numbers] User \${currentUser.id} requesting to release \${phoneNumber.phoneNumber}`);
+      
+      // Release the number from Telnyx and delete local record
+      const result = await releasePhoneNumber(phoneNumber.telnyxPhoneNumberId, companyId);
+      
+      if (!result.success) {
+        return res.status(500).json({ message: result.error || "Failed to release phone number" });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Phone number \${phoneNumber.phoneNumber} has been released. Monthly billing will stop.` 
+      });
+    } catch (error) {
+      console.error("[Telnyx] Error releasing phone number:", error);
+      res.status(500).json({ message: "Failed to release phone number" });
     }
   });
 
