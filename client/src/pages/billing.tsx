@@ -1456,10 +1456,14 @@ export default function Billing() {
                                   ? `${actualSeconds}s → ${billedMinutes}m` 
                                   : '-';
                                 
-                                // Build type label: "Out TF" or "In Local" or just "Call" for old format
+                                // Build type label: "Call In - Toll Free" or "Call Out - Local"
                                 const dirLabel = isOutbound ? 'Out' : isInbound ? 'In' : '';
-                                const numTypeLabel = isTollFree ? 'TF' : isLocal ? 'Local' : '';
-                                const callLabel = dirLabel && numTypeLabel ? `${dirLabel} ${numTypeLabel}` : dirLabel || 'Call';
+                                const numTypeLabel = isTollFree ? 'Toll Free' : isLocal ? 'Local' : '';
+                                const callLabel = dirLabel && numTypeLabel 
+                                  ? `Call ${dirLabel} - ${numTypeLabel}` 
+                                  : dirLabel 
+                                    ? `Call ${dirLabel}` 
+                                    : 'Call';
                                 
                                 return (
                                   <TableRow key={tx.id} className="text-sm">
