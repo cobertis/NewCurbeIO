@@ -2759,26 +2759,33 @@ export function WebPhoneFloatingWindow() {
                         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                           Outbound Caller ID
                         </div>
-                        {availableNumbers.map((num: string) => (
-                          <DropdownMenuItem
-                            key={num}
-                            onClick={() => {
-                              setSelectedOutboundNumber(num);
-                              setShowNumberSelector(false);
-                            }}
-                            className={cn(
-                              "text-xs",
-                              telnyxCallerIdNumber === num && "bg-accent"
-                            )}
-                            data-testid={`menu-select-number-${num}`}
-                          >
-                            <Phone className="h-3 w-3 mr-2" />
-                            {formatPhoneInput(num)}
-                            {telnyxCallerIdNumber === num && (
-                              <CheckCircle className="h-3 w-3 ml-auto text-green-500" />
-                            )}
-                          </DropdownMenuItem>
-                        ))}
+                        {availableNumbers.map((num: string) => {
+                          const normalizedNum = num.replace(/\D/g, '');
+                          const normalizedSelected = telnyxCallerIdNumber.replace(/\D/g, '');
+                          const isSelected = normalizedNum === normalizedSelected || 
+                            normalizedNum.endsWith(normalizedSelected) || 
+                            normalizedSelected.endsWith(normalizedNum);
+                          return (
+                            <DropdownMenuItem
+                              key={num}
+                              onClick={() => {
+                                setSelectedOutboundNumber(num);
+                                setShowNumberSelector(false);
+                              }}
+                              className={cn(
+                                "text-xs",
+                                isSelected && "bg-accent"
+                              )}
+                              data-testid={`menu-select-number-${num}`}
+                            >
+                              <Phone className="h-3 w-3 mr-2" />
+                              {formatPhoneInput(num)}
+                              {isSelected && (
+                                <CheckCircle className="h-3 w-3 ml-auto text-green-500" />
+                              )}
+                            </DropdownMenuItem>
+                          );
+                        })}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   ) : telnyxCallerIdNumber ? (
