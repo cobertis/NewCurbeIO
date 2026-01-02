@@ -638,8 +638,11 @@ export class CallControlWebhookService {
       await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "transferring");
       
       // Use transfer API to forward the call
-      // This will dial the destination and bridge when answered
-      const callerId = phoneNumber.callForwardingKeepCallerId !== false ? from : to;
+      // IMPORTANT: We MUST use a verified number from our Telnyx account as caller ID
+      // Using the original caller's number causes "Unverified origination number" error (10010)
+      // We use the DID that received the call (to) as it's always verified in the account
+      const callerId = to; // Always use our verified DID as caller ID
+      console.log(`[CallControl] Forwarding call ${call_control_id} to ${phoneNumber.callForwardingDestination} with callerId ${callerId}`);
       await this.transferCallToNumber(call_control_id, phoneNumber.callForwardingDestination, callerId, phoneNumber.companyId, managedAccountId);
       
       // Dual-leg billing will be handled when the forwarded call completes
