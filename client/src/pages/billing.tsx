@@ -1356,7 +1356,7 @@ export default function Billing() {
                                   <span className="text-xs">{tx.description}</span>
                                 </div>
                               </TableCell>
-                              <TableCell className="py-2 text-xs text-muted-foreground">{formatDate(tx.date)}</TableCell>
+                              <TableCell className="py-2 text-xs text-muted-foreground whitespace-nowrap">{formatDateTimeWithSeconds(tx.date)}</TableCell>
                               <TableCell className="py-2">
                                 <Badge variant={tx.status === 'paid' ? 'default' : 'secondary'} className="text-xs px-1.5 py-0">
                                   {tx.status}
