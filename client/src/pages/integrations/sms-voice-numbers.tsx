@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
+import { E911ConfigDialog } from "@/components/E911ConfigDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -72,6 +73,7 @@ export default function SmsVoiceNumbers() {
   const [callerIdValue, setCallerIdValue] = useState("");
   const [showBuyDialog, setShowBuyDialog] = useState(false);
   const [releaseNumber, setReleaseNumber] = useState<SmsVoiceNumber | null>(null);
+  const [e911ConfigNumber, setE911ConfigNumber] = useState<SmsVoiceNumber | null>(null);
   const { toast } = useToast();
 
   const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: SmsVoiceNumber[] }>({
@@ -292,14 +294,14 @@ export default function SmsVoiceNumbers() {
                             <span className="text-sm">Enabled</span>
                           </Link>
                         ) : (
-                          <Link 
-                            href="/settings/compliance"
+                          <button 
+                            onClick={() => setE911ConfigNumber(number)}
                             className="flex items-center gap-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-400"
-                            data-testid={`link-e911-disabled-${number.id}`}
+                            data-testid={`button-e911-config-${number.id}`}
                           >
                             <XCircle className="h-4 w-4" />
                             <span className="text-sm">Not Set</span>
-                          </Link>
+                          </button>
                         )}
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
@@ -562,6 +564,17 @@ export default function SmsVoiceNumbers() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <E911ConfigDialog
+          open={!!e911ConfigNumber}
+          onOpenChange={(open) => !open && setE911ConfigNumber(null)}
+          phoneNumber={e911ConfigNumber?.phoneNumber || ""}
+          phoneNumberId={e911ConfigNumber?.id || ""}
+          onSuccess={() => {
+            refetch();
+            setE911ConfigNumber(null);
+          }}
+        />
       </div>
     </SettingsLayout>
   );
