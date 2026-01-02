@@ -31312,7 +31312,7 @@ CRITICAL REMINDERS:
       const depositResult = await deposit(
         wallet.id, 
         amount, 
-        `Wallet top-up via Stripe`, 
+        `Wallet top-up (Credit Card)`, 
         paymentIntent.id
       );
       if (!depositResult.success) {
