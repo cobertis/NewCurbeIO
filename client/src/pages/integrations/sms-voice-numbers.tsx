@@ -335,12 +335,13 @@ export default function SmsVoiceNumbers() {
                       </TableCell>
                       <TableCell>
                         <Button 
-                          variant="outline" 
+                          variant={number.callForwardingEnabled ? "default" : "outline"}
                           size="sm"
-                          className="h-7 text-xs"
+                          className={`h-7 text-xs ${number.callForwardingEnabled ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}
+                          onClick={() => setCallForwardingNumber(number)}
                           data-testid={`button-activate-forward-${number.id}`}
                         >
-                          Activate
+                          {number.callForwardingEnabled ? "Active" : "Activate"}
                         </Button>
                       </TableCell>
                       <TableCell className="text-right">
