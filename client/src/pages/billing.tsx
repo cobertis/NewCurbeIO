@@ -55,7 +55,7 @@ import {
   ArrowUpCircle,
   ArrowDownCircle
 } from "lucide-react";
-import { formatDate } from "@/lib/date-formatter";
+import { formatDate, formatDateTimeWithTimezone } from "@/lib/date-formatter";
 import type { BulkvsPhoneNumber } from "@shared/schema";
 import { formatForDisplay } from "@shared/phone";
 import {
@@ -1430,85 +1430,62 @@ export default function Billing() {
                                 const destination = phoneMatch ? phoneMatch[1] : '-';
                                 const actualSeconds = durationMatch ? parseInt(durationMatch[1]) : 0;
                                 const billedMinutes = billedMatch ? parseInt(billedMatch[1]) : 0;
+                                const rate = rateMatch ? rateMatch[1] : '-';
                                 
                                 // Extract rate type from brackets [Local Outbound], [Toll-Free Inbound], etc.
                                 const rateTypeMatch = desc.match(/\[(.*?)\]/);
                                 const rateType = rateTypeMatch ? rateTypeMatch[1] : '';
                                 
-                                // Determine direction from rateType or description
+                                // Determine direction from rateType or description prefix
                                 let isOutbound = rateType.toLowerCase().includes('outbound');
                                 let isInbound = rateType.toLowerCase().includes('inbound');
                                 
-                                // Fallback: detect direction from description text
+                                // Fallback: detect from "Call from" (inbound) vs "Call to" (outbound)
                                 if (!isOutbound && !isInbound) {
-                                  if (desc.toLowerCase().includes('call to') || desc.toLowerCase().includes('outbound')) {
-                                    isOutbound = true;
-                                  } else if (desc.toLowerCase().includes('call from') || desc.toLowerCase().includes('inbound')) {
+                                  if (desc.toLowerCase().startsWith('call from')) {
                                     isInbound = true;
-                                  } else {
-                                    // Default to outbound for "Call to +number" pattern
-                                    isOutbound = phoneMatch !== null;
+                                  } else if (desc.toLowerCase().startsWith('call to')) {
+                                    isOutbound = true;
                                   }
                                 }
-                                
-                                // Determine number type from rateType or destination number
-                                let isTollFree = rateType.toLowerCase().includes('toll-free') || rateType.toLowerCase().includes('toll_free');
-                                let isLocal = rateType.toLowerCase().includes('local');
-                                
-                                // Fallback: detect toll-free from phone number prefix
-                                if (!isTollFree && !isLocal && destination !== '-') {
-                                  const cleanNum = destination.replace(/\D/g, '');
-                                  const tollFreePrefixes = ['1800', '1888', '1877', '1866', '1855', '1844', '1833', '800', '888', '877', '866', '855', '844', '833'];
-                                  isTollFree = tollFreePrefixes.some(prefix => cleanNum.startsWith(prefix));
-                                  isLocal = !isTollFree;
-                                }
-                                const rate = rateMatch ? rateMatch[1] : '-';
+                                const isTollFree = rateType.toLowerCase().includes('toll-free') || rateType.toLowerCase().includes('toll_free');
+                                const isLocal = rateType.toLowerCase().includes('local');
                                 
                                 // Format duration display
                                 const durationDisplay = isCall 
                                   ? `${actualSeconds}s → ${billedMinutes}m` 
                                   : '-';
                                 
-                                // Determine call type label
-                                const callDirection = isOutbound ? 'Out' : isInbound ? 'In' : '';
-                                const numberType = isTollFree ? 'TF' : isLocal ? 'Local' : '';
+                                // Build type label: "Out TF" or "In Local" or just "Call" for old format
+                                const dirLabel = isOutbound ? 'Out' : isInbound ? 'In' : '';
+                                const numTypeLabel = isTollFree ? 'TF' : isLocal ? 'Local' : '';
+                                const callLabel = dirLabel && numTypeLabel ? `${dirLabel} ${numTypeLabel}` : dirLabel || 'Call';
                                 
                                 return (
                                   <TableRow key={tx.id} className="text-sm">
                                     <TableCell className="py-2">
-                                      <div className="flex flex-col gap-0.5">
-                                        <div className="flex items-center gap-1.5">
-                                          {isCall ? (
-                                            isOutbound ? (
-                                              <PhoneOutgoing className="h-3.5 w-3.5 text-blue-500" />
-                                            ) : isInbound ? (
-                                              <PhoneIncoming className="h-3.5 w-3.5 text-green-500" />
-                                            ) : (
-                                              <Phone className="h-3.5 w-3.5 text-blue-500" />
-                                            )
+                                      <div className="flex items-center gap-1.5">
+                                        {isCall ? (
+                                          isOutbound ? (
+                                            <PhoneOutgoing className="h-3.5 w-3.5 text-blue-500" />
+                                          ) : isInbound ? (
+                                            <PhoneIncoming className="h-3.5 w-3.5 text-green-500" />
                                           ) : (
-                                            <FileText className="h-3.5 w-3.5 text-green-500" />
-                                          )}
-                                          <span className="text-xs font-medium">
-                                            {isCall ? (callDirection ? `Call ${callDirection}` : 'Call') : isSms ? 'SMS' : 'MMS'}
-                                          </span>
-                                        </div>
-                                        {isCall && numberType && (
-                                          <span className={`text-[10px] px-1.5 py-0.5 rounded w-fit ${
-                                            isTollFree 
-                                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' 
-                                              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                                          }`}>
-                                            {numberType}
-                                          </span>
+                                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                                          )
+                                        ) : (
+                                          <FileText className="h-3.5 w-3.5 text-green-500" />
                                         )}
+                                        <span className="text-xs font-medium">
+                                          {isCall ? callLabel : isSms ? 'SMS' : 'MMS'}
+                                        </span>
                                       </div>
                                     </TableCell>
                                     <TableCell className="py-2 text-xs font-mono text-muted-foreground">
                                       {destination}
                                     </TableCell>
-                                    <TableCell className="py-2 text-xs text-muted-foreground">
-                                      {formatDate(new Date(tx.createdAt))}
+                                    <TableCell className="py-2 text-xs text-muted-foreground whitespace-nowrap">
+                                      {formatDateTimeWithTimezone(new Date(tx.createdAt))}
                                     </TableCell>
                                     <TableCell className="py-2 text-xs text-center text-muted-foreground">
                                       {durationDisplay}

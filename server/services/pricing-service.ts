@@ -494,13 +494,17 @@ export async function chargeCallToWallet(
       if (recordingEnabled) costBreakdown += ` +rec`;
       if (cnamEnabled && callData.direction === "inbound") costBreakdown += ` +CNAM`;
       
+      // For inbound: "Call from +caller", for outbound: "Call to +destination"
+      const callParty = callData.direction === "inbound" ? callData.fromNumber : callData.toNumber;
+      const callPrefix = callData.direction === "inbound" ? "Call from" : "Call to";
+      
       const [transaction] = await tx
         .insert(walletTransactions)
         .values({
           walletId: wallet.id,
           amount: totalCostWithFeatures.negated().toFixed(4),
           type: "CALL_COST",
-          description: `Call to ${callData.toNumber} (${costBreakdown})`,
+          description: `${callPrefix} ${callParty} (${costBreakdown})`,
           externalReferenceId: callLog.id,
           balanceAfter: newBalance.toFixed(4),
         })
