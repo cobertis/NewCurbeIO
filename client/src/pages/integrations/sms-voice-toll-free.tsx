@@ -40,6 +40,50 @@ import {
   type TelnyxVerificationRequest 
 } from "@/pages/sms-voice";
 
+const entityTypeLabels: Record<string, string> = {
+  "PRIVATE_PROFIT": "Private Company",
+  "PUBLIC_PROFIT": "Publicly Traded Company",
+  "NON_PROFIT": "Charity/ Non-Profit Organization",
+  "SOLE_PROPRIETOR": "Sole Proprietor",
+  "GOVERNMENT": "Government",
+};
+
+const verticalLabels: Record<string, string> = {
+  "PROFESSIONAL": "Professional Services",
+  "REAL_ESTATE": "Real Estate",
+  "HEALTHCARE": "Healthcare",
+  "HUMAN_RESOURCES": "Human Resources",
+  "ENERGY": "Energy",
+  "ENTERTAINMENT": "Entertainment",
+  "RETAIL": "Retail",
+  "TRANSPORTATION": "Transportation",
+  "AGRICULTURE": "Agriculture",
+  "INSURANCE": "Insurance",
+  "POSTAL": "Postal",
+  "EDUCATION": "Education",
+  "HOSPITALITY": "Hospitality",
+  "FINANCIAL": "Financial",
+  "POLITICAL": "Political",
+  "GAMBLING": "Gambling",
+  "LEGAL": "Legal",
+  "CONSTRUCTION": "Construction",
+  "NGO": "NGO",
+  "MANUFACTURING": "Manufacturing",
+  "GOVERNMENT": "Government",
+  "TECHNOLOGY": "Technology",
+  "COMMUNICATION": "Communication",
+};
+
+function formatEntityType(value: string | undefined | null): string {
+  if (!value) return '-';
+  return entityTypeLabels[value] || value;
+}
+
+function formatVertical(value: string | undefined | null): string {
+  if (!value) return '-';
+  return verticalLabels[value] || value;
+}
+
 function USFlagIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 18" className={className} xmlns="http://www.w3.org/2000/svg">
@@ -466,7 +510,7 @@ export default function SmsVoiceTollFree() {
                             Organization type
                           </td>
                           <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                            {verification.business_type || '-'}
+                            {formatEntityType(verification.business_type)}
                           </td>
                         </tr>
                         <tr className="border-b border-slate-200 dark:border-slate-700">
@@ -486,7 +530,7 @@ export default function SmsVoiceTollFree() {
                             Vertical type
                           </td>
                           <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                            {verification.business_vertical || '-'}
+                            {formatVertical(verification.business_vertical)}
                           </td>
                         </tr>
                         <tr className="border-b border-slate-200 dark:border-slate-700">
