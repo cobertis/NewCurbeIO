@@ -912,6 +912,30 @@ class TelnyxWebRTCManager {
     return this.completeAttendedTransfer(consultNumber);
   }
 
+  public cancelAttendedTransfer(): boolean {
+    const store = useTelnyxStore.getState();
+    const consultCall = store.consultCall;
+
+    try {
+      console.log("[TelnyxRTC] Canceling attended transfer");
+      if (consultCall) {
+        consultCall.hangup();
+      }
+      
+      // Resume original call
+      if (store.isOnHold) {
+        this.toggleHold();
+      }
+      
+      store.setConsultCall(undefined);
+      store.setConsulting(false);
+      return true;
+    } catch (error) {
+      console.error("[TelnyxRTC] Cancel attended transfer failed:", error);
+      return false;
+    }
+  }
+
   public cancelConsultTransfer(): boolean {
     return this.cancelAttendedTransfer();
   }
