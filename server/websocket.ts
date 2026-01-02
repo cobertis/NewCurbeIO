@@ -523,7 +523,7 @@ async function handlePbxConnection(ws: AuthenticatedWebSocket, req: IncomingMess
     });
     
     ws.on('close', () => {
-      extensionCallService.unregisterExtension(client.extensionId, ws);
+      extensionCallService.unregisterExtension(client.extensionId);
     });
   });
 }

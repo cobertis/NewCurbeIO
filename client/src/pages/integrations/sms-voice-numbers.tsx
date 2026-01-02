@@ -34,15 +34,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle,
-  XCircle,
-  Info
+  XCircle
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { format, addMonths } from "date-fns";
 import { formatPhoneNumber, type SmsVoiceNumber } from "@/pages/sms-voice";
 
@@ -267,22 +260,13 @@ export default function SmsVoiceNumbers() {
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
                         {isTollFreeNumber(number.phoneNumber) ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span 
-                                  className="text-slate-400 dark:text-slate-500 text-sm flex items-center gap-1"
-                                  data-testid={`text-cnam-na-${number.id}`}
-                                >
-                                  N/A
-                                  <Info className="h-3.5 w-3.5" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs">
-                                <p>Toll-free numbers do not support CNAM (Caller ID Name). CNAM is only available for local DID numbers.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                          <span 
+                            className="text-slate-400 dark:text-slate-500 text-sm"
+                            title="Toll-free numbers do not support CNAM"
+                            data-testid={`text-cnam-na-${number.id}`}
+                          >
+                            N/A
+                          </span>
                         ) : number.cnam ? (
                           <button 
                             onClick={() => handleEditCallerId(number)}
@@ -350,30 +334,14 @@ export default function SmsVoiceNumbers() {
                           : format(addMonths(new Date(), 1), "d MMM yyyy")}
                       </TableCell>
                       <TableCell>
-                        {number.callForwardingEnabled && number.callForwardingDestination ? (
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="flex items-center gap-1.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md px-2 py-1 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
-                              onClick={() => setCallForwardingNumber(number)}
-                              data-testid={`text-forward-destination-${number.id}`}
-                            >
-                              <PhoneForwarded className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                              <span className="text-xs text-green-700 dark:text-green-300 font-medium">
-                                {formatPhoneNumber(number.callForwardingDestination)}
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <Button 
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => setCallForwardingNumber(number)}
-                            data-testid={`button-activate-forward-${number.id}`}
-                          >
-                            Activate
-                          </Button>
-                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-7 text-xs"
+                          data-testid={`button-activate-forward-${number.id}`}
+                        >
+                          Activate
+                        </Button>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

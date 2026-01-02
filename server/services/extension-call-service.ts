@@ -78,16 +78,9 @@ class ExtensionCallService {
     return client;
   }
 
-  unregisterExtension(extensionId: string, closingWs?: WebSocket): void {
+  unregisterExtension(extensionId: string): void {
     const client = this.connectedClients.get(extensionId);
     if (client) {
-      // CRITICAL: Only unregister if the closing WebSocket matches the registered one
-      // This prevents old sockets from wiping newer registrations during page reloads
-      if (closingWs && client.ws !== closingWs) {
-        console.log(`[ExtensionCall] Ignoring stale disconnect for extension ${client.extension} (newer connection exists)`);
-        return;
-      }
-      
       const companyId = client.companyId;
       this.connectedClients.delete(extensionId);
       console.log(`[ExtensionCall] Extension ${client.extension} unregistered`);
@@ -380,12 +373,7 @@ class ExtensionCallService {
   getAvailableAgentsForCompany(companyId: string): ExtensionClient[] {
     const available: ExtensionClient[] = [];
     
-    console.log(`[ExtensionCall] Looking for agents in company ${companyId}`);
-    console.log(`[ExtensionCall] Total connected clients: ${this.connectedClients.size}`);
-    
     Array.from(this.connectedClients.values()).forEach((client) => {
-      console.log(`[ExtensionCall] Client ${client.extension}: companyId=${client.companyId}, wsOpen=${client.ws.readyState === WebSocket.OPEN}`);
-      
       if (client.companyId === companyId && client.ws.readyState === WebSocket.OPEN) {
         // Check if agent is busy
         const isBusy = Array.from(this.activeCalls.values()).some(
@@ -397,15 +385,12 @@ class ExtensionCallService {
           (qc) => qc.answeredByExtensionId === client.extensionId && qc.status === "answered"
         );
         
-        console.log(`[ExtensionCall] Client ${client.extension}: isBusy=${isBusy}`);
-        
         if (!isBusy) {
           available.push(client);
         }
       }
     });
     
-    console.log(`[ExtensionCall] Found ${available.length} available agents for company ${companyId}`);
     return available;
   }
 

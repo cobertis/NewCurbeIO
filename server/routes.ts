@@ -31586,26 +31586,19 @@ CRITICAL REMINDERS:
   // POST /webhooks/telnyx/voice/status - Handle voice call status callbacks
   app.post("/webhooks/telnyx/voice/status", async (req: Request, res: Response) => {
     try {
-      // Log the full body to diagnose the structure
-      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      const { call_control_id, event_type, call_leg_id, from, to, direction, state } = req.body;
       
-      // TeXML status callbacks use PascalCase field names
-      const { CallSid, CallStatus, From, To, Direction, Duration, DialCallSid, DialCallStatus, DialCallDuration } = req.body;
-      
-      console.log("[Telnyx Voice Status] Parsed event:", {
-        callSid: CallSid,
-        callStatus: CallStatus,
-        from: From,
-        to: To,
-        direction: Direction,
-        duration: Duration,
-        dialCallSid: DialCallSid,
-        dialCallStatus: DialCallStatus,
-        dialCallDuration: DialCallDuration,
+      console.log("[Telnyx Voice Status] Event:", {
+        eventType: event_type,
+        callControlId: call_control_id,
+        callLegId: call_leg_id,
+        from,
+        to,
+        direction,
+        state,
       });
-      
       res.set("Content-Type", "application/xml");
-      res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+    res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
     } catch (error: any) {
       console.error("[Telnyx Voice Status] Error:", error);
       res.status(500).json({ error: "Status callback processing failed" });
@@ -31723,22 +31716,9 @@ CRITICAL REMINDERS:
         const callerId = callForwardingKeepCallerId ? from : to;
         console.log(`[Telnyx Voice] Forwarding to ${callForwardingDestination}`);
         
-        // Get base URL for action callback
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        const host = req.headers['x-forwarded-host'] || req.headers.host || req.hostname;
-        const baseUrl = `${protocol}://${host}`;
-        
-        // Encode forwarding info in action URL for billing
-        const forwardParams = new URLSearchParams({
-          from: from || '',
-          to: to || '',
-          destination: callForwardingDestination,
-          callSid: callSid || ''
-        }).toString();
-        
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial answerOnBridge="true" callerId="${callerId}" timeout="30" ringback="us-ring" action="${baseUrl}/webhooks/telnyx/forward-complete/${companyId}?${forwardParams}">
+  <Dial answerOnBridge="true" callerId="${callerId}" timeout="30" ringback="us-ring">
     <Number>${callForwardingDestination}</Number>
   </Dial>
 </Response>`;
@@ -31779,91 +31759,6 @@ CRITICAL REMINDERS:
   app.post("/webhooks/telnyx/dial-complete/:companyId", async (_req: Request, res: Response) => {
     res.set("Content-Type", "application/xml");
     res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
-  });
-  // POST /webhooks/telnyx/forward-complete/:companyId - Handle forwarded call completion and billing
-  app.post("/webhooks/telnyx/forward-complete/:companyId", async (req: Request, res: Response) => {
-    try {
-      const { companyId } = req.params;
-      const { from, to, destination, callSid } = req.query;
-      
-      // TeXML Dial action callback fields
-      const { DialCallStatus, DialCallDuration, DialCallSid } = req.body;
-      
-      console.log("[Telnyx Forward Complete] Forwarded call ended:", {
-        companyId,
-        from,
-        to,
-        destination,
-        callSid,
-        dialCallStatus: DialCallStatus,
-        dialCallDuration: DialCallDuration,
-        dialCallSid: DialCallSid,
-      });
-      
-      const durationSeconds = parseInt(DialCallDuration as string) || 0;
-      
-      // Only bill if call was answered (has duration)
-      if (durationSeconds > 0 && DialCallStatus === 'completed') {
-        const { chargeCallToWallet } = await import("./services/pricing-service");
-        const { broadcastWalletUpdate, broadcastNewCallLog } = await import("./websocket");
-        
-        // DUAL BILLING for forwarded calls:
-        // 1. Charge INBOUND rate (caller -> our toll-free)
-        console.log("[Telnyx Forward Complete] Charging INBOUND leg (caller -> toll-free)");
-        const inboundResult = await chargeCallToWallet(companyId, {
-          telnyxCallId: `fwd-in-${callSid || DialCallSid}`,
-          fromNumber: from as string || '',
-          toNumber: to as string || '',
-          direction: 'inbound',
-          durationSeconds,
-          status: 'completed',
-          startedAt: new Date(Date.now() - durationSeconds * 1000),
-          endedAt: new Date(),
-          callerName: 'Forwarded Call',
-        });
-        console.log("[Telnyx Forward Complete] Inbound charge result:", inboundResult);
-        
-        // 2. Charge OUTBOUND rate (our system -> forwarding destination)
-        console.log("[Telnyx Forward Complete] Charging OUTBOUND leg (system -> destination)");
-        const outboundResult = await chargeCallToWallet(companyId, {
-          telnyxCallId: `fwd-out-${callSid || DialCallSid}`,
-          fromNumber: to as string || '',
-          toNumber: destination as string || '',
-          direction: 'outbound',
-          durationSeconds,
-          status: 'completed',
-          startedAt: new Date(Date.now() - durationSeconds * 1000),
-          endedAt: new Date(),
-          callerName: 'Forwarded Call',
-        });
-        console.log("[Telnyx Forward Complete] Outbound charge result:", outboundResult);
-        
-        // Broadcast wallet update to frontend
-        if (inboundResult.success || outboundResult.success) {
-          const [wallet] = await db
-            .select()
-            .from(wallets)
-            .where(eq(wallets.companyId, companyId))
-            .limit(1);
-          
-          if (wallet) {
-            broadcastWalletUpdate(companyId, {
-              balance: wallet.balance,
-              currency: wallet.currency,
-            });
-          }
-        }
-      } else {
-        console.log("[Telnyx Forward Complete] Call not answered or no duration, skipping billing");
-      }
-      
-      res.set("Content-Type", "application/xml");
-      res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
-    } catch (error: any) {
-      console.error("[Telnyx Forward Complete] Error:", error);
-      res.set("Content-Type", "application/xml");
-      res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
-    }
   });
   // ==== CALL CONTROL API WEBHOOKS (WebSocket-based routing) ====
   // These handle inbound calls via Call Control Application
@@ -35943,29 +35838,6 @@ CRITICAL REMINDERS:
     } catch (error: any) {
       console.error("[Telnyx Call Forwarding] Update error:", error);
       res.status(500).json({ message: "Failed to update call forwarding settings" });
-    }
-  });
-
-  // POST /api/telnyx/reassign-to-call-control/:phoneNumberId - Force reassign number to Call Control App
-  app.post("/api/telnyx/reassign-to-call-control/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'superadmin') {
-        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
-      }
-      const { phoneNumberId } = req.params;
-      if (!phoneNumberId || !user.companyId) {
-        return res.status(400).json({ message: "Phone number ID and company are required" });
-      }
-      const { reassignNumberToCallControlApp } = await import("./services/telnyx-numbers-service");
-      const result = await reassignNumberToCallControlApp(phoneNumberId, user.companyId);
-      if (!result.success) {
-        return res.status(500).json({ message: result.error });
-      }
-      res.json({ success: true, message: "Number reassigned to Call Control App" });
-    } catch (error: any) {
-      console.error("[Telnyx Reassign] Error:", error);
-      res.status(500).json({ message: "Failed to reassign number" });
     }
   });
   // GET /api/telnyx/voicemail/:phoneNumberId - Get voicemail settings

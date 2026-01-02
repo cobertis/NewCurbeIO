@@ -28,14 +28,6 @@ import { PhoneForwarded, Loader2, DollarSign } from "lucide-react";
 
 const phoneRegex = /^[\d\s\-\(\)\+]+$/;
 
-function formatUSPhoneNumber(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length === 0) return "";
-  if (digits.length <= 3) return `(${digits}`;
-  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-}
-
 const callForwardingSchema = z.object({
   enabled: z.boolean(),
   destination: z.string()
@@ -98,7 +90,7 @@ export function CallForwardingDialog({
 
   const updateForwardingMutation = useMutation({
     mutationFn: async (data: CallForwardingFormValues) => {
-      return await apiRequest(
+      const response = await apiRequest(
         "POST",
         `/api/telnyx/call-forwarding/${telnyxPhoneNumberId}`,
         {
@@ -107,6 +99,7 @@ export function CallForwardingDialog({
           keepCallerId: data.keepCallerId,
         }
       );
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -116,7 +109,6 @@ export function CallForwardingDialog({
           : "Call forwarding has been disabled.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/numbers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/sms-voice/numbers"] });
       onOpenChange(false);
       onSuccess?.();
     },
@@ -149,7 +141,7 @@ export function CallForwardingDialog({
             Call Forwarding Settings
           </DialogTitle>
           <DialogDescription>
-            Configure call forwarding for <span className="font-semibold">{formatUSPhoneNumber(phoneNumber.replace(/^\+1/, ""))}</span>
+            Configure call forwarding for <span className="font-semibold">{phoneNumber}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -201,13 +193,8 @@ export function CallForwardingDialog({
                       <FormLabel>Forwarding Destination</FormLabel>
                       <FormControl>
                         <Input
-                          value={formatUSPhoneNumber(field.value || "")}
-                          onChange={(e) => {
-                            const formatted = formatUSPhoneNumber(e.target.value);
-                            field.onChange(formatted);
-                          }}
+                          {...field}
                           placeholder="(555) 123-4567"
-                          maxLength={14}
                           data-testid="input-forwarding-destination"
                         />
                       </FormControl>

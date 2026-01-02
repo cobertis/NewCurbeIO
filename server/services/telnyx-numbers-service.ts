@@ -1033,10 +1033,9 @@ export async function updateSpamProtection(
 }
 
 /**
- * Update call forwarding settings for a phone number.
- * Settings are stored locally and handled programmatically via Call Control webhook.
- * Number ALWAYS stays on Call Control App - forwarding is done via transfer action.
- * 
+ * Update call forwarding settings for a phone number
+ * Configures both Telnyx Voice Settings API and local database.
+ * When enabled, incoming calls are forwarded to the destination number.
  * BILLING: Forwarded calls incur BOTH the inbound call cost AND an outbound call cost.
  */
 export async function updateCallForwarding(
@@ -1059,6 +1058,7 @@ export async function updateCallForwarding(
       if (!cleanNumber.match(/^1?\d{10}$/)) {
         return { success: false, error: "Destination must be a valid US phone number" };
       }
+      // Normalize to E.164
       normalizedDest = cleanNumber.startsWith("1") ? `+${cleanNumber}` : `+1${cleanNumber}`;
     }
     
@@ -1070,7 +1070,7 @@ export async function updateCallForwarding(
       .where(eq(wallets.companyId, companyId));
     
     if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company wallet not found" };
+      return { success: false, error: "Company wallet or Telnyx account not found" };
     }
     
     const headers: Record<string, string> = {
@@ -1080,35 +1080,31 @@ export async function updateCallForwarding(
       ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
-    // Get telephony settings to ensure number is on Call Control App
-    const [telSettings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
+    // Update call forwarding in Telnyx Voice Settings API
+    const voiceSettingsPayload = {
+      call_forwarding: {
+        call_forwarding_enabled: enabled,
+        forwards_to: enabled ? normalizedDest : "",
+        forwarding_type: "always", // Forward all incoming calls
+      },
+    };
     
-    if (telSettings?.callControlAppId) {
-      // ALWAYS ensure number is assigned to Call Control App (for programmatic forwarding)
-      console.log(`[Call Forwarding] Ensuring number ${phoneNumberId} is on Call Control App`);
-      
-      const reassignResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({ connection_id: telSettings.callControlAppId }),
-      });
-      
-      if (!reassignResponse.ok) {
-        const errorText = await reassignResponse.text();
-        console.error(`[Call Forwarding] Failed to assign to Call Control: ${errorText}`);
-      } else {
-        console.log(`[Call Forwarding] Number assigned to Call Control App successfully`);
-      }
-      
-      // Disable native forwarding on Telnyx (we handle it programmatically)
-      await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({ call_forwarding: { forwards_to: null, forwarding_type: "always" } }),
-      });
+    console.log(`[Call Forwarding] Updating Telnyx Voice Settings for ${phoneNumberId}:`, JSON.stringify(voiceSettingsPayload));
+    
+    const voiceSettingsResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(voiceSettingsPayload),
+    });
+    
+    if (!voiceSettingsResponse.ok) {
+      const errorText = await voiceSettingsResponse.text();
+      console.error(`[Call Forwarding] Telnyx Voice Settings update failed: ${voiceSettingsResponse.status} - ${errorText}`);
+      // Continue with local DB update even if Telnyx API fails - TeXML webhook will handle forwarding
+      console.log(`[Call Forwarding] Proceeding with local DB update (TeXML webhook will handle forwarding)`);
+    } else {
+      const voiceResult = await voiceSettingsResponse.json();
+      console.log(`[Call Forwarding] Telnyx Voice Settings updated successfully:`, voiceResult.data?.call_forwarding);
     }
     
     // Check if record exists in local database
@@ -1123,6 +1119,7 @@ export async function updateCallForwarding(
       );
     
     if (existing) {
+      // Update existing record
       await db
         .update(telnyxPhoneNumbers)
         .set({
@@ -1133,9 +1130,45 @@ export async function updateCallForwarding(
         })
         .where(eq(telnyxPhoneNumbers.id, existing.id));
       
-      console.log(`[Call Forwarding] Updated: ${existing.phoneNumber}, enabled=${enabled}, dest=${normalizedDest}`);
+      console.log(`[Call Forwarding] Settings updated. Number: ${existing.phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     } else {
-      return { success: false, error: "Phone number record not found. Please sync numbers first." };
+      // Need to fetch phone number details from Telnyx to create local record
+      // (apiKey and headers already defined above)
+      const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+        method: "GET",
+        headers,
+      });
+      
+      if (!response.ok) {
+        console.error(`[Call Forwarding] Failed to fetch phone number from Telnyx: ${response.status}`);
+        return { success: false, error: "Failed to fetch phone number details" };
+      }
+      
+      const result = await response.json();
+      const phoneNumber = result.data?.phone_number;
+      
+      if (!phoneNumber) {
+        return { success: false, error: "Phone number not found in Telnyx" };
+      }
+      
+      // Create local record with call forwarding settings
+      const now = new Date();
+      const nextBilling = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      await db.insert(telnyxPhoneNumbers).values({
+        companyId,
+        ownerUserId: ownerUserId || null,
+        phoneNumber,
+        telnyxPhoneNumberId: phoneNumberId,
+        status: "active",
+        callForwardingEnabled: enabled,
+        callForwardingDestination: normalizedDest,
+        callForwardingKeepCallerId: keepCallerId,
+        purchasedAt: now,
+        nextBillingAt: nextBilling,
+      });
+      
+      console.log(`[Call Forwarding] Created local record and saved settings. Number: ${phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     }
     
     return { success: true };
@@ -2189,72 +2222,5 @@ export async function releasePhoneNumber(
       success: false,
       error: error instanceof Error ? error.message : "Failed to release phone number",
     };
-  }
-}
-
-/**
- * Reassign a phone number to use Call Control Application for webhook routing
- * This enables call forwarding, IVR, and other webhook-based features
- * Numbers must go through Call Control App for TeXML webhooks to work
- */
-export async function reassignNumberToCallControlApp(
-  telnyxPhoneNumberId: string,
-  companyId: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    // Get company's telephony settings to find Call Control App ID
-    const [settings] = await db
-      .select()
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
-    
-    if (!settings?.callControlAppId) {
-      return { success: false, error: "Company has no Call Control Application configured" };
-    }
-    
-    // Get wallet for managed account ID
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-    
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company wallet or Telnyx account not found" };
-    }
-    
-    const headers: Record<string, string> = {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
-    };
-    
-    // CRITICAL: Assign number to Call Control App using connection_id
-    // In Telnyx API, Call Control Apps ARE connections
-    console.log(`[Telnyx Numbers] Reassigning ${telnyxPhoneNumberId} to Call Control App ${settings.callControlAppId}`);
-    
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${telnyxPhoneNumberId}`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({
-        connection_id: settings.callControlAppId, // Call Control App is a type of connection
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Telnyx Numbers] Reassign error: ${response.status} - ${errorText}`);
-      return { success: false, error: `Failed to reassign number: ${response.status} - ${errorText}` };
-    }
-    
-    const result = await response.json();
-    console.log(`[Telnyx Numbers] Successfully reassigned to Call Control App. connection_id: ${result.data?.connection_id}`);
-    
-    return { success: true };
-  } catch (error) {
-    console.error("[Telnyx Numbers] Reassign error:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Failed to reassign phone number" };
   }
 }
