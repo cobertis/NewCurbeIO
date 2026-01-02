@@ -380,6 +380,26 @@ export default function Billing() {
 
   const walletTransactions = walletTransactionsData?.transactions || [];
 
+  // Fetch call logs for Phone Usage tab
+  const { data: callLogsData, isLoading: isLoadingCallLogs } = useQuery<{
+    calls: Array<{
+      id: string;
+      fromNumber: string;
+      toNumber: string;
+      direction: string;
+      status: string;
+      duration: number | null;
+      cost: string | null;
+      startedAt: string | null;
+      endedAt: string | null;
+      createdAt: string;
+    }>;
+  }>({
+    queryKey: ["/api/call-logs"],
+  });
+
+  const callLogs = callLogsData?.calls || [];
+
   const activeDiscount = discountData?.discount;
 
   // Track last shown payment failure notification to avoid duplicates
@@ -1355,39 +1375,75 @@ export default function Billing() {
 
               {/* Phone Usage Tab - Calls & SMS */}
               <TabsContent value="phone" className="mt-0">
-                {isLoadingWalletTransactions ? (
+                {isLoadingCallLogs ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
                   </div>
                 ) : (() => {
-                  const phoneTransactions = walletTransactions
-                    .filter(tx => {
-                      const type = tx.type.toUpperCase();
-                      return type === 'CALL_COST' || type === 'SMS_COST' || type === 'MMS_COST';
-                    })
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  const sortedCalls = [...callLogs].sort((a, b) => 
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                  );
 
-                  const totalCalls = phoneTransactions.filter(tx => tx.type.toUpperCase() === 'CALL_COST').length;
-                  const totalSms = phoneTransactions.filter(tx => tx.type.toUpperCase() === 'SMS_COST' || tx.type.toUpperCase() === 'MMS_COST').length;
-                  const totalSpent = phoneTransactions.reduce((sum, tx) => sum + Math.abs(parseFloat(tx.amount)), 0);
+                  const totalCalls = sortedCalls.length;
+                  const answeredCalls = sortedCalls.filter(c => c.status === 'completed' || c.status === 'answered').length;
+                  const missedCalls = sortedCalls.filter(c => c.status === 'missed' || c.status === 'ringing' || c.status === 'no-answer').length;
+                  const totalSpent = sortedCalls.reduce((sum, c) => sum + (c.cost ? Math.abs(parseFloat(c.cost)) : 0), 0);
+
+                  const copyToClipboard = (text: string) => {
+                    navigator.clipboard.writeText(text);
+                    toast({
+                      title: "Copied",
+                      description: "Call ID copied to clipboard",
+                    });
+                  };
+
+                  const formatDurationSeconds = (seconds: number | null) => {
+                    if (!seconds) return '0s';
+                    if (seconds < 60) return `${seconds}s`;
+                    const mins = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    return `${mins}m ${secs}s`;
+                  };
+
+                  const getStatusBadge = (status: string) => {
+                    switch (status) {
+                      case 'completed':
+                      case 'answered':
+                        return <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-green-600">Answered</Badge>;
+                      case 'missed':
+                      case 'no-answer':
+                        return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Missed</Badge>;
+                      case 'ringing':
+                        return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Ringing</Badge>;
+                      default:
+                        return <Badge variant="outline" className="text-[10px] px-1.5 py-0">{status}</Badge>;
+                    }
+                  };
 
                   return (
                     <>
                       {/* Summary Stats */}
-                      <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="grid grid-cols-4 gap-3 mb-4">
                         <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                           <div className="flex items-center gap-2 mb-1">
                             <Phone className="h-4 w-4 text-blue-600" />
-                            <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Calls</span>
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Total</span>
                           </div>
                           <p className="text-lg font-bold text-blue-900 dark:text-blue-100">{totalCalls}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
                           <div className="flex items-center gap-2 mb-1">
-                            <FileText className="h-4 w-4 text-green-600" />
-                            <span className="text-xs font-medium text-green-700 dark:text-green-400">SMS</span>
+                            <PhoneIncoming className="h-4 w-4 text-green-600" />
+                            <span className="text-xs font-medium text-green-700 dark:text-green-400">Answered</span>
                           </div>
-                          <p className="text-lg font-bold text-green-900 dark:text-green-100">{totalSms}</p>
+                          <p className="text-lg font-bold text-green-900 dark:text-green-100">{answeredCalls}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Phone className="h-4 w-4 text-red-600" />
+                            <span className="text-xs font-medium text-red-700 dark:text-red-400">Missed</span>
+                          </div>
+                          <p className="text-lg font-bold text-red-900 dark:text-red-100">{missedCalls}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                           <div className="flex items-center gap-2 mb-1">
@@ -1398,109 +1454,75 @@ export default function Billing() {
                         </div>
                       </div>
 
-                      {/* Transactions Table */}
-                      {phoneTransactions.length > 0 ? (
-                        <div className="rounded-md border max-h-[300px] overflow-auto">
+                      {/* Calls Table */}
+                      {sortedCalls.length > 0 ? (
+                        <div className="rounded-md border max-h-[400px] overflow-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead className="text-xs">Type</TableHead>
-                                <TableHead className="text-xs">Destination</TableHead>
-                                <TableHead className="text-xs">Date</TableHead>
+                                <TableHead className="text-xs">Call ID</TableHead>
+                                <TableHead className="text-xs">Direction</TableHead>
+                                <TableHead className="text-xs">From</TableHead>
+                                <TableHead className="text-xs">To</TableHead>
+                                <TableHead className="text-xs">Status</TableHead>
                                 <TableHead className="text-xs text-center">Duration</TableHead>
-                                <TableHead className="text-xs text-right">Rate</TableHead>
+                                <TableHead className="text-xs">Date</TableHead>
                                 <TableHead className="text-right text-xs">Cost</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {phoneTransactions.map((tx) => {
-                                const isCall = tx.type.toUpperCase() === 'CALL_COST';
-                                const isSms = tx.type.toUpperCase() === 'SMS_COST';
-                                
-                                // Parse description to extract details
-                                // New format: "10s → 1m @ $0.0100/min [Local Outbound]"
-                                // Old format: "Call to +17866302522 (10s actual → 1 min billed @ $0.0200/min)"
-                                const desc = tx.description || '';
-                                const phoneMatch = desc.match(/to (\+?\d+)/);
-                                const durationMatch = desc.match(/(\d+)s(?:\s*actual)?\s*→/);
-                                const billedMatch = desc.match(/→\s*(\d+)\s*m(?:in)?/);
-                                const rateMatch = desc.match(/@\s*\$?([\d.]+)\/min/);
-                                
-                                // Extract values first
-                                const destination = phoneMatch ? phoneMatch[1] : '-';
-                                const actualSeconds = durationMatch ? parseInt(durationMatch[1]) : 0;
-                                const billedMinutes = billedMatch ? parseInt(billedMatch[1]) : 0;
-                                const rate = rateMatch ? rateMatch[1] : '-';
-                                
-                                // Extract rate type from brackets [Local Outbound], [Toll-Free Inbound], etc.
-                                const rateTypeMatch = desc.match(/\[(.*?)\]/);
-                                const rateType = rateTypeMatch ? rateTypeMatch[1] : '';
-                                
-                                // Determine direction from rateType or description prefix
-                                let isOutbound = rateType.toLowerCase().includes('outbound');
-                                let isInbound = rateType.toLowerCase().includes('inbound');
-                                
-                                // Fallback: detect from "Call from" (inbound) vs "Call to" (outbound)
-                                if (!isOutbound && !isInbound) {
-                                  if (desc.toLowerCase().startsWith('call from')) {
-                                    isInbound = true;
-                                  } else if (desc.toLowerCase().startsWith('call to')) {
-                                    isOutbound = true;
-                                  }
-                                }
-                                const isTollFree = rateType.toLowerCase().includes('toll-free') || rateType.toLowerCase().includes('toll_free');
-                                const isLocal = rateType.toLowerCase().includes('local');
-                                
-                                // Format duration display
-                                const durationDisplay = isCall 
-                                  ? `${actualSeconds}s → ${billedMinutes}m` 
-                                  : '-';
-                                
-                                // Build type label: "Call In - Toll Free" or "Call Out - Local"
-                                const dirLabel = isOutbound ? 'Out' : isInbound ? 'In' : '';
-                                const numTypeLabel = isTollFree ? 'Toll Free' : isLocal ? 'Local' : '';
-                                const callLabel = dirLabel && numTypeLabel 
-                                  ? `Call ${dirLabel} - ${numTypeLabel}` 
-                                  : dirLabel 
-                                    ? `Call ${dirLabel}` 
-                                    : 'Call';
+                              {sortedCalls.map((call) => {
+                                const isOutbound = call.direction === 'outbound';
+                                const isAnswered = call.status === 'completed' || call.status === 'answered';
+                                const shortId = `${call.id.slice(0, 6)}...${call.id.slice(-4)}`;
                                 
                                 return (
-                                  <TableRow key={tx.id} className="text-sm">
+                                  <TableRow key={call.id} className="text-sm">
+                                    <TableCell className="py-2">
+                                      <button
+                                        onClick={() => copyToClipboard(call.id)}
+                                        className="font-mono text-[10px] px-1.5 py-0.5 bg-muted rounded hover:bg-muted/80 cursor-pointer"
+                                        title={`Click to copy: ${call.id}`}
+                                        data-testid={`copy-call-id-${call.id}`}
+                                      >
+                                        {shortId}
+                                      </button>
+                                    </TableCell>
                                     <TableCell className="py-2">
                                       <div className="flex items-center gap-1.5">
-                                        {isCall ? (
-                                          isOutbound ? (
-                                            <PhoneOutgoing className="h-3.5 w-3.5 text-blue-500" />
-                                          ) : isInbound ? (
-                                            <PhoneIncoming className="h-3.5 w-3.5 text-green-500" />
-                                          ) : (
-                                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                                          )
+                                        {isOutbound ? (
+                                          <PhoneOutgoing className="h-3.5 w-3.5 text-blue-500" />
                                         ) : (
-                                          <FileText className="h-3.5 w-3.5 text-green-500" />
+                                          <PhoneIncoming className="h-3.5 w-3.5 text-green-500" />
                                         )}
                                         <span className="text-xs font-medium">
-                                          {isCall ? callLabel : isSms ? 'SMS' : 'MMS'}
+                                          {isOutbound ? 'Outbound' : 'Inbound'}
                                         </span>
                                       </div>
                                     </TableCell>
                                     <TableCell className="py-2 text-xs font-mono text-muted-foreground">
-                                      {destination}
+                                      {call.fromNumber}
                                     </TableCell>
-                                    <TableCell className="py-2 text-xs text-muted-foreground whitespace-nowrap">
-                                      {formatDateTimeWithSeconds(new Date(tx.createdAt))}
+                                    <TableCell className="py-2 text-xs font-mono text-muted-foreground">
+                                      {call.toNumber}
+                                    </TableCell>
+                                    <TableCell className="py-2">
+                                      {getStatusBadge(call.status)}
                                     </TableCell>
                                     <TableCell className="py-2 text-xs text-center text-muted-foreground">
-                                      {durationDisplay}
+                                      {formatDurationSeconds(call.duration)}
                                     </TableCell>
-                                    <TableCell className="py-2 text-xs text-right text-muted-foreground">
-                                      {rate !== '-' ? `$${rate}/min` : '-'}
+                                    <TableCell className="py-2 text-xs text-muted-foreground whitespace-nowrap">
+                                      {formatDateTimeWithSeconds(new Date(call.createdAt))}
                                     </TableCell>
                                     <TableCell className="py-2 text-right">
-                                      <span className="text-xs font-medium text-red-600">
-                                        -${Math.abs(parseFloat(tx.amount)).toFixed(4)}
-                                      </span>
+                                      {call.cost && parseFloat(call.cost) > 0 ? (
+                                        <span className="text-xs font-medium text-red-600">
+                                          -${parseFloat(call.cost).toFixed(4)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">-</span>
+                                      )}
                                     </TableCell>
                                   </TableRow>
                                 );
@@ -1511,8 +1533,8 @@ export default function Billing() {
                       ) : (
                         <div className="text-center py-8">
                           <Phone className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                          <p className="text-sm text-muted-foreground">No phone usage yet</p>
-                          <p className="text-xs text-muted-foreground mt-1">Call and SMS charges will appear here</p>
+                          <p className="text-sm text-muted-foreground">No calls yet</p>
+                          <p className="text-xs text-muted-foreground mt-1">Your call history will appear here</p>
                         </div>
                       )}
                     </>
