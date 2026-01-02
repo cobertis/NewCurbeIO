@@ -348,24 +348,28 @@ export default function SmsVoiceNumbers() {
                       </TableCell>
                       <TableCell>
                         {number.callForwardingEnabled ? (
-                          <button
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-7 text-xs text-green-600 border-green-200 bg-green-50/50 hover:bg-green-100 dark:text-green-400 dark:border-green-800 dark:bg-green-900/20 dark:hover:bg-green-900/40"
                             onClick={() => setCallForwardingNumber(number)}
-                            className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:underline cursor-pointer"
                             data-testid={`button-forwarding-active-${number.id}`}
                           >
-                            <PhoneForwarded className="h-3.5 w-3.5" />
-                            <span>{number.callForwardingDestination 
+                            <PhoneForwarded className="h-3 w-3 mr-1.5" />
+                            {number.callForwardingDestination 
                               ? formatPhoneNumber(number.callForwardingDestination)
-                              : "Active"}</span>
-                          </button>
+                              : "Active"}
+                          </Button>
                         ) : (
-                          <button
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-7 text-xs"
                             onClick={() => setCallForwardingNumber(number)}
-                            className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:underline cursor-pointer"
                             data-testid={`button-activate-forward-${number.id}`}
                           >
                             Set up
-                          </button>
+                          </Button>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
