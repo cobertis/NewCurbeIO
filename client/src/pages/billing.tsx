@@ -300,6 +300,11 @@ export default function Billing() {
   const [financialSituation, setFinancialSituation] = useState("");
   const [proposedSolution, setProposedSolution] = useState("");
 
+  // Read URL params to determine which tab to show
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get('tab') === 'phone' ? 'phone' : 'billing';
+  const [transactionTab, setTransactionTab] = useState(initialTab);
+
   // Fetch session data to get user info
   const { data: sessionData } = useQuery<{ user?: any }>({
     queryKey: ['/api/session'],
@@ -1221,7 +1226,7 @@ export default function Billing() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <Tabs defaultValue="billing" className="w-full">
+            <Tabs value={transactionTab} onValueChange={setTransactionTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="billing" className="text-sm">
                   <Receipt className="h-4 w-4 mr-2" />
