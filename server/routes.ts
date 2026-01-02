@@ -3743,12 +3743,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // A step is "completed" if naturally completed OR skipped
       const planSelected = planSelectedNatural || skippedSteps.includes('plan');
       const phoneSetup = phoneSetupNatural || skippedSteps.includes('sms');
-      const emailSetup = emailSetupNatural || skippedSteps.includes('email');
+      // Email section is hidden (not implemented), auto-mark as complete
+      const emailSetup = true;
       const messagingSetup = messagingSetupNatural || skippedSteps.includes('sms');
       const otherCompleted = skippedSteps.includes('other');
       
-      // Calculate if all steps are complete
-      const allComplete = profileCompleted && planSelected && phoneSetup && emailSetup && messagingSetup;
+      // Calculate if all steps are complete (email auto-complete since hidden, other is optional)
+      const allComplete = profileCompleted && planSelected && messagingSetup && otherCompleted;
       
       res.json({
         profileCompleted,
