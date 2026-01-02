@@ -32847,6 +32847,19 @@ CRITICAL REMINDERS:
         return res.json({ numbers: [] });
       }
       
+      // Load global pricing to use configured rates instead of Telnyx rates
+      const { loadGlobalPricing } = await import("./services/pricing-config");
+      const pricing = await loadGlobalPricing();
+      
+      // Helper to check if toll-free
+      const isTollFreeNumber = (phoneNumber: string, numberType?: string | null): boolean => {
+        if (numberType === 'toll_free') return true;
+        const tollFreeAreaCodes = ['800', '833', '844', '855', '866', '877', '888'];
+        const digits = phoneNumber.replace(/\D/g, '');
+        const areaCode = digits.startsWith('1') ? digits.substring(1, 4) : digits.substring(0, 3);
+        return tollFreeAreaCodes.includes(areaCode);
+      };
+      
       // Get company name for fallback
       const company = await db.query.companies.findFirst({
         where: eq(companies.id, companyId),
@@ -32874,12 +32887,19 @@ CRITICAL REMINDERS:
             ownerLastName = owner.lastName;
           }
         }
+        
+        // Use global pricing instead of Telnyx rate
+        const isTollFree = isTollFreeNumber(num.phoneNumber, num.numberType);
+        const configuredMonthlyFee = isTollFree 
+          ? pricing.monthly.tollfree_did 
+          : pricing.monthly.local_did;
+        
         return {
           id: num.id,
           phoneNumber: num.phoneNumber,
           displayName: num.displayName,
           status: num.status,
-          monthlyFee: num.monthlyFee,
+          monthlyFee: configuredMonthlyFee.toFixed(2),
           purchasedAt: num.purchasedAt,
           ownerUserId: num.ownerUserId,
           ownerFirstName,
