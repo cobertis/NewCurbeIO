@@ -18,8 +18,9 @@ import {
   PbxRingStrategy,
   pbxIvrs,
   PbxIvr,
+  callLogs,
 } from "@shared/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, desc, isNull, or } from "drizzle-orm";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
@@ -600,6 +601,43 @@ export class CallControlWebhookService {
         managedAccountId,
         callerNumber: from
       });
+      
+      // CRITICAL: Update the call_logs record with the correct call_control_id
+      // The WebRTC SDK creates a call log with a local UUID, but we need the real call_control_id
+      // for recording and other Call Control API operations
+      try {
+        const normalizedFrom = from.replace(/\D/g, '');
+        const normalizedTo = to.replace(/\D/g, '');
+        
+        // Find the most recent outbound call from this number to this destination
+        // that doesn't have a valid call_control_id yet
+        const [recentCall] = await db
+          .select()
+          .from(callLogs)
+          .where(and(
+            eq(callLogs.companyId, fromNumber.companyId),
+            eq(callLogs.direction, 'outbound')
+          ))
+          .orderBy(desc(callLogs.startedAt))
+          .limit(1);
+        
+        if (recentCall) {
+          // Check if the call matches (from/to numbers) and update with call_control_id
+          const callFrom = recentCall.fromNumber?.replace(/\D/g, '') || '';
+          const callTo = recentCall.toNumber?.replace(/\D/g, '') || '';
+          
+          if ((callFrom.includes(normalizedFrom) || normalizedFrom.includes(callFrom)) &&
+              (callTo.includes(normalizedTo) || normalizedTo.includes(callTo))) {
+            await db
+              .update(callLogs)
+              .set({ telnyxCallId: call_control_id })
+              .where(eq(callLogs.id, recentCall.id));
+            console.log(`[CallControl] Updated call log ${recentCall.id} with call_control_id: ${call_control_id}`);
+          }
+        }
+      } catch (err) {
+        console.error(`[CallControl] Error updating call log with call_control_id:`, err);
+      }
       
       // Answer the WebRTC leg first
       await this.answerCall(call_control_id);
