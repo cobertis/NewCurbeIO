@@ -1398,13 +1398,15 @@ export default function Billing() {
 
                       {/* Transactions Table */}
                       {phoneTransactions.length > 0 ? (
-                        <div className="rounded-md border max-h-[250px] overflow-auto">
+                        <div className="rounded-md border max-h-[300px] overflow-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
                                 <TableHead className="text-xs">Type</TableHead>
-                                <TableHead className="text-xs">Details</TableHead>
+                                <TableHead className="text-xs">Destination</TableHead>
                                 <TableHead className="text-xs">Date</TableHead>
+                                <TableHead className="text-xs text-center">Duration</TableHead>
+                                <TableHead className="text-xs text-right">Rate</TableHead>
                                 <TableHead className="text-right text-xs">Cost</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -1412,6 +1414,25 @@ export default function Billing() {
                               {phoneTransactions.map((tx) => {
                                 const isCall = tx.type.toUpperCase() === 'CALL_COST';
                                 const isSms = tx.type.toUpperCase() === 'SMS_COST';
+                                
+                                // Parse description to extract details
+                                // Format: "Call to +17866302522 (10s actual → 1 min billed @ $0.0200/min)"
+                                const desc = tx.description || '';
+                                const phoneMatch = desc.match(/to (\+?\d+)/);
+                                const durationMatch = desc.match(/\((\d+)s actual/);
+                                const billedMatch = desc.match(/→ (\d+) min billed/);
+                                const rateMatch = desc.match(/@\s*\$?([\d.]+)\/min/);
+                                
+                                const destination = phoneMatch ? phoneMatch[1] : '-';
+                                const actualSeconds = durationMatch ? parseInt(durationMatch[1]) : 0;
+                                const billedMinutes = billedMatch ? parseInt(billedMatch[1]) : 0;
+                                const rate = rateMatch ? rateMatch[1] : '-';
+                                
+                                // Format duration display
+                                const durationDisplay = isCall 
+                                  ? `${actualSeconds}s → ${billedMinutes}m` 
+                                  : '-';
+                                
                                 return (
                                   <TableRow key={tx.id} className="text-sm">
                                     <TableCell className="py-2">
@@ -1421,14 +1442,20 @@ export default function Billing() {
                                         ) : (
                                           <FileText className="h-3.5 w-3.5 text-green-500" />
                                         )}
-                                        <span className="text-xs">{isCall ? 'Call' : isSms ? 'SMS' : 'MMS'}</span>
+                                        <span className="text-xs font-medium">{isCall ? 'Call' : isSms ? 'SMS' : 'MMS'}</span>
                                       </div>
                                     </TableCell>
-                                    <TableCell className="py-2 text-xs text-muted-foreground max-w-[150px] truncate">
-                                      {tx.description || '-'}
+                                    <TableCell className="py-2 text-xs font-mono text-muted-foreground">
+                                      {destination}
                                     </TableCell>
                                     <TableCell className="py-2 text-xs text-muted-foreground">
                                       {formatDate(new Date(tx.createdAt))}
+                                    </TableCell>
+                                    <TableCell className="py-2 text-xs text-center text-muted-foreground">
+                                      {durationDisplay}
+                                    </TableCell>
+                                    <TableCell className="py-2 text-xs text-right text-muted-foreground">
+                                      {rate !== '-' ? `$${rate}/min` : '-'}
                                     </TableCell>
                                     <TableCell className="py-2 text-right">
                                       <span className="text-xs font-medium text-red-600">
