@@ -38174,16 +38174,29 @@ CRITICAL REMINDERS:
       }
       
       // Security: Verify the call belongs to the user's company
+      // Search by telnyxCallId, sipCallId, or telnyxSessionId (the SDK may pass different IDs)
       const [callLog] = await db
         .select()
         .from(callLogs)
         .where(and(
-          eq(callLogs.telnyxCallId, callControlId),
+          or(
+            eq(callLogs.telnyxCallId, callControlId),
+            eq(callLogs.sipCallId, callControlId),
+            eq(callLogs.telnyxSessionId, callControlId)
+          ),
           eq(callLogs.companyId, user.companyId)
         ));
       
       if (!callLog) {
+        console.log(`[Call Recording] Call not found for ID: ${callControlId}, company: ${user.companyId}`);
         return res.status(403).json({ success: false, error: "Call not found or access denied" });
+      }
+      
+      // Use the correct call_control_id from the database record
+      const telnyxCallControlId = callLog.telnyxCallId;
+      
+      if (!telnyxCallControlId) {
+        return res.status(400).json({ success: false, error: "No Telnyx call control ID available for this call" });
       }
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
@@ -38197,33 +38210,33 @@ CRITICAL REMINDERS:
         ? process.env.TELNYX_RECORDING_MEDIA_ES || 'curbe-recording-announcement-es'
         : process.env.TELNYX_RECORDING_MEDIA_EN || 'curbe-recording-announcement-en';
       
-      console.log(`[Call Recording] Playing ${language} announcement (${mediaName}) before recording for call ${callControlId}`);
+      console.log(`[Call Recording] Playing ${language} announcement (${mediaName}) before recording for call ${telnyxCallControlId}`);
       
       // Step 1: Play the announcement audio to both parties
-      const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/playback_start`, {
+      const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/playback_start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${telnyxApiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          media_name: mediaName,
+          audio_url: mediaName,
           overlay: false // Don't overlay, play exclusively
         })
       });
       
       if (!playbackResponse.ok) {
         const errorText = await playbackResponse.text();
-        console.error(`[Call Recording] Failed to play announcement for call ${callControlId}:`, errorText);
+        console.error(`[Call Recording] Failed to play announcement for call ${telnyxCallControlId}:`, errorText);
         // Continue anyway to start recording even if playback fails
       } else {
-        console.log(`[Call Recording] Announcement playback started for call ${callControlId}`);
+        console.log(`[Call Recording] Announcement playback started for call ${telnyxCallControlId}`);
         // Wait a short moment for audio to play (typical announcement is 1-2 seconds)
         await new Promise(resolve => setTimeout(resolve, 2500));
       }
       
       // Step 2: Start the recording
-      const recordResponse = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/record_start`, {
+      const recordResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/record_start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${telnyxApiKey}`,
@@ -38237,11 +38250,11 @@ CRITICAL REMINDERS:
       });
       
       if (recordResponse.ok) {
-        console.log(`[Call Recording] Started recording for call ${callControlId}`);
+        console.log(`[Call Recording] Started recording for call ${telnyxCallControlId}`);
         return res.json({ success: true });
       } else {
         const errorText = await recordResponse.text();
-        console.error(`[Call Recording] Failed to start recording for call ${callControlId}:`, errorText);
+        console.error(`[Call Recording] Failed to start recording for call ${telnyxCallControlId}:`, errorText);
         return res.status(500).json({ success: false, error: errorText });
       }
     } catch (error: any) {
@@ -38249,7 +38262,7 @@ CRITICAL REMINDERS:
       res.status(500).json({ success: false, error: error.message });
     }
   });
-
+  
   // POST /api/calls/:callControlId/recording/stop - Stop manual recording
   app.post("/api/calls/:callControlId/recording/stop", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -38261,16 +38274,28 @@ CRITICAL REMINDERS:
       }
       
       // Security: Verify the call belongs to the user's company
+      // Search by telnyxCallId, sipCallId, or telnyxSessionId (the SDK may pass different IDs)
       const [callLog] = await db
         .select()
         .from(callLogs)
         .where(and(
-          eq(callLogs.telnyxCallId, callControlId),
+          or(
+            eq(callLogs.telnyxCallId, callControlId),
+            eq(callLogs.sipCallId, callControlId),
+            eq(callLogs.telnyxSessionId, callControlId)
+          ),
           eq(callLogs.companyId, user.companyId)
         ));
       
       if (!callLog) {
         return res.status(403).json({ success: false, error: "Call not found or access denied" });
+      }
+      
+      // Use the correct call_control_id from the database record
+      const telnyxCallControlId = callLog.telnyxCallId;
+      
+      if (!telnyxCallControlId) {
+        return res.status(400).json({ success: false, error: "No Telnyx call control ID available for this call" });
       }
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
@@ -38279,7 +38304,7 @@ CRITICAL REMINDERS:
         return res.status(500).json({ success: false, error: "Telnyx API key not configured" });
       }
       
-      const response = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/record_stop`, {
+      const response = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/record_stop`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${telnyxApiKey}`,
@@ -38288,11 +38313,11 @@ CRITICAL REMINDERS:
       });
       
       if (response.ok) {
-        console.log(`[Call Recording] Stopped recording for call ${callControlId}`);
+        console.log(`[Call Recording] Stopped recording for call ${telnyxCallControlId}`);
         return res.json({ success: true });
       } else {
         const errorText = await response.text();
-        console.error(`[Call Recording] Failed to stop recording for call ${callControlId}:`, errorText);
+        console.error(`[Call Recording] Failed to stop recording for call ${telnyxCallControlId}:`, errorText);
         return res.status(500).json({ success: false, error: errorText });
       }
     } catch (error: any) {
@@ -38300,6 +38325,8 @@ CRITICAL REMINDERS:
       res.status(500).json({ success: false, error: error.message });
     }
   });
+
+  // =====================================================
   // VOICEMAILS
   // =====================================================
   // GET /api/voicemails - Get voicemails for company
