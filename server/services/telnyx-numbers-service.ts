@@ -1034,8 +1034,10 @@ export async function updateSpamProtection(
 
 /**
  * Update call forwarding settings for a phone number
- * Configures both Telnyx Voice Settings API and local database.
- * When enabled, incoming calls are forwarded to the destination number.
+ * IMPORTANT: We store forwarding config locally ONLY - we do NOT enable call_forwarding
+ * in Telnyx Voice Settings API. This ensures all calls pass through our TeXML webhook
+ * where we handle the forwarding with <Dial> and apply dual-leg billing.
+ * 
  * BILLING: Forwarded calls incur BOTH the inbound call cost AND an outbound call cost.
  */
 export async function updateCallForwarding(
@@ -1080,16 +1082,17 @@ export async function updateCallForwarding(
       ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
-    // Update call forwarding in Telnyx Voice Settings API
+    // CRITICAL: Always DISABLE call_forwarding in Telnyx Voice Settings API
+    // This ensures all calls pass through our TeXML webhook where we handle billing
     const voiceSettingsPayload = {
       call_forwarding: {
-        call_forwarding_enabled: enabled,
-        forwards_to: enabled ? normalizedDest : "",
-        forwarding_type: "always", // Forward all incoming calls
+        call_forwarding_enabled: false, // ALWAYS false - we handle forwarding in TeXML
+        forwards_to: "",
+        forwarding_type: "always",
       },
     };
     
-    console.log(`[Call Forwarding] Updating Telnyx Voice Settings for ${phoneNumberId}:`, JSON.stringify(voiceSettingsPayload));
+    console.log(`[Call Forwarding] Ensuring Telnyx call_forwarding is DISABLED for ${phoneNumberId} (we use TeXML for billing)`);
     
     const voiceSettingsResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
       method: "PATCH",
@@ -1099,13 +1102,14 @@ export async function updateCallForwarding(
     
     if (!voiceSettingsResponse.ok) {
       const errorText = await voiceSettingsResponse.text();
-      console.error(`[Call Forwarding] Telnyx Voice Settings update failed: ${voiceSettingsResponse.status} - ${errorText}`);
-      // Continue with local DB update even if Telnyx API fails - TeXML webhook will handle forwarding
-      console.log(`[Call Forwarding] Proceeding with local DB update (TeXML webhook will handle forwarding)`);
+      console.error(`[Call Forwarding] Failed to disable Telnyx forwarding: ${voiceSettingsResponse.status} - ${errorText}`);
+      // Continue with local DB update - TeXML webhook will handle forwarding
     } else {
-      const voiceResult = await voiceSettingsResponse.json();
-      console.log(`[Call Forwarding] Telnyx Voice Settings updated successfully:`, voiceResult.data?.call_forwarding);
+      console.log(`[Call Forwarding] Telnyx call_forwarding disabled successfully`);
     }
+    
+    // Store forwarding config in local database - TeXML webhook reads this
+    console.log(`[Call Forwarding] Saving to local DB: enabled=${enabled}, destination=${normalizedDest}`);
     
     // Check if record exists in local database
     const [existing] = await db
