@@ -60,6 +60,7 @@ interface TelnyxWebRTCState {
   currentCallInfo?: SipCallInfo;
   incomingCallInfo?: SipCallInfo;
   outgoingCallInfo?: SipCallInfo;
+  activeCallLogId?: string;
 
   setConnectionStatus: (status: TelnyxWebRTCState["connectionStatus"], error?: string) => void;
   setCurrentCall: (call?: TelnyxCall) => void;
@@ -80,6 +81,7 @@ interface TelnyxWebRTCState {
   setCurrentCallInfo: (info?: SipCallInfo) => void;
   setIncomingCallInfo: (info?: SipCallInfo) => void;
   setOutgoingCallInfo: (info?: SipCallInfo) => void;
+  setActiveCallLogId: (id?: string) => void;
 }
 
 export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
@@ -97,6 +99,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   currentCallInfo: undefined,
   incomingCallInfo: undefined,
   outgoingCallInfo: undefined,
+  activeCallLogId: undefined,
 
   setConnectionStatus: (status, error) =>
     set({
@@ -122,6 +125,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   setCurrentCallInfo: (info) => set({ currentCallInfo: info }),
   setIncomingCallInfo: (info) => set({ incomingCallInfo: info }),
   setOutgoingCallInfo: (info) => set({ outgoingCallInfo: info }),
+  setActiveCallLogId: (id) => set({ activeCallLogId: id }),
 }));
 
 export type { NetworkQualityMetrics };
@@ -209,6 +213,8 @@ class TelnyxWebRTCManager {
     this.callLogId = null;
     this.callWasAnswered = false;
     this.currentTelnyxLegId = null;
+    const store = useTelnyxStore.getState();
+    store.setActiveCallLogId(undefined);
   }
   
   private async logCallStart(callInfo: SipCallInfo): Promise<void> {
@@ -251,6 +257,8 @@ class TelnyxWebRTCManager {
         const data = await response.json();
         this.callLogId = data.id;
         console.log(`[TelnyxRTC CallLog] Call log created with ID: ${this.callLogId}`);
+        const store = useTelnyxStore.getState();
+        store.setActiveCallLogId(this.callLogId || undefined);
       }
     } catch (error) {
       console.error("[TelnyxRTC CallLog] Failed to create call log:", error);

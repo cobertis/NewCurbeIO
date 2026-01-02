@@ -1648,6 +1648,7 @@ export function WebPhoneFloatingWindow() {
   const telnyxIncomingCallInfo = useTelnyxStore(state => state.incomingCallInfo);
   const telnyxOutgoingCallInfo = useTelnyxStore(state => state.outgoingCallInfo);
   const telnyxIsAnswering = useTelnyxStore(state => state.isAnswering);
+  const activeCallLogId = useTelnyxStore(state => state.activeCallLogId);
   const [telnyxInitialized, setTelnyxInitialized] = useState(false);
   const [userMinimized, setUserMinimized] = useState(false);
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
@@ -1898,6 +1899,7 @@ export function WebPhoneFloatingWindow() {
         direction: telnyxCurrentCallInfo.direction || 'outbound',
         isTelnyx: true,
         callControlId: telnyxCurrentCallInfo.telnyxCallLegId,
+        callLogId: activeCallLogId,
       };
     }
     if (telnyxOutgoingCall && telnyxOutgoingCallInfo) {
@@ -1909,6 +1911,7 @@ export function WebPhoneFloatingWindow() {
         direction: 'outbound',
         isTelnyx: true,
         callControlId: telnyxOutgoingCallInfo.telnyxCallLegId,
+        callLogId: activeCallLogId,
       };
     }
     if (telnyxIncomingCall && telnyxIncomingCallInfo) {
@@ -1937,6 +1940,7 @@ export function WebPhoneFloatingWindow() {
         direction: 'inbound',
         isTelnyx: true,
         callControlId: telnyxIncomingCallInfo.telnyxCallLegId,
+        callLogId: activeCallLogId,
       };
     }
     // Fallback: if we have session but no callInfo (shouldn't happen)
@@ -1948,13 +1952,14 @@ export function WebPhoneFloatingWindow() {
         status: telnyxCurrentCall ? 'answered' : 'ringing',
         direction: telnyxIncomingCall ? 'inbound' : 'outbound',
         isTelnyx: true,
+        callLogId: activeCallLogId,
       };
     }
     if (currentCall) {
       return { ...currentCall, isTelnyx: false, isExtension: false };
     }
     return null;
-  }, [waActiveCall, waIncomingCall, currentExtCall, incomingExtCall, telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, telnyxCurrentCallInfo, telnyxOutgoingCallInfo, telnyxIncomingCallInfo, currentCall, telnyxCallerName, callerIdNameEnabled]);
+  }, [waActiveCall, waIncomingCall, currentExtCall, incomingExtCall, telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, telnyxCurrentCallInfo, telnyxOutgoingCallInfo, telnyxIncomingCallInfo, currentCall, telnyxCallerName, callerIdNameEnabled, activeCallLogId]);
   
   // Effective mute/hold state
   const effectiveMuted = isWhatsAppCall ? waIsMuted : (isExtensionCall ? extIsMuted : (isTelnyxCall ? telnyxIsMuted : isMuted));
@@ -2112,10 +2117,10 @@ export function WebPhoneFloatingWindow() {
   }, [isTelnyxCall, isOnHold, queueCall, toast]);
 
   const handleRecordingToggle = useCallback(async () => {
-    if (!effectiveCall?.callControlId) {
+    if (!effectiveCall?.callLogId) {
       toast({
         title: "Recording not available",
-        description: "Recording is only available for Telnyx calls",
+        description: "Recording is only available for Telnyx calls with an active call log",
         variant: "destructive",
       });
       return;
@@ -2125,7 +2130,7 @@ export function WebPhoneFloatingWindow() {
       // Stop recording directly
       setRecordingLoading(true);
       try {
-        const response = await fetch(`/api/calls/${effectiveCall.callControlId}/recording/stop`, {
+        const response = await fetch(`/api/calls/${effectiveCall.callLogId}/recording/stop`, {
           method: 'POST',
           credentials: 'include'
         });
@@ -2157,16 +2162,16 @@ export function WebPhoneFloatingWindow() {
       // Show language selection dialog before starting recording
       setShowLanguageDialog(true);
     }
-  }, [effectiveCall?.callControlId, isManualRecording, toast]);
+  }, [effectiveCall?.callLogId, isManualRecording, toast]);
   
   const startRecordingWithLanguage = useCallback(async (language: 'en' | 'es') => {
-    if (!effectiveCall?.callControlId) return;
+    if (!effectiveCall?.callLogId) return;
     
     setShowLanguageDialog(false);
     setRecordingLoading(true);
     
     try {
-      const response = await fetch(`/api/calls/${effectiveCall.callControlId}/recording/start`, {
+      const response = await fetch(`/api/calls/${effectiveCall.callLogId}/recording/start`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -2198,7 +2203,7 @@ export function WebPhoneFloatingWindow() {
     } finally {
       setRecordingLoading(false);
     }
-  }, [effectiveCall?.callControlId, toast]);
+  }, [effectiveCall?.callLogId, toast]);
   
   const handleHangup = useCallback(() => {
     if (effectiveCall?.isWhatsApp) {
