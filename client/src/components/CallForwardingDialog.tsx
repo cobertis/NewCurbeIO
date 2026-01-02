@@ -28,6 +28,14 @@ import { PhoneForwarded, Loader2, DollarSign } from "lucide-react";
 
 const phoneRegex = /^[\d\s\-\(\)\+]+$/;
 
+function formatUSPhoneNumber(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 0) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+}
+
 const callForwardingSchema = z.object({
   enabled: z.boolean(),
   destination: z.string()
@@ -194,8 +202,13 @@ export function CallForwardingDialog({
                       <FormLabel>Forwarding Destination</FormLabel>
                       <FormControl>
                         <Input
-                          {...field}
+                          value={formatUSPhoneNumber(field.value || "")}
+                          onChange={(e) => {
+                            const formatted = formatUSPhoneNumber(e.target.value);
+                            field.onChange(formatted);
+                          }}
                           placeholder="(555) 123-4567"
+                          maxLength={14}
                           data-testid="input-forwarding-destination"
                         />
                       </FormControl>
