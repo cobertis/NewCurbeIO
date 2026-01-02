@@ -5092,6 +5092,7 @@ export const walletTransactionTypes = [
   "SUBSCRIPTION",
   "REFUND",
   "ADJUSTMENT",
+  "CALL_FORWARDING",
 ] as const;
 export type WalletTransactionType = typeof walletTransactionTypes[number];
 
