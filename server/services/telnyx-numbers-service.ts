@@ -1082,14 +1082,17 @@ export async function updateCallForwarding(
       ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
-    // CALL CONTROL APPROACH: Number must be on Call Control App
+    // CALL CONTROL APPROACH: 
+    // - When ENABLED: Number must be on Call Control App for webhook forwarding
+    // - When DISABLED: Number returns to Credential Connection for WebRTC calls
     // Forwarding is handled programmatically via webhook (answer + transfer)
     // This enables dual-leg billing (Telnyx charges both inbound and outbound legs)
     
-    // Get Call Control App ID from telephony settings
+    // Get telephony settings (Call Control App for forwarding, Credential Connection for WebRTC)
     const [telSettings] = await db
       .select({ 
-        callControlAppId: telephonySettings.callControlAppId
+        callControlAppId: telephonySettings.callControlAppId,
+        credentialConnectionId: telephonySettings.credentialConnectionId
       })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
@@ -1098,11 +1101,16 @@ export async function updateCallForwarding(
       return { success: false, error: "Call Control App not configured for this company" };
     }
     
-    // STEP 1: Ensure number is assigned to Call Control App (required for webhook forwarding)
-    console.log(`[Call Forwarding] Reassigning number ${phoneNumberId} to Call Control App ${telSettings.callControlAppId}`);
+    // Determine which connection to assign the number to
+    const targetConnectionId = enabled 
+      ? telSettings.callControlAppId  // Forwarding ON: Use Call Control App for webhook handling
+      : telSettings.credentialConnectionId;  // Forwarding OFF: Use Credential Connection for WebRTC
+    
+    const targetName = enabled ? "Call Control App" : "Credential Connection (WebRTC)";
+    console.log(`[Call Forwarding] Reassigning number ${phoneNumberId} to ${targetName} (${targetConnectionId})`);
     
     const reassignPayload = {
-      connection_id: telSettings.callControlAppId,
+      connection_id: targetConnectionId,
     };
     
     const reassignResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
@@ -1113,28 +1121,15 @@ export async function updateCallForwarding(
     
     if (!reassignResponse.ok) {
       const errorText = await reassignResponse.text();
-      console.error(`[Call Forwarding] Failed to reassign to Call Control: ${reassignResponse.status} - ${errorText}`);
-      return { success: false, error: `Failed to configure number for call forwarding: ${reassignResponse.status}` };
+      console.error(`[Call Forwarding] Failed to reassign number: ${reassignResponse.status} - ${errorText}`);
+      return { success: false, error: `Failed to configure number: ${reassignResponse.status}` };
     }
     
-    console.log(`[Call Forwarding] Number reassigned to Call Control App successfully`);
+    console.log(`[Call Forwarding] Number reassigned to ${targetName} successfully`);
     
-    // STEP 2: Disable any native Telnyx call forwarding (not compatible with Call Control)
-    const disableNativeForwarding = {
-      call_forwarding: {
-        call_forwarding_enabled: false,
-        forwards_to: "",
-        forwarding_type: "always",
-      },
-    };
-    
-    await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify(disableNativeForwarding),
-    });
-    
-    console.log(`[Call Forwarding] Native Telnyx forwarding disabled (using Call Control instead)`);
+    // NOTE: We do NOT modify Telnyx voice settings (call_forwarding) because:
+    // 1. Call Control numbers cannot have native forwarding (error 10015)
+    // 2. Our forwarding is handled programmatically in the webhook via answer() + transfer()
     console.log(`[Call Forwarding] Saving config to DB: enabled=${enabled}, destination=${normalizedDest}`);
     
     // Check if record exists in local database
