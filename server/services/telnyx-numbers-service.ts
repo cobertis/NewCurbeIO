@@ -207,9 +207,10 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     
     console.log(`[Telnyx Numbers] Found ${result.data?.length || 0} numbers (${exactCount} exact, ${bestEffortCount} best_effort) on page ${meta.page_number || pageNumber}`);
 
-    // Filter out toll-free numbers with Telnyx cost > $1 (premium/vanity numbers)
+    // Filter out premium/vanity toll-free numbers with high Telnyx cost
+    // Standard toll-free numbers cost ~$1.50/mo, premium ones cost $540+
     const TOLL_FREE_PREFIXES = ["+1800", "+1833", "+1844", "+1855", "+1866", "+1877", "+1888"];
-    const MAX_TOLL_FREE_TELNYX_COST = 1.00;
+    const MAX_TOLL_FREE_TELNYX_COST = 2.00;
     
     let filteredNumbers = result.data || [];
     const originalCount = filteredNumbers.length;
