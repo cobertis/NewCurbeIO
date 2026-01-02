@@ -34,8 +34,15 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle,
-  XCircle
+  XCircle,
+  Info
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { format, addMonths } from "date-fns";
 import { formatPhoneNumber, type SmsVoiceNumber } from "@/pages/sms-voice";
 
@@ -260,13 +267,22 @@ export default function SmsVoiceNumbers() {
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
                         {isTollFreeNumber(number.phoneNumber) ? (
-                          <span 
-                            className="text-slate-400 dark:text-slate-500 text-sm"
-                            title="Toll-free numbers do not support CNAM"
-                            data-testid={`text-cnam-na-${number.id}`}
-                          >
-                            N/A
-                          </span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span 
+                                  className="text-slate-400 dark:text-slate-500 text-sm flex items-center gap-1 cursor-help"
+                                  data-testid={`text-cnam-na-${number.id}`}
+                                >
+                                  N/A
+                                  <Info className="h-3.5 w-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <p>Toll-free numbers do not support CNAM (Caller ID Name). CNAM is only available for local DID numbers.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ) : number.cnam ? (
                           <button 
                             onClick={() => handleEditCallerId(number)}
