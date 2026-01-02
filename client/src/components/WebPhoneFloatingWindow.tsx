@@ -2771,6 +2771,8 @@ export function WebPhoneFloatingWindow() {
                               onClick={() => {
                                 setSelectedOutboundNumber(num);
                                 setShowNumberSelector(false);
+                                // Update Telnyx store so outbound calls use this number
+                                useTelnyxStore.getState().setCallerIdNumber(num);
                               }}
                               className={cn(
                                 "text-xs",
