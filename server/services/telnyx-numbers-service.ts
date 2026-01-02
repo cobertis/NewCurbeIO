@@ -1082,34 +1082,9 @@ export async function updateCallForwarding(
       ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
-    // Update call forwarding in Telnyx Voice Settings API
-    const voiceSettingsPayload = {
-      call_forwarding: {
-        call_forwarding_enabled: enabled,
-        forwards_to: enabled && normalizedDest ? normalizedDest : "",
-        forwarding_type: "always",
-      },
-    };
-    
-    console.log(`[Call Forwarding] Setting Telnyx call_forwarding: enabled=${enabled}, forwards_to=${normalizedDest || ""}`);
-    
-    const voiceSettingsResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify(voiceSettingsPayload),
-    });
-    
-    if (!voiceSettingsResponse.ok) {
-      const errorText = await voiceSettingsResponse.text();
-      console.error(`[Call Forwarding] Failed to update Telnyx forwarding: ${voiceSettingsResponse.status} - ${errorText}`);
-      return { success: false, error: `Failed to update call forwarding in Telnyx: ${voiceSettingsResponse.status}` };
-    } else {
-      const responseData = await voiceSettingsResponse.json();
-      console.log(`[Call Forwarding] Telnyx call_forwarding updated successfully:`, JSON.stringify(responseData.data?.call_forwarding || {}));
-    }
-    
-    // Also store forwarding config in local database for reference
-    console.log(`[Call Forwarding] Saving to local DB: enabled=${enabled}, destination=${normalizedDest}`);
+    // NOTE: For numbers assigned to Call Control App, we cannot use Telnyx native call forwarding
+    // Instead, we store the config in our DB and handle forwarding in the Call Control webhook
+    console.log(`[Call Forwarding] Saving config to local DB (Call Control handles forwarding): enabled=${enabled}, destination=${normalizedDest}`);
     
     // Check if record exists in local database
     const [existing] = await db
