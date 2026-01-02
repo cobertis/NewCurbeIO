@@ -49,6 +49,8 @@ import {
   MapPin,
   Plus,
   Phone,
+  PhoneOutgoing,
+  PhoneIncoming,
   Wallet,
   ArrowUpCircle,
   ArrowDownCircle
@@ -1416,12 +1418,23 @@ export default function Billing() {
                                 const isSms = tx.type.toUpperCase() === 'SMS_COST';
                                 
                                 // Parse description to extract details
-                                // Format: "Call to +17866302522 (10s actual → 1 min billed @ $0.0200/min)"
+                                // New format: "10s → 1m @ $0.0100/min [Local Outbound]"
+                                // Old format: "Call to +17866302522 (10s actual → 1 min billed @ $0.0200/min)"
                                 const desc = tx.description || '';
                                 const phoneMatch = desc.match(/to (\+?\d+)/);
-                                const durationMatch = desc.match(/\((\d+)s actual/);
-                                const billedMatch = desc.match(/→ (\d+) min billed/);
+                                const durationMatch = desc.match(/(\d+)s(?:\s*actual)?\s*→/);
+                                const billedMatch = desc.match(/→\s*(\d+)\s*m(?:in)?/);
                                 const rateMatch = desc.match(/@\s*\$?([\d.]+)\/min/);
+                                
+                                // Extract rate type from brackets [Local Outbound], [Toll-Free Inbound], etc.
+                                const rateTypeMatch = desc.match(/\[(.*?)\]/);
+                                const rateType = rateTypeMatch ? rateTypeMatch[1] : '';
+                                
+                                // Determine direction and number type from rateType
+                                const isOutbound = rateType.toLowerCase().includes('outbound');
+                                const isInbound = rateType.toLowerCase().includes('inbound');
+                                const isTollFree = rateType.toLowerCase().includes('toll-free') || rateType.toLowerCase().includes('toll_free');
+                                const isLocal = rateType.toLowerCase().includes('local');
                                 
                                 const destination = phoneMatch ? phoneMatch[1] : '-';
                                 const actualSeconds = durationMatch ? parseInt(durationMatch[1]) : 0;
@@ -1433,16 +1446,39 @@ export default function Billing() {
                                   ? `${actualSeconds}s → ${billedMinutes}m` 
                                   : '-';
                                 
+                                // Determine call type label
+                                const callDirection = isOutbound ? 'Out' : isInbound ? 'In' : '';
+                                const numberType = isTollFree ? 'TF' : isLocal ? 'Local' : '';
+                                
                                 return (
                                   <TableRow key={tx.id} className="text-sm">
                                     <TableCell className="py-2">
-                                      <div className="flex items-center gap-1.5">
-                                        {isCall ? (
-                                          <Phone className="h-3.5 w-3.5 text-blue-500" />
-                                        ) : (
-                                          <FileText className="h-3.5 w-3.5 text-green-500" />
+                                      <div className="flex flex-col gap-0.5">
+                                        <div className="flex items-center gap-1.5">
+                                          {isCall ? (
+                                            isOutbound ? (
+                                              <PhoneOutgoing className="h-3.5 w-3.5 text-blue-500" />
+                                            ) : isInbound ? (
+                                              <PhoneIncoming className="h-3.5 w-3.5 text-green-500" />
+                                            ) : (
+                                              <Phone className="h-3.5 w-3.5 text-blue-500" />
+                                            )
+                                          ) : (
+                                            <FileText className="h-3.5 w-3.5 text-green-500" />
+                                          )}
+                                          <span className="text-xs font-medium">
+                                            {isCall ? (callDirection ? `Call ${callDirection}` : 'Call') : isSms ? 'SMS' : 'MMS'}
+                                          </span>
+                                        </div>
+                                        {isCall && numberType && (
+                                          <span className={`text-[10px] px-1.5 py-0.5 rounded w-fit ${
+                                            isTollFree 
+                                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' 
+                                              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                                          }`}>
+                                            {numberType}
+                                          </span>
                                         )}
-                                        <span className="text-xs font-medium">{isCall ? 'Call' : isSms ? 'SMS' : 'MMS'}</span>
                                       </div>
                                     </TableCell>
                                     <TableCell className="py-2 text-xs font-mono text-muted-foreground">
