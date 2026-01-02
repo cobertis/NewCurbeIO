@@ -462,7 +462,17 @@ function ContactsView({ setDialNumber, setViewMode, onlineExtensions = [], onCal
   }, [onlineExtensions, searchQuery]);
   
   const handleCallContact = (phoneNumber: string) => {
-    setDialNumber(phoneNumber);
+    // Normalize phone number: remove +1 country code prefix if present
+    let digits = phoneNumber.replace(/\D/g, '');
+    // If 11 digits starting with 1, remove the country code
+    if (digits.length === 11 && digits.startsWith('1')) {
+      digits = digits.slice(1);
+    }
+    // Format as (XXX) XXX-XXXX
+    const formatted = digits.length === 10 
+      ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+      : digits;
+    setDialNumber(formatted);
     setViewMode('keypad');
   };
   
