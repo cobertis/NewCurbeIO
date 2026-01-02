@@ -91,7 +91,7 @@ export function CallForwardingDialog({
 
   const updateForwardingMutation = useMutation({
     mutationFn: async (data: CallForwardingFormValues) => {
-      const response = await apiRequest(
+      return apiRequest(
         "POST",
         `/api/telnyx/call-forwarding/${telnyxPhoneNumberId}`,
         {
@@ -100,7 +100,6 @@ export function CallForwardingDialog({
           keepCallerId: data.keepCallerId,
         }
       );
-      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -109,7 +108,7 @@ export function CallForwardingDialog({
           ? "Incoming calls will be forwarded to the specified number."
           : "Call forwarding has been disabled.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/numbers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sms-voice/numbers"] });
       onOpenChange(false);
       onSuccess?.();
     },
