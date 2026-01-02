@@ -31566,10 +31566,17 @@ CRITICAL REMINDERS:
   // POST /webhooks/telnyx/voice/status - Handle voice call status callbacks
   app.post("/webhooks/telnyx/voice/status", async (req: Request, res: Response) => {
     try {
-      const { call_control_id, event_type, call_leg_id, from, to, direction, state } = req.body;
+      // Log raw body for debugging
+      console.log("[Telnyx Voice Status] Raw body keys:", Object.keys(req.body));
+      
+      // Telnyx Call Control webhooks have nested structure: data.payload
+      const payload = req.body?.data?.payload || req.body;
+      const eventType = req.body?.data?.event_type || req.body?.event_type;
+      
+      const { call_control_id, call_leg_id, from, to, direction, state } = payload;
       
       console.log("[Telnyx Voice Status] Event:", {
-        eventType: event_type,
+        eventType,
         callControlId: call_control_id,
         callLegId: call_leg_id,
         from,
@@ -31577,8 +31584,43 @@ CRITICAL REMINDERS:
         direction,
         state,
       });
+      
+      // If we have a valid call_control_id, try to update the call log
+      if (call_control_id && (eventType === 'call.initiated' || eventType === 'call.answered')) {
+        try {
+          // Find the most recent outbound call and update it with the call_control_id
+          const fromE164 = from?.replace(/\D/g, '') || '';
+          const toE164 = to?.replace(/\D/g, '') || '';
+          
+          if (fromE164 && toE164) {
+            const [recentCall] = await db
+              .select()
+              .from(callLogs)
+              .where(eq(callLogs.direction, 'outbound'))
+              .orderBy(desc(callLogs.startedAt))
+              .limit(1);
+            
+            if (recentCall) {
+              const callFrom = recentCall.fromNumber?.replace(/\D/g, '') || '';
+              const callTo = recentCall.toNumber?.replace(/\D/g, '') || '';
+              
+              if ((callFrom.includes(fromE164) || fromE164.includes(callFrom)) &&
+                  (callTo.includes(toE164) || toE164.includes(callTo))) {
+                await db
+                  .update(callLogs)
+                  .set({ telnyxCallId: call_control_id })
+                  .where(eq(callLogs.id, recentCall.id));
+                console.log(`[Telnyx Voice Status] Updated call log ${recentCall.id} with call_control_id: ${call_control_id}`);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[Telnyx Voice Status] Error updating call log:", err);
+        }
+      }
+      
       res.set("Content-Type", "application/xml");
-    res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+      res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
     } catch (error: any) {
       console.error("[Telnyx Voice Status] Error:", error);
       res.status(500).json({ error: "Status callback processing failed" });
@@ -32970,7 +33012,7 @@ CRITICAL REMINDERS:
         return res.status(404).json({ message: "Phone number not found" });
       }
       
-      console.log(`[Telnyx Numbers] User \${currentUser.id} requesting to release \${phoneNumber.phoneNumber}`);
+      console.log(`[Telnyx Numbers] User ${currentUser.id} requesting to release ${phoneNumber.phoneNumber}`);
       
       // Release the number from Telnyx and delete local record
       const result = await releasePhoneNumber(phoneNumber.telnyxPhoneNumberId, companyId);
@@ -32981,7 +33023,7 @@ CRITICAL REMINDERS:
       
       res.json({ 
         success: true, 
-        message: `Phone number \${phoneNumber.phoneNumber} has been released. Monthly billing will stop.` 
+        message: `Phone number ${phoneNumber.phoneNumber} has been released. Monthly billing will stop.` 
       });
     } catch (error) {
       console.error("[Telnyx] Error releasing phone number:", error);
@@ -33030,7 +33072,7 @@ CRITICAL REMINDERS:
         return res.status(404).json({ message: "Phone number not linked to Telnyx" });
       }
       
-      console.log(`[CNAM] Updating CNAM for \${phoneNumber} (ID: \${telnyxPhoneId}) to "\${sanitizedCnam}"`);
+      console.log(`[CNAM] Updating CNAM for ${phoneNumber} (ID: ${telnyxPhoneId}) to "${sanitizedCnam}"`);
       
       // Use the updateCnamListing function which uses the correct Voice Settings API
       const { updateCnamListing } = await import("./services/telnyx-numbers-service");
@@ -33039,7 +33081,7 @@ CRITICAL REMINDERS:
       if (result.success) {
         res.json({ 
           success: true, 
-          message: `Caller ID name set to "\${result.cnamName}". It may take 3-5 business days to propagate across all carriers.`,
+          message: `Caller ID name set to "${result.cnamName}". It may take 3-5 business days to propagate across all carriers.`,
           callerIdName: result.cnamName
         });
       } else {
