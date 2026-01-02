@@ -33045,7 +33045,6 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "Caller ID name must contain at least one alphanumeric character" });
       }
       
-      
       // Verify the phone number belongs to this company
       const phoneNumberRecord = await db
         .select()
@@ -33060,94 +33059,27 @@ CRITICAL REMINDERS:
         return res.status(404).json({ message: "Phone number not found" });
       }
       
-      // Get Telnyx API key and managed account ID for multi-tenant isolation
-      const apiKey = await getTelnyxMasterApiKey();
-      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
-      const managedAccountId = await getCompanyManagedAccountId(companyId);
-      
-      // Build headers with managed account isolation
-      const telnyxHeaders: Record<string, string> = {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      };
-      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-        telnyxHeaders["x-telnyx-account-id"] = managedAccountId;
-      }
-      
-      console.log(`[CNAM] Looking up phone number ${phoneNumber} for company ${companyId} with managedAccountId: ${managedAccountId}`);
-      
-      // Use the Telnyx phone number ID from our database (more reliable than API search with managed accounts)
       const telnyxPhoneId = phoneNumberRecord[0].telnyxPhoneNumberId;
       if (!telnyxPhoneId) {
-        console.error(`[CNAM] No Telnyx phone number ID stored for ${phoneNumber}`);
         return res.status(404).json({ message: "Phone number not linked to Telnyx" });
       }
-      console.log(`[CNAM] Using stored Telnyx phone ID: ${telnyxPhoneId}`);
       
+      console.log(`[CNAM] Updating CNAM for \${phoneNumber} (ID: \${telnyxPhoneId}) to "\${sanitizedCnam}"`);
       
+      // Use the updateCnamListing function which uses the correct Voice Settings API
+      const { updateCnamListing } = await import("./services/telnyx-numbers-service");
+      const result = await updateCnamListing(telnyxPhoneId, companyId, true, sanitizedCnam);
       
-      // Use POST /v2/cnam_listings to create CNAM listing (this is what the portal uses)
-      let cnamUpdateSuccess = false;
-      
-      // First try to create a new CNAM listing
-      const setCnamResponse = await fetch(
-        `https://api.telnyx.com/v2/cnam_listings`,
-        {
-          method: "POST",
-          headers: telnyxHeaders,
-          body: JSON.stringify({
-            phone_number_id: telnyxPhoneId,
-            caller_id_name: sanitizedCnam
-          })
-        }
-      );
-      
-      if (setCnamResponse.ok) {
-        const result = await setCnamResponse.json();
-        console.log(`[CNAM] Successfully created CNAM listing "${sanitizedCnam}" for phone ${telnyxPhoneId}`);
-        console.log(`[CNAM] Response:`, JSON.stringify(result.data));
-        cnamUpdateSuccess = true;
-      } else if (setCnamResponse.status === 409 || setCnamResponse.status === 422) {
-        // CNAM listing already exists - try to update via PATCH
-        console.log(`[CNAM] CNAM listing may exist, getting existing listing...`);
-        const listResp = await fetch(`https://api.telnyx.com/v2/cnam_listings?filter[phone_number_id]=${telnyxPhoneId}`, { headers: telnyxHeaders });
-        if (listResp.ok) {
-          const listData = await listResp.json();
-          if (listData.data?.length > 0) {
-            const cnamId = listData.data[0].id;
-            const patchResp = await fetch(`https://api.telnyx.com/v2/cnam_listings/${cnamId}`, {
-              method: "PATCH",
-              headers: telnyxHeaders,
-              body: JSON.stringify({ caller_id_name: sanitizedCnam })
-            });
-            if (patchResp.ok) {
-              console.log(`[CNAM] Updated existing CNAM listing to "${sanitizedCnam}"`);
-              cnamUpdateSuccess = true;
-            }
-          }
-        }
-      } else {
-        const errorText = await setCnamResponse.text();
-        console.error(`[CNAM] Failed to create CNAM listing: ${setCnamResponse.status} - ${errorText}`);
-      }
-      
-      // Update local database with CNAM
-      await db
-        .update(telnyxPhoneNumbers)
-        .set({ callerIdName: sanitizedCnam })
-        .where(eq(telnyxPhoneNumbers.phoneNumber, phoneNumber));
-      
-      if (cnamUpdateSuccess) {
+      if (result.success) {
         res.json({ 
           success: true, 
-          message: `Caller ID name set to "${sanitizedCnam}". It may take 3-5 business days to propagate across all carriers.`,
-          callerIdName: sanitizedCnam
+          message: `Caller ID name set to "\${result.cnamName}". It may take 3-5 business days to propagate across all carriers.`,
+          callerIdName: result.cnamName
         });
       } else {
-        // CNAM listing failed - return error
         return res.status(400).json({ 
           success: false, 
-          message: `Failed to update CNAM in Telnyx. The CNAM Listings API returned an error. Please configure CNAM directly in the Telnyx portal.`,
+          message: result.error || "Failed to update CNAM in Telnyx",
           callerIdName: null
         });
       }
@@ -33156,6 +33088,7 @@ CRITICAL REMINDERS:
       res.status(500).json({ message: "Failed to update caller ID" });
     }
   });
+
   app.get("/api/telnyx/verification-request/by-phone/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
