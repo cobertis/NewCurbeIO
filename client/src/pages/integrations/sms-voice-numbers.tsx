@@ -348,27 +348,18 @@ export default function SmsVoiceNumbers() {
                       </TableCell>
                       <TableCell>
                         {number.callForwardingEnabled ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20 max-w-[140px]"
-                                onClick={() => setCallForwardingNumber(number)}
-                                data-testid={`button-forwarding-active-${number.id}`}
-                              >
-                                <PhoneForwarded className="h-3 w-3 mr-1 flex-shrink-0" />
-                                <span className="truncate">
-                                  {number.callForwardingDestination 
-                                    ? formatPhoneNumber(number.callForwardingDestination)
-                                    : "Active"}
-                                </span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Forwarding to: {number.callForwardingDestination ? formatPhoneNumber(number.callForwardingDestination) : "Unknown"}</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20 whitespace-nowrap"
+                            onClick={() => setCallForwardingNumber(number)}
+                            data-testid={`button-forwarding-active-${number.id}`}
+                          >
+                            <PhoneForwarded className="h-3 w-3 mr-1 flex-shrink-0" />
+                            {number.callForwardingDestination 
+                              ? formatPhoneNumber(number.callForwardingDestination)
+                              : "Active"}
+                          </Button>
                         ) : (
                           <Button 
                             variant="outline" 
