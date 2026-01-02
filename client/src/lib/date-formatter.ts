@@ -64,6 +64,30 @@ export function formatDateTimeWithTimezone(
 }
 
 /**
+ * Format a date with time including seconds in the user's timezone
+ * @param date - Date to format (Date object or string)
+ * @param timezone - User's timezone (e.g., 'America/New_York'). If not provided, uses browser's timezone
+ * @returns Formatted date and time string with seconds (e.g., "Jan 1, 2026, 7:52:34 PM")
+ */
+export function formatDateTimeWithSeconds(
+  date: Date | string,
+  timezone?: string
+): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const effectiveTimezone = timezone || getBrowserTimezone();
+  
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: effectiveTimezone,
+  }).format(dateObj);
+}
+
+/**
  * Format a time in the user's timezone
  * @param date - Date to format (Date object or string)
  * @param timezone - User's timezone (e.g., 'America/New_York'). If not provided, uses browser's timezone

@@ -55,7 +55,7 @@ import {
   ArrowUpCircle,
   ArrowDownCircle
 } from "lucide-react";
-import { formatDate, formatDateTimeWithTimezone } from "@/lib/date-formatter";
+import { formatDate, formatDateTimeWithTimezone, formatDateTimeWithSeconds } from "@/lib/date-formatter";
 import type { BulkvsPhoneNumber } from "@shared/schema";
 import { formatForDisplay } from "@shared/phone";
 import {
@@ -1489,7 +1489,7 @@ export default function Billing() {
                                       {destination}
                                     </TableCell>
                                     <TableCell className="py-2 text-xs text-muted-foreground whitespace-nowrap">
-                                      {formatDateTimeWithTimezone(new Date(tx.createdAt))}
+                                      {formatDateTimeWithSeconds(new Date(tx.createdAt))}
                                     </TableCell>
                                     <TableCell className="py-2 text-xs text-center text-muted-foreground">
                                       {durationDisplay}
