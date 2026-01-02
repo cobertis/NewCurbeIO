@@ -572,15 +572,18 @@ export async function updateCnamListing(
     const cnamListing = result.data?.cnam_listing;
     const finalCnamName = cnamListing?.cnam_listing_details ?? cnamDetails;
     
-    // Save the callerIdName to local database
+    // Save the CNAM to local database (both fields for compatibility)
     try {
       await db
         .update(telnyxPhoneNumbers)
-        .set({ callerIdName: finalCnamName || null })
+        .set({ 
+          cnam: finalCnamName || null,
+          callerIdName: finalCnamName || null 
+        })
         .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
-      console.log(`[Telnyx CNAM] Saved callerIdName to local DB: "${finalCnamName}"`);
+      console.log(`[Telnyx CNAM] Saved cnam to local DB: "${finalCnamName}"`);
     } catch (dbError) {
-      console.error("[Telnyx CNAM] Failed to save callerIdName to local DB:", dbError);
+      console.error("[Telnyx CNAM] Failed to save cnam to local DB:", dbError);
     }
     
     return {

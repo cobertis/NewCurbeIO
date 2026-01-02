@@ -5195,6 +5195,7 @@ export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   outboundVoiceProfileId: text("outbound_voice_profile_id"), // For voice routing
   connectionId: text("connection_id"), // TeXML App connection ID
   callerIdName: text("caller_id_name"), // CNAM for outbound calls
+  cnam: text("cnam"), // Displayed CNAM (Caller ID Name)
   
   // Call Forwarding Settings (stored locally, applied via TeXML webhook)
   callForwardingEnabled: boolean("call_forwarding_enabled").notNull().default(false),
