@@ -33,6 +33,16 @@ import {
 import { format, addMonths } from "date-fns";
 import { formatPhoneNumber, type SmsVoiceNumber } from "@/pages/sms-voice";
 
+// Check if a phone number is toll-free (800, 833, 844, 855, 866, 877, 888)
+function isTollFreeNumber(phoneNumber: string): boolean {
+  const digits = phoneNumber.replace(/\D/g, '');
+  // US toll-free area codes
+  const tollFreePrefixes = ['800', '833', '844', '855', '866', '877', '888'];
+  // Check if starts with 1 + toll-free, or just toll-free
+  const areaCode = digits.startsWith('1') ? digits.slice(1, 4) : digits.slice(0, 3);
+  return tollFreePrefixes.includes(areaCode);
+}
+
 function USFlagIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 18" className={className} xmlns="http://www.w3.org/2000/svg">
@@ -219,7 +229,15 @@ export default function SmsVoiceNumbers() {
                         </div>
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
-                        {number.cnam ? (
+                        {isTollFreeNumber(number.phoneNumber) ? (
+                          <span 
+                            className="text-slate-400 dark:text-slate-500 text-sm"
+                            title="Toll-free numbers do not support CNAM"
+                            data-testid={`text-cnam-na-${number.id}`}
+                          >
+                            N/A
+                          </span>
+                        ) : number.cnam ? (
                           <button 
                             onClick={() => handleEditCallerId(number)}
                             className="hover:text-slate-900 dark:hover:text-slate-100"
