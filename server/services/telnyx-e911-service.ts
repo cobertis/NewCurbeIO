@@ -84,6 +84,7 @@ async function getPhoneNumberDetails(
     }
 
     const result = await response.json();
+    console.log(`[E911 Sync] Telnyx response for ${telnyxPhoneNumberId}:`, JSON.stringify(result.data?.emergency || result.data, null, 2));
     return {
       success: true,
       phoneNumber: result.data?.phone_number,
@@ -920,6 +921,7 @@ export async function getEmergencyAddresses(companyId: string): Promise<{
     }
 
     const result = await response.json();
+    console.log(`[E911 Sync] Telnyx response for ${telnyxPhoneNumberId}:`, JSON.stringify(result.data?.emergency || result.data, null, 2));
 
     return {
       success: true,
@@ -1764,10 +1766,12 @@ export async function getPhoneNumbersWithE911Status(companyId: string) {
   return numbers;
 }
 
+
 // Sync E911 status from Telnyx for a specific phone number
 export async function syncE911StatusFromTelnyx(
   companyId: string,
-  phoneNumberId: string
+  localId: string,
+  telnyxPhoneNumberId: string
 ): Promise<{ success: boolean; e911Enabled: boolean; error?: string }> {
   try {
     const config = await getManagedAccountConfig(companyId);
@@ -1775,31 +1779,33 @@ export async function syncE911StatusFromTelnyx(
       return { success: false, e911Enabled: false, error: "No managed account config found" };
     }
 
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${telnyxPhoneNumberId}`, {
       method: "GET",
       headers: buildHeaders(config),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[E911 Sync] Failed to get phone number: ${response.status} - ${errorText}`);
+      console.error(`[E911 Sync] Failed to get phone number ${telnyxPhoneNumberId}: ${response.status} - ${errorText}`);
       return { success: false, e911Enabled: false, error: `Failed to get phone number: ${response.status}` };
     }
 
     const result = await response.json();
-    const emergencyEnabled = result.data?.emergency?.emergency_enabled === true;
-    const emergencyAddressId = result.data?.emergency?.emergency_address_id || null;
+    console.log(`[E911 Sync] Telnyx response for ${telnyxPhoneNumberId}:`, JSON.stringify(result.data?.emergency || result.data, null, 2));
+    // Telnyx API v2 returns emergency settings under data.emergency
+    const emergencyEnabled = result.data?.emergency_enabled === true;
+    const emergencyAddressId = result.data?.emergency_address_id || null;
 
-    // Update the database with the Telnyx E911 status
+    // Update the database with the Telnyx E911 status using local ID
     await db
       .update(telnyxPhoneNumbers)
       .set({
         e911Enabled: emergencyEnabled,
         e911AddressId: emergencyAddressId,
       })
-      .where(eq(telnyxPhoneNumbers.id, phoneNumberId));
+      .where(eq(telnyxPhoneNumbers.id, localId));
 
-    console.log(`[E911 Sync] Updated ${phoneNumberId}: e911Enabled=${emergencyEnabled}, addressId=${emergencyAddressId}`);
+    console.log(`[E911 Sync] Updated ${localId}: e911Enabled=${emergencyEnabled}, addressId=${emergencyAddressId}`);
     return { success: true, e911Enabled: emergencyEnabled };
   } catch (error) {
     console.error("[E911 Sync] Error syncing E911 status:", error);
@@ -1816,16 +1822,16 @@ export async function syncAllE911StatusForCompany(companyId: string): Promise<{ 
   try {
     const config = await getManagedAccountConfig(companyId);
     if (!config) {
-      console.error("[E911 Sync] No managed account config for company:", companyId);
+      console.log("[E911 Sync] No managed account config for company:", companyId);
       return { synced: 0, errors: 0 };
     }
 
-    // Get all phone numbers for this company
+    // Get all phone numbers for this company with the correct field names
     const phoneNumbers = await db
       .select({ 
         id: telnyxPhoneNumbers.id, 
         phoneNumber: telnyxPhoneNumbers.phoneNumber,
-        telnyxNumberId: telnyxPhoneNumbers.telnyxNumberId,
+        telnyxPhoneNumberId: telnyxPhoneNumbers.telnyxPhoneNumberId,
       })
       .from(telnyxPhoneNumbers)
       .where(eq(telnyxPhoneNumbers.companyId, companyId));
@@ -1833,9 +1839,15 @@ export async function syncAllE911StatusForCompany(companyId: string): Promise<{ 
     let synced = 0;
     let errors = 0;
 
+    console.log(`[E911 Sync] Starting sync for ${phoneNumbers.length} numbers in company ${companyId}`);
+
     for (const num of phoneNumbers) {
-      const numberId = num.telnyxNumberId || num.id;
-      const result = await syncE911StatusFromTelnyx(companyId, numberId);
+      if (!num.telnyxPhoneNumberId) {
+        console.log(`[E911 Sync] Skipping ${num.phoneNumber} - no Telnyx ID`);
+        continue;
+      }
+      
+      const result = await syncE911StatusFromTelnyx(companyId, num.id, num.telnyxPhoneNumberId);
       if (result.success) {
         synced++;
       } else {
