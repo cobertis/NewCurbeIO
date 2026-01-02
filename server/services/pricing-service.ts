@@ -284,8 +284,16 @@ export async function chargeCallToWallet(
     
     // Calculate additional feature costs from database (dynamic pricing)
     const billableMinutes = costResult.billableMinutes;
+    let callControlCost = new Decimal(0);
     let recordingCost = new Decimal(0);
     let cnamCost = new Decimal(0);
+    
+    // Call Control cost - ALWAYS charged for WebRTC/Call Control API calls
+    const callControlRate = callData.direction === "inbound" 
+      ? new Decimal(globalPricing?.callControlInbound || "0.0020")
+      : new Decimal(globalPricing?.callControlOutbound || "0.0020");
+    callControlCost = billableMinutes.times(callControlRate);
+    console.log(`[PricingService] Call Control cost: $${callControlCost.toFixed(4)} (${billableMinutes.toFixed(2)} min * $${callControlRate.toFixed(4)}/min from DB)`);
     
     // Recording cost - loaded from database
     if (recordingEnabled) {
@@ -300,9 +308,9 @@ export async function chargeCallToWallet(
       console.log(`[PricingService] CNAM lookup cost: $${cnamCost.toFixed(4)} (from DB)`);
     }
     
-    // Total cost includes base + recording + CNAM
-    const totalCostWithFeatures = costResult.totalCost.plus(recordingCost).plus(cnamCost);
-    console.log(`[PricingService] Total cost: $${totalCostWithFeatures.toFixed(4)} (base: $${costResult.totalCost.toFixed(4)}, recording: $${recordingCost.toFixed(4)}, cnam: $${cnamCost.toFixed(4)})`);
+    // Total cost includes base + call control + recording + CNAM
+    const totalCostWithFeatures = costResult.totalCost.plus(callControlCost).plus(recordingCost).plus(cnamCost);
+    console.log(`[PricingService] Total cost: $${totalCostWithFeatures.toFixed(4)} (base: $${costResult.totalCost.toFixed(4)}, callControl: $${callControlCost.toFixed(4)}, recording: $${recordingCost.toFixed(4)}, cnam: $${cnamCost.toFixed(4)})`);
     
     const result = await db.transaction(async (tx) => {
       // Find the right wallet in order of preference:
@@ -491,6 +499,7 @@ export async function chargeCallToWallet(
       const billableMinutesInt = costResult.billableSeconds / 60;
       const rateTypeLabel = rate.description || "Voice";
       let costBreakdown = `${callData.durationSeconds}s → ${billableMinutesInt}m @ $${rate.ratePerMinute.toFixed(4)}/min [${rateTypeLabel}]`;
+      costBreakdown += ` +CC`; // Call Control is always charged
       if (recordingEnabled) costBreakdown += ` +rec`;
       if (cnamEnabled && callData.direction === "inbound") costBreakdown += ` +CNAM`;
       
