@@ -5,6 +5,16 @@ import { SecretsService } from "./secrets-service";
 import { assignPhoneNumberToCredentialConnection } from "./telnyx-e911-service";
 import { getCompanyTelnyxAccountId, getCompanyTelnyxApiToken } from "./wallet-service";
 import { getCompanyMessagingProfileId } from "./telnyx-manager-service";
+import { loadGlobalPricing } from "./pricing-config";
+
+// Helper to check if a phone number is toll-free based on its number or type
+function isTollFreeNumber(phoneNumber: string, numberType?: string | null): boolean {
+  if (numberType === 'toll_free') return true;
+  const tollFreeAreaCodes = ['800', '833', '844', '855', '866', '877', '888'];
+  const digits = phoneNumber.replace(/\D/g, '');
+  const areaCode = digits.startsWith('1') ? digits.substring(1, 4) : digits.substring(0, 3);
+  return tollFreeAreaCodes.includes(areaCode);
+}
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
@@ -1310,10 +1320,27 @@ export async function getCompanyPhoneNumbers(companyId: string): Promise<{
     }
 
     const result = await response.json();
+    
+    // Load global pricing to use configured rates
+    const pricing = await loadGlobalPricing();
+    
+    // Transform numbers to use global pricing
+    const numbersWithGlobalPricing = (result.data || []).map((num: any) => {
+      const isTollFree = isTollFreeNumber(num.phone_number, num.number_type);
+      const configuredMonthlyFee = isTollFree 
+        ? pricing.monthly.tollfree_did 
+        : pricing.monthly.local_did;
+      
+      return {
+        ...num,
+        monthlyFee: configuredMonthlyFee.toFixed(2),
+        telnyxMonthlyCost: num.monthly_cost,
+      };
+    });
 
     return {
       success: true,
-      numbers: result.data || [],
+      numbers: numbersWithGlobalPricing,
     };
   } catch (error) {
     console.error("[Telnyx Numbers] Get numbers error:", error);
@@ -1388,17 +1415,32 @@ export async function getUserPhoneNumbers(companyId: string, userId?: string): P
       .leftJoin(telnyxE911Addresses, eq(telnyxPhoneNumbers.e911AddressId, telnyxE911Addresses.telnyxAddressId))
       .where(whereConditions);
 
-    // Transform results to include ownerUser object
-    const numbers = results.map(r => ({
-      ...r,
-      ownerUser: r.ownerUserId ? {
-        id: r.ownerUserId,
-        firstName: r.ownerFirstName,
-        lastName: r.ownerLastName,
-        email: r.ownerEmail,
-        avatar: r.ownerAvatar,
-      } : null,
-    }));
+    // Load global pricing to use configured rates instead of Telnyx rates
+    const pricing = await loadGlobalPricing();
+    
+    // Transform results to include ownerUser object and use global pricing
+    const numbers = results.map(r => {
+      // Determine if toll-free to apply correct rate
+      const isTollFree = isTollFreeNumber(r.phoneNumber, r.numberType);
+      const configuredMonthlyFee = isTollFree 
+        ? pricing.monthly.tollfree_did 
+        : pricing.monthly.local_did;
+      
+      return {
+        ...r,
+        // Override with configured global pricing instead of Telnyx rate
+        monthlyFee: configuredMonthlyFee.toFixed(2),
+        // Keep Telnyx cost for reference
+        telnyxMonthlyCost: r.monthlyFee,
+        ownerUser: r.ownerUserId ? {
+          id: r.ownerUserId,
+          firstName: r.ownerFirstName,
+          lastName: r.ownerLastName,
+          email: r.ownerEmail,
+          avatar: r.ownerAvatar,
+        } : null,
+      };
+    });
 
     return {
       success: true,
