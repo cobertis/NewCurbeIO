@@ -1478,6 +1478,7 @@ export function WebPhoneFloatingWindow() {
   const [transferTab, setTransferTab] = useState<'blind' | 'attended'>('blind');
   const [isManualRecording, setIsManualRecording] = useState(false);
   const [recordingLoading, setRecordingLoading] = useState(false);
+  const [showLanguageDialog, setShowLanguageDialog] = useState(false);
   const [attendedTransferNumber, setAttendedTransferNumber] = useState('');
   const [telnyxCallerName, setTelnyxCallerName] = useState<string | null>(null);
   const [telnyxCallerLookupPhone, setTelnyxCallerLookupPhone] = useState<string | null>(null);
@@ -2120,38 +2121,84 @@ export function WebPhoneFloatingWindow() {
       return;
     }
     
+    if (isManualRecording) {
+      // Stop recording directly
+      setRecordingLoading(true);
+      try {
+        const response = await fetch(`/api/calls/${effectiveCall.callControlId}/recording/stop`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          setIsManualRecording(false);
+          toast({
+            title: 'Recording stopped',
+            description: 'Call recording has been stopped'
+          });
+        } else {
+          const errorData = await response.json();
+          toast({
+            title: 'Recording error',
+            description: errorData.error || 'Failed to stop recording',
+            variant: 'destructive'
+          });
+        }
+      } catch (error) {
+        toast({ 
+          title: 'Error', 
+          description: 'Failed to stop recording', 
+          variant: 'destructive' 
+        });
+      } finally {
+        setRecordingLoading(false);
+      }
+    } else {
+      // Show language selection dialog before starting recording
+      setShowLanguageDialog(true);
+    }
+  }, [effectiveCall?.callControlId, isManualRecording, toast]);
+  
+  const startRecordingWithLanguage = useCallback(async (language: 'en' | 'es') => {
+    if (!effectiveCall?.callControlId) return;
+    
+    setShowLanguageDialog(false);
     setRecordingLoading(true);
+    
     try {
-      const endpoint = isManualRecording ? 'stop' : 'start';
-      const response = await fetch(`/api/calls/${effectiveCall.callControlId}/recording/${endpoint}`, {
+      const response = await fetch(`/api/calls/${effectiveCall.callControlId}/recording/start`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ language })
       });
       
       if (response.ok) {
-        setIsManualRecording(!isManualRecording);
+        setIsManualRecording(true);
         toast({
-          title: isManualRecording ? 'Recording stopped' : 'Recording started',
-          description: isManualRecording ? 'Call recording has been stopped' : 'This call is now being recorded'
+          title: 'Recording started',
+          description: `This call is now being recorded (${language === 'es' ? 'Spanish' : 'English'} announcement played)`
         });
       } else {
         const errorData = await response.json();
         toast({
           title: 'Recording error',
-          description: errorData.error || 'Failed to toggle recording',
+          description: errorData.error || 'Failed to start recording',
           variant: 'destructive'
         });
       }
     } catch (error) {
       toast({ 
         title: 'Error', 
-        description: 'Failed to toggle recording', 
+        description: 'Failed to start recording', 
         variant: 'destructive' 
       });
     } finally {
       setRecordingLoading(false);
     }
-  }, [effectiveCall?.callControlId, isManualRecording, toast]);
+  }, [effectiveCall?.callControlId, toast]);
   
   const handleHangup = useCallback(() => {
     if (effectiveCall?.isWhatsApp) {
@@ -3405,6 +3452,34 @@ export function WebPhoneFloatingWindow() {
                       </DialogContent>
                     </Dialog>
                   )}
+
+                  {/* Language Selection Dialog for Recording */}
+                  <Dialog open={showLanguageDialog} onOpenChange={setShowLanguageDialog}>
+                    <DialogContent className="sm:max-w-sm">
+                      <DialogTitle className="text-lg font-semibold">Select Language</DialogTitle>
+                      <DialogDescription className="text-sm text-muted-foreground">
+                        Choose the language for the recording announcement
+                      </DialogDescription>
+                      <div className="flex flex-col gap-3 pt-4">
+                        <button
+                          onClick={() => startRecordingWithLanguage('en')}
+                          className="flex items-center justify-center gap-2 p-4 rounded-lg border hover:bg-muted transition-colors"
+                          data-testid="button-record-english"
+                        >
+                          <span className="text-2xl">🇺🇸</span>
+                          <span className="font-medium">English</span>
+                        </button>
+                        <button
+                          onClick={() => startRecordingWithLanguage('es')}
+                          className="flex items-center justify-center gap-2 p-4 rounded-lg border hover:bg-muted transition-colors"
+                          data-testid="button-record-spanish"
+                        >
+                          <span className="text-2xl">🇪🇸</span>
+                          <span className="font-medium">Spanish</span>
+                        </button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
             ) : (

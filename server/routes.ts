@@ -38157,14 +38157,20 @@ CRITICAL REMINDERS:
   // CALL RECORDING (Manual Start/Stop)
   // =====================================================
   
-  // POST /api/calls/:callControlId/recording/start - Start manual recording
+  // POST /api/calls/:callControlId/recording/start - Start manual recording with language announcement
   app.post("/api/calls/:callControlId/recording/start", requireAuth, async (req: Request, res: Response) => {
     try {
       const { callControlId } = req.params;
+      const { language } = req.body; // 'en' or 'es'
       const user = req.user!;
       
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Validate language parameter
+      if (!language || !['en', 'es'].includes(language)) {
+        return res.status(400).json({ success: false, error: "Language must be 'en' or 'es'" });
       }
       
       // Security: Verify the call belongs to the user's company
@@ -38186,7 +38192,38 @@ CRITICAL REMINDERS:
         return res.status(500).json({ success: false, error: "Telnyx API key not configured" });
       }
       
-      const response = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/record_start`, {
+      // Get the media name for the selected language
+      const mediaName = language === 'es' 
+        ? process.env.TELNYX_RECORDING_MEDIA_ES || 'curbe-recording-announcement-es'
+        : process.env.TELNYX_RECORDING_MEDIA_EN || 'curbe-recording-announcement-en';
+      
+      console.log(`[Call Recording] Playing ${language} announcement (${mediaName}) before recording for call ${callControlId}`);
+      
+      // Step 1: Play the announcement audio to both parties
+      const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/playback_start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${telnyxApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          media_name: mediaName,
+          overlay: false // Don't overlay, play exclusively
+        })
+      });
+      
+      if (!playbackResponse.ok) {
+        const errorText = await playbackResponse.text();
+        console.error(`[Call Recording] Failed to play announcement for call ${callControlId}:`, errorText);
+        // Continue anyway to start recording even if playback fails
+      } else {
+        console.log(`[Call Recording] Announcement playback started for call ${callControlId}`);
+        // Wait a short moment for audio to play (typical announcement is 1-2 seconds)
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+      
+      // Step 2: Start the recording
+      const recordResponse = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/record_start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${telnyxApiKey}`,
@@ -38195,15 +38232,15 @@ CRITICAL REMINDERS:
         body: JSON.stringify({
           format: 'mp3',
           channels: 'dual',
-          play_beep: true
+          play_beep: false // We already played an announcement
         })
       });
       
-      if (response.ok) {
+      if (recordResponse.ok) {
         console.log(`[Call Recording] Started recording for call ${callControlId}`);
         return res.json({ success: true });
       } else {
-        const errorText = await response.text();
+        const errorText = await recordResponse.text();
         console.error(`[Call Recording] Failed to start recording for call ${callControlId}:`, errorText);
         return res.status(500).json({ success: false, error: errorText });
       }
@@ -38212,7 +38249,7 @@ CRITICAL REMINDERS:
       res.status(500).json({ success: false, error: error.message });
     }
   });
-  
+
   // POST /api/calls/:callControlId/recording/stop - Stop manual recording
   app.post("/api/calls/:callControlId/recording/stop", requireAuth, async (req: Request, res: Response) => {
     try {
