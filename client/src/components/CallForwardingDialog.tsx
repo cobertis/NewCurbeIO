@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { formatPhoneInput } from "@shared/phone";
 import {
   Dialog,
   DialogContent,
@@ -194,6 +195,11 @@ export function CallForwardingDialog({
                       <FormControl>
                         <Input
                           {...field}
+                          value={field.value ? formatPhoneInput(field.value) : ""}
+                          onChange={(e) => {
+                            const formatted = formatPhoneInput(e.target.value);
+                            field.onChange(formatted);
+                          }}
                           placeholder="(555) 123-4567"
                           data-testid="input-forwarding-destination"
                         />
