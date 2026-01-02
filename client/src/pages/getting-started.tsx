@@ -195,6 +195,13 @@ export default function GettingStarted() {
     }
   }, [progress.profileCompleted, progress.planSelected, progress.messagingSetup, progress.emailSetup]);
 
+  // Auto-complete onboarding when all steps are done
+  useEffect(() => {
+    if (progress.allComplete && !completeOnboardingMutation.isPending) {
+      completeOnboardingMutation.mutate();
+    }
+  }, [progress.allComplete]);
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
