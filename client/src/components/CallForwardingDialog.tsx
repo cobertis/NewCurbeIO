@@ -98,7 +98,7 @@ export function CallForwardingDialog({
 
   const updateForwardingMutation = useMutation({
     mutationFn: async (data: CallForwardingFormValues) => {
-      const response = await apiRequest(
+      return await apiRequest(
         "POST",
         `/api/telnyx/call-forwarding/${telnyxPhoneNumberId}`,
         {
@@ -107,7 +107,6 @@ export function CallForwardingDialog({
           keepCallerId: data.keepCallerId,
         }
       );
-      return response.json();
     },
     onSuccess: () => {
       toast({
