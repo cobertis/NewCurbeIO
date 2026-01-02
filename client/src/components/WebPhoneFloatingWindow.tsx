@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, Hash, Info, type LucideIcon } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, CheckCircle, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, Hash, Info, type LucideIcon } from 'lucide-react';
 
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
@@ -1479,6 +1479,8 @@ export function WebPhoneFloatingWindow() {
   const [attendedTransferNumber, setAttendedTransferNumber] = useState('');
   const [telnyxCallerName, setTelnyxCallerName] = useState<string | null>(null);
   const [telnyxCallerLookupPhone, setTelnyxCallerLookupPhone] = useState<string | null>(null);
+  const [selectedOutboundNumber, setSelectedOutboundNumber] = useState<string | null>(null);
+  const [showNumberSelector, setShowNumberSelector] = useState(false);
   const windowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -1614,8 +1616,10 @@ export function WebPhoneFloatingWindow() {
   });
   const voicemailList = voicemailsData?.voicemails || [];
   const voicemailUnreadCount = voicemailsData?.unreadCount || 0;
-  // Use the user's assigned number as caller ID (from user-phone-status endpoint)
-  const telnyxCallerIdNumber = userAssignedNumber || telnyxNumbersData?.numbers?.[0]?.phone_number || telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
+  // Use selected outbound number, user's assigned number, or first available number as caller ID
+  const availableNumbers = telnyxNumbersData?.numbers?.map((n: any) => n.phoneNumber || n.phone_number).filter(Boolean) || [];
+  const defaultCallerIdNumber = userAssignedNumber || telnyxNumbersData?.numbers?.[0]?.phone_number || telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
+  const telnyxCallerIdNumber = selectedOutboundNumber || defaultCallerIdNumber;
   
   // Query for PBX special extensions (IVR and queues)
   const { data: pbxSpecialExtensions } = useQuery<{ 
@@ -2738,13 +2742,51 @@ export function WebPhoneFloatingWindow() {
           <div className="flex flex-col">
             {hasPhoneCapability ? (
               <div className="flex items-center gap-1.5 sm:gap-2" data-testid="extension-status-indicator">
-                <div className="flex items-center gap-1 text-foreground font-medium text-[10px] sm:text-xs">
-                  {telnyxCallerIdNumber && (
+                <div className="flex items-center gap-1 text-foreground font-medium text-[10px] sm:text-xs relative">
+                  {telnyxCallerIdNumber && availableNumbers.length > 1 ? (
+                    <DropdownMenu open={showNumberSelector} onOpenChange={setShowNumberSelector}>
+                      <DropdownMenuTrigger asChild>
+                        <button 
+                          className="flex items-center gap-1 hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
+                          data-testid="button-select-outbound-number"
+                        >
+                          <Phone className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                          <span>{formatPhoneInput(telnyxCallerIdNumber)}</span>
+                          <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-muted-foreground" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                          Outbound Caller ID
+                        </div>
+                        {availableNumbers.map((num: string) => (
+                          <DropdownMenuItem
+                            key={num}
+                            onClick={() => {
+                              setSelectedOutboundNumber(num);
+                              setShowNumberSelector(false);
+                            }}
+                            className={cn(
+                              "text-xs",
+                              telnyxCallerIdNumber === num && "bg-accent"
+                            )}
+                            data-testid={`menu-select-number-${num}`}
+                          >
+                            <Phone className="h-3 w-3 mr-2" />
+                            {formatPhoneInput(num)}
+                            {telnyxCallerIdNumber === num && (
+                              <CheckCircle className="h-3 w-3 ml-auto text-green-500" />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : telnyxCallerIdNumber ? (
                     <>
                       <Phone className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                       <span>{formatPhoneInput(telnyxCallerIdNumber)}</span>
                     </>
-                  )}
+                  ) : null}
                   {extMyExtension && (
                     <>
                       <span className="text-muted-foreground mx-0.5">|</span>
