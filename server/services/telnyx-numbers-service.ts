@@ -1034,8 +1034,9 @@ export async function updateSpamProtection(
 
 /**
  * Update call forwarding settings for a phone number
- * NOTE: Telnyx Voice API does NOT support call forwarding directly.
- * We store settings locally and apply them via TeXML webhook when calls come in.
+ * Configures both Telnyx Voice Settings API and local database.
+ * When enabled, incoming calls are forwarded to the destination number.
+ * BILLING: Forwarded calls incur BOTH the inbound call cost AND an outbound call cost.
  */
 export async function updateCallForwarding(
   phoneNumberId: string,
@@ -1059,6 +1060,51 @@ export async function updateCallForwarding(
       }
       // Normalize to E.164
       normalizedDest = cleanNumber.startsWith("1") ? `+${cleanNumber}` : `+1${cleanNumber}`;
+    }
+    
+    // Get API key and wallet for Telnyx API calls
+    const apiKey = await getTelnyxMasterApiKey();
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company wallet or Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
+    };
+    
+    // Update call forwarding in Telnyx Voice Settings API
+    const voiceSettingsPayload = {
+      call_forwarding: {
+        call_forwarding_enabled: enabled,
+        forwards_to: enabled ? normalizedDest : "",
+        forwarding_type: "always", // Forward all incoming calls
+      },
+    };
+    
+    console.log(`[Call Forwarding] Updating Telnyx Voice Settings for ${phoneNumberId}:`, JSON.stringify(voiceSettingsPayload));
+    
+    const voiceSettingsResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(voiceSettingsPayload),
+    });
+    
+    if (!voiceSettingsResponse.ok) {
+      const errorText = await voiceSettingsResponse.text();
+      console.error(`[Call Forwarding] Telnyx Voice Settings update failed: ${voiceSettingsResponse.status} - ${errorText}`);
+      // Continue with local DB update even if Telnyx API fails - TeXML webhook will handle forwarding
+      console.log(`[Call Forwarding] Proceeding with local DB update (TeXML webhook will handle forwarding)`);
+    } else {
+      const voiceResult = await voiceSettingsResponse.json();
+      console.log(`[Call Forwarding] Telnyx Voice Settings updated successfully:`, voiceResult.data?.call_forwarding);
     }
     
     // Check if record exists in local database
@@ -1087,23 +1133,7 @@ export async function updateCallForwarding(
       console.log(`[Call Forwarding] Settings updated. Number: ${existing.phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     } else {
       // Need to fetch phone number details from Telnyx to create local record
-      const apiKey = await getTelnyxMasterApiKey();
-      const [wallet] = await db
-        .select()
-        .from(wallets)
-        .where(eq(wallets.companyId, companyId));
-      
-      if (!wallet?.telnyxAccountId) {
-        return { success: false, error: "Company wallet or Telnyx account not found" };
-      }
-      
-      const headers: Record<string, string> = {
-        "Authorization": `Bearer ${apiKey}`,
-        "Accept": "application/json",
-        ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
-      };
-      
-      // Fetch the phone number details from Telnyx
+      // (apiKey and headers already defined above)
       const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
         method: "GET",
         headers,
