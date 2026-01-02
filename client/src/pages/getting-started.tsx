@@ -563,67 +563,7 @@ export default function GettingStarted() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="email" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-            <AccordionTrigger className="px-5 py-4 hover:no-underline" data-testid="accordion-email">
-              <div className="flex items-center justify-between w-full pr-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-900 flex items-center justify-center">
-                    <Mail className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                  </div>
-                  <span className="font-medium text-gray-900 dark:text-gray-100">Email campaigns</span>
-                  <Badge variant="outline" className="text-green-600 dark:text-green-400 border-green-200 dark:border-green-800 ml-2">
-                    <Gift className="w-3 h-3 mr-1" />
-                    First 10,000 emails free
-                  </Badge>
-                  {progress.emailSetup && (
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
-                      <Check className="w-3 h-3 mr-1" />
-                      {isStepSkipped('email') ? 'Skipped' : 'Completed'}
-                    </Badge>
-                  )}
-                </div>
-                {!progress.emailSetup && (
-                  <button
-                    onClick={(e) => handleSkipStep('email', e)}
-                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1"
-                    data-testid="button-skip-email"
-                  >
-                    <SkipForward className="w-3 h-3" />
-                    Mark complete
-                  </button>
-                )}
-                {progress.emailSetup && isStepSkipped('email') && (
-                  <button
-                    onClick={(e) => handleSkipStep('email', e)}
-                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                    data-testid="button-unskip-email"
-                  >
-                    Undo
-                  </button>
-                )}
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-5 pb-5">
-              <div className="space-y-6 pl-11">
-                {/* Configure email settings */}
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Configure email settings</h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Set up your sending domain and customize email templates.
-                  </p>
-                  <Button 
-                      size="sm" 
-                      onClick={() => setLocation("/settings/email")} 
-                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
-                      data-testid="button-configure-email"
-                    >
-                      Configure
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+          {/* Email campaigns section - hidden, not implemented yet */}
 
           <AccordionItem value="other" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
             <AccordionTrigger className="px-5 py-4 hover:no-underline" data-testid="accordion-other">
