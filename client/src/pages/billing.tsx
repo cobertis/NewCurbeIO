@@ -1386,7 +1386,12 @@ export default function Billing() {
 
                   const totalCalls = sortedCalls.length;
                   const answeredCalls = sortedCalls.filter(c => c.status === 'completed' || c.status === 'answered').length;
-                  const missedCalls = sortedCalls.filter(c => c.status === 'missed' || c.status === 'ringing' || c.status === 'no-answer').length;
+                  // Count as missed: explicit missed/no-answer status OR ringing with 0 duration
+                  const missedCalls = sortedCalls.filter(c => 
+                    c.status === 'missed' || 
+                    c.status === 'no-answer' || 
+                    (c.status === 'ringing' && (!c.duration || c.duration === 0))
+                  ).length;
                   const totalSpent = sortedCalls.reduce((sum, c) => sum + (c.cost ? Math.abs(parseFloat(c.cost)) : 0), 0);
 
                   const copyToClipboard = (text: string) => {
@@ -1405,16 +1410,25 @@ export default function Billing() {
                     return `${mins}m ${secs}s`;
                   };
 
-                  const getStatusBadge = (status: string) => {
-                    switch (status) {
+                  const getStatusBadge = (status: string, duration: number | null) => {
+                    // If status is "ringing" with 0 duration, it's actually "No Answer"
+                    const effectiveStatus = (status === 'ringing' && (!duration || duration === 0)) 
+                      ? 'no-answer' 
+                      : status;
+                    
+                    switch (effectiveStatus) {
                       case 'completed':
                       case 'answered':
                         return <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-green-600">Answered</Badge>;
                       case 'missed':
                       case 'no-answer':
-                        return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Missed</Badge>;
+                        return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">No Answer</Badge>;
                       case 'ringing':
-                        return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Ringing</Badge>;
+                        return <Badge variant="secondary" className="text-[10px] px-1.5 py-0 animate-pulse">Ringing</Badge>;
+                      case 'busy':
+                        return <Badge variant="outline" className="text-[10px] px-1.5 py-0">Busy</Badge>;
+                      case 'failed':
+                        return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Failed</Badge>;
                       default:
                         return <Badge variant="outline" className="text-[10px] px-1.5 py-0">{status}</Badge>;
                     }
@@ -1507,7 +1521,7 @@ export default function Billing() {
                                       {call.toNumber}
                                     </TableCell>
                                     <TableCell className="py-2">
-                                      {getStatusBadge(call.status)}
+                                      {getStatusBadge(call.status, call.duration)}
                                     </TableCell>
                                     <TableCell className="py-2 text-xs text-center text-muted-foreground">
                                       {formatDurationSeconds(call.duration)}
