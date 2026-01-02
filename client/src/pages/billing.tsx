@@ -1296,19 +1296,35 @@ export default function Billing() {
                     });
 
                   walletTransactions
-                    .filter(tx => tx.type.toLowerCase() === 'deposit')
+                    .filter(tx => {
+                      const txType = tx.type.toLowerCase();
+                      // Exclude call transactions - those go in Phone Usage tab
+                      return !txType.includes('call');
+                    })
                     .forEach(tx => {
+                      const txType = tx.type.toLowerCase();
+                      const amount = parseFloat(tx.amount);
+                      
+                      // Determine transaction label based on type
+                      let label = tx.description || tx.type;
+                      if (txType === 'deposit') {
+                        label = tx.description || 'Top-up';
+                      } else if (txType === 'number_purchase') {
+                        label = tx.description || 'Phone Number Purchase';
+                      }
+                      
                       unifiedTransactions.push({
                         id: `wallet-${tx.id}`,
                         type: 'wallet',
-                        description: tx.description || 'Top-up',
+                        description: label,
                         date: new Date(tx.createdAt),
-                        amount: parseFloat(tx.amount) * 100,
+                        amount: Math.abs(amount) * 100,
                         currency: 'usd',
                         status: 'paid',
                         receiptUrl: (tx as any).receiptUrl || null,
                         pdfUrl: null,
-                      });
+                        isDebit: amount < 0,
+                      } as any);
                     });
 
                   unifiedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -1332,10 +1348,12 @@ export default function Billing() {
                                 <div className="flex items-center gap-1.5">
                                   {tx.type === 'invoice' ? (
                                     <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                  ) : (tx as any).isDebit ? (
+                                    <ArrowDownCircle className="h-3.5 w-3.5 text-red-500" />
                                   ) : (
                                     <ArrowUpCircle className="h-3.5 w-3.5 text-green-500" />
                                   )}
-                                  <span className="text-xs">{tx.type === 'invoice' ? 'Invoice' : 'Top-up'}</span>
+                                  <span className="text-xs">{tx.description}</span>
                                 </div>
                               </TableCell>
                               <TableCell className="py-2 text-xs text-muted-foreground">{formatDate(tx.date)}</TableCell>
@@ -1344,8 +1362,8 @@ export default function Billing() {
                                   {tx.status}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="py-2 text-right text-xs font-medium">
-                                {formatCurrency(tx.amount, tx.currency)}
+                              <TableCell className={`py-2 text-right text-xs font-medium ${(tx as any).isDebit ? 'text-red-600 dark:text-red-400' : ''}`}>
+                                {(tx as any).isDebit ? '-' : ''}{formatCurrency(tx.amount, tx.currency)}
                               </TableCell>
                               <TableCell className="py-2 text-right">
                                 {(tx.receiptUrl || tx.pdfUrl) && (
