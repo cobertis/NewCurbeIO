@@ -271,7 +271,7 @@ export default function SmsVoiceNumbers() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span 
-                                  className="text-slate-400 dark:text-slate-500 text-sm flex items-center gap-1 cursor-help"
+                                  className="text-slate-400 dark:text-slate-500 text-sm flex items-center gap-1"
                                   data-testid={`text-cnam-na-${number.id}`}
                                 >
                                   N/A
