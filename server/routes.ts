@@ -35945,6 +35945,29 @@ CRITICAL REMINDERS:
       res.status(500).json({ message: "Failed to update call forwarding settings" });
     }
   });
+
+  // POST /api/telnyx/reassign-to-call-control/:phoneNumberId - Force reassign number to Call Control App
+  app.post("/api/telnyx/reassign-to-call-control/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
+      const { phoneNumberId } = req.params;
+      if (!phoneNumberId || !user.companyId) {
+        return res.status(400).json({ message: "Phone number ID and company are required" });
+      }
+      const { reassignNumberToCallControlApp } = await import("./services/telnyx-numbers-service");
+      const result = await reassignNumberToCallControlApp(phoneNumberId, user.companyId);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      res.json({ success: true, message: "Number reassigned to Call Control App" });
+    } catch (error: any) {
+      console.error("[Telnyx Reassign] Error:", error);
+      res.status(500).json({ message: "Failed to reassign number" });
+    }
+  });
   // GET /api/telnyx/voicemail/:phoneNumberId - Get voicemail settings
   app.get("/api/telnyx/voicemail/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
