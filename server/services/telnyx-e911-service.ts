@@ -844,7 +844,25 @@ export async function registerE911ForNumber(
     return { success: false, error: "Phone system not configured for this company" };
   }
 
-  const phoneDetails = await getPhoneNumberDetails(config, phoneNumberId);
+  // First, look up the phone number in our local database to get the telnyxPhoneNumberId
+  const [localPhoneRecord] = await db
+    .select()
+    .from(telnyxPhoneNumbers)
+    .where(and(
+      eq(telnyxPhoneNumbers.id, phoneNumberId),
+      eq(telnyxPhoneNumbers.companyId, companyId)
+    ))
+    .limit(1);
+
+  if (!localPhoneRecord) {
+    console.error(`[E911] Phone number not found in local DB: ${phoneNumberId}`);
+    return { success: false, error: "Phone number not found in local database" };
+  }
+
+  const telnyxPhoneId = localPhoneRecord.telnyxPhoneNumberId;
+  console.log(`[E911] Found local record. Local ID: ${phoneNumberId}, Telnyx ID: ${telnyxPhoneId}`);
+
+  const phoneDetails = await getPhoneNumberDetails(config, telnyxPhoneId);
   
   if (!phoneDetails.success || !phoneDetails.phoneNumber) {
     return { success: false, error: phoneDetails.error || "Phone number not found" };
@@ -852,7 +870,7 @@ export async function registerE911ForNumber(
 
   console.log(`[E911] Registering E911 for phone: ${phoneDetails.phoneNumber}`);
 
-  const connectionResult = await ensurePhoneNumberHasCredentialConnection(config, companyId, phoneNumberId);
+  const connectionResult = await ensurePhoneNumberHasCredentialConnection(config, companyId, telnyxPhoneId);
   if (!connectionResult.success) {
     return { success: false, error: connectionResult.error };
   }
@@ -863,7 +881,7 @@ export async function registerE911ForNumber(
     return { success: false, error: addressResult.error || "Failed to create emergency address" };
   }
 
-  const enableResult = await enableE911OnPhoneNumber(config, phoneNumberId, addressResult.addressId);
+  const enableResult = await enableE911OnPhoneNumber(config, telnyxPhoneId, addressResult.addressId);
   
   if (!enableResult.success) {
     return { success: false, error: enableResult.error || "Failed to enable E911 on phone number" };
@@ -877,7 +895,7 @@ export async function registerE911ForNumber(
         e911AddressId: addressResult.addressId,
         updatedAt: new Date(),
       })
-      .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+      .where(eq(telnyxPhoneNumbers.id, phoneNumberId));
   } catch (dbError) {
     console.log(`[E911] Note: Could not update local DB record (may not exist)`);
   }
