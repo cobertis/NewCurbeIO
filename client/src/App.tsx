@@ -173,13 +173,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const effectiveCall = telnyxCurrentCall || currentCall;
 
   // Session query - highest priority, needed for WebPhone
-  const { data: userData } = useQuery<{ user: User }>({
+  const { data: userData } = useQuery<{ user: User & { walletBalance?: string; walletCurrency?: string } }>({
     queryKey: ["/api/session"],
     staleTime: 0, // Always fresh
     refetchOnMount: true,
   });
 
   const user = userData?.user;
+  
+  // Get wallet balance from session (available immediately on load)
+  const sessionBalance = user?.walletBalance ? parseFloat(user.walletBalance) : 0;
   
   // PRIORITY 1: Initialize WebPhone FIRST when user has SIP credentials
   useEffect(() => {
@@ -227,13 +230,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   });
   const hasImessageAccess = imessageAccessData?.hasAccess || false;
 
-  // Query for wallet balance (phone credits)
-  const { data: walletBalanceData, isLoading: isLoadingBalance } = useQuery<{ balance: string; currency: string }>({
+  // Query for wallet balance (phone credits) - uses session balance as initial, refetches for updates
+  const { data: walletBalanceData } = useQuery<{ balance: string; currency: string }>({
     queryKey: ['/api/wallet/balance'],
-    enabled: !!user,
-    refetchInterval: 60000, // Refetch every minute
+    enabled: !!user && !!user.companyId,
+    refetchInterval: 60000, // Refetch every minute for real-time updates after calls
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
-  const phoneBalance = walletBalanceData?.balance ? parseFloat(walletBalanceData.balance) : 0;
+  // Use session balance immediately, then live balance once fetched
+  const phoneBalance = walletBalanceData?.balance ? parseFloat(walletBalanceData.balance) : sessionBalance;
 
   // Query for user phone status - check if user can make calls
   const { data: userPhoneStatusData } = useQuery<{ hasAssignedNumber: boolean; canMakeCalls: boolean; reason: string; message?: string; phoneNumber?: string; hasPbxExtension?: boolean; pbxExtension?: string }>({
@@ -693,7 +698,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <TooltipContent>New Policy</TooltipContent>
               </Tooltip>
 
-              {/* Phone Credits Balance */}
+              {/* Phone Credits Balance - Uses session balance for instant display */}
               <div className="flex items-center gap-2">
                 <div 
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
@@ -702,11 +707,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 >
                   <Wallet className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   <span className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-phone-balance">
-                    {isLoadingBalance ? (
-                      <span className="inline-block w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                    ) : (
-                      `$${phoneBalance.toFixed(2)}`
-                    )}
+                    ${phoneBalance.toFixed(2)}
                   </span>
                 </div>
                 <Button

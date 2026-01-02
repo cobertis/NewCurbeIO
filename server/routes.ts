@@ -3609,10 +3609,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     // Get company info if user has a company (includes logo for Settings page optimization)
     let companyName: string | undefined;
     let companyLogo: string | undefined;
+    let walletBalance: string = "0.0000";
+    let walletCurrency: string = "USD";
     if (user.companyId) {
       const company = await storage.getCompany(user.companyId);
       companyName = company?.name;
       companyLogo = company?.logo;
+      // Get wallet balance for immediate display in header
+      try {
+        const { getOrCreateWallet } = await import("./services/wallet-service");
+        const wallet = await getOrCreateWallet(user.companyId, user.id);
+        if (wallet) {
+          walletBalance = wallet.balance;
+          walletCurrency = wallet.currency;
+        }
+      } catch (e) {
+        // Wallet fetch failed, use defaults
+      }
     }
     res.json({
       user: {
@@ -3646,6 +3659,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         sipServer: user.sipServer,
         sipEnabled: user.sipEnabled,
         onboardingCompleted: user.onboardingCompleted,
+        // Wallet balance for immediate header display
+        walletBalance: walletBalance,
+        walletCurrency: walletCurrency,
       },
     });
   });
