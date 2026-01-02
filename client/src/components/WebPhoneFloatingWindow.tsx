@@ -1632,6 +1632,7 @@ export function WebPhoneFloatingWindow() {
   const telnyxOutgoingCallInfo = useTelnyxStore(state => state.outgoingCallInfo);
   const telnyxIsAnswering = useTelnyxStore(state => state.isAnswering);
   const [telnyxInitialized, setTelnyxInitialized] = useState(false);
+  const [userMinimized, setUserMinimized] = useState(false);
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
   const telnyxTimerRef = useRef<NodeJS.Timeout>();
   
@@ -2289,12 +2290,13 @@ export function WebPhoneFloatingWindow() {
   }, [telnyxIncomingCall, setDialpadVisible]);
   
   // Auto-open window when there's an active Telnyx call (for auto-answered queue calls)
+  // But respect user's choice to minimize
   useEffect(() => {
-    if (telnyxCurrentCall && !isVisible) {
+    if (telnyxCurrentCall && !isVisible && !userMinimized) {
       console.log('[WebPhone] Active Telnyx call detected - opening phone panel');
       setDialpadVisible(true);
     }
-  }, [telnyxCurrentCall, isVisible, setDialpadVisible]);
+  }, [telnyxCurrentCall, isVisible, setDialpadVisible, userMinimized]);
   
   // Call timer
   useEffect(() => {
@@ -2316,10 +2318,12 @@ export function WebPhoneFloatingWindow() {
   }, [currentCall?.status]);
   
   // Return to keypad when call ends and clear dial number
+  // Also reset userMinimized so next call will open the window
   useEffect(() => {
     if (!effectiveCall) {
       setViewMode('keypad');
       setDialNumber('');
+      setUserMinimized(false);
     }
   }, [effectiveCall]);
   
@@ -2660,7 +2664,10 @@ export function WebPhoneFloatingWindow() {
       return (
         <div
           className="fixed bottom-20 right-4 z-50 animate-pulse cursor-pointer"
-          onClick={toggleDialpad}
+          onClick={() => {
+            setUserMinimized(false);
+            toggleDialpad();
+          }}
           data-testid="mini-call-indicator"
         >
           <div className={cn(
@@ -2746,7 +2753,14 @@ export function WebPhoneFloatingWindow() {
               variant="ghost"
               size="icon"
               className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground hover:text-foreground"
-              onClick={toggleDialpad}
+              onClick={() => {
+                // If there's an active call, mark as user-minimized to prevent auto-reopen
+                if (effectiveCall) {
+                  setUserMinimized(true);
+                }
+                toggleDialpad();
+              }}
+              data-testid="button-close-webphone"
             >
               <X className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             </Button>
