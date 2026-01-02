@@ -78,9 +78,16 @@ class ExtensionCallService {
     return client;
   }
 
-  unregisterExtension(extensionId: string): void {
+  unregisterExtension(extensionId: string, closingWs?: WebSocket): void {
     const client = this.connectedClients.get(extensionId);
     if (client) {
+      // CRITICAL: Only unregister if the closing WebSocket matches the registered one
+      // This prevents old sockets from wiping newer registrations during page reloads
+      if (closingWs && client.ws !== closingWs) {
+        console.log(`[ExtensionCall] Ignoring stale disconnect for extension ${client.extension} (newer connection exists)`);
+        return;
+      }
+      
       const companyId = client.companyId;
       this.connectedClients.delete(extensionId);
       console.log(`[ExtensionCall] Extension ${client.extension} unregistered`);
