@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -66,9 +67,10 @@ export default function SmsVoiceNumbers() {
   const [labelValue, setLabelValue] = useState("");
   const [editCallerIdNumber, setEditCallerIdNumber] = useState<SmsVoiceNumber | null>(null);
   const [callerIdValue, setCallerIdValue] = useState("");
+  const [showBuyDialog, setShowBuyDialog] = useState(false);
   const { toast } = useToast();
 
-  const { data: numbersData, isLoading } = useQuery<{ numbers: SmsVoiceNumber[] }>({
+  const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: SmsVoiceNumber[] }>({
     queryKey: ["/api/sms-voice/numbers"],
   });
 
@@ -176,12 +178,10 @@ export default function SmsVoiceNumbers() {
               data-testid="input-search-numbers"
             />
           </div>
-          <Link href="/phone/buy">
-            <Button size="sm" className="gap-2" data-testid="button-buy-number">
-              <Plus className="h-4 w-4" />
-              Buy a new number
-            </Button>
-          </Link>
+          <Button size="sm" className="gap-2" onClick={() => setShowBuyDialog(true)} data-testid="button-buy-number">
+            <Plus className="h-4 w-4" />
+            Buy a new number
+          </Button>
         </div>
 
         <Card className="border-slate-200 dark:border-slate-800">
@@ -479,6 +479,15 @@ export default function SmsVoiceNumbers() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <BuyNumbersDialog 
+          open={showBuyDialog} 
+          onOpenChange={setShowBuyDialog} 
+          onNumberPurchased={() => {
+            refetch();
+            setShowBuyDialog(false);
+          }}
+        />
       </div>
     </SettingsLayout>
   );
