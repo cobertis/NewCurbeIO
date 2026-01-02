@@ -38,15 +38,6 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 **Telnyx WebRTC & Telephony:**
 Implements Telnyx WebRTC with specific call options and audio settings. Uses a dual SIP domain architecture: company subdomain for registration/inbound, and `sip.telnyx.com` for outbound PSTN calls. Call control is webhook-driven, and telephony billing includes immediate purchase and monthly recurring charges. Extension-to-extension calling uses pure WebRTC, and SIP forking is enabled.
 
-**Call Forwarding & CDR Sync:**
-Phone numbers support call forwarding via Telnyx Voice Settings API. Forwarded calls are billed with dual-leg pricing:
-- **Inbound leg:** Cost from Telnyx CDR (caller to our number)
-- **Outbound leg:** Per-minute rate from pricing config (our number to forward destination)
-- **CDR Sync Scheduler:** Runs every 5 minutes, polls Telnyx Detail Records API (`/v2/detail_records`) with `record_type=sip-trunking` to detect forwarded calls. Filters inbound by `cld=ourNumber`, outbound by `cli=ourNumber` AND `cld=forwardedTo`.
-- **Idempotency:** Uses `telnyxDetailRecordId` field in `call_logs` to prevent duplicate processing.
-- **Wallet Transactions:** Creates `CALL_FORWARDING` transaction type combining both leg costs.
-- **Key Files:** `server/services/cdr-sync-service.ts`, `server/cdr-sync-scheduler.ts`.
-
 **Wallet System Architecture:**
 Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, and APNs push notifications for proactive payment collection. Key components include dedicated services, PassKit Web Service, and a scheduler for daily payment reminders. The "Cenicienta Strategy" ensures lock-screen persistence for passes by setting `relevantDate` to the end of the day. Pass images are "baked in," with only text/data updated via push notifications.
 

@@ -5200,11 +5200,6 @@ export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   callerIdName: text("caller_id_name"), // CNAM for outbound calls
   cnam: text("cnam"), // Displayed CNAM (Caller ID Name)
   
-  // Call Forwarding Settings (stored locally, applied via TeXML webhook)
-  callForwardingEnabled: boolean("call_forwarding_enabled").notNull().default(false),
-  callForwardingDestination: text("call_forwarding_destination"), // E.164 format destination
-  callForwardingKeepCallerId: boolean("call_forwarding_keep_caller_id").notNull().default(true),
-  
   // Per-Number Voice Settings
   recordingEnabled: boolean("recording_enabled").notNull().default(false), // Call recording for this number
   cnamLookupEnabled: boolean("cnam_lookup_enabled").notNull().default(false), // CNAM lookup for incoming calls

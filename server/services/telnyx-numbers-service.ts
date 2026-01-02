@@ -699,11 +699,6 @@ export async function getVoiceSettings(
   };
   inboundCallScreening?: string;
   callerIdNameEnabled?: boolean;
-  callForwarding?: {
-    enabled: boolean;
-    destination: string;
-    keepCallerId: boolean;
-  };
 }> {
   try {
     const apiKey = await getTelnyxMasterApiKey();
@@ -795,11 +790,6 @@ export async function getVoiceSettings(
       },
       inboundCallScreening: data?.inbound_call_screening || "disabled",
       callerIdNameEnabled: data?.caller_id_name_enabled || false,
-      callForwarding: {
-        enabled: localNumber?.callForwardingEnabled || false,
-        destination: localNumber?.callForwardingDestination || "",
-        keepCallerId: localNumber?.callForwardingKeepCallerId ?? true,
-      },
     };
   } catch (error) {
     console.error("[Telnyx Voice] Get settings error:", error);
@@ -1029,157 +1019,6 @@ export async function updateSpamProtection(
   } catch (error) {
     console.error("[Telnyx Spam Protection] Update error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to update spam protection" };
-  }
-}
-
-/**
- * Update call forwarding settings for a phone number
- * Updates both Telnyx API and local database.
- * BILLING: Forwarded calls incur BOTH the inbound call cost AND an outbound call cost.
- */
-export async function updateCallForwarding(
-  phoneNumberId: string,
-  companyId: string,
-  enabled: boolean,
-  destination?: string,
-  keepCallerId: boolean = true,
-  ownerUserId?: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    // Validate destination is E.164 US number if enabled
-    if (enabled && !destination) {
-      return { success: false, error: "Destination number is required when enabling call forwarding" };
-    }
-    
-    let normalizedDest: string | null = null;
-    if (enabled && destination) {
-      const cleanNumber = destination.replace(/\D/g, "");
-      if (!cleanNumber.match(/^1?\d{10}$/)) {
-        return { success: false, error: "Destination must be a valid US phone number" };
-      }
-      // Normalize to E.164
-      normalizedDest = cleanNumber.startsWith("1") ? `+${cleanNumber}` : `+1${cleanNumber}`;
-    }
-    
-    // Get Telnyx API key and wallet info
-    const apiKey = await getTelnyxMasterApiKey();
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-    
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company wallet or Telnyx account not found" };
-    }
-    
-    const headers: Record<string, string> = {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
-    };
-    
-    // Update call forwarding in Telnyx Voice Settings API
-    // Using PATCH /phone_numbers/{id}/voice endpoint (not /phone_numbers/{id})
-    const telnyxPayload: any = {
-      call_forwarding: {
-        call_forwarding_enabled: enabled,
-        forwarding_type: "always",
-      }
-    };
-    
-    if (enabled && normalizedDest) {
-      telnyxPayload.call_forwarding.forwards_to = normalizedDest;
-    }
-    
-    console.log(`[Call Forwarding] Updating Telnyx Voice Settings for ${phoneNumberId}:`, JSON.stringify(telnyxPayload));
-    
-    const telnyxResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify(telnyxPayload),
-    });
-    
-    if (!telnyxResponse.ok) {
-      const errorText = await telnyxResponse.text();
-      console.error(`[Call Forwarding] Telnyx API error: ${telnyxResponse.status} - ${errorText}`);
-      return { success: false, error: `Telnyx API error: ${telnyxResponse.status}` };
-    }
-    
-    const telnyxResult = await telnyxResponse.json();
-    console.log(`[Call Forwarding] Telnyx API response:`, JSON.stringify(telnyxResult.data?.call_forwarding || {}));
-    
-    // Check if record exists in local database
-    const [existing] = await db
-      .select()
-      .from(telnyxPhoneNumbers)
-      .where(
-        and(
-          eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId),
-          eq(telnyxPhoneNumbers.companyId, companyId)
-        )
-      );
-    
-    if (existing) {
-      // Update existing record
-      await db
-        .update(telnyxPhoneNumbers)
-        .set({
-          callForwardingEnabled: enabled,
-          callForwardingDestination: normalizedDest,
-          callForwardingKeepCallerId: keepCallerId,
-          updatedAt: new Date(),
-        })
-        .where(eq(telnyxPhoneNumbers.id, existing.id));
-      
-      console.log(`[Call Forwarding] Settings updated. Number: ${existing.phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
-    } else {
-      // Need to fetch phone number details from Telnyx to create local record
-      // Reuse existing headers (remove Content-Type for GET)
-      const getHeaders = { ...headers };
-      delete (getHeaders as any)["Content-Type"];
-      
-      const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
-        method: "GET",
-        headers: getHeaders,
-      });
-      
-      if (!response.ok) {
-        console.error(`[Call Forwarding] Failed to fetch phone number from Telnyx: ${response.status}`);
-        return { success: false, error: "Failed to fetch phone number details" };
-      }
-      
-      const result = await response.json();
-      const phoneNumber = result.data?.phone_number;
-      
-      if (!phoneNumber) {
-        return { success: false, error: "Phone number not found in Telnyx" };
-      }
-      
-      // Create local record with call forwarding settings
-      const now = new Date();
-      const nextBilling = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      
-      await db.insert(telnyxPhoneNumbers).values({
-        companyId,
-        ownerUserId: ownerUserId || null,
-        phoneNumber,
-        telnyxPhoneNumberId: phoneNumberId,
-        status: "active",
-        callForwardingEnabled: enabled,
-        callForwardingDestination: normalizedDest,
-        callForwardingKeepCallerId: keepCallerId,
-        purchasedAt: now,
-        nextBillingAt: nextBilling,
-      });
-      
-      console.log(`[Call Forwarding] Created local record and saved settings. Number: ${phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error("[Call Forwarding] Update error:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Failed to update call forwarding" };
   }
 }
 
@@ -1420,9 +1259,6 @@ export async function getUserPhoneNumbers(companyId: string, userId?: string): P
         outboundVoiceProfileId: telnyxPhoneNumbers.outboundVoiceProfileId,
         connectionId: telnyxPhoneNumbers.connectionId,
         callerIdName: telnyxPhoneNumbers.callerIdName,
-        callForwardingEnabled: telnyxPhoneNumbers.callForwardingEnabled,
-        callForwardingDestination: telnyxPhoneNumbers.callForwardingDestination,
-        callForwardingKeepCallerId: telnyxPhoneNumbers.callForwardingKeepCallerId,
         recordingEnabled: telnyxPhoneNumbers.recordingEnabled,
         cnamLookupEnabled: telnyxPhoneNumbers.cnamLookupEnabled,
         noiseSuppressionEnabled: telnyxPhoneNumbers.noiseSuppressionEnabled,

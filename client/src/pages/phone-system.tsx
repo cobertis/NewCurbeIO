@@ -2386,7 +2386,6 @@ function PhoneNumberCard({ number, onConfigureE911 }: PhoneNumberCardProps) {
     callRecording?: { inboundEnabled: boolean; format: string; channels: string };
     inboundCallScreening?: string;
     callerIdNameEnabled?: boolean;
-    callForwarding?: { enabled: boolean; destination: string; keepCallerId: boolean };
   }>({
     queryKey: ["/api/telnyx/voice-settings", number.id],
     queryFn: async () => {

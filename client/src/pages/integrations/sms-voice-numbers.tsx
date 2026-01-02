@@ -4,7 +4,6 @@ import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { E911ConfigDialog } from "@/components/E911ConfigDialog";
-import { CallForwardingDialog } from "@/components/CallForwardingDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -28,7 +27,6 @@ import {
   Plus,
   Search,
   MoreHorizontal,
-  PhoneForwarded,
   Trash2,
   Edit,
   ChevronLeft,
@@ -77,7 +75,6 @@ export default function SmsVoiceNumbers() {
   const [showBuyDialog, setShowBuyDialog] = useState(false);
   const [releaseNumber, setReleaseNumber] = useState<SmsVoiceNumber | null>(null);
   const [e911ConfigNumber, setE911ConfigNumber] = useState<SmsVoiceNumber | null>(null);
-  const [callForwardingNumber, setCallForwardingNumber] = useState<SmsVoiceNumber | null>(null);
   const { toast } = useToast();
 
   const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: SmsVoiceNumber[] }>({
@@ -241,7 +238,6 @@ export default function SmsVoiceNumbers() {
                     <TableHead className="text-xs font-medium text-slate-500">Label</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Price / month</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Next renewal</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Forward calls to</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -346,32 +342,6 @@ export default function SmsVoiceNumbers() {
                           ? format(addMonths(new Date(number.purchasedAt), 1), "d MMM yyyy")
                           : format(addMonths(new Date(), 1), "d MMM yyyy")}
                       </TableCell>
-                      <TableCell>
-                        {number.callForwardingEnabled ? (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="h-7 text-xs text-green-600 border-green-200 bg-green-50/50 hover:bg-green-100 dark:text-green-400 dark:border-green-800 dark:bg-green-900/20 dark:hover:bg-green-900/40"
-                            onClick={() => setCallForwardingNumber(number)}
-                            data-testid={`button-forwarding-active-${number.id}`}
-                          >
-                            <PhoneForwarded className="h-3 w-3 mr-1.5" />
-                            {number.callForwardingDestination 
-                              ? formatPhoneNumber(number.callForwardingDestination)
-                              : "Active"}
-                          </Button>
-                        ) : (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => setCallForwardingNumber(number)}
-                            data-testid={`button-activate-forward-${number.id}`}
-                          >
-                            Set up
-                          </Button>
-                        )}
-                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -391,13 +361,6 @@ export default function SmsVoiceNumbers() {
                             >
                               <Edit className="h-4 w-4 mr-2" />
                               Edit label
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => setCallForwardingNumber(number)}
-                              data-testid={`menu-forward-calls-${number.id}`}
-                            >
-                              <PhoneForwarded className="h-4 w-4 mr-2" />
-                              Forward calls
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
@@ -610,22 +573,6 @@ export default function SmsVoiceNumbers() {
           }}
         />
 
-        <CallForwardingDialog
-          open={!!callForwardingNumber}
-          onOpenChange={(open) => !open && setCallForwardingNumber(null)}
-          phoneNumber={callForwardingNumber?.phoneNumber || ""}
-          phoneNumberId={callForwardingNumber?.id || ""}
-          telnyxPhoneNumberId={callForwardingNumber?.telnyxPhoneNumberId || ""}
-          currentSettings={{
-            enabled: callForwardingNumber?.callForwardingEnabled || false,
-            destination: callForwardingNumber?.callForwardingDestination || null,
-            keepCallerId: callForwardingNumber?.callForwardingKeepCallerId !== false,
-          }}
-          onSuccess={() => {
-            refetch();
-            setCallForwardingNumber(null);
-          }}
-        />
       </div>
     </SettingsLayout>
   );

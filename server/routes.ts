@@ -22056,26 +22056,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (callForwardNumber !== undefined) {
         updateData.callForwardNumber = callForwardNumber;
       }
-      // Update Call Forwarding in BulkVS API when settings change
-      if (callForwardEnabled !== undefined || callForwardNumber !== undefined) {
-        try {
-          const forwardTo = updateData.callForwardEnabled === false ? null : (updateData.callForwardNumber || phoneNumber.callForwardNumber);
-          if (updateData.callForwardEnabled || (callForwardEnabled === undefined && phoneNumber.callForwardEnabled)) {
-            const forwardResult = await bulkVSClient.updateCallForwarding(phoneNumber.did, forwardTo);
-            console.log(`[BulkVS] Call forwarding updated successfully for ${phoneNumber.did}:`, forwardResult.message);
-          } else {
-            // Disable call forwarding
-            const forwardResult = await bulkVSClient.updateCallForwarding(phoneNumber.did, null);
-            console.log(`[BulkVS] Call forwarding disabled for ${phoneNumber.did}`);
-          }
-        } catch (error: any) {
-          console.error(`[BulkVS] Failed to update call forwarding for ${phoneNumber.did}:`, error.message);
-          // Return error to user since call forwarding is a critical feature
-          return res.status(500).json({ 
-            message: `Settings saved locally but failed to activate in BulkVS: ${error.message}` 
-          });
-        }
-      }
       // Update phone number
       const updated = await storage.updateBulkvsPhoneNumber(id, updateData);
       console.log(`[BulkVS] Phone number ${phoneNumber.did} settings updated:`, updateData);
@@ -31682,65 +31662,23 @@ CRITICAL REMINDERS:
       });
       console.log("[Telnyx Voice] Stored active call for sipUsername:", sipUsername, "callSid:", callSid);
       
-      // Check for call forwarding settings
-      let callForwardingEnabled = false;
-      let callForwardingDestination: string | null = null;
-      let callForwardingKeepCallerId = true;
+      // Route to WebRTC client using <Client> tag (NOT <Sip>)
+      // <Client> connects to registered SIP/WebRTC users on the same account
+      console.log("[Telnyx Voice] Sending TeXML to ring WebRTC client");
       
-      if (to) {
-        const [phoneRecord] = await db
-          .select({
-            callForwardingEnabled: telnyxPhoneNumbers.callForwardingEnabled,
-            callForwardingDestination: telnyxPhoneNumbers.callForwardingDestination,
-            callForwardingKeepCallerId: telnyxPhoneNumbers.callForwardingKeepCallerId,
-          })
-          .from(telnyxPhoneNumbers)
-          .where(
-            and(
-              eq(telnyxPhoneNumbers.companyId, companyId),
-              eq(telnyxPhoneNumbers.phoneNumber, to)
-            )
-          );
-        
-        if (phoneRecord) {
-          callForwardingEnabled = phoneRecord.callForwardingEnabled || false;
-          callForwardingDestination = phoneRecord.callForwardingDestination;
-          callForwardingKeepCallerId = phoneRecord.callForwardingKeepCallerId !== false;
-        }
-      }
+      // CRITICAL: Use action URL to handle call completion properly
+      // Without action, Telnyx may send "user busy" when agent hangs up
+      // Use request host to work correctly in both development and production
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || req.hostname;
+      const baseUrl = `${protocol}://${host}`;
       
-      let texmlResponse: string;
-      
-      if (callForwardingEnabled && callForwardingDestination) {
-        // Forward the call to an external number
-        const callerId = callForwardingKeepCallerId ? from : to;
-        console.log(`[Telnyx Voice] Forwarding to ${callForwardingDestination}`);
-        
-        texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Dial answerOnBridge="true" callerId="${callerId}" timeout="30" ringback="us-ring">
-    <Number>${callForwardingDestination}</Number>
-  </Dial>
-</Response>`;
-      } else {
-        // Route to WebRTC client using <Client> tag (NOT <Sip>)
-        // <Client> connects to registered SIP/WebRTC users on the same account
-        console.log("[Telnyx Voice] Sending TeXML to ring WebRTC client");
-        
-        // CRITICAL: Use action URL to handle call completion properly
-        // Without action, Telnyx may send "user busy" when agent hangs up
-        // Use request host to work correctly in both development and production
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        const host = req.headers['x-forwarded-host'] || req.headers.host || req.hostname;
-        const baseUrl = `${protocol}://${host}`;
-        
-        texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+      const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Dial answerOnBridge="true" timeout="30" ringback="us-ring" action="${baseUrl}/webhooks/telnyx/dial-complete/${companyId}">
     <Sip>sip:${sipUsername}@sip.telnyx.com</Sip>
   </Dial>
-</Response>`;
-      }
+</Response>`
       
       console.log("[Telnyx Voice] TeXML response:", texmlResponse);
       res.set("Content-Type", "application/xml");
@@ -32911,9 +32849,6 @@ CRITICAL REMINDERS:
           cnam: num.cnam,
           e911Enabled: num.e911Enabled,
           telnyxPhoneNumberId: num.telnyxPhoneNumberId,
-          callForwardingEnabled: num.callForwardingEnabled,
-          callForwardingDestination: num.callForwardingDestination,
-          callForwardingKeepCallerId: num.callForwardingKeepCallerId,
         };
       }));
       
@@ -32955,9 +32890,6 @@ CRITICAL REMINDERS:
         cnam: num.cnam,
         e911Enabled: num.e911Enabled,
           telnyxPhoneNumberId: num.telnyxPhoneNumberId,
-          callForwardingEnabled: num.callForwardingEnabled,
-          callForwardingDestination: num.callForwardingDestination,
-          callForwardingKeepCallerId: num.callForwardingKeepCallerId,
         complianceStatus: complianceMap.get(num.phoneNumber)?.status || null,
         complianceApplicationId: complianceMap.get(num.phoneNumber)?.id || null,
         telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,
@@ -35805,39 +35737,6 @@ CRITICAL REMINDERS:
     } catch (error: any) {
       console.error("[Telnyx Caller ID Lookup] Update error:", error);
       res.status(500).json({ message: "Failed to update caller ID lookup settings" });
-    }
-  });
-  // POST /api/telnyx/call-forwarding/:phoneNumberId - Update call forwarding settings
-  app.post("/api/telnyx/call-forwarding/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = req.user!;
-      // Only admins can modify phone system settings
-      if (user.role !== 'admin' && user.role !== 'superadmin') {
-        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
-      }
-      const { phoneNumberId } = req.params;
-      const { enabled, destination, keepCallerId = true } = req.body;
-      if (!phoneNumberId) {
-        return res.status(400).json({ message: "Phone number ID is required" });
-      }
-      if (!user.companyId) {
-        return res.status(400).json({ message: "No company associated with user" });
-      }
-      if (typeof enabled !== "boolean") {
-        return res.status(400).json({ message: "enabled (boolean) is required" });
-      }
-      if (enabled && !destination) {
-        return res.status(400).json({ message: "destination phone number is required when enabling call forwarding" });
-      }
-      const { updateCallForwarding } = await import("./services/telnyx-numbers-service");
-      const result = await updateCallForwarding(phoneNumberId, user.companyId, enabled, destination, keepCallerId, user.id);
-      if (!result.success) {
-        return res.status(500).json({ message: result.error });
-      }
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("[Telnyx Call Forwarding] Update error:", error);
-      res.status(500).json({ message: "Failed to update call forwarding settings" });
     }
   });
   // GET /api/telnyx/voicemail/:phoneNumberId - Get voicemail settings
@@ -42632,51 +42531,6 @@ CRITICAL REMINDERS:
 
   // Register SES routes
   registerSesRoutes(app, requireActiveCompany);
-
-  // CDR Sync diagnostic endpoint (admin only)
-  app.post("/api/admin/cdr-sync/diagnose", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as Express.User;
-      if (user.role !== "admin" && user.role !== "super_admin") {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      const { phoneNumber, forwardedTo } = req.body;
-      if (!phoneNumber || !forwardedTo) {
-        return res.status(400).json({ message: "phoneNumber and forwardedTo required" });
-      }
-
-      const { fetchAllDetailRecords } = await import("./services/cdr-sync-service");
-      const result = await fetchAllDetailRecords(phoneNumber, forwardedTo);
-      
-      res.json({
-        analysis: result.analysis,
-        recordsFound: result.raw.length,
-        records: result.raw
-      });
-    } catch (error: any) {
-      console.error("[CDR Diagnose] Error:", error);
-      res.status(500).json({ message: error.message || "Diagnostic failed" });
-    }
-  });
-
-  // Manual CDR sync trigger (admin only)
-  app.post("/api/admin/cdr-sync/run", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as Express.User;
-      if (user.role !== "admin" && user.role !== "super_admin") {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      const { runManualCDRSync } = await import("./cdr-sync-scheduler");
-      const result = await runManualCDRSync();
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("[CDR Sync] Manual run error:", error);
-      res.status(500).json({ message: error.message || "Sync failed" });
-    }
-  });
 
 
   // ============================================
