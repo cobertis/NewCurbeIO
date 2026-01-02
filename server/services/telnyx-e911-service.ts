@@ -1763,3 +1763,93 @@ export async function getPhoneNumbersWithE911Status(companyId: string) {
   
   return numbers;
 }
+
+// Sync E911 status from Telnyx for a specific phone number
+export async function syncE911StatusFromTelnyx(
+  companyId: string,
+  phoneNumberId: string
+): Promise<{ success: boolean; e911Enabled: boolean; error?: string }> {
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      return { success: false, e911Enabled: false, error: "No managed account config found" };
+    }
+
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "GET",
+      headers: buildHeaders(config),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[E911 Sync] Failed to get phone number: ${response.status} - ${errorText}`);
+      return { success: false, e911Enabled: false, error: `Failed to get phone number: ${response.status}` };
+    }
+
+    const result = await response.json();
+    const emergencyEnabled = result.data?.emergency?.emergency_enabled === true;
+    const emergencyAddressId = result.data?.emergency?.emergency_address_id || null;
+
+    // Update the database with the Telnyx E911 status
+    await db
+      .update(telnyxPhoneNumbers)
+      .set({
+        e911Enabled: emergencyEnabled,
+        e911AddressId: emergencyAddressId,
+      })
+      .where(eq(telnyxPhoneNumbers.id, phoneNumberId));
+
+    console.log(`[E911 Sync] Updated ${phoneNumberId}: e911Enabled=${emergencyEnabled}, addressId=${emergencyAddressId}`);
+    return { success: true, e911Enabled: emergencyEnabled };
+  } catch (error) {
+    console.error("[E911 Sync] Error syncing E911 status:", error);
+    return { 
+      success: false, 
+      e911Enabled: false, 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    };
+  }
+}
+
+// Sync E911 status for all phone numbers of a company
+export async function syncAllE911StatusForCompany(companyId: string): Promise<{ synced: number; errors: number }> {
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      console.error("[E911 Sync] No managed account config for company:", companyId);
+      return { synced: 0, errors: 0 };
+    }
+
+    // Get all phone numbers for this company
+    const phoneNumbers = await db
+      .select({ 
+        id: telnyxPhoneNumbers.id, 
+        phoneNumber: telnyxPhoneNumbers.phoneNumber,
+        telnyxNumberId: telnyxPhoneNumbers.telnyxNumberId,
+      })
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId));
+
+    let synced = 0;
+    let errors = 0;
+
+    for (const num of phoneNumbers) {
+      const numberId = num.telnyxNumberId || num.id;
+      const result = await syncE911StatusFromTelnyx(companyId, numberId);
+      if (result.success) {
+        synced++;
+      } else {
+        errors++;
+        console.error(`[E911 Sync] Failed to sync ${num.phoneNumber}: ${result.error}`);
+      }
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    console.log(`[E911 Sync] Completed for company ${companyId}: synced=${synced}, errors=${errors}`);
+    return { synced, errors };
+  } catch (error) {
+    console.error("[E911 Sync] Error syncing all E911 status:", error);
+    return { synced: 0, errors: 0 };
+  }
+}

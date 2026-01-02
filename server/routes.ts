@@ -32867,6 +32867,10 @@ CRITICAL REMINDERS:
       });
       const companyName = company?.name || null;
 
+      // Sync E911 status from Telnyx (background sync)
+      const { syncAllE911StatusForCompany } = await import("./services/telnyx-e911-service");
+      await syncAllE911StatusForCompany(companyId);
+
       // Get all phone numbers for the company (simple query without join)
       const phoneNumbersRaw = await db
         .select()
