@@ -84,7 +84,7 @@ async function getPhoneNumberDetails(
     }
 
     const result = await response.json();
-    console.log(`[E911 Sync] Telnyx response for ${telnyxPhoneNumberId}:`, JSON.stringify(result.data?.emergency || result.data, null, 2));
+    console.log(`[E911] Phone number details for ${phoneNumberId}:`, result.data?.phone_number);
     return {
       success: true,
       phoneNumber: result.data?.phone_number,
