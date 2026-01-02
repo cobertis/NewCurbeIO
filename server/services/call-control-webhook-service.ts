@@ -40,6 +40,7 @@ interface PendingBridge {
   queueId?: string;
   isDirectCall?: boolean; // true when it's a direct call to assigned user (not queue)
   isOutboundPstn?: boolean; // true when this is an outbound PSTN call from WebRTC
+  isCallForwarding?: boolean; // true when this is a call forwarding leg - enables dual-leg billing
   destinationNumber?: string; // The destination number for outbound calls
 }
 const pendingBridges = new Map<string, PendingBridge>();
@@ -625,6 +626,25 @@ export class CallControlWebhookService {
       callerNumber: from // Store original caller number
     });
     console.log(`[CallControl] Stored call context: companyId=${phoneNumber.companyId}, managedAccountId=${managedAccountId}, callerNumber=${from}`);
+
+    // CHECK FOR CALL FORWARDING - This takes priority over IVR and all other routing
+    if (phoneNumber.callForwardingEnabled && phoneNumber.callForwardingDestination) {
+      console.log(`[CallControl] Call forwarding ACTIVE for ${to} → ${phoneNumber.callForwardingDestination}`);
+      
+      // Answer the call first (starts billing for inbound leg)
+      await this.answerCall(call_control_id);
+      
+      // Track call as transferring (forwarding uses transferring state)
+      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "transferring");
+      
+      // Use transfer API to forward the call
+      // This will dial the destination and bridge when answered
+      const callerId = phoneNumber.callForwardingKeepCallerId !== false ? from : to;
+      await this.transferCallToNumber(call_control_id, phoneNumber.callForwardingDestination, callerId, phoneNumber.companyId, managedAccountId);
+      
+      // Dual-leg billing will be handled when the forwarded call completes
+      return;
+    }
 
     // Check if phone number has IVR explicitly disabled ("unassigned")
     // In this case, transfer directly to the assigned user WITHOUT answering first
@@ -1647,6 +1667,106 @@ export class CallControlWebhookService {
     });
 
     console.log(`[CallControl] Waiting for PSTN ${destinationNumber} to answer, will bridge with WebRTC leg ${webrtcCallControlId}`);
+  }
+
+  /**
+   * Transfer/forward a call to an external number
+   * Used for call forwarding feature - dials destination and bridges with original caller
+   * Implements dual-leg billing: inbound leg + outbound leg charges
+   */
+  private async transferCallToNumber(
+    inboundCallControlId: string,
+    destinationNumber: string,
+    callerIdNumber: string,
+    companyId: string,
+    managedAccountId: string | null
+  ): Promise<void> {
+    console.log(`[CallControl] Forwarding call ${inboundCallControlId} to ${destinationNumber}`);
+
+    const apiKey = await getTelnyxApiKey();
+
+    // Get Call Control App ID for the outbound leg
+    const [settings] = await db
+      .select({ 
+        callControlAppId: telephonySettings.callControlAppId
+      })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    const connectionId = settings?.callControlAppId;
+
+    if (!connectionId) {
+      console.error(`[CallControl] No Call Control App ID found for company ${companyId}, cannot forward`);
+      // Play an error message and hang up
+      await this.speakText(inboundCallControlId, "We're sorry, call forwarding is not available at this time. Please try again later.");
+      await this.hangupCall(inboundCallControlId, "NORMAL_CLEARING");
+      return;
+    }
+
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (managedAccountId) {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+
+    // Create outbound call to the forwarding destination
+    const requestBody: Record<string, any> = {
+      connection_id: connectionId,
+      to: destinationNumber,
+      from: callerIdNumber,
+      timeout_secs: 60, // 60 second timeout for forwarding
+      answering_machine_detection: "disabled",
+    };
+
+    console.log(`[CallControl] Creating forwarding call to: ${destinationNumber} from: ${callerIdNumber}`);
+
+    const response = await fetch("https://api.telnyx.com/v2/calls", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[CallControl] Failed to dial forwarding destination: ${response.status} - ${errorText}`);
+      await this.speakText(inboundCallControlId, "We're sorry, we could not complete your call. Please try again later.");
+      await this.hangupCall(inboundCallControlId, "NORMAL_CLEARING");
+      return;
+    }
+
+    const data = await response.json();
+    const forwardCallControlId = data.data?.call_control_id;
+
+    if (!forwardCallControlId) {
+      console.error(`[CallControl] No call_control_id returned from forwarding dial`);
+      await this.hangupCall(inboundCallControlId, "NORMAL_CLEARING");
+      return;
+    }
+
+    console.log(`[CallControl] Created forwarding call: ${forwardCallControlId} to ${destinationNumber}`);
+
+    // Store context for the forwarded leg
+    callContextMap.set(forwardCallControlId, { 
+      companyId, 
+      managedAccountId,
+      callerNumber: callerIdNumber
+    });
+    
+    // Store pending bridge info - will bridge when forwarding destination answers
+    // Mark as forwarded call for dual-leg billing
+    pendingBridges.set(forwardCallControlId, {
+      callerCallControlId: inboundCallControlId,
+      clientState: "",
+      companyId,
+      isOutboundPstn: false, // Not outbound from user, it's forwarding
+      isCallForwarding: true, // Flag for dual-leg billing
+      destinationNumber,
+    });
+
+    console.log(`[CallControl] Waiting for forwarding destination ${destinationNumber} to answer, will bridge with caller ${inboundCallControlId}`);
   }
 
   /**

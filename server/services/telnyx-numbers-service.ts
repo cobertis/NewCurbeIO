@@ -1175,6 +1175,20 @@ export async function updateCallForwarding(
       console.log(`[Call Forwarding] Created local record and saved settings. Number: ${phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     }
     
+    // CRITICAL: When enabling call forwarding, reassign number to Call Control App
+    // This ensures inbound calls pass through Call Control webhook where forwarding is handled
+    if (enabled) {
+      console.log(`[Call Forwarding] Reassigning number to Call Control App for webhook routing...`);
+      const reassignResult = await reassignNumberToCallControlApp(phoneNumberId, companyId);
+      if (!reassignResult.success) {
+        console.error(`[Call Forwarding] Failed to reassign number to Call Control: ${reassignResult.error}`);
+        // Don't fail the whole operation, but log warning - forwarding may not work
+        console.warn(`[Call Forwarding] WARNING: Number may not be properly configured for forwarding`);
+      } else {
+        console.log(`[Call Forwarding] Number successfully reassigned to Call Control App`);
+      }
+    }
+    
     return { success: true };
   } catch (error) {
     console.error("[Call Forwarding] Update error:", error);
@@ -2226,5 +2240,72 @@ export async function releasePhoneNumber(
       success: false,
       error: error instanceof Error ? error.message : "Failed to release phone number",
     };
+  }
+}
+
+/**
+ * Reassign a phone number to use Call Control Application for webhook routing
+ * This enables call forwarding, IVR, and other webhook-based features
+ * Numbers must go through Call Control App for TeXML webhooks to work
+ */
+export async function reassignNumberToCallControlApp(
+  telnyxPhoneNumberId: string,
+  companyId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    // Get company's telephony settings to find Call Control App ID
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    
+    if (!settings?.callControlAppId) {
+      return { success: false, error: "Company has no Call Control Application configured" };
+    }
+    
+    // Get wallet for managed account ID
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company wallet or Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
+    };
+    
+    // CRITICAL: Assign number to Call Control App using connection_id
+    // In Telnyx API, Call Control Apps ARE connections
+    console.log(`[Telnyx Numbers] Reassigning ${telnyxPhoneNumberId} to Call Control App ${settings.callControlAppId}`);
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${telnyxPhoneNumberId}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({
+        connection_id: settings.callControlAppId, // Call Control App is a type of connection
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Numbers] Reassign error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to reassign number: ${response.status} - ${errorText}` };
+    }
+    
+    const result = await response.json();
+    console.log(`[Telnyx Numbers] Successfully reassigned to Call Control App. connection_id: ${result.data?.connection_id}`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("[Telnyx Numbers] Reassign error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to reassign phone number" };
   }
 }
