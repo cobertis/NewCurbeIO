@@ -48,40 +48,9 @@ const entityTypeLabels: Record<string, string> = {
   "GOVERNMENT": "Government",
 };
 
-const verticalLabels: Record<string, string> = {
-  "PROFESSIONAL": "Professional Services",
-  "REAL_ESTATE": "Real Estate",
-  "HEALTHCARE": "Healthcare",
-  "HUMAN_RESOURCES": "Human Resources",
-  "ENERGY": "Energy",
-  "ENTERTAINMENT": "Entertainment",
-  "RETAIL": "Retail",
-  "TRANSPORTATION": "Transportation",
-  "AGRICULTURE": "Agriculture",
-  "INSURANCE": "Insurance",
-  "POSTAL": "Postal",
-  "EDUCATION": "Education",
-  "HOSPITALITY": "Hospitality",
-  "FINANCIAL": "Financial",
-  "POLITICAL": "Political",
-  "GAMBLING": "Gambling",
-  "LEGAL": "Legal",
-  "CONSTRUCTION": "Construction",
-  "NGO": "NGO",
-  "MANUFACTURING": "Manufacturing",
-  "GOVERNMENT": "Government",
-  "TECHNOLOGY": "Technology",
-  "COMMUNICATION": "Communication",
-};
-
 function formatEntityType(value: string | undefined | null): string {
   if (!value) return '-';
   return entityTypeLabels[value] || value;
-}
-
-function formatVertical(value: string | undefined | null): string {
-  if (!value) return '-';
-  return verticalLabels[value] || value;
 }
 
 function USFlagIcon({ className }: { className?: string }) {
@@ -523,14 +492,6 @@ export default function SmsVoiceTollFree() {
                                 {verification.website_url}
                               </a>
                             ) : '-'}
-                          </td>
-                        </tr>
-                        <tr className="border-b border-slate-200 dark:border-slate-700">
-                          <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
-                            Vertical type
-                          </td>
-                          <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                            {formatVertical(verification.business_vertical)}
                           </td>
                         </tr>
                         <tr className="border-b border-slate-200 dark:border-slate-700">
