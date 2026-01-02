@@ -2650,8 +2650,40 @@ export function WebPhoneFloatingWindow() {
   // This prevents React Fiber references that cause "circular structure to JSON" errors
   // See ensureTelnyxAudioElements() in telnyx-webrtc.ts
   
+  // When window is hidden but call is active, show mini floating indicator
   if (!isVisible) {
-    // No need to render audio elements - they are programmatically created
+    // Check if there's an active call
+    const hasActiveCall = effectiveCall && (effectiveCall.status === 'answered' || effectiveCall.status === 'ringing');
+    
+    if (hasActiveCall) {
+      // Show mini floating call indicator
+      return (
+        <div
+          className="fixed bottom-20 right-4 z-50 animate-pulse cursor-pointer"
+          onClick={toggleDialpad}
+          data-testid="mini-call-indicator"
+        >
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-3 rounded-full shadow-lg border-2",
+            effectiveCall.status === 'answered' 
+              ? "bg-green-500 border-green-600 text-white" 
+              : "bg-yellow-500 border-yellow-600 text-white"
+          )}>
+            <Phone className="h-5 w-5" />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">
+                {effectiveCall.status === 'answered' ? 'Active Call' : 'Incoming Call'}
+              </span>
+              <span className="text-xs opacity-90">
+                {formatDuration(effectiveCallDuration)}
+              </span>
+            </div>
+            <ChevronLeft className="h-4 w-4 ml-1" />
+          </div>
+        </div>
+      );
+    }
+    
     return null;
   }
   
