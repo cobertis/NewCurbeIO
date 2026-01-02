@@ -207,9 +207,39 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     
     console.log(`[Telnyx Numbers] Found ${result.data?.length || 0} numbers (${exactCount} exact, ${bestEffortCount} best_effort) on page ${meta.page_number || pageNumber}`);
 
+    // Filter out toll-free numbers with Telnyx cost > $1 (premium/vanity numbers)
+    const TOLL_FREE_PREFIXES = ["+1800", "+1833", "+1844", "+1855", "+1866", "+1877", "+1888"];
+    const MAX_TOLL_FREE_TELNYX_COST = 1.00;
+    
+    let filteredNumbers = result.data || [];
+    const originalCount = filteredNumbers.length;
+    
+    filteredNumbers = filteredNumbers.filter((num: any) => {
+      const phoneNumber = num.phone_number || "";
+      const isTollFree = TOLL_FREE_PREFIXES.some(prefix => phoneNumber.startsWith(prefix));
+      
+      if (!isTollFree) return true; // Keep all non-toll-free numbers
+      
+      // Check Telnyx cost for toll-free numbers
+      const monthlyRecurring = parseFloat(num.cost_information?.monthly_cost || num.monthly_recurring_cost || "0");
+      const upfrontCost = parseFloat(num.cost_information?.upfront_cost || "0");
+      const telnyxCost = monthlyRecurring + upfrontCost;
+      
+      if (telnyxCost > MAX_TOLL_FREE_TELNYX_COST) {
+        console.log(`[Telnyx Numbers] Filtering out premium toll-free ${phoneNumber} (Telnyx cost: $${telnyxCost.toFixed(2)})`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    if (originalCount !== filteredNumbers.length) {
+      console.log(`[Telnyx Numbers] Filtered ${originalCount - filteredNumbers.length} premium toll-free numbers (cost > $${MAX_TOLL_FREE_TELNYX_COST})`);
+    }
+
     return {
       success: true,
-      numbers: result.data || [],
+      numbers: filteredNumbers,
       totalCount: meta.total_results,
       currentPage: meta.page_number || pageNumber,
       totalPages: meta.total_pages || 1,
