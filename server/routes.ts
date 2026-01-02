@@ -32910,6 +32910,10 @@ CRITICAL REMINDERS:
           ownerLastName,
           cnam: num.cnam,
           e911Enabled: num.e911Enabled,
+          telnyxPhoneNumberId: num.telnyxPhoneNumberId,
+          callForwardingEnabled: num.callForwardingEnabled,
+          callForwardingDestination: num.callForwardingDestination,
+          callForwardingKeepCallerId: num.callForwardingKeepCallerId,
         };
       }));
       
@@ -32950,6 +32954,10 @@ CRITICAL REMINDERS:
           : num.ownerFirstName || num.ownerLastName || companyName,
         cnam: num.cnam,
         e911Enabled: num.e911Enabled,
+          telnyxPhoneNumberId: num.telnyxPhoneNumberId,
+          callForwardingEnabled: num.callForwardingEnabled,
+          callForwardingDestination: num.callForwardingDestination,
+          callForwardingKeepCallerId: num.callForwardingKeepCallerId,
         complianceStatus: complianceMap.get(num.phoneNumber)?.status || null,
         complianceApplicationId: complianceMap.get(num.phoneNumber)?.id || null,
         telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,

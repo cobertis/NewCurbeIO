@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { E911ConfigDialog } from "@/components/E911ConfigDialog";
+import { CallForwardingDialog } from "@/components/CallForwardingDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -74,6 +75,7 @@ export default function SmsVoiceNumbers() {
   const [showBuyDialog, setShowBuyDialog] = useState(false);
   const [releaseNumber, setReleaseNumber] = useState<SmsVoiceNumber | null>(null);
   const [e911ConfigNumber, setE911ConfigNumber] = useState<SmsVoiceNumber | null>(null);
+  const [callForwardingNumber, setCallForwardingNumber] = useState<SmsVoiceNumber | null>(null);
   const { toast } = useToast();
 
   const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: SmsVoiceNumber[] }>({
@@ -361,7 +363,10 @@ export default function SmsVoiceNumbers() {
                               <Edit className="h-4 w-4 mr-2" />
                               Edit label
                             </DropdownMenuItem>
-                            <DropdownMenuItem data-testid={`menu-forward-calls-${number.id}`}>
+                            <DropdownMenuItem 
+                              onClick={() => setCallForwardingNumber(number)}
+                              data-testid={`menu-forward-calls-${number.id}`}
+                            >
                               <PhoneForwarded className="h-4 w-4 mr-2" />
                               Forward calls
                             </DropdownMenuItem>
@@ -573,6 +578,23 @@ export default function SmsVoiceNumbers() {
           onSuccess={() => {
             refetch();
             setE911ConfigNumber(null);
+          }}
+        />
+
+        <CallForwardingDialog
+          open={!!callForwardingNumber}
+          onOpenChange={(open) => !open && setCallForwardingNumber(null)}
+          phoneNumber={callForwardingNumber?.phoneNumber || ""}
+          phoneNumberId={callForwardingNumber?.id || ""}
+          telnyxPhoneNumberId={callForwardingNumber?.telnyxPhoneNumberId || ""}
+          currentSettings={{
+            enabled: callForwardingNumber?.callForwardingEnabled || false,
+            destination: callForwardingNumber?.callForwardingDestination || null,
+            keepCallerId: callForwardingNumber?.callForwardingKeepCallerId !== false,
+          }}
+          onSuccess={() => {
+            refetch();
+            setCallForwardingNumber(null);
           }}
         />
       </div>

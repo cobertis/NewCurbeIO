@@ -45,6 +45,10 @@ export interface SmsVoiceNumber {
   complianceApplicationId: string | null;
   telnyxVerificationRequestId: string | null;
   e911Enabled: boolean | null;
+  telnyxPhoneNumberId?: string | null;
+  callForwardingEnabled?: boolean;
+  callForwardingDestination?: string | null;
+  callForwardingKeepCallerId?: boolean;
 }
 
 export interface TelnyxVerificationRequest {
