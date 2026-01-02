@@ -1426,19 +1426,42 @@ export default function Billing() {
                                 const billedMatch = desc.match(/→\s*(\d+)\s*m(?:in)?/);
                                 const rateMatch = desc.match(/@\s*\$?([\d.]+)\/min/);
                                 
+                                // Extract values first
+                                const destination = phoneMatch ? phoneMatch[1] : '-';
+                                const actualSeconds = durationMatch ? parseInt(durationMatch[1]) : 0;
+                                const billedMinutes = billedMatch ? parseInt(billedMatch[1]) : 0;
+                                
                                 // Extract rate type from brackets [Local Outbound], [Toll-Free Inbound], etc.
                                 const rateTypeMatch = desc.match(/\[(.*?)\]/);
                                 const rateType = rateTypeMatch ? rateTypeMatch[1] : '';
                                 
-                                // Determine direction and number type from rateType
-                                const isOutbound = rateType.toLowerCase().includes('outbound');
-                                const isInbound = rateType.toLowerCase().includes('inbound');
-                                const isTollFree = rateType.toLowerCase().includes('toll-free') || rateType.toLowerCase().includes('toll_free');
-                                const isLocal = rateType.toLowerCase().includes('local');
+                                // Determine direction from rateType or description
+                                let isOutbound = rateType.toLowerCase().includes('outbound');
+                                let isInbound = rateType.toLowerCase().includes('inbound');
                                 
-                                const destination = phoneMatch ? phoneMatch[1] : '-';
-                                const actualSeconds = durationMatch ? parseInt(durationMatch[1]) : 0;
-                                const billedMinutes = billedMatch ? parseInt(billedMatch[1]) : 0;
+                                // Fallback: detect direction from description text
+                                if (!isOutbound && !isInbound) {
+                                  if (desc.toLowerCase().includes('call to') || desc.toLowerCase().includes('outbound')) {
+                                    isOutbound = true;
+                                  } else if (desc.toLowerCase().includes('call from') || desc.toLowerCase().includes('inbound')) {
+                                    isInbound = true;
+                                  } else {
+                                    // Default to outbound for "Call to +number" pattern
+                                    isOutbound = phoneMatch !== null;
+                                  }
+                                }
+                                
+                                // Determine number type from rateType or destination number
+                                let isTollFree = rateType.toLowerCase().includes('toll-free') || rateType.toLowerCase().includes('toll_free');
+                                let isLocal = rateType.toLowerCase().includes('local');
+                                
+                                // Fallback: detect toll-free from phone number prefix
+                                if (!isTollFree && !isLocal && destination !== '-') {
+                                  const cleanNum = destination.replace(/\D/g, '');
+                                  const tollFreePrefixes = ['1800', '1888', '1877', '1866', '1855', '1844', '1833', '800', '888', '877', '866', '855', '844', '833'];
+                                  isTollFree = tollFreePrefixes.some(prefix => cleanNum.startsWith(prefix));
+                                  isLocal = !isTollFree;
+                                }
                                 const rate = rateMatch ? rateMatch[1] : '-';
                                 
                                 // Format duration display
