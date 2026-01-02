@@ -1034,8 +1034,7 @@ export async function updateSpamProtection(
 
 /**
  * Update call forwarding settings for a phone number
- * Stores settings locally - TeXML webhook handles the actual forwarding via <Dial>.
- * IMPORTANT: Do NOT modify Telnyx Voice Settings API as it breaks TeXML webhook routing.
+ * Updates both Telnyx API and local database.
  * BILLING: Forwarded calls incur BOTH the inbound call cost AND an outbound call cost.
  */
 export async function updateCallForwarding(
@@ -1062,10 +1061,52 @@ export async function updateCallForwarding(
       normalizedDest = cleanNumber.startsWith("1") ? `+${cleanNumber}` : `+1${cleanNumber}`;
     }
     
-    // NOTE: We intentionally do NOT call Telnyx Voice Settings API here.
-    // Setting call_forwarding via Telnyx API breaks our TeXML webhook routing.
-    // Instead, we store settings locally and the TeXML webhook at /webhooks/telnyx/voice/:companyId
-    // checks these settings and generates <Dial> to forward calls when enabled.
+    // Get Telnyx API key and wallet info
+    const apiKey = await getTelnyxMasterApiKey();
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company wallet or Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
+    };
+    
+    // Update call forwarding in Telnyx API
+    const telnyxPayload: any = {
+      call_forwarding: {
+        call_forwarding_enabled: enabled,
+        forwarding_type: "always",
+      }
+    };
+    
+    if (enabled && normalizedDest) {
+      telnyxPayload.call_forwarding.forwards_to = normalizedDest;
+    }
+    
+    console.log(`[Call Forwarding] Updating Telnyx API for ${phoneNumberId}:`, JSON.stringify(telnyxPayload));
+    
+    const telnyxResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(telnyxPayload),
+    });
+    
+    if (!telnyxResponse.ok) {
+      const errorText = await telnyxResponse.text();
+      console.error(`[Call Forwarding] Telnyx API error: ${telnyxResponse.status} - ${errorText}`);
+      return { success: false, error: `Telnyx API error: ${telnyxResponse.status}` };
+    }
+    
+    const telnyxResult = await telnyxResponse.json();
+    console.log(`[Call Forwarding] Telnyx API response:`, JSON.stringify(telnyxResult.data?.call_forwarding || {}));
     
     // Check if record exists in local database
     const [existing] = await db
@@ -1093,25 +1134,13 @@ export async function updateCallForwarding(
       console.log(`[Call Forwarding] Settings updated. Number: ${existing.phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     } else {
       // Need to fetch phone number details from Telnyx to create local record
-      const apiKey = await getTelnyxMasterApiKey();
-      const [wallet] = await db
-        .select()
-        .from(wallets)
-        .where(eq(wallets.companyId, companyId));
-      
-      if (!wallet?.telnyxAccountId) {
-        return { success: false, error: "Company wallet or Telnyx account not found" };
-      }
-      
-      const headers: Record<string, string> = {
-        "Authorization": `Bearer ${apiKey}`,
-        "Accept": "application/json",
-        ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
-      };
+      // Reuse existing headers (remove Content-Type for GET)
+      const getHeaders = { ...headers };
+      delete (getHeaders as any)["Content-Type"];
       
       const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
         method: "GET",
-        headers,
+        headers: getHeaders,
       });
       
       if (!response.ok) {
