@@ -44,6 +44,7 @@ export interface SmsVoiceNumber {
   complianceStatus: string | null;
   complianceApplicationId: string | null;
   telnyxVerificationRequestId: string | null;
+  e911Enabled: boolean | null;
 }
 
 export interface TelnyxVerificationRequest {

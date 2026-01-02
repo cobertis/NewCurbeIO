@@ -32905,6 +32905,7 @@ CRITICAL REMINDERS:
           ownerFirstName,
           ownerLastName,
           cnam: num.cnam,
+          e911Enabled: num.e911Enabled,
         };
       }));
       

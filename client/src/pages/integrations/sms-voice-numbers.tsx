@@ -30,7 +30,9 @@ import {
   Trash2,
   Edit,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import { format, addMonths } from "date-fns";
 import { formatPhoneNumber, type SmsVoiceNumber } from "@/pages/sms-voice";
@@ -229,6 +231,7 @@ export default function SmsVoiceNumbers() {
                   <TableRow className="border-slate-200 dark:border-slate-800">
                     <TableHead className="text-xs font-medium text-slate-500">Number</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">CNAM</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">E911</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Label</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Price / month</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Next renewal</TableHead>
@@ -276,6 +279,27 @@ export default function SmsVoiceNumbers() {
                           >
                             Add
                           </button>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {number.e911Enabled ? (
+                          <Link 
+                            href="/settings/compliance"
+                            className="flex items-center gap-1 text-green-600 hover:text-green-700 dark:text-green-500 dark:hover:text-green-400"
+                            data-testid={`link-e911-enabled-${number.id}`}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="text-sm">Enabled</span>
+                          </Link>
+                        ) : (
+                          <Link 
+                            href="/settings/compliance"
+                            className="flex items-center gap-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-400"
+                            data-testid={`link-e911-disabled-${number.id}`}
+                          >
+                            <XCircle className="h-4 w-4" />
+                            <span className="text-sm">Not Set</span>
+                          </Link>
                         )}
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
