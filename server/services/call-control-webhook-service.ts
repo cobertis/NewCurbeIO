@@ -2529,13 +2529,19 @@ export class CallControlWebhookService {
       .from(telnyxPhoneNumbers)
       .where(eq(telnyxPhoneNumbers.phoneNumber, phoneNumber));
 
-    if (result) return result;
+    if (result) {
+      console.log(`[CallControl] findPhoneNumberByE164 found: ${phoneNumber}, callForwardingEnabled=${result.callForwardingEnabled}, destination=${result.callForwardingDestination}`);
+      return result;
+    }
 
     const [resultWithPlus] = await db
       .select()
       .from(telnyxPhoneNumbers)
       .where(eq(telnyxPhoneNumbers.phoneNumber, `+${cleanNumber}`));
 
+    if (resultWithPlus) {
+      console.log(`[CallControl] findPhoneNumberByE164 found (with +): +${cleanNumber}, callForwardingEnabled=${resultWithPlus.callForwardingEnabled}, destination=${resultWithPlus.callForwardingDestination}`);
+    }
     return resultWithPlus || null;
   }
 
