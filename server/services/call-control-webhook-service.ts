@@ -632,28 +632,25 @@ export class CallControlWebhookService {
     if (phoneNumber.callForwardingEnabled && phoneNumber.callForwardingDestination) {
       console.log(`[CallControl] Call forwarding ACTIVE for ${to} → ${phoneNumber.callForwardingDestination}`);
       
-      // IMPORTANT: Do NOT answer the inbound call yet!
-      // We dial the destination first, and only answer+bridge when the destination answers
-      // This ensures billing only starts when the forwarding destination picks up
+      // Answer the inbound call first (required before transfer)
+      await this.answerCall(call_control_id);
       
-      // Track call as ringing (not transferring yet - we haven't answered)
-      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ringing");
+      // Track call as transferring
+      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "transferring");
       
-      // Dial the forwarding destination
-      // Use our verified DID as caller ID (required by Telnyx)
-      const callerId = to;
-      console.log(`[CallControl] Dialing forwarding destination ${phoneNumber.callForwardingDestination} (inbound NOT answered yet)`);
+      // Use Call Control TRANSFER action - this preserves the original caller ID
+      // Unlike dial, transfer works on the existing call and passes through caller ID
+      const originalCallerId = phoneNumber.callForwardingKeepCallerId !== false ? from : to;
+      console.log(`[CallControl] Transferring call to ${phoneNumber.callForwardingDestination} with caller ID: ${originalCallerId}`);
       
-      await this.dialForwardingDestination(
+      await this.transferCallWithCallerId(
         call_control_id, 
         phoneNumber.callForwardingDestination, 
-        callerId, 
-        from, // Store original caller for reference
-        phoneNumber.companyId, 
+        originalCallerId,
+        phoneNumber.companyId,
         managedAccountId
       );
       
-      // When destination answers, handleCallAnswered will answer the inbound and bridge
       return;
     }
 
@@ -1811,6 +1808,61 @@ export class CallControlWebhookService {
     });
 
     console.log(`[CallControl] Waiting for forwarding destination ${destinationNumber} to answer, will bridge with caller ${inboundCallControlId}`);
+  }
+
+  /**
+   * Transfer a call using the Call Control transfer action
+   * This preserves the original caller ID (unlike dial which requires verification)
+   */
+  private async transferCallWithCallerId(
+    callControlId: string,
+    destinationNumber: string,
+    callerId: string,
+    companyId: string,
+    managedAccountId: string | null
+  ): Promise<void> {
+    console.log(`[CallControl] Executing transfer to ${destinationNumber} with caller ID ${callerId}`);
+
+    const apiKey = await getTelnyxApiKey();
+
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (managedAccountId) {
+      headers["x-managed-account-id"] = managedAccountId;
+      console.log(`[CallControl] API call with managed account: ${managedAccountId}`);
+    }
+
+    // Use the transfer action - this allows passing through the original caller ID
+    const transferPayload = {
+      to: destinationNumber,
+      from: callerId, // Original caller ID - transfer action allows this
+      timeout_secs: 60,
+    };
+
+    const response = await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/transfer`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(transferPayload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[CallControl] Transfer failed: ${response.status} - ${errorText}`);
+      
+      // If transfer fails, play error message and hang up
+      await this.speakText(callControlId, "We're sorry, we could not complete your call. Please try again later.");
+      await this.hangupCall(callControlId, "NORMAL_CLEARING");
+      return;
+    }
+
+    const result = await response.json();
+    console.log(`[CallControl] Transfer initiated successfully:`, result);
+    
+    // The transfer action handles everything - no need to track pending bridges
+    // The call will be connected when destination answers, or hangup webhook if fails
   }
 
   /**
