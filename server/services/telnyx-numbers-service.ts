@@ -1082,25 +1082,27 @@ export async function updateCallForwarding(
       ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
-    // Get credential_connection_id from telephony_settings - needed for native call forwarding
+    // CALL CONTROL APPROACH: Number must be on Call Control App
+    // Forwarding is handled programmatically via webhook (answer + transfer)
+    // This enables dual-leg billing (Telnyx charges both inbound and outbound legs)
+    
+    // Get Call Control App ID from telephony settings
     const [telSettings] = await db
       .select({ 
-        credentialConnectionId: telephonySettings.credentialConnectionId,
         callControlAppId: telephonySettings.callControlAppId
       })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
     
-    if (!telSettings?.credentialConnectionId) {
-      return { success: false, error: "Telephony settings not configured for this company" };
+    if (!telSettings?.callControlAppId) {
+      return { success: false, error: "Call Control App not configured for this company" };
     }
     
-    // STEP 1: Reassign number to credential_connection (allows native call forwarding)
-    // Call forwarding only works on credential_connection, NOT on call_control_app
-    console.log(`[Call Forwarding] Reassigning number ${phoneNumberId} to credential_connection ${telSettings.credentialConnectionId}`);
+    // STEP 1: Ensure number is assigned to Call Control App (required for webhook forwarding)
+    console.log(`[Call Forwarding] Reassigning number ${phoneNumberId} to Call Control App ${telSettings.callControlAppId}`);
     
     const reassignPayload = {
-      connection_id: telSettings.credentialConnectionId,
+      connection_id: telSettings.callControlAppId,
     };
     
     const reassignResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
@@ -1111,40 +1113,29 @@ export async function updateCallForwarding(
     
     if (!reassignResponse.ok) {
       const errorText = await reassignResponse.text();
-      console.error(`[Call Forwarding] Failed to reassign number: ${reassignResponse.status} - ${errorText}`);
-      return { success: false, error: `Failed to reassign number: ${reassignResponse.status}` };
+      console.error(`[Call Forwarding] Failed to reassign to Call Control: ${reassignResponse.status} - ${errorText}`);
+      return { success: false, error: `Failed to configure number for call forwarding: ${reassignResponse.status}` };
     }
     
-    console.log(`[Call Forwarding] Number reassigned to credential_connection successfully`);
+    console.log(`[Call Forwarding] Number reassigned to Call Control App successfully`);
     
-    // STEP 2: Update call forwarding in Telnyx Voice Settings API
-    const voiceSettingsPayload = {
+    // STEP 2: Disable any native Telnyx call forwarding (not compatible with Call Control)
+    const disableNativeForwarding = {
       call_forwarding: {
-        call_forwarding_enabled: enabled,
-        forwards_to: enabled && normalizedDest ? normalizedDest : "",
+        call_forwarding_enabled: false,
+        forwards_to: "",
         forwarding_type: "always",
       },
     };
     
-    console.log(`[Call Forwarding] Setting Telnyx call_forwarding: enabled=${enabled}, forwards_to=${normalizedDest || ""}`);
-    
-    const voiceResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+    await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
       method: "PATCH",
       headers,
-      body: JSON.stringify(voiceSettingsPayload),
+      body: JSON.stringify(disableNativeForwarding),
     });
     
-    if (!voiceResponse.ok) {
-      const errorText = await voiceResponse.text();
-      console.error(`[Call Forwarding] Failed to update Telnyx forwarding: ${voiceResponse.status} - ${errorText}`);
-      return { success: false, error: `Failed to update call forwarding: ${voiceResponse.status}` };
-    }
-    
-    const voiceData = await voiceResponse.json();
-    console.log(`[Call Forwarding] Telnyx call_forwarding updated:`, JSON.stringify(voiceData.data?.call_forwarding || {}));
-    
-    // Also save to local DB for reference
-    console.log(`[Call Forwarding] Saving to local DB: enabled=${enabled}, destination=${normalizedDest}`);
+    console.log(`[Call Forwarding] Native Telnyx forwarding disabled (using Call Control instead)`);
+    console.log(`[Call Forwarding] Saving config to DB: enabled=${enabled}, destination=${normalizedDest}`);
     
     // Check if record exists in local database
     const [existing] = await db
@@ -1210,9 +1201,8 @@ export async function updateCallForwarding(
       console.log(`[Call Forwarding] Created local record and saved settings. Number: ${phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     }
     
-    // NOTE: Native call forwarding requires credential_connection, NOT Call Control App
-    // The number stays on credential_connection when forwarding is enabled
-    // This means NO dual-leg billing (Telnyx handles forwarding directly)
+    // Call Control webhook will check this config and use answer() + transfer() for forwarding
+    // This approach enables dual-leg billing (inbound + outbound charged separately)
     
     return { success: true };
   } catch (error) {
