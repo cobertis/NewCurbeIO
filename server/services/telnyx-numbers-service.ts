@@ -1079,7 +1079,8 @@ export async function updateCallForwarding(
       ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
-    // Update call forwarding in Telnyx API
+    // Update call forwarding in Telnyx Voice Settings API
+    // Using PATCH /phone_numbers/{id}/voice endpoint (not /phone_numbers/{id})
     const telnyxPayload: any = {
       call_forwarding: {
         call_forwarding_enabled: enabled,
@@ -1091,9 +1092,9 @@ export async function updateCallForwarding(
       telnyxPayload.call_forwarding.forwards_to = normalizedDest;
     }
     
-    console.log(`[Call Forwarding] Updating Telnyx API for ${phoneNumberId}:`, JSON.stringify(telnyxPayload));
+    console.log(`[Call Forwarding] Updating Telnyx Voice Settings for ${phoneNumberId}:`, JSON.stringify(telnyxPayload));
     
-    const telnyxResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+    const telnyxResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
       method: "PATCH",
       headers,
       body: JSON.stringify(telnyxPayload),
