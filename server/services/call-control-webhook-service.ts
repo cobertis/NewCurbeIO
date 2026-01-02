@@ -62,7 +62,7 @@ interface ForwardingBillingData {
   originalCallerNumber: string; // The customer who called
   forwardedToNumber: string; // The destination number
   ourNumber: string; // Our DID that received the call
-  bridgedAt: Date; // When the bridge was established (billing starts here)
+  bridgedAt: Date | null; // When the bridge was established (billing starts here) - NULL until destination answers
   managedAccountId: string | null;
 }
 const forwardingBillingMap = new Map<string, ForwardingBillingData>();
@@ -676,7 +676,7 @@ export class CallControlWebhookService {
       console.log(`[CallControl] Transferring call to ${phoneNumber.callForwardingDestination} with caller ID: ${originalCallerId}`);
       
       // Store forwarding billing data - we'll populate outboundCallControlId when we get the call.initiated for the outbound leg
-      // For now, store with inbound call_control_id as key
+      // IMPORTANT: bridgedAt is null until call.bridged event - this ensures billing only starts when destination answers
       forwardingBillingMap.set(call_control_id, {
         companyId: phoneNumber.companyId,
         inboundCallControlId: call_control_id,
@@ -684,10 +684,10 @@ export class CallControlWebhookService {
         originalCallerNumber: from,
         forwardedToNumber: phoneNumber.callForwardingDestination,
         ourNumber: to,
-        bridgedAt: new Date(), // Will be updated when call.bridged arrives
+        bridgedAt: null as any, // Will be set ONLY when call.bridged arrives - billing starts from this point
         managedAccountId,
       });
-      console.log(`[CallControl] Stored forwarding billing data for inbound leg: ${call_control_id}`);
+      console.log(`[CallControl] Stored forwarding billing data for inbound leg: ${call_control_id} (billing starts on bridge)`);
       
       await this.transferCallWithCallerId(
         call_control_id, 
@@ -1040,6 +1040,16 @@ export class CallControlWebhookService {
     // ========================================
     const billingData = forwardingBillingMap.get(call_control_id);
     if (billingData) {
+      // If bridgedAt is null, the destination never answered - no billing
+      if (!billingData.bridgedAt) {
+        console.log(`[CallControl] Call forwarding ended but destination never answered - NO BILLING`);
+        forwardingBillingMap.delete(billingData.inboundCallControlId);
+        if (billingData.outboundCallControlId) {
+          forwardingBillingMap.delete(billingData.outboundCallControlId);
+        }
+        return;
+      }
+      
       const hangupTime = new Date();
       const durationMs = hangupTime.getTime() - billingData.bridgedAt.getTime();
       const durationSeconds = Math.ceil(durationMs / 1000);
