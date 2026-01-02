@@ -251,6 +251,16 @@ export async function chargeCallToWallet(
     // Determine the number type (toll-free or local) based on OUR number
     const numberType = await getNumberType(ourNumber, companyId);
     
+    // Get global pricing for voice rates and add-ons
+    const [globalPricing] = await db
+      .select()
+      .from(telnyxGlobalPricing)
+      .limit(1);
+    
+    if (!globalPricing) {
+      console.error("[PricingService] WARNING: No global pricing found in database!");
+    }
+    
     // Get the correct rate based on number type and direction
     const voiceRateInfo = await getVoiceRate(companyId, numberType, callData.direction);
     
@@ -272,19 +282,22 @@ export async function chargeCallToWallet(
     
     const costResult = calculateCallCost(callData.durationSeconds, rate);
     
-    // Calculate additional feature costs
+    // Calculate additional feature costs from database (dynamic pricing)
     const billableMinutes = costResult.billableMinutes;
     let recordingCost = new Decimal(0);
     let cnamCost = new Decimal(0);
     
+    // Recording cost - loaded from database
     if (recordingEnabled) {
-      recordingCost = billableMinutes.times(new Decimal(PRICING.usage.recording_minute));
-      console.log(`[PricingService] Recording cost: $${recordingCost.toFixed(4)} (${billableMinutes.toFixed(2)} min * $${PRICING.usage.recording_minute}/min)`);
+      const recordingRate = new Decimal(globalPricing?.recordingPerMinute || "0.0020");
+      recordingCost = billableMinutes.times(recordingRate);
+      console.log(`[PricingService] Recording cost: $${recordingCost.toFixed(4)} (${billableMinutes.toFixed(2)} min * $${recordingRate.toFixed(4)}/min from DB)`);
     }
     
+    // CNAM lookup cost - loaded from database (only for inbound calls)
     if (cnamEnabled && callData.direction === "inbound") {
-      cnamCost = new Decimal(PRICING.usage.cnam_lookup_per_call);
-      console.log(`[PricingService] CNAM lookup cost: $${cnamCost.toFixed(4)}`);
+      cnamCost = new Decimal(globalPricing?.cnamLookup || "0.0045");
+      console.log(`[PricingService] CNAM lookup cost: $${cnamCost.toFixed(4)} (from DB)`);
     }
     
     // Total cost includes base + recording + CNAM
