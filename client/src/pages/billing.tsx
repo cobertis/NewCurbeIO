@@ -878,7 +878,7 @@ export default function Billing() {
   });
 
   return (
-    <div className="flex flex-col gap-6 h-full">
+    <div className="flex flex-col gap-6">
       {/* Superadmin Tools */}
       {user?.role === 'superadmin' && (
         <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
@@ -1240,16 +1240,16 @@ export default function Billing() {
         </div>
 
         {/* Transaction History Section with Tabs */}
-        <Card className="flex-1 flex flex-col min-h-0">
-          <CardHeader className="pb-3 flex-shrink-0">
+        <Card>
+          <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <FileText className="h-5 w-5" />
               Transaction History
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 flex-1 flex flex-col min-h-0">
-            <Tabs value={transactionTab} onValueChange={setTransactionTab} className="w-full flex-1 flex flex-col min-h-0">
-              <TabsList className="grid w-full grid-cols-2 mb-4 flex-shrink-0">
+          <CardContent className="pt-0">
+            <Tabs value={transactionTab} onValueChange={setTransactionTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="billing" className="text-sm">
                   <Receipt className="h-4 w-4 mr-2" />
                   Billing
@@ -1261,7 +1261,7 @@ export default function Billing() {
               </TabsList>
 
               {/* Billing Tab - Invoices & Top-ups */}
-              <TabsContent value="billing" className="mt-0 flex-1 flex flex-col min-h-0">
+              <TabsContent value="billing" className="mt-0">
                 {(isLoadingInvoices || isLoadingWalletTransactions) ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
@@ -1314,7 +1314,7 @@ export default function Billing() {
                   unifiedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
                   return unifiedTransactions.length > 0 ? (
-                    <div className="rounded-md border flex-1 overflow-auto">
+                    <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1374,7 +1374,7 @@ export default function Billing() {
               </TabsContent>
 
               {/* Phone Usage Tab - Calls & SMS */}
-              <TabsContent value="phone" className="mt-0 flex-1 flex flex-col min-h-0">
+              <TabsContent value="phone" className="mt-0">
                 {isLoadingCallLogs ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
@@ -1435,9 +1435,9 @@ export default function Billing() {
                   };
 
                   return (
-                    <div className="flex-1 flex flex-col min-h-0">
+                    <>
                       {/* Summary Stats */}
-                      <div className="grid grid-cols-4 gap-3 mb-4 flex-shrink-0">
+                      <div className="grid grid-cols-4 gap-3 mb-4">
                         <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                           <div className="flex items-center gap-2 mb-1">
                             <Phone className="h-4 w-4 text-blue-600" />
@@ -1470,7 +1470,7 @@ export default function Billing() {
 
                       {/* Calls Table */}
                       {sortedCalls.length > 0 ? (
-                        <div className="rounded-md border flex-1 overflow-auto">
+                        <div className="rounded-md border">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -1551,7 +1551,7 @@ export default function Billing() {
                           <p className="text-xs text-muted-foreground mt-1">Your call history will appear here</p>
                         </div>
                       )}
-                    </div>
+                    </>
                   );
                 })()}
               </TabsContent>
