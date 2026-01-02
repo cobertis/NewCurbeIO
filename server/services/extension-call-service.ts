@@ -373,7 +373,12 @@ class ExtensionCallService {
   getAvailableAgentsForCompany(companyId: string): ExtensionClient[] {
     const available: ExtensionClient[] = [];
     
+    console.log(`[ExtensionCall] Looking for agents in company ${companyId}`);
+    console.log(`[ExtensionCall] Total connected clients: ${this.connectedClients.size}`);
+    
     Array.from(this.connectedClients.values()).forEach((client) => {
+      console.log(`[ExtensionCall] Client ${client.extension}: companyId=${client.companyId}, wsOpen=${client.ws.readyState === WebSocket.OPEN}`);
+      
       if (client.companyId === companyId && client.ws.readyState === WebSocket.OPEN) {
         // Check if agent is busy
         const isBusy = Array.from(this.activeCalls.values()).some(
@@ -385,12 +390,15 @@ class ExtensionCallService {
           (qc) => qc.answeredByExtensionId === client.extensionId && qc.status === "answered"
         );
         
+        console.log(`[ExtensionCall] Client ${client.extension}: isBusy=${isBusy}`);
+        
         if (!isBusy) {
           available.push(client);
         }
       }
     });
     
+    console.log(`[ExtensionCall] Found ${available.length} available agents for company ${companyId}`);
     return available;
   }
 
