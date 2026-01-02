@@ -380,7 +380,7 @@ export default function Billing() {
 
   const walletTransactions = walletTransactionsData?.transactions || [];
 
-  // Fetch call logs for Phone Usage tab
+  // Fetch call logs for Phone Usage tab (all company calls, not filtered by user)
   const { data: callLogsData, isLoading: isLoadingCallLogs } = useQuery<{
     calls: Array<{
       id: string;
@@ -395,7 +395,7 @@ export default function Billing() {
       createdAt: string;
     }>;
   }>({
-    queryKey: ["/api/call-logs"],
+    queryKey: ["/api/billing/call-logs"],
   });
 
   const callLogs = callLogsData?.calls || [];

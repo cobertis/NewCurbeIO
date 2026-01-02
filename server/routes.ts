@@ -7647,6 +7647,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: error.message });
     }
   });
+
+  // GET /api/billing/call-logs - Get all call logs for company (for billing page)
+  app.get("/api/billing/call-logs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Only admin or superadmin can view all company call logs
+      if (user.role !== "admin" && user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+      
+      // Get ALL call logs for the company (not filtered by user)
+      const logs = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.companyId, user.companyId))
+        .orderBy(desc(callLogs.createdAt))
+        .limit(limit);
+      
+      res.json({ calls: logs });
+    } catch (error: any) {
+      console.error("[Billing] Error fetching call logs:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get billing subscription details from Stripe
   app.get("/api/billing/subscription", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
