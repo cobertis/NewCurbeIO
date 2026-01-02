@@ -84,6 +84,7 @@ async function getNumberType(phoneNumber: string, companyId: string): Promise<"l
 
 /**
  * Get the voice rate from global pricing based on number type and direction
+ * Rates are always fetched dynamically from telnyxGlobalPricing table
  */
 async function getVoiceRate(
   companyId: string,
@@ -96,26 +97,37 @@ async function getVoiceRate(
     .from(telnyxGlobalPricing)
     .limit(1);
   
+  if (!pricing) {
+    console.error("[PricingService] WARNING: No global pricing found in database! Using emergency fallback rates.");
+    // Emergency fallback only if table is completely empty
+    return {
+      rate: new Decimal("0.0200"),
+      description: `${numberType === "toll_free" ? "Toll-Free" : "Local"} ${direction === "outbound" ? "Outbound" : "Inbound"} (fallback)`
+    };
+  }
+  
   let rate: string;
   let description: string;
   
   if (numberType === "toll_free") {
     if (direction === "outbound") {
-      rate = pricing?.voiceTollfreeOutbound || "0.0180";
+      rate = pricing.voiceTollfreeOutbound;
       description = "Toll-Free Outbound";
     } else {
-      rate = pricing?.voiceTollfreeInbound || "0.0130";
+      rate = pricing.voiceTollfreeInbound;
       description = "Toll-Free Inbound";
     }
   } else {
     if (direction === "outbound") {
-      rate = pricing?.voiceLocalOutbound || "0.0100";
+      rate = pricing.voiceLocalOutbound;
       description = "Local Outbound";
     } else {
-      rate = pricing?.voiceLocalInbound || "0.0080";
+      rate = pricing.voiceLocalInbound;
       description = "Local Inbound";
     }
   }
+  
+  console.log(`[PricingService] Loaded rate from DB: ${description} = $${rate}/min`);
   
   return {
     rate: new Decimal(rate),
