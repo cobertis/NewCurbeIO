@@ -595,7 +595,7 @@ export class CallControlWebhookService {
     if (direction !== "incoming") {
       // Check if this is an outbound leg from call forwarding
       // Match by from (original caller) and to (forwarding destination)
-      for (const [inboundId, billingData] of forwardingBillingMap.entries()) {
+      for (const [inboundId, billingData] of Array.from(forwardingBillingMap.entries())) {
         if (billingData.originalCallerNumber === from && 
             billingData.forwardedToNumber === to &&
             billingData.outboundCallControlId === "") {
@@ -1075,8 +1075,13 @@ export class CallControlWebhookService {
         });
         
         if (inboundResult.success) {
-          console.log(`[CallControl] Inbound leg billed: $${inboundResult.chargedAmount}`);
-          broadcastWalletUpdate(billingData.companyId, inboundResult.balance?.toString() || "0");
+          console.log(`[CallControl] Inbound leg billed: $${inboundResult.amountCharged}`);
+          broadcastWalletUpdate(billingData.companyId, {
+            newBalance: inboundResult.newBalance || "0",
+            lastCharge: inboundResult.amountCharged || "0",
+            chargeType: "CALL_COST",
+            description: `Forwarded call inbound leg (${durationSeconds}s)`
+          });
           if (inboundResult.callLogId) {
             broadcastNewCallLog(billingData.companyId, {
               id: inboundResult.callLogId,
@@ -1084,7 +1089,7 @@ export class CallControlWebhookService {
               toNumber: billingData.ourNumber,
               direction: "inbound",
               duration: durationSeconds,
-              cost: inboundResult.chargedAmount || "0.0000",
+              cost: inboundResult.amountCharged || "0.0000",
               status: "completed"
             });
           }
@@ -1106,8 +1111,13 @@ export class CallControlWebhookService {
         });
         
         if (outboundResult.success) {
-          console.log(`[CallControl] Outbound leg billed: $${outboundResult.chargedAmount}`);
-          broadcastWalletUpdate(billingData.companyId, outboundResult.balance?.toString() || "0");
+          console.log(`[CallControl] Outbound leg billed: $${outboundResult.amountCharged}`);
+          broadcastWalletUpdate(billingData.companyId, {
+            newBalance: outboundResult.newBalance || "0",
+            lastCharge: outboundResult.amountCharged || "0",
+            chargeType: "CALL_COST",
+            description: `Forwarded call outbound leg (${durationSeconds}s)`
+          });
           if (outboundResult.callLogId) {
             broadcastNewCallLog(billingData.companyId, {
               id: outboundResult.callLogId,
@@ -1115,7 +1125,7 @@ export class CallControlWebhookService {
               toNumber: billingData.forwardedToNumber,
               direction: "outbound",
               duration: durationSeconds,
-              cost: outboundResult.chargedAmount || "0.0000",
+              cost: outboundResult.amountCharged || "0.0000",
               status: "completed"
             });
           }

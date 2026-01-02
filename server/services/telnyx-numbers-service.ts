@@ -1034,11 +1034,15 @@ export async function updateSpamProtection(
 
 /**
  * Update call forwarding settings for a phone number
- * IMPORTANT: We store forwarding config locally ONLY - we do NOT enable call_forwarding
- * in Telnyx Voice Settings API. This ensures all calls pass through our TeXML webhook
- * where we handle the forwarding with <Dial> and apply dual-leg billing.
+ * Uses Telnyx NATIVE call forwarding (not programmatic via Call Control).
+ * 
+ * NATIVE FORWARDING BENEFITS:
+ * - Billing starts only when destination answers (Telnyx handles this)
+ * - Original caller ID is preserved automatically
+ * - No need to answer the call first
  * 
  * BILLING: Forwarded calls incur BOTH the inbound call cost AND an outbound call cost.
+ * Telnyx charges a monthly fee for enabling call forwarding on a number.
  */
 export async function updateCallForwarding(
   phoneNumberId: string,
@@ -1082,13 +1086,12 @@ export async function updateCallForwarding(
       ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
-    // CALL CONTROL APPROACH: 
-    // - When ENABLED: Number must be on Call Control App for webhook forwarding
-    // - When DISABLED: Number returns to Credential Connection for WebRTC calls
-    // Forwarding is handled programmatically via webhook (answer + transfer)
-    // This enables dual-leg billing (Telnyx charges both inbound and outbound legs)
+    // NATIVE TELNYX FORWARDING APPROACH:
+    // - When ENABLED: Assign to Credential Connection (SIP) + enable native forwarding
+    // - When DISABLED: Assign back to Call Control App for WebRTC/webhooks
+    // Native forwarding only works with SIP Connections, NOT Call Control apps
     
-    // Get telephony settings (Call Control App for forwarding, Credential Connection for WebRTC)
+    // Get telephony settings
     const [telSettings] = await db
       .select({ 
         callControlAppId: telephonySettings.callControlAppId,
@@ -1097,18 +1100,20 @@ export async function updateCallForwarding(
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
     
-    if (!telSettings?.callControlAppId) {
-      return { success: false, error: "Call Control App not configured for this company" };
+    if (!telSettings?.credentialConnectionId) {
+      return { success: false, error: "Credential Connection not configured for this company" };
     }
     
-    // Determine which connection to assign the number to
+    // For native forwarding, number MUST be on a SIP Connection (Credential Connection)
+    // NOT on a Call Control App
     const targetConnectionId = enabled 
-      ? telSettings.callControlAppId  // Forwarding ON: Use Call Control App for webhook handling
-      : telSettings.credentialConnectionId;  // Forwarding OFF: Use Credential Connection for WebRTC
+      ? telSettings.credentialConnectionId  // Forwarding ON: Use Credential Connection for native forwarding
+      : telSettings.callControlAppId || telSettings.credentialConnectionId;  // Forwarding OFF: Use Call Control App if available
     
-    const targetName = enabled ? "Call Control App" : "Credential Connection (WebRTC)";
-    console.log(`[Call Forwarding] Reassigning number ${phoneNumberId} to ${targetName} (${targetConnectionId})`);
+    const targetName = enabled ? "Credential Connection (for native forwarding)" : "Call Control App (for WebRTC)";
+    console.log(`[Call Forwarding Native] Reassigning number ${phoneNumberId} to ${targetName} (${targetConnectionId})`);
     
+    // Step 1: Reassign number to appropriate connection
     const reassignPayload = {
       connection_id: targetConnectionId,
     };
@@ -1121,16 +1126,45 @@ export async function updateCallForwarding(
     
     if (!reassignResponse.ok) {
       const errorText = await reassignResponse.text();
-      console.error(`[Call Forwarding] Failed to reassign number: ${reassignResponse.status} - ${errorText}`);
+      console.error(`[Call Forwarding Native] Failed to reassign number: ${reassignResponse.status} - ${errorText}`);
       return { success: false, error: `Failed to configure number: ${reassignResponse.status}` };
     }
     
-    console.log(`[Call Forwarding] Number reassigned to ${targetName} successfully`);
+    console.log(`[Call Forwarding Native] Number reassigned to ${targetName} successfully`);
     
-    // NOTE: We do NOT modify Telnyx voice settings (call_forwarding) because:
-    // 1. Call Control numbers cannot have native forwarding (error 10015)
-    // 2. Our forwarding is handled programmatically in the webhook via answer() + transfer()
-    console.log(`[Call Forwarding] Saving config to DB: enabled=${enabled}, destination=${normalizedDest}`);
+    // Step 2: Configure NATIVE call forwarding on Telnyx voice settings
+    const voicePayload = enabled
+      ? {
+          call_forwarding: {
+            forwards_to: normalizedDest,
+            forwarding_type: "always",  // "always" or "on_failure"
+          },
+        }
+      : {
+          call_forwarding: {
+            forwards_to: null,  // Disable forwarding
+            forwarding_type: "always",
+          },
+        };
+    
+    console.log(`[Call Forwarding Native] Updating Telnyx voice settings:`, JSON.stringify(voicePayload));
+    
+    const voiceResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(voicePayload),
+    });
+    
+    if (!voiceResponse.ok) {
+      const errorText = await voiceResponse.text();
+      console.error(`[Call Forwarding Native] Failed to update voice settings: ${voiceResponse.status} - ${errorText}`);
+      // Don't fail - save locally anyway
+    } else {
+      const voiceResult = await voiceResponse.json();
+      console.log(`[Call Forwarding Native] Telnyx voice settings updated:`, voiceResult.data?.call_forwarding);
+    }
+    
+    console.log(`[Call Forwarding Native] Saving config to DB: enabled=${enabled}, destination=${normalizedDest}`);
     
     // Check if record exists in local database
     const [existing] = await db
