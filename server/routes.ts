@@ -31586,16 +31586,340 @@ CRITICAL REMINDERS:
   // POST /webhooks/telnyx/voice/status - Handle voice call status callbacks
   app.post("/webhooks/telnyx/voice/status", async (req: Request, res: Response) => {
     try {
-      const { call_control_id, event_type, call_leg_id, from, to, direction, state } = req.body;
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
       
-      console.log("[Telnyx Voice Status] Event:", {
-        eventType: event_type,
-        callControlId: call_control_id,
-        callLegId: call_leg_id,
-        from,
-        to,
-        direction,
-        state,
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
+      });
+    try {
+      // Log the full body to diagnose the structure
+      console.log("[Telnyx Voice Status] Full body:", JSON.stringify(req.body, null, 2));
+      
+      // TeXML status callbacks use different field names (PascalCase)
+      const {
+        CallSid,
+        CallStatus,
+        From,
+        To,
+        Direction,
+        Duration,
+        DialCallSid,
+        DialCallStatus,
+        DialCallDuration
+      } = req.body;
+      
+      console.log("[Telnyx Voice Status] Parsed event:", {
+        callSid: CallSid,
+        callStatus: CallStatus,
+        from: From,
+        to: To,
+        direction: Direction,
+        duration: Duration,
+        dialCallSid: DialCallSid,
+        dialCallStatus: DialCallStatus,
+        dialCallDuration: DialCallDuration,
       });
       res.set("Content-Type", "application/xml");
     res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
