@@ -32944,7 +32944,8 @@ CRITICAL REMINDERS:
         ownerName: num.ownerFirstName && num.ownerLastName 
           ? `${num.ownerFirstName} ${num.ownerLastName}` 
           : num.ownerFirstName || num.ownerLastName || companyName,
-        // CNAM is managed per-number, not per-brand
+        cnam: num.cnam,
+        e911Enabled: num.e911Enabled,
         complianceStatus: complianceMap.get(num.phoneNumber)?.status || null,
         complianceApplicationId: complianceMap.get(num.phoneNumber)?.id || null,
         telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,
