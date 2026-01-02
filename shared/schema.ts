@@ -5410,6 +5410,14 @@ export const callLogs = pgTable("call_logs", {
   costCurrency: text("cost_currency").default("USD"),
   billedDuration: integer("billed_duration"), // Billed duration in seconds
   
+  // Call Forwarding fields
+  isForwardedCall: boolean("is_forwarded_call").default(false),
+  forwardedTo: text("forwarded_to"), // The number the call was forwarded to
+  inboundCost: text("inbound_cost"), // Cost of inbound leg (caller → our number)
+  outboundCost: text("outbound_cost"), // Cost of outbound leg (our number → forwarding destination)
+  telnyxDetailRecordId: text("telnyx_detail_record_id"), // Telnyx CDR ID to prevent duplicates
+  syncedFromCdr: boolean("synced_from_cdr").default(false), // True if synced from Telnyx CDR
+  
   // Timestamps
   startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
   answeredAt: timestamp("answered_at", { withTimezone: true }),
@@ -5424,6 +5432,7 @@ export const callLogs = pgTable("call_logs", {
   startedAtIdx: index("call_logs_started_at_idx").on(table.startedAt),
   telnyxCallIdIdx: index("call_logs_telnyx_call_id_idx").on(table.telnyxCallId),
   sipCallIdIdx: index("call_logs_sip_call_id_idx").on(table.sipCallId),
+  telnyxDetailRecordIdIdx: index("call_logs_telnyx_detail_record_id_idx").on(table.telnyxDetailRecordId),
 }));
 
 // Call Logs Insert Schema
