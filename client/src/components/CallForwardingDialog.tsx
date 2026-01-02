@@ -150,7 +150,7 @@ export function CallForwardingDialog({
             Call Forwarding Settings
           </DialogTitle>
           <DialogDescription>
-            Configure call forwarding for <span className="font-semibold">{phoneNumber}</span>
+            Configure call forwarding for <span className="font-semibold">{formatUSPhoneNumber(phoneNumber.replace(/^\+1/, ""))}</span>
           </DialogDescription>
         </DialogHeader>
 
