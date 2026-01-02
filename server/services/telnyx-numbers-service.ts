@@ -1082,17 +1082,16 @@ export async function updateCallForwarding(
       ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
-    // CRITICAL: Always DISABLE call_forwarding in Telnyx Voice Settings API
-    // This ensures all calls pass through our TeXML webhook where we handle billing
+    // Update call forwarding in Telnyx Voice Settings API
     const voiceSettingsPayload = {
       call_forwarding: {
-        call_forwarding_enabled: false, // ALWAYS false - we handle forwarding in TeXML
-        forwards_to: "",
+        call_forwarding_enabled: enabled,
+        forwards_to: enabled && normalizedDest ? normalizedDest : "",
         forwarding_type: "always",
       },
     };
     
-    console.log(`[Call Forwarding] Ensuring Telnyx call_forwarding is DISABLED for ${phoneNumberId} (we use TeXML for billing)`);
+    console.log(`[Call Forwarding] Setting Telnyx call_forwarding: enabled=${enabled}, forwards_to=${normalizedDest || ""}`);
     
     const voiceSettingsResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
       method: "PATCH",
@@ -1102,13 +1101,14 @@ export async function updateCallForwarding(
     
     if (!voiceSettingsResponse.ok) {
       const errorText = await voiceSettingsResponse.text();
-      console.error(`[Call Forwarding] Failed to disable Telnyx forwarding: ${voiceSettingsResponse.status} - ${errorText}`);
-      // Continue with local DB update - TeXML webhook will handle forwarding
+      console.error(`[Call Forwarding] Failed to update Telnyx forwarding: ${voiceSettingsResponse.status} - ${errorText}`);
+      return { success: false, error: `Failed to update call forwarding in Telnyx: ${voiceSettingsResponse.status}` };
     } else {
-      console.log(`[Call Forwarding] Telnyx call_forwarding disabled successfully`);
+      const responseData = await voiceSettingsResponse.json();
+      console.log(`[Call Forwarding] Telnyx call_forwarding updated successfully:`, JSON.stringify(responseData.data?.call_forwarding || {}));
     }
     
-    // Store forwarding config in local database - TeXML webhook reads this
+    // Also store forwarding config in local database for reference
     console.log(`[Call Forwarding] Saving to local DB: enabled=${enabled}, destination=${normalizedDest}`);
     
     // Check if record exists in local database
