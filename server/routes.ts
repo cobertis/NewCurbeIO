@@ -38216,29 +38216,49 @@ CRITICAL REMINDERS:
       }
       
       // Security: Verify the call belongs to the user's company
-      // Search by telnyxCallId, sipCallId, or telnyxSessionId (the SDK may pass different IDs)
-      const [callLog] = await db
-        .select()
-        .from(callLogs)
-        .where(and(
-          or(
-            eq(callLogs.telnyxCallId, callControlId),
-            eq(callLogs.sipCallId, callControlId),
-            eq(callLogs.telnyxSessionId, callControlId)
-          ),
-          eq(callLogs.companyId, user.companyId)
-        ));
+      // Search by database ID (numeric), telnyxCallId, sipCallId, or telnyxSessionId
+      const numericId = parseInt(callControlId, 10);
+      const isNumericId = !isNaN(numericId) && numericId > 0;
+      
+      let callLog;
+      if (isNumericId) {
+        // Search by database ID first (most reliable)
+        [callLog] = await db
+          .select()
+          .from(callLogs)
+          .where(and(
+            eq(callLogs.id, numericId),
+            eq(callLogs.companyId, user.companyId)
+          ));
+      }
       
       if (!callLog) {
-        console.log(`[Call Recording] Call not found for ID: ${callControlId}, company: ${user.companyId}`);
+        // Fallback: search by Telnyx identifiers
+        [callLog] = await db
+          .select()
+          .from(callLogs)
+          .where(and(
+            or(
+              eq(callLogs.telnyxCallId, callControlId),
+              eq(callLogs.sipCallId, callControlId),
+              eq(callLogs.telnyxSessionId, callControlId)
+            ),
+            eq(callLogs.companyId, user.companyId)
+          ));
+      }
+      
+      if (!callLog) {
+        console.log(`[Call Recording] Call not found for ID: \${callControlId}, company: \${user.companyId}`);
         return res.status(403).json({ success: false, error: "Call not found or access denied" });
       }
       
       // Use the correct call_control_id from the database record
       const telnyxCallControlId = callLog.telnyxCallId;
+      console.log(`[Call Recording] Found call log \${callLog.id}, telnyxCallId: \${telnyxCallControlId}`);
       
       if (!telnyxCallControlId) {
-        return res.status(400).json({ success: false, error: "No Telnyx call control ID available for this call" });
+        console.log(`[Call Recording] No Telnyx call_control_id for call log \${callLog.id} - webhook may not have been received yet`);
+        return res.status(400).json({ success: false, error: "No Telnyx call control ID available - please wait a moment and try again" });
       }
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
@@ -38247,6 +38267,7 @@ CRITICAL REMINDERS:
         return res.status(500).json({ success: false, error: "Telnyx API key not configured" });
       }
       
+      // Get the media name for the selected language
       // Get the media name for the selected language
       const mediaName = language === 'es' 
         ? process.env.TELNYX_RECORDING_MEDIA_ES || 'curbe-recording-announcement-es'
@@ -38316,25 +38337,45 @@ CRITICAL REMINDERS:
       }
       
       // Security: Verify the call belongs to the user's company
-      // Search by telnyxCallId, sipCallId, or telnyxSessionId (the SDK may pass different IDs)
-      const [callLog] = await db
-        .select()
-        .from(callLogs)
-        .where(and(
-          or(
-            eq(callLogs.telnyxCallId, callControlId),
-            eq(callLogs.sipCallId, callControlId),
-            eq(callLogs.telnyxSessionId, callControlId)
-          ),
-          eq(callLogs.companyId, user.companyId)
-        ));
+      // Search by database ID (numeric), telnyxCallId, sipCallId, or telnyxSessionId
+      const numericId = parseInt(callControlId, 10);
+      const isNumericId = !isNaN(numericId) && numericId > 0;
+      
+      let callLog;
+      if (isNumericId) {
+        // Search by database ID first (most reliable)
+        [callLog] = await db
+          .select()
+          .from(callLogs)
+          .where(and(
+            eq(callLogs.id, numericId),
+            eq(callLogs.companyId, user.companyId)
+          ));
+      }
       
       if (!callLog) {
+        // Fallback: search by Telnyx identifiers
+        [callLog] = await db
+          .select()
+          .from(callLogs)
+          .where(and(
+            or(
+              eq(callLogs.telnyxCallId, callControlId),
+              eq(callLogs.sipCallId, callControlId),
+              eq(callLogs.telnyxSessionId, callControlId)
+            ),
+            eq(callLogs.companyId, user.companyId)
+          ));
+      }
+      
+      if (!callLog) {
+        console.log(`[Call Recording] Stop - Call not found for ID: ${callControlId}, company: ${user.companyId}`);
         return res.status(403).json({ success: false, error: "Call not found or access denied" });
       }
       
       // Use the correct call_control_id from the database record
       const telnyxCallControlId = callLog.telnyxCallId;
+      console.log(`[Call Recording] Stop - Found call log ${callLog.id}, telnyxCallId: ${telnyxCallControlId}`);
       
       if (!telnyxCallControlId) {
         return res.status(400).json({ success: false, error: "No Telnyx call control ID available for this call" });
