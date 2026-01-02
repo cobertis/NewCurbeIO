@@ -350,15 +350,30 @@ export default function SmsVoiceNumbers() {
                           : format(addMonths(new Date(), 1), "d MMM yyyy")}
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          variant={number.callForwardingEnabled ? "default" : "outline"}
-                          size="sm"
-                          className={`h-7 text-xs ${number.callForwardingEnabled ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}
-                          onClick={() => setCallForwardingNumber(number)}
-                          data-testid={`button-activate-forward-${number.id}`}
-                        >
-                          {number.callForwardingEnabled ? "Active" : "Activate"}
-                        </Button>
+                        {number.callForwardingEnabled && number.callForwardingDestination ? (
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="flex items-center gap-1.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md px-2 py-1 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
+                              onClick={() => setCallForwardingNumber(number)}
+                              data-testid={`text-forward-destination-${number.id}`}
+                            >
+                              <PhoneForwarded className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                              <span className="text-xs text-green-700 dark:text-green-300 font-medium">
+                                {formatPhoneNumber(number.callForwardingDestination)}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setCallForwardingNumber(number)}
+                            data-testid={`button-activate-forward-${number.id}`}
+                          >
+                            Activate
+                          </Button>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
