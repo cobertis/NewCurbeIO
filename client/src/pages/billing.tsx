@@ -59,17 +59,22 @@ import { formatDate, formatDateTimeWithTimezone, formatDateTimeWithSeconds } fro
 import type { BulkvsPhoneNumber } from "@shared/schema";
 import { Play, Pause } from "lucide-react";
 
-// WhatsApp-style Audio Player Component
+// iMessage-style Audio Player Component with waveform
 function AudioPlayer({ src, testId }: { src: string; testId: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  
+  // Generate random waveform bars (simulated)
+  const waveformBars = useRef(
+    Array.from({ length: 28 }, () => Math.random() * 0.7 + 0.3)
+  ).current;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const togglePlay = () => {
@@ -99,7 +104,7 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
     setCurrentTime(0);
   };
 
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!audioRef.current || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -108,9 +113,10 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
   };
 
   const progress = duration ? (currentTime / duration) * 100 : 0;
+  const progressIndex = Math.floor((progress / 100) * waveformBars.length);
 
   return (
-    <div className="flex items-center gap-2 min-w-[140px]" data-testid={testId}>
+    <div className="flex items-center gap-2 min-w-[180px]" data-testid={testId}>
       <audio
         ref={audioRef}
         src={src}
@@ -130,20 +136,25 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
           <Play className="h-3.5 w-3.5 ml-0.5" fill="currentColor" />
         )}
       </button>
-      <div className="flex-1 flex flex-col gap-0.5">
-        <div
-          className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full cursor-pointer relative overflow-hidden"
-          onClick={handleProgressClick}
-        >
+      <div
+        className="flex items-center gap-[2px] h-6 cursor-pointer"
+        onClick={handleWaveformClick}
+      >
+        {waveformBars.map((height, i) => (
           <div
-            className="absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all duration-100"
-            style={{ width: `${progress}%` }}
+            key={i}
+            className={`w-[3px] rounded-full transition-colors ${
+              i < progressIndex
+                ? 'bg-blue-500'
+                : 'bg-gray-400 dark:bg-gray-500'
+            }`}
+            style={{ height: `${height * 20}px` }}
           />
-        </div>
-        <span className="text-[10px] text-muted-foreground">
-          {formatTime(currentTime)} / {duration ? formatTime(duration) : '0:00'}
-        </span>
+        ))}
       </div>
+      <span className="text-[11px] text-muted-foreground font-medium ml-1 tabular-nums">
+        {duration ? formatTime(duration - currentTime) : '00:00'}
+      </span>
     </div>
   );
 }
