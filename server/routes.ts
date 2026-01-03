@@ -38265,12 +38265,12 @@ CRITICAL REMINDERS:
       
       // Get the media name for the selected language
       // Get the media name for the selected language
-      // Use media_name for files uploaded to Telnyx Media Storage
-      const mediaName = language === 'es' 
-        ? 'curbe-recording-announcement-es.mp3'
-        : 'curbe-recording-announcement-en.mp3';
+      // Use audio_url with public URL for Telnyx playback_start
+      const audioUrl = language === 'es' 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}/audio/recording-announcement-es.mp3`
+        : `https://${process.env.REPLIT_DEV_DOMAIN}/audio/recording-announcement-en.mp3`;
       
-      console.log(`[Call Recording] Playing ${language} announcement (media_name: ${mediaName}) before recording for call ${telnyxCallControlId}`);
+      console.log(`[Call Recording] Playing ${language} announcement (audio_url: ${audioUrl}) before recording for call ${telnyxCallControlId}`);
       
       // Step 1: Play the announcement audio to both parties
       const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/playback_start`, {
@@ -38280,7 +38280,7 @@ CRITICAL REMINDERS:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          media_name: mediaName,
+          audio_url: audioUrl,
           overlay: false, // Don't overlay, play exclusively
           target_legs: "both" // Play to both caller and agent
         })
