@@ -2022,10 +2022,17 @@ export async function getVoicemailStatus(
     }
     
     // GET /v2/phone_numbers/{phone_number_id}/voicemail - correct endpoint per Telnyx API docs
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
+    const url = `${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`;
+    console.log(`[Telnyx Voicemail] Calling GET ${url}`);
+    console.log(`[Telnyx Voicemail] Headers: managed_account=${managedAccountId}`);
+    
+    const response = await fetch(url, {
       method: "GET",
       headers,
     });
+    
+    const responseText = await response.text();
+    console.log(`[Telnyx Voicemail] Response status: ${response.status}, body: ${responseText.substring(0, 500)}`);
     
     // 404 means voicemail is not configured yet - this is not an error
     if (response.status === 404) {
@@ -2038,15 +2045,25 @@ export async function getVoicemailStatus(
     }
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Telnyx Voicemail] Get status error: ${response.status} - ${errorText}`);
+      console.error(`[Telnyx Voicemail] Get status error: ${response.status} - ${responseText}`);
       return {
         success: false,
         error: `Failed to get voicemail status: ${response.status}`,
       };
     }
     
-    const result = await response.json();
+    // Parse the response text as JSON
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error(`[Telnyx Voicemail] Failed to parse response: ${responseText}`);
+      return {
+        success: false,
+        error: "Invalid response from Telnyx API",
+      };
+    }
+    
     const voicemailData = result.data;
     
     console.log(`[Telnyx Voicemail] Status for ${phoneNumberId}: enabled=${voicemailData?.enabled}`);
