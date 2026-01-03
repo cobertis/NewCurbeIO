@@ -1458,9 +1458,9 @@ export function WebPhoneFloatingWindow() {
   const [dialNumber, setDialNumber] = useState('');
   const [position, setPosition] = useState(() => {
     const dims = calculateDimensions();
-    // Leave 80px on right side for floating phone button
+    // Position above the floating phone button (bottom-right, with space for FAB)
     return clampPosition(
-      { x: window.innerWidth - dims.width - 80, y: window.innerHeight - dims.height - 20 },
+      { x: window.innerWidth - dims.width - 16, y: window.innerHeight - dims.height - 80 },
       dims
     );
   });
