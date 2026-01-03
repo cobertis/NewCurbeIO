@@ -1128,7 +1128,42 @@ export class CallControlWebhookService {
 
   private async handleRecordingSaved(payload: CallControlEvent["data"]["payload"]): Promise<void> {
     const { call_control_id, recording_urls } = payload;
-    console.log(`[CallControl] Recording saved:`, recording_urls);
+    console.log(`[CallControl] Recording saved for call ${call_control_id}:`, recording_urls);
+    
+    if (!call_control_id || !recording_urls) {
+      console.log(`[CallControl] Missing call_control_id or recording_urls`);
+      return;
+    }
+    
+    // Get the MP3 URL (preferred) or WAV URL
+    const recordingUrl = recording_urls.mp3 || recording_urls.wav;
+    if (!recordingUrl) {
+      console.log(`[CallControl] No recording URL found in payload`);
+      return;
+    }
+    
+    try {
+      // Find the call log by telnyxCallId
+      const [callLog] = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.telnyxCallId, call_control_id));
+      
+      if (!callLog) {
+        console.log(`[CallControl] No call log found for call_control_id: ${call_control_id}`);
+        return;
+      }
+      
+      // Update the call log with the recording URL
+      await db
+        .update(callLogs)
+        .set({ recordingUrl })
+        .where(eq(callLogs.id, callLog.id));
+      
+      console.log(`[CallControl] Updated recording URL for call ${callLog.id}: ${recordingUrl}`);
+    } catch (error) {
+      console.error(`[CallControl] Failed to save recording URL:`, error);
+    }
   }
 
   private async handleMenuOption(
