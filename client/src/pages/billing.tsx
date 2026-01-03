@@ -57,6 +57,96 @@ import {
 } from "lucide-react";
 import { formatDate, formatDateTimeWithTimezone, formatDateTimeWithSeconds } from "@/lib/date-formatter";
 import type { BulkvsPhoneNumber } from "@shared/schema";
+import { Play, Pause } from "lucide-react";
+
+// WhatsApp-style Audio Player Component
+function AudioPlayer({ src, testId }: { src: string; testId: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = x / rect.width;
+    audioRef.current.currentTime = percentage * duration;
+  };
+
+  const progress = duration ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className="flex items-center gap-2 min-w-[140px]" data-testid={testId}>
+      <audio
+        ref={audioRef}
+        src={src}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleEnded}
+        preload="metadata"
+      />
+      <button
+        onClick={togglePlay}
+        className="flex-shrink-0 h-7 w-7 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-colors"
+        data-testid={`${testId}-toggle`}
+      >
+        {isPlaying ? (
+          <Pause className="h-3.5 w-3.5" fill="currentColor" />
+        ) : (
+          <Play className="h-3.5 w-3.5 ml-0.5" fill="currentColor" />
+        )}
+      </button>
+      <div className="flex-1 flex flex-col gap-0.5">
+        <div
+          className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full cursor-pointer relative overflow-hidden"
+          onClick={handleProgressClick}
+        >
+          <div
+            className="absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all duration-100"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-[10px] text-muted-foreground">
+          {formatTime(currentTime)} / {duration ? formatTime(duration) : '0:00'}
+        </span>
+      </div>
+    </div>
+  );
+}
 import { formatForDisplay } from "@shared/phone";
 import {
   Dialog,
@@ -1560,21 +1650,14 @@ export default function Billing() {
                                         <span className="text-xs text-muted-foreground">-</span>
                                       )}
                                     </TableCell>
-                                    <TableCell className="py-2 text-center">
+                                    <TableCell className="py-2">
                                       {call.recordingUrl ? (
-                                        <button
-                                          onClick={() => {
-                                            const audio = new Audio(call.recordingUrl!);
-                                            audio.play();
-                                          }}
-                                          className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 transition-colors"
-                                          title="Play recording"
-                                          data-testid={`play-recording-${call.id}`}
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                        </button>
+                                        <AudioPlayer
+                                          src={call.recordingUrl}
+                                          testId={`audio-player-${call.id}`}
+                                        />
                                       ) : (
-                                        <span className="text-xs text-muted-foreground">-</span>
+                                        <span className="text-xs text-muted-foreground text-center block">-</span>
                                       )}
                                     </TableCell>
                                   </TableRow>
