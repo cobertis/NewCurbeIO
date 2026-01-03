@@ -11,6 +11,7 @@ import { useExtensionCall } from '@/hooks/useExtensionCall';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -3280,32 +3281,57 @@ export function WebPhoneFloatingWindow() {
                           <span className="text-[8px] sm:text-[9px] text-muted-foreground">keypad</span>
                         </button>
                         
-                        <button
-                          onClick={handleRecordingToggle}
-                          disabled={recordingLoading || !effectiveCall?.isTelnyx}
-                          className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80 disabled:opacity-50"
-                          data-testid="button-record-call"
-                        >
-                          <div className={cn(
-                            "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md",
-                            isManualRecording ? "bg-red-500" : "bg-muted/80"
-                          )}>
-                            {recordingLoading ? (
-                              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-foreground" />
-                            ) : (
-                              <Circle className={cn(
-                                "h-4 w-4 sm:h-5 sm:w-5",
-                                isManualRecording ? "text-white fill-white" : "text-foreground"
-                              )} />
-                            )}
-                          </div>
-                          <span className={cn(
-                            "text-[8px] sm:text-[9px]",
-                            isManualRecording ? "text-red-500 font-medium" : "text-muted-foreground"
-                          )}>
-                            {isManualRecording ? 'rec' : 'record'}
-                          </span>
-                        </button>
+                        <Popover open={showLanguageDialog} onOpenChange={setShowLanguageDialog}>
+                          <PopoverTrigger asChild>
+                            <button
+                              onClick={handleRecordingToggle}
+                              disabled={recordingLoading || !effectiveCall?.isTelnyx}
+                              className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80 disabled:opacity-50"
+                              data-testid="button-record-call"
+                            >
+                              <div className={cn(
+                                "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-md",
+                                isManualRecording ? "bg-red-500" : "bg-muted/80"
+                              )}>
+                                {recordingLoading ? (
+                                  <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-foreground" />
+                                ) : (
+                                  <Circle className={cn(
+                                    "h-4 w-4 sm:h-5 sm:w-5",
+                                    isManualRecording ? "text-white fill-white" : "text-foreground"
+                                  )} />
+                                )}
+                              </div>
+                              <span className={cn(
+                                "text-[8px] sm:text-[9px]",
+                                isManualRecording ? "text-red-500 font-medium" : "text-muted-foreground"
+                              )}>
+                                {isManualRecording ? 'rec' : 'record'}
+                              </span>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent side="top" className="w-40 p-2" sideOffset={8}>
+                            <div className="flex flex-col gap-1">
+                              <p className="text-xs font-medium text-center mb-1">Language</p>
+                              <button
+                                onClick={() => startRecordingWithLanguage('en')}
+                                className="flex items-center justify-center gap-2 p-2 rounded-md hover:bg-muted transition-colors text-sm"
+                                data-testid="button-record-english"
+                              >
+                                <span>🇺🇸</span>
+                                <span>English</span>
+                              </button>
+                              <button
+                                onClick={() => startRecordingWithLanguage('es')}
+                                className="flex items-center justify-center gap-2 p-2 rounded-md hover:bg-muted transition-colors text-sm"
+                                data-testid="button-record-spanish"
+                              >
+                                <span>🇪🇸</span>
+                                <span>Spanish</span>
+                              </button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                         
                         <button
                           onClick={() => setShowTransferDialog(true)}
@@ -3450,33 +3476,6 @@ export function WebPhoneFloatingWindow() {
                     </Dialog>
                   )}
 
-                  {/* Language Selection Dialog for Recording */}
-                  <Dialog open={showLanguageDialog} onOpenChange={setShowLanguageDialog}>
-                    <DialogContent className="sm:max-w-sm">
-                      <DialogTitle className="text-lg font-semibold">Select Language</DialogTitle>
-                      <DialogDescription className="text-sm text-muted-foreground">
-                        Choose the language for the recording announcement
-                      </DialogDescription>
-                      <div className="flex flex-col gap-3 pt-4">
-                        <button
-                          onClick={() => startRecordingWithLanguage('en')}
-                          className="flex items-center justify-center gap-2 p-4 rounded-lg border hover:bg-muted transition-colors"
-                          data-testid="button-record-english"
-                        >
-                          <span className="text-2xl">🇺🇸</span>
-                          <span className="font-medium">English</span>
-                        </button>
-                        <button
-                          onClick={() => startRecordingWithLanguage('es')}
-                          className="flex items-center justify-center gap-2 p-4 rounded-lg border hover:bg-muted transition-colors"
-                          data-testid="button-record-spanish"
-                        >
-                          <span className="text-2xl">🇪🇸</span>
-                          <span className="font-medium">Spanish</span>
-                        </button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
                 </div>
               </div>
             ) : (
