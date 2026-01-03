@@ -71,6 +71,8 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Generate random waveform bars (simulated)
   const waveformBars = useRef(
@@ -102,6 +104,8 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
+      setIsLoading(false);
+      setHasError(false);
     }
   };
 
@@ -109,6 +113,23 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
     setIsPlaying(false);
     setCurrentTime(0);
   };
+
+  const handleError = () => {
+    setHasError(true);
+    setIsLoading(false);
+  };
+
+  // Show error state
+  if (hasError) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid={testId}>
+        <div className="h-7 w-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+          <Play className="h-3.5 w-3.5 text-gray-400" />
+        </div>
+        <span>Recording unavailable</span>
+      </div>
+    );
+  }
 
   const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!audioRef.current || !duration) return;
@@ -129,6 +150,7 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
+        onError={handleError}
         preload="metadata"
       />
       <button
