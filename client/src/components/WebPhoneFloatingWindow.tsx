@@ -185,9 +185,10 @@ interface VoicemailViewProps {
   phoneNumberId?: string;
   setDialNumber: (number: string) => void;
   setViewMode: (mode: ViewMode) => void;
+  selectedPhoneNumber?: string;
 }
 
-function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumberId, setDialNumber, setViewMode }: VoicemailViewProps) {
+function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumberId, setDialNumber, setViewMode, selectedPhoneNumber }: VoicemailViewProps) {
   const { toast } = useToast();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioProgress, setAudioProgress] = useState<{ [key: string]: number }>({});
@@ -257,7 +258,6 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Voicemail deleted" });
       refetchVoicemails();
     },
     onError: () => {
@@ -354,6 +354,13 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
 
   return (
     <div className="flex flex-col h-full">
+      {selectedPhoneNumber && (
+        <div className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+          <p className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
+            {formatPhoneInput(selectedPhoneNumber)}
+          </p>
+        </div>
+      )}
       {unreadCount > 0 && (
         <div className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
           <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
@@ -1739,6 +1746,10 @@ export function WebPhoneFloatingWindow() {
               // Instantly refresh call logs when we receive a new call log event
               queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
             }
+            if (message.type === 'new_voicemail') {
+              // Instantly refresh voicemails when we receive a new voicemail event
+              queryClient.invalidateQueries({ queryKey: ['/api/voicemails'] });
+            }
           } catch (e) {
             // Ignore parse errors
           }
@@ -1761,16 +1772,23 @@ export function WebPhoneFloatingWindow() {
     };
   }, []);
 
-  // Query for voicemails from backend
-  const { data: voicemailsData, refetch: refetchVoicemails } = useQuery<{ voicemails: any[], unreadCount: number }>({
-    queryKey: ['/api/voicemails'],
-  });
-  const voicemailList = voicemailsData?.voicemails || [];
-  const voicemailUnreadCount = voicemailsData?.unreadCount || 0;
   // Use selected outbound number, user's assigned number, or first available number as caller ID
   const availableNumbers = telnyxNumbersData?.numbers?.map((n: any) => n.phoneNumber || n.phone_number).filter(Boolean) || [];
   const defaultCallerIdNumber = userAssignedNumber || telnyxNumbersData?.numbers?.[0]?.phone_number || telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
   const telnyxCallerIdNumber = selectedOutboundNumber || defaultCallerIdNumber;
+
+  // Query for voicemails from backend - filtered by selected phone line
+  const { data: voicemailsData, refetch: refetchVoicemails } = useQuery<{ voicemails: any[], unreadCount: number }>({
+    queryKey: ['/api/voicemails', telnyxCallerIdNumber],
+    queryFn: async () => {
+      const params = telnyxCallerIdNumber ? `?phoneNumber=${encodeURIComponent(telnyxCallerIdNumber)}` : '';
+      const res = await fetch(`/api/voicemails${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch voicemails');
+      return res.json();
+    },
+  });
+  const voicemailList = voicemailsData?.voicemails || [];
+  const voicemailUnreadCount = voicemailsData?.unreadCount || 0;
   
   // Get the ID of the currently selected number (for voicemail status, etc.)
   const selectedNumberId = telnyxCallerIdNumber 
@@ -3993,6 +4011,7 @@ export function WebPhoneFloatingWindow() {
                       phoneNumberId={selectedNumberId}
                       setDialNumber={setDialNumber}
                       setViewMode={setViewMode}
+                      selectedPhoneNumber={telnyxCallerIdNumber}
                     />
                   )}
                 </div>

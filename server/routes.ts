@@ -31227,12 +31227,24 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "No company associated with user" });
       }
       
+      const { phoneNumber } = req.query;
+      
       // Get voicemails for this user (or all for admin)
-      const whereConditions = [eq(voicemails.companyId, user.companyId)];
+      // Always exclude deleted voicemails
+      const whereConditions = [
+        eq(voicemails.companyId, user.companyId),
+        ne(voicemails.status, 'deleted')
+      ];
       
       // If not admin, only show voicemails for numbers assigned to this user
       if (user.role === 'agent') {
         whereConditions.push(eq(voicemails.userId, user.id));
+      }
+      
+      // Filter by phone number if provided
+      if (phoneNumber && typeof phoneNumber === 'string') {
+        const normalizedPhone = phoneNumber.replace(/\D/g, '');
+        whereConditions.push(sql`REPLACE(${voicemails.toNumber}, '+', '') LIKE ${'%' + normalizedPhone}`);
       }
       
       const userVoicemails = await db
@@ -31253,7 +31265,24 @@ CRITICAL REMINDERS:
         .orderBy(desc(voicemails.receivedAt))
         .limit(50);
       
-      res.json({ voicemails: userVoicemails });
+      // Get unread count with same filters (excluding deleted and with phone filter)
+      const unreadConditions = [
+        eq(voicemails.companyId, user.companyId),
+        eq(voicemails.status, 'new')
+      ];
+      if (user.role === 'agent') {
+        unreadConditions.push(eq(voicemails.userId, user.id));
+      }
+      if (phoneNumber && typeof phoneNumber === 'string') {
+        const normalizedPhone = phoneNumber.replace(/\D/g, '');
+        unreadConditions.push(sql`REPLACE(${voicemails.toNumber}, '+', '') LIKE ${'%' + normalizedPhone}`);
+      }
+      const [unreadCount] = await db
+        .select({ count: count() })
+        .from(voicemails)
+        .where(and(...unreadConditions));
+      
+      res.json({ voicemails: userVoicemails, unreadCount: unreadCount?.count || 0 });
     } catch (error: any) {
       console.error("[Voicemails] List error:", error);
       res.status(500).json({ message: "Failed to fetch voicemails" });
@@ -31966,6 +31995,9 @@ CRITICAL REMINDERS:
                   createdAt: new Date(),
                 });
               }
+                // Broadcast new voicemail notification via WebSocket
+                const { broadcastNewVoicemailToUser } = await import('./websocket');
+                broadcastNewVoicemailToUser(phoneNumber.assignedUserId, fromNumber, null);
             }
           }
         } catch (err) {
