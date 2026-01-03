@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { usageItems, callLogs, wallets, walletTransactions, telnyxGlobalPricing, UsageType, UsageResourceType, callUsageItems, CallUsageType } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { broadcastWalletUpdate } from "../websocket";
 
@@ -571,10 +571,12 @@ export class UsageCollector {
     console.log(`[UsageBilling] Charging ${this.items.length} items, total: $${totalPrice.toFixed(4)}`);
 
     try {
+      // Order by balance descending to get the wallet with most funds (handles duplicate wallet edge case)
       const [wallet] = await db
         .select()
         .from(wallets)
-        .where(eq(wallets.companyId, this.companyId));
+        .where(eq(wallets.companyId, this.companyId))
+        .orderBy(desc(wallets.balance));
 
       if (!wallet) {
         return { 
