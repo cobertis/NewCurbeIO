@@ -1719,7 +1719,7 @@ export default function Billing() {
                                     <TableCell className="py-2">
                                       {call.recordingUrl ? (
                                         <AudioPlayer
-                                          src={call.recordingUrl}
+                                          src={`/api/call-logs/${call.id}/recording`}
                                           testId={`audio-player-${call.id}`}
                                         />
                                       ) : (

@@ -5398,7 +5398,8 @@ export const callLogs = pgTable("call_logs", {
   callerName: text("caller_name"),
   
   // Recording
-  recordingUrl: text("recording_url"),
+  recordingId: text("recording_id"), // Telnyx recording ID for fetching fresh URLs
+  recordingUrl: text("recording_url"), // Cached URL (may expire)
   recordingDuration: integer("recording_duration"), // Recording duration in seconds
   recordingLanguage: text("recording_language").$type<'en' | 'es'>(), // Language used for recording announcement
   

@@ -7695,6 +7695,84 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // GET /api/call-logs/:id/recording - Proxy endpoint to fetch recording with fresh URL from Telnyx
+  app.get("/api/call-logs/:id/recording", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      // Get call log
+      const [callLog] = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.id, id));
+      
+      if (!callLog) {
+        return res.status(404).json({ message: "Call log not found" });
+      }
+      
+      // Verify multi-tenant access
+      if (callLog.companyId !== user.companyId && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // If we have a recording ID, try to get fresh URL from Telnyx
+      if (callLog.recordingId) {
+        try {
+          const credentials = await getCredentialFromDb('telnyx', user.companyId!) || 
+                             await getCredentialFromDb('telnyx');
+          
+          if (credentials?.apiKey) {
+            const response = await fetch(`https://api.telnyx.com/v2/recordings/${callLog.recordingId}`, {
+              headers: {
+                'Authorization': `Bearer ${credentials.apiKey}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              const downloadUrl = data.data?.download_urls?.mp3 || data.data?.download_urls?.wav;
+              
+              if (downloadUrl) {
+                // Stream the audio through our server to avoid CORS issues
+                const audioResponse = await fetch(downloadUrl);
+                if (audioResponse.ok) {
+                  res.set('Content-Type', audioResponse.headers.get('Content-Type') || 'audio/mpeg');
+                  res.set('Cache-Control', 'private, max-age=300');
+                  const arrayBuffer = await audioResponse.arrayBuffer();
+                  return res.send(Buffer.from(arrayBuffer));
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[Recording Proxy] Error fetching from Telnyx API:", err);
+        }
+      }
+      
+      // Fallback: try to stream from cached URL if available
+      if (callLog.recordingUrl) {
+        try {
+          const audioResponse = await fetch(callLog.recordingUrl);
+          if (audioResponse.ok) {
+            res.set('Content-Type', audioResponse.headers.get('Content-Type') || 'audio/mpeg');
+            res.set('Cache-Control', 'private, max-age=300');
+            const arrayBuffer = await audioResponse.arrayBuffer();
+            return res.send(Buffer.from(arrayBuffer));
+          }
+        } catch (err) {
+          console.error("[Recording Proxy] Error fetching from cached URL:", err);
+        }
+      }
+      
+      return res.status(404).json({ message: "Recording not available" });
+    } catch (error: any) {
+      console.error("[Recording Proxy] Error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
   // Get billing subscription details from Stripe
   app.get("/api/billing/subscription", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -31622,6 +31700,7 @@ CRITICAL REMINDERS:
       // Handle recording saved event - save recording URL and charge recording cost
       if (call_control_id && eventType === 'call.recording.saved') {
         try {
+          const recordingId = payload.recording_id || payload.id;
           const recordingUrls = payload.recording_urls || {};
           const recordingUrl = recordingUrls.mp3 || recordingUrls.wav || payload.public_recording_urls?.mp3;
           const recordingDurationMs = payload.recording_ended_at && payload.recording_started_at
@@ -31631,12 +31710,12 @@ CRITICAL REMINDERS:
           
           console.log("[Telnyx Voice Status] Recording saved event:", {
             callControlId: call_control_id,
+            recordingId: recordingId || 'missing',
             recordingUrl: recordingUrl ? 'present' : 'missing',
             recordingDurationSeconds
           });
           
-          if (recordingUrl) {
-            // Get the call log to find company and update
+          if (recordingId || recordingUrl) {
             const [callLog] = await db
               .select()
               .from(callLogs)
@@ -31684,6 +31763,7 @@ CRITICAL REMINDERS:
               await db
                 .update(callLogs)
                 .set({ 
+                  recordingId: recordingId,
                   recordingUrl: recordingUrl,
                   cost: newTotalCost
                 })
@@ -31694,7 +31774,7 @@ CRITICAL REMINDERS:
               // No call log found, just save the URL by telnyxCallId
               await db
                 .update(callLogs)
-                .set({ recordingUrl: recordingUrl })
+                .set({ recordingId: recordingId, recordingUrl: recordingUrl })
                 .where(eq(callLogs.telnyxCallId, call_control_id));
               console.log("[Telnyx Voice Status] Updated call log with recording URL for call:", call_control_id);
             }
