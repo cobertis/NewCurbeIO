@@ -710,9 +710,19 @@ class TelnyxWebRTCManager {
     const call = store.incomingCall;
     const callInfo = store.incomingCallInfo;
     
-    if (!call) return;
+    if (!call) {
+      console.log("[TelnyxRTC] No incoming call to reject");
+      return;
+    }
 
-    console.log("[TelnyxRTC] Rejecting call with SIP 486 Busy");
+    console.log("[TelnyxRTC] Rejecting call:", {
+      callId: (call as any).id,
+      callState: (call as any).state,
+      callerNumber: callInfo?.remoteCallerNumber,
+      callLegId: callInfo?.telnyxCallLegId,
+      callMethods: Object.keys(call).filter(k => typeof (call as any)[k] === 'function')
+    });
+    
     this.stopRingtone();
     
     // Set cooldown to ignore SIP forks for the next 5 seconds
@@ -731,11 +741,20 @@ class TelnyxWebRTCManager {
     store.setIncomingCall(undefined);
     store.setIncomingCallInfo(undefined);
     
-    // Then hangup - this will reject the call to Telnyx
+    // Reject the incoming call - hangup before answering sends SIP rejection
     try {
-      call.hangup();
+      // Try reject() method first if available (some SDK versions have it)
+      if (typeof (call as any).reject === 'function') {
+        console.log("[TelnyxRTC] Using call.reject() method");
+        (call as any).reject();
+      } else {
+        // Fall back to hangup() which should send proper SIP rejection for unanswered calls
+        console.log("[TelnyxRTC] Using call.hangup() method (no reject available)");
+        call.hangup();
+      }
+      console.log("[TelnyxRTC] Call rejection sent successfully");
     } catch (e) {
-      console.error("[TelnyxRTC] Reject hangup error:", e);
+      console.error("[TelnyxRTC] Reject error:", e);
     }
   }
 
