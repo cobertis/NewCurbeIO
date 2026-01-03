@@ -2331,15 +2331,16 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Ring-through to assigned user using Dial + Bridge pattern (per Telnyx documentation)
+   * Transfer call to assigned user using Dial + Bridge pattern
    * 
-   * IMPORTANT: This follows Telnyx's official "Dial and Bridge on Answer" pattern:
-   * 1. DO NOT answer the inbound call - caller hears ringback tone
-   * 2. Use 'dial' command to call the agent's SIP endpoint
-   * 3. When agent answers (call.answered event), bridge the two legs
-   * 4. If timeout/no answer, then answer caller and route to voicemail
+   * Per Telnyx documentation: We must answer the caller first, then create an outbound
+   * call to the agent and bridge when the agent answers.
    * 
-   * This ensures billing starts ONLY when the agent picks up.
+   * Flow:
+   * 1. Answer the inbound call (billing starts but caller hears silence briefly)
+   * 2. Create outbound call to agent's SIP endpoint with POST /calls
+   * 3. When agent answers, bridge the two legs
+   * 4. If timeout/no answer, route to voicemail with custom greeting
    */
   private async transferToAssignedUser(
     callControlId: string,
@@ -2347,7 +2348,7 @@ export class CallControlWebhookService {
     callerNumber?: string
   ): Promise<void> {
     const companyId = phoneNumber.companyId;
-    console.log(`[CallControl] Ring-through to assigned user using Dial+Bridge pattern, caller: ${callerNumber}`);
+    console.log(`[CallControl] Transfer to assigned user using Dial+Bridge, caller: ${callerNumber}`);
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
@@ -2363,7 +2364,6 @@ export class CallControlWebhookService {
     if (!extension?.sipUsername) {
       console.log(`[CallControl] User ${phoneNumber.ownerUserId} has no extension with SIP credentials`);
       await this.answerCall(callControlId);
-      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message after the tone.");
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
@@ -2372,7 +2372,6 @@ export class CallControlWebhookService {
     const ringTimeout = extension.ringTimeout || 25;
     
     console.log(`[CallControl] Dialing agent SIP: ${sipUri} with timeout: ${ringTimeout}s`);
-    console.log(`[CallControl] Caller leg ${callControlId} stays unanswered (caller hears ringback)`);
 
     // Create client state to track this dial for bridging when agent answers
     const clientState = Buffer.from(JSON.stringify({
@@ -2383,29 +2382,28 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     try {
-      // DIAL command - creates outbound leg to agent WITHOUT answering inbound leg
-      // Per Telnyx docs: "The dial command originates a new call leg"
-      // Caller continues to hear ringback tone from PSTN
-      const dialResponse = await this.makeCallControlRequest(callControlId, "dial", {
-        to: sipUri,
-        from: callerNumber || phoneNumber.phoneNumber,
-        timeout_secs: ringTimeout,
-        answering_machine_detection: "disabled",
-        client_state: clientState,
-      });
+      // Step 1: Answer the caller (required for bridging per Telnyx docs)
+      console.log(`[CallControl] Answering caller for bridge setup`);
+      await this.answerCall(callControlId);
+
+      // Step 2: Create outbound call to agent SIP using POST /calls
+      // This uses the existing dialAndBridgeToSip function
+      await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
       
-      console.log(`[CallControl] Dial initiated to agent SIP, response:`, dialResponse);
-      
-      // Store pending bridge info - when agent answers we'll bridge
-      // The agent's call_control_id will come in the dial response or call.initiated event
-      pendingBridges.set(callControlId, {
-        callerCallControlId: callControlId,
-        companyId,
-        agentUserId: phoneNumber.ownerUserId,
-        callerNumber: callerNumber || "",
-        sipUri,
-        isDirectRingThrough: true,
-      });
+      // Mark the pending bridge as direct ring-through for voicemail handling
+      // Find the agent call control ID from the pendingBridges map
+      const bridgeEntries = Array.from(pendingBridges.entries());
+      for (const [agentCallId, bridge] of bridgeEntries) {
+        if (bridge.callerCallControlId === callControlId) {
+          pendingBridges.set(agentCallId, {
+            ...bridge,
+            isDirectRingThrough: true,
+            agentUserId: phoneNumber.ownerUserId,
+            callerNumber: callerNumber || "",
+          });
+          break;
+        }
+      }
       
       await pbxService.trackActiveCall(companyId, callControlId, callerNumber || "", sipUri, "ringing", {
         agentUserId: phoneNumber.ownerUserId,
@@ -2414,8 +2412,7 @@ export class CallControlWebhookService {
       
     } catch (error) {
       console.error(`[CallControl] Dial to agent SIP failed:`, error);
-      // If dial fails, answer and route to voicemail
-      await this.answerCall(callControlId);
+      // If dial fails, route to voicemail (already answered)
       await this.routeToVoicemail(callControlId, companyId);
     }
   }
