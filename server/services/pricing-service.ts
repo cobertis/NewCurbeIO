@@ -608,3 +608,81 @@ export async function seedDefaultRates(): Promise<void> {
   
   console.log(`[PricingService] Seeded ${defaultRates.length} default rates`);
 }
+
+/**
+ * Charge a generic usage cost to the company wallet
+ */
+export async function chargeWalletForUsage(
+  companyId: string,
+  amount: number,
+  description: string,
+  transactionType: string,
+  userId?: string
+): Promise<{ success: boolean; newBalance?: string; error?: string }> {
+  try {
+    const amountDecimal = new Decimal(amount);
+    
+    return await db.transaction(async (tx) => {
+      // Find the wallet
+      let wallet;
+      
+      if (userId) {
+        const [userWallet] = await tx
+          .select()
+          .from(wallets)
+          .where(and(
+            eq(wallets.companyId, companyId),
+            eq(wallets.ownerUserId, userId)
+          ))
+          .for("update");
+        wallet = userWallet;
+      }
+      
+      if (!wallet) {
+        const [companyWallet] = await tx
+          .select()
+          .from(wallets)
+          .where(eq(wallets.companyId, companyId))
+          .for("update");
+        wallet = companyWallet;
+      }
+      
+      if (!wallet) {
+        return { success: false, error: "No wallet found" };
+      }
+      
+      const currentBalance = new Decimal(wallet.balance);
+      const newBalance = currentBalance.minus(amountDecimal);
+      
+      // Allow negative balance but log warning
+      if (newBalance.lessThan(0)) {
+        console.warn(`[PricingService] Warning: Wallet going negative. Current: $${currentBalance}, Charge: $${amount}`);
+      }
+      
+      // Update wallet balance
+      await tx
+        .update(wallets)
+        .set({ 
+          balance: newBalance.toFixed(4),
+          updatedAt: new Date()
+        })
+        .where(eq(wallets.id, wallet.id));
+      
+      // Create transaction record
+      await tx.insert(walletTransactions).values({
+        walletId: wallet.id,
+        type: transactionType as any,
+        amount: amountDecimal.negated().toFixed(4),
+        balanceAfter: newBalance.toFixed(4),
+        description,
+      });
+      
+      console.log(`[PricingService] Charged $${amount.toFixed(4)} for ${transactionType}. New balance: $${newBalance.toFixed(4)}`);
+      
+      return { success: true, newBalance: newBalance.toFixed(4) };
+    });
+  } catch (error: any) {
+    console.error("[PricingService] chargeWalletForUsage error:", error);
+    return { success: false, error: error.message };
+  }
+}

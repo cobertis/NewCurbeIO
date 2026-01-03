@@ -31619,23 +31619,85 @@ CRITICAL REMINDERS:
         }
       }
       
-      // Handle recording saved event - save recording URL to call log
+      // Handle recording saved event - save recording URL and charge recording cost
       if (call_control_id && eventType === 'call.recording.saved') {
         try {
           const recordingUrls = payload.recording_urls || {};
           const recordingUrl = recordingUrls.mp3 || recordingUrls.wav || payload.public_recording_urls?.mp3;
+          const recordingDurationMs = payload.recording_ended_at && payload.recording_started_at
+            ? new Date(payload.recording_ended_at).getTime() - new Date(payload.recording_started_at).getTime()
+            : 0;
+          const recordingDurationSeconds = Math.ceil(recordingDurationMs / 1000);
           
           console.log("[Telnyx Voice Status] Recording saved event:", {
             callControlId: call_control_id,
-            recordingUrl: recordingUrl ? 'present' : 'missing'
+            recordingUrl: recordingUrl ? 'present' : 'missing',
+            recordingDurationSeconds
           });
           
           if (recordingUrl) {
-            const result = await db
-              .update(callLogs)
-              .set({ recordingUrl: recordingUrl })
+            // Get the call log to find company and update
+            const [callLog] = await db
+              .select()
+              .from(callLogs)
               .where(eq(callLogs.telnyxCallId, call_control_id));
-            console.log("[Telnyx Voice Status] Updated call log with recording URL for call:", call_control_id);
+            
+            if (callLog) {
+              // Calculate recording cost: $0.0020 per minute (rounded up)
+              const recordingMinutes = Math.max(1, Math.ceil(recordingDurationSeconds / 60));
+              const recordingCostPerMinute = 0.0020;
+              const recordingCost = recordingMinutes * recordingCostPerMinute;
+              
+              console.log(`[Telnyx Voice Status] Recording cost: ${recordingMinutes} min * $${recordingCostPerMinute} = $${recordingCost.toFixed(4)}`);
+              
+              // Get current cost and add recording cost
+              const currentCost = parseFloat(callLog.cost || "0");
+              const newTotalCost = (currentCost + recordingCost).toFixed(4);
+              
+              // Charge recording cost to wallet
+              if (callLog.companyId && recordingCost > 0) {
+                const { chargeWalletForUsage } = await import('./services/pricing-service');
+                const chargeResult = await chargeWalletForUsage(
+                  callLog.companyId,
+                  recordingCost,
+                  `Recording cost (${recordingMinutes} min)`,
+                  'RECORDING_COST',
+                  callLog.userId || undefined
+                );
+                
+                if (chargeResult.success) {
+                  console.log(`[Telnyx Voice Status] Recording charged: $${recordingCost.toFixed(4)}, new balance: $${chargeResult.newBalance}`);
+                  
+                  // Broadcast wallet update
+                  const { broadcastWalletUpdate } = await import('./websocket');
+                  broadcastWalletUpdate(callLog.companyId, {
+                    balance: chargeResult.newBalance!,
+                    transactionType: "RECORDING_COST",
+                    description: `Call recording (${recordingMinutes} min)`
+                  });
+                } else {
+                  console.error(`[Telnyx Voice Status] Failed to charge recording: ${chargeResult.error}`);
+                }
+              }
+              
+              // Update call log with recording URL and updated cost
+              await db
+                .update(callLogs)
+                .set({ 
+                  recordingUrl: recordingUrl,
+                  cost: newTotalCost
+                })
+                .where(eq(callLogs.id, callLog.id));
+              
+              console.log(`[Telnyx Voice Status] Updated call log ${callLog.id} with recording URL and cost: $${newTotalCost}`);
+            } else {
+              // No call log found, just save the URL by telnyxCallId
+              await db
+                .update(callLogs)
+                .set({ recordingUrl: recordingUrl })
+                .where(eq(callLogs.telnyxCallId, call_control_id));
+              console.log("[Telnyx Voice Status] Updated call log with recording URL for call:", call_control_id);
+            }
           }
         } catch (err) {
           console.error("[Telnyx Voice Status] Error saving recording URL:", err);
