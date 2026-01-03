@@ -5443,7 +5443,7 @@ export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = z.infer<typeof insertCallLogSchema>;
 
 // =====================================================
-// CALL USAGE ITEMS - Itemized billing for call services
+// CALL USAGE ITEMS - Itemized billing for call services (LEGACY)
 // =====================================================
 export const callUsageTypes = [
   "toll_free_inbound",
@@ -5499,6 +5499,97 @@ export const insertCallUsageItemSchema = createInsertSchema(callUsageItems).omit
 });
 export type CallUsageItem = typeof callUsageItems.$inferSelect;
 export type InsertCallUsageItem = z.infer<typeof insertCallUsageItemSchema>;
+
+// =====================================================
+// USAGE ITEMS - Unified billing for ALL Telnyx services
+// =====================================================
+// Resource types categorize the billable service
+export const usageResourceTypes = [
+  "call",      // Voice calls
+  "sms",       // SMS messages
+  "mms",       // MMS messages
+  "did",       // Phone number subscriptions
+  "e911",      // E911 services
+  "port",      // Number porting
+  "recording", // Call recordings
+  "lookup"     // CNAM/caller lookups
+] as const;
+export type UsageResourceType = typeof usageResourceTypes[number];
+
+// Expanded usage types for all billable services
+export const usageTypes = [
+  // Voice
+  "voice_local_inbound", "voice_local_outbound",
+  "voice_tollfree_inbound", "voice_tollfree_outbound",
+  // SMS
+  "sms_longcode_inbound", "sms_longcode_outbound",
+  "sms_tollfree_inbound", "sms_tollfree_outbound",
+  // MMS
+  "mms_longcode_inbound", "mms_longcode_outbound",
+  "mms_tollfree_inbound", "mms_tollfree_outbound",
+  // Call Services
+  "call_control_inbound", "call_control_outbound",
+  "recording", "cnam_lookup", "transcription",
+  "voicemail", "ivr",
+  "call_forwarding_inbound", "call_forwarding_outbound",
+  // DIDs
+  "did_local_monthly", "did_tollfree_monthly",
+  // E911
+  "e911_address", "unregistered_e911",
+  // Port
+  "port_out_fee"
+] as const;
+export type UsageType = typeof usageTypes[number];
+
+export const usageItems = pgTable("usage_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Resource type for categorization
+  resourceType: text("resource_type").notNull().$type<UsageResourceType>(),
+  
+  // Optional reference IDs (only one should be set based on resourceType)
+  callLogId: varchar("call_log_id").references(() => callLogs.id, { onDelete: "set null" }),
+  messageId: varchar("message_id"), // For SMS/MMS - references external message system
+  didId: varchar("did_id"), // For DID charges - references telnyxPhoneNumbers
+  
+  // Usage details
+  usageType: text("usage_type").notNull().$type<UsageType>(),
+  description: text("description").notNull(),
+  
+  // Quantity and rate
+  quantity: integer("quantity").notNull().default(1), // e.g., minutes, messages, lookups
+  unit: text("unit").notNull().default("unit"), // "minute", "message", "lookup", "unit", "month"
+  ratePerUnit: text("rate_per_unit").notNull(), // Rate charged to customer (price) in USD
+  costPerUnit: text("cost_per_unit"), // Our cost from Telnyx (optional, for margin tracking)
+  
+  // Calculated amounts
+  totalPrice: text("total_price").notNull(), // Total charged to customer
+  totalCost: text("total_cost"), // Total cost to us (optional)
+  currency: text("currency").notNull().default("USD"),
+  
+  // Wallet transaction reference
+  walletTransactionId: varchar("wallet_transaction_id"),
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Additional details (e.g., phone numbers, durations)
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("usage_items_company_id_idx").on(table.companyId),
+  resourceTypeIdx: index("usage_items_resource_type_idx").on(table.resourceType),
+  usageTypeIdx: index("usage_items_usage_type_idx").on(table.usageType),
+  callLogIdIdx: index("usage_items_call_log_id_idx").on(table.callLogId),
+  messageIdIdx: index("usage_items_message_id_idx").on(table.messageId),
+  didIdIdx: index("usage_items_did_id_idx").on(table.didId),
+  createdAtIdx: index("usage_items_created_at_idx").on(table.createdAt),
+}));
+
+export const insertUsageItemSchema = createInsertSchema(usageItems).omit({
+  id: true, createdAt: true
+});
+export type UsageItem = typeof usageItems.$inferSelect;
+export type InsertUsageItem = z.infer<typeof insertUsageItemSchema>;
 
 // =====================================================
 // VOICEMAILS (Voicemail Messages)
