@@ -280,9 +280,69 @@ export class ObjectStorageService {
     return { publicUrl, objectPath: `/objects/${objectName}` };
   }
 
-    private getExtensionFromFilename(filename: string): string {
+  private getExtensionFromFilename(filename: string): string {
     const match = filename.match(/\.[a-zA-Z0-9]+$/);
     return match ? match[0] : '';
+  }
+
+  async uploadRecordingAnnouncement(
+    buffer: Buffer,
+    mimetype: string,
+    originalName: string,
+    slotType: string,
+    slotLanguage: string
+  ): Promise<{ publicUrl: string; objectPath: string }> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    const extension = this.getExtensionFromFilename(originalName) || this.getExtensionFromMimetype(mimetype) || '.mp3';
+    const uniqueId = randomUUID();
+    const objectName = `recording-announcements/${slotType}_${slotLanguage}_${uniqueId}${extension}`;
+    const fullPath = `${privateObjectDir}/${objectName}`;
+    const { bucketName, objectName: storagePath } = parseObjectPath(fullPath);
+    
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      contentType: mimetype,
+      metadata: {
+        cacheControl: "public, max-age=31536000",
+      },
+    });
+    
+    const publicUrl = await signObjectURL({
+      bucketName,
+      objectName: storagePath,
+      method: "GET",
+      ttlSec: 315360000,
+    });
+    
+    console.log(`[ObjectStorage] Recording announcement uploaded: ${objectName}`);
+    return { publicUrl, objectPath: `/objects/${objectName}` };
+  }
+
+  async deleteObject(objectPath: string): Promise<void> {
+    if (!objectPath.startsWith("/objects/")) {
+      return;
+    }
+    const parts = objectPath.slice(1).split("/");
+    if (parts.length < 2) {
+      return;
+    }
+    const entityId = parts.slice(1).join("/");
+    let entityDir = this.getPrivateObjectDir();
+    if (!entityDir.endsWith("/")) {
+      entityDir = `${entityDir}/`;
+    }
+    const objectEntityPath = `${entityDir}${entityId}`;
+    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const objectFile = bucket.file(objectName);
+    try {
+      await objectFile.delete();
+      console.log(`[ObjectStorage] Deleted: ${objectPath}`);
+    } catch (error) {
+      console.error(`[ObjectStorage] Failed to delete ${objectPath}:`, error);
+    }
   }
 }
 

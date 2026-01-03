@@ -7359,14 +7359,16 @@ export type PulseAiChatMessage = typeof pulseAiChatMessages.$inferSelect;
 export type InsertPulseAiChatMessage = z.infer<typeof insertPulseAiChatMessageSchema>;
 
 // =====================================================
-// RECORDING ANNOUNCEMENT MEDIA (Telnyx Media Storage)
+// RECORDING ANNOUNCEMENT MEDIA (Object Storage with public URLs)
 // =====================================================
 
 export const recordingAnnouncementMedia = pgTable("recording_announcement_media", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   type: text("type").notNull(), // 'start' | 'stop'
   language: text("language").notNull(), // 'en' | 'es'
-  mediaName: text("media_name").notNull(),
+  mediaName: text("media_name"), // Legacy field - kept for backwards compatibility
+  audioUrl: text("audio_url"), // Public URL for playback via Telnyx audio_url param
+  objectPath: text("object_path"), // Internal path in Object Storage
   originalFileName: text("original_file_name"),
   isActive: boolean("is_active").notNull().default(true),
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),

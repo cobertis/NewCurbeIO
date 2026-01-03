@@ -38281,7 +38281,7 @@ CRITICAL REMINDERS:
         });
       }
       
-      console.log(`[Call Recording] Playing ${language} announcement (media_name: ${startMedia.mediaName}) before recording for call ${telnyxCallControlId}`);
+      console.log(`[Call Recording] Playing ${language} announcement (audio_url) before recording for call ${telnyxCallControlId}`);
       
       // Step 1: Play the announcement audio to both parties using Telnyx Media Storage
       const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/playback_start`, {
@@ -38291,7 +38291,7 @@ CRITICAL REMINDERS:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          media_name: startMedia.mediaName,
+          audio_url: startMedia.audioUrl,
           overlay: false,
           target_legs: "both"
         })
@@ -38412,7 +38412,7 @@ CRITICAL REMINDERS:
       if (!stopMedia) {
         console.log(`[Call Recording] No stop announcement configured for ${recordingLanguage}, skipping playback`);
       } else {
-        console.log(`[Call Recording] Playing ${recordingLanguage} stop announcement (media_name: ${stopMedia.mediaName}) for call ${telnyxCallControlId}`);
+        console.log(`[Call Recording] Playing ${recordingLanguage} stop announcement (audio_url) for call ${telnyxCallControlId}`);
         
         // Play the stop announcement audio to both parties using Telnyx Media Storage
         const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/playback_start`, {
@@ -38422,7 +38422,7 @@ CRITICAL REMINDERS:
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            media_name: stopMedia.mediaName,
+            audio_url: stopMedia.audioUrl,
             overlay: false,
             target_legs: "both"
           })
@@ -42872,7 +42872,8 @@ CRITICAL REMINDERS:
             id: entry.id,
             type: entry.type,
             language: entry.language,
-            mediaName: entry.mediaName,
+            audioUrl: entry.audioUrl,
+            objectPath: entry.objectPath,
             originalFileName: entry.originalFileName,
             uploadedAt: entry.uploadedAt,
             uploadedByUserId: entry.uploadedByUserId,
@@ -42887,7 +42888,7 @@ CRITICAL REMINDERS:
     }
   });
 
-  // POST /api/admin/recording-media - Upload audio file to Telnyx Media Storage
+  // POST /api/admin/recording-media - Upload audio file to Object Storage
   app.post("/api/admin/recording-media", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
@@ -42939,18 +42940,14 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "Invalid language. Must be 'en' or 'es'" });
       }
 
-      // Upload to Telnyx Media Storage (no companyId for global media)
-      const { uploadMediaToTelnyx } = await import("./services/telnyx-media-service");
-      const uploadResult = await uploadMediaToTelnyx(
+      // Upload to Object Storage (public URL accessible by Telnyx)
+      const uploadResult = await objectStorage.uploadRecordingAnnouncement(
         file.buffer,
+        file.mimetype,
         file.originalname,
-        file.mimetype
+        type,
+        language
       );
-
-      if (!uploadResult.success) {
-        console.error("[RecordingMedia] Telnyx upload failed:", uploadResult.error);
-        return res.status(500).json({ message: `Failed to upload to Telnyx: ${uploadResult.error}` });
-      }
 
       // Deactivate any existing active media for this slot
       await db.update(recordingAnnouncementMedia)
@@ -42963,19 +42960,20 @@ CRITICAL REMINDERS:
           )
         );
 
-      // Insert new media entry
+      // Insert new media entry with public URL
       const [newMedia] = await db.insert(recordingAnnouncementMedia)
         .values({
           type,
           language,
-          mediaName: uploadResult.mediaName!,
+          audioUrl: uploadResult.publicUrl,
+          objectPath: uploadResult.objectPath,
           originalFileName: file.originalname,
           isActive: true,
           uploadedByUserId: user.id,
         })
         .returning();
 
-      console.log(`[RecordingMedia] Uploaded ${type}_${language}: ${uploadResult.mediaName}`);
+      console.log(`[RecordingMedia] Uploaded ${type}_${language} to Object Storage: ${uploadResult.objectPath}`);
 
       res.json({
         success: true,
@@ -42983,7 +42981,7 @@ CRITICAL REMINDERS:
           id: newMedia.id,
           type: newMedia.type,
           language: newMedia.language,
-          mediaName: newMedia.mediaName,
+          audioUrl: newMedia.audioUrl,
           originalFileName: newMedia.originalFileName,
           uploadedAt: newMedia.uploadedAt,
         },
@@ -43011,18 +43009,19 @@ CRITICAL REMINDERS:
         return res.status(404).json({ message: "Media entry not found" });
       }
 
-      // Delete from Telnyx
-      const { deleteMediaFromTelnyx } = await import("./services/telnyx-media-service");
-      const deleteResult = await deleteMediaFromTelnyx(mediaEntry.mediaName);
-
-      if (!deleteResult.success) {
-        console.warn(`[RecordingMedia] Telnyx delete warning: ${deleteResult.error}`);
+      // Delete from Object Storage if objectPath exists
+      if (mediaEntry.objectPath) {
+        try {
+          await objectStorage.deleteObject(mediaEntry.objectPath);
+        } catch (deleteError) {
+          console.warn(`[RecordingMedia] Object Storage delete warning:`, deleteError);
+        }
       }
 
       // Delete from database
       await db.delete(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.id, id));
 
-      console.log(`[RecordingMedia] Deleted ${mediaEntry.type}_${mediaEntry.language}: ${mediaEntry.mediaName}`);
+      console.log(`[RecordingMedia] Deleted ${mediaEntry.type}_${mediaEntry.language}: ${mediaEntry.objectPath || mediaEntry.mediaName}`);
 
       res.json({ success: true });
     } catch (error: any) {

@@ -15,9 +15,9 @@ interface MediaSlotData {
   id: string;
   type: string;
   language: string;
-  mediaName: string;
+  audioUrl: string;
+  objectPath?: string;
   originalFileName: string;
-  telnyxMediaId: string;
   uploadedBy: string;
   uploadedAt: string;
   isActive: boolean;
