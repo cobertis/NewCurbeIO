@@ -38216,21 +38216,17 @@ CRITICAL REMINDERS:
       }
       
       // Security: Verify the call belongs to the user's company
-      // Search by database ID (numeric), telnyxCallId, sipCallId, or telnyxSessionId
-      const numericId = parseInt(callControlId, 10);
-      const isNumericId = !isNaN(numericId) && numericId > 0;
-      
+      // Search by database ID (UUID) first, then by Telnyx identifiers
       let callLog;
-      if (isNumericId) {
-        // Search by database ID first (most reliable)
-        [callLog] = await db
-          .select()
-          .from(callLogs)
-          .where(and(
-            eq(callLogs.id, numericId),
-            eq(callLogs.companyId, user.companyId)
-          ));
-      }
+      
+      // Try to find by primary key ID (UUID format)
+      [callLog] = await db
+        .select()
+        .from(callLogs)
+        .where(and(
+          eq(callLogs.id, callControlId),
+          eq(callLogs.companyId, user.companyId)
+        ));
       
       if (!callLog) {
         // Fallback: search by Telnyx identifiers
@@ -38248,16 +38244,16 @@ CRITICAL REMINDERS:
       }
       
       if (!callLog) {
-        console.log(`[Call Recording] Call not found for ID: \${callControlId}, company: \${user.companyId}`);
+        console.log(`[Call Recording] Call not found for ID: ${callControlId}, company: ${user.companyId}`);
         return res.status(403).json({ success: false, error: "Call not found or access denied" });
       }
       
       // Use the correct call_control_id from the database record
       const telnyxCallControlId = callLog.telnyxCallId;
-      console.log(`[Call Recording] Found call log \${callLog.id}, telnyxCallId: \${telnyxCallControlId}`);
+      console.log(`[Call Recording] Found call log ${callLog.id}, telnyxCallId: ${telnyxCallControlId}`);
       
       if (!telnyxCallControlId) {
-        console.log(`[Call Recording] No Telnyx call_control_id for call log \${callLog.id} - webhook may not have been received yet`);
+        console.log(`[Call Recording] No Telnyx call_control_id for call log ${callLog.id} - webhook may not have been received yet`);
         return res.status(400).json({ success: false, error: "No Telnyx call control ID available - please wait a moment and try again" });
       }
       
@@ -38337,21 +38333,17 @@ CRITICAL REMINDERS:
       }
       
       // Security: Verify the call belongs to the user's company
-      // Search by database ID (numeric), telnyxCallId, sipCallId, or telnyxSessionId
-      const numericId = parseInt(callControlId, 10);
-      const isNumericId = !isNaN(numericId) && numericId > 0;
-      
+      // Search by database ID (UUID) first, then by Telnyx identifiers
       let callLog;
-      if (isNumericId) {
-        // Search by database ID first (most reliable)
-        [callLog] = await db
-          .select()
-          .from(callLogs)
-          .where(and(
-            eq(callLogs.id, numericId),
-            eq(callLogs.companyId, user.companyId)
-          ));
-      }
+      
+      // Try to find by primary key ID (UUID format)
+      [callLog] = await db
+        .select()
+        .from(callLogs)
+        .where(and(
+          eq(callLogs.id, callControlId),
+          eq(callLogs.companyId, user.companyId)
+        ));
       
       if (!callLog) {
         // Fallback: search by Telnyx identifiers
