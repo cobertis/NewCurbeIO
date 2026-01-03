@@ -2002,6 +2002,25 @@ export async function getVoicemailStatus(
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
+    // Get the Telnyx phone number ID from our database
+    // phoneNumberId is our internal UUID, we need the Telnyx ID
+    const phoneNumberRecord = await db.select({
+      telnyxPhoneNumberId: telnyxPhoneNumbers.telnyxPhoneNumberId,
+      voicemailEnabled: telnyxPhoneNumbers.voicemailEnabled,
+      voicemailPin: telnyxPhoneNumbers.voicemailPin,
+    }).from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.id, phoneNumberId))
+      .limit(1);
+    
+    if (!phoneNumberRecord.length || !phoneNumberRecord[0].telnyxPhoneNumberId) {
+      return {
+        success: false,
+        error: "Phone number not found or missing Telnyx ID"
+      };
+    }
+    
+    const telnyxId = phoneNumberRecord[0].telnyxPhoneNumberId;
+    
     // Get the company's managed account ID
     const managedAccountId = await getCompanyTelnyxAccountId(companyId);
     
@@ -2022,9 +2041,8 @@ export async function getVoicemailStatus(
     }
     
     // GET /v2/phone_numbers/{phone_number_id}/voicemail - correct endpoint per Telnyx API docs
-    const url = `${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`;
-    console.log(`[Telnyx Voicemail] Calling GET ${url}`);
-    console.log(`[Telnyx Voicemail] Headers: managed_account=${managedAccountId}`);
+    const url = `${TELNYX_API_BASE}/phone_numbers/${telnyxId}/voicemail`;
+    console.log(`[Telnyx Voicemail] Calling GET ${url} (telnyxId: ${telnyxId})`);
     
     const response = await fetch(url, {
       method: "GET",
@@ -2041,6 +2059,18 @@ export async function getVoicemailStatus(
         success: true,
         enabled: false,
         sendToVoicemail: false,
+      };
+    }
+    
+    // 500 with empty body often means the number is assigned to Call Control (not SIP Connection)
+    // Telnyx voicemail only works with SIP Connections
+    if (response.status === 500) {
+      console.log(`[Telnyx Voicemail] Status for ${phoneNumberId}: not available (likely Call Control number - voicemail requires SIP Connection)`);
+      return {
+        success: true,
+        enabled: false,
+        sendToVoicemail: false,
+        error: "Voicemail not available for Call Control numbers. Telnyx voicemail requires SIP Connection.",
       };
     }
     
@@ -2267,6 +2297,22 @@ export async function enableVoicemail(
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
+    // Get the Telnyx phone number ID from our database
+    const phoneNumberRecord = await db.select({
+      telnyxPhoneNumberId: telnyxPhoneNumbers.telnyxPhoneNumberId,
+    }).from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.id, phoneNumberId))
+      .limit(1);
+    
+    if (!phoneNumberRecord.length || !phoneNumberRecord[0].telnyxPhoneNumberId) {
+      return {
+        success: false,
+        error: "Phone number not found or missing Telnyx ID"
+      };
+    }
+    
+    const telnyxId = phoneNumberRecord[0].telnyxPhoneNumberId;
+    
     // Get the company's managed account ID
     const managedAccountId = await getCompanyTelnyxAccountId(companyId);
     
@@ -2275,15 +2321,6 @@ export async function enableVoicemail(
         success: false,
         error: "Company Telnyx account not found"
       };
-    }
-    
-    const headers: Record<string, string> = {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    };
-    
-    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-      headers["x-managed-account-id"] = managedAccountId;
     }
     
     // Generate a 4-digit PIN for voicemail access
@@ -2295,9 +2332,18 @@ export async function enableVoicemail(
       pin: pin
     };
     
-    console.log(`[Telnyx Voicemail] Enabling voicemail for ${phoneNumberId} with PIN: ${pin}`);
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
     
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+    
+    console.log(`[Telnyx Voicemail] Enabling voicemail for telnyxId: ${telnyxId} with PIN: ${pin}`);
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${telnyxId}/voicemail`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
