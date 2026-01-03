@@ -38511,7 +38511,34 @@ CRITICAL REMINDERS:
       
       console.log(`[Call Logs] Billing check: status=${status}, isCallEnding=${isCallEnding}, hasDuration=${hasDuration}, callNotBilled=${callNotBilled}, existingCost="${existingLog.cost}" (${existingCostNum}), duration=${duration}`);
       
+      // RACE CONDITION FIX: Use atomic check-and-set to prevent double billing
+      // Problem: Two concurrent PATCH requests can both read cost=null and both charge
+      // Solution: Atomically try to mark the call as "billing in progress" in the database
       if (isCallEnding && hasDuration && callNotBilled) {
+        // Atomically try to claim billing rights by setting a marker cost value
+        // Only one request will succeed in updating where cost IS NULL or < 0.01
+        const [claimedLog] = await db
+          .update(callLogs)
+          .set({ cost: "-1" }) // Temporary marker indicating billing in progress
+          .where(and(
+            eq(callLogs.id, id), 
+            eq(callLogs.companyId, user.companyId),
+            sql`(cost IS NULL OR CAST(cost AS DECIMAL) < 0.01)`
+          ))
+          .returning();
+        
+        if (!claimedLog) {
+          console.log(`[Call Logs] Billing already claimed by another request, skipping duplicate charge for: ${id}`);
+          // Another request already claimed billing, just update the call log
+          const [updated] = await db
+            .update(callLogs)
+            .set(updateData)
+            .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)))
+            .returning();
+          broadcastNewCallLog(user.companyId, updated as any);
+          return res.json({ success: true, log: updated });
+        }
+        
         console.log(`[Call Logs] WebRTC call ended - charging to wallet with unified billing. ID: ${id}, Duration: ${duration || existingLog.duration}s`);
         
         // Use provided values or fall back to existing log values
@@ -38542,6 +38569,8 @@ CRITICAL REMINDERS:
           updateData.costCurrency = "USD";
         } else {
           console.error(`[Call Logs] Failed to charge WebRTC call: ${chargeResult.error}`);
+          // Reset the marker cost on failure
+          updateData.cost = "0.0000";
         }
       }
       const [updated] = await db
