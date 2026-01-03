@@ -181,13 +181,34 @@ interface VoicemailViewProps {
   voicemails: Voicemail[];
   unreadCount: number;
   refetchVoicemails: () => void;
+  phoneNumberId?: string;
 }
 
-function VoicemailView({ voicemails, unreadCount, refetchVoicemails }: VoicemailViewProps) {
+function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumberId }: VoicemailViewProps) {
   const { toast } = useToast();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioProgress, setAudioProgress] = useState<{ [key: string]: number }>({});
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+
+  const { data: voicemailStatus, isLoading: isLoadingStatus, refetch: refetchStatus } = useQuery<{ enabled: boolean; sendToVoicemail?: boolean; voicemailBoxId?: string }>({
+    queryKey: ['/api/voicemail/status', phoneNumberId],
+    enabled: !!phoneNumberId,
+  });
+
+  const enableVoicemailMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(`/api/voicemail/enable/${phoneNumberId}`, { method: 'POST' });
+      return res;
+    },
+    onSuccess: () => {
+      toast({ title: "Voicemail enabled", description: "Voicemail has been activated for this number" });
+      refetchStatus();
+      queryClient.invalidateQueries({ queryKey: ['/api/voicemail/status', phoneNumberId] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to enable voicemail", description: error.message || "Please try again", variant: "destructive" });
+    }
+  });
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -284,6 +305,45 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails }: Voicemail
       }
     }
   };
+
+  if (isLoadingStatus) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-12">
+        <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mb-3" />
+        <p className="text-sm text-muted-foreground">Checking voicemail status...</p>
+      </div>
+    );
+  }
+
+  if (phoneNumberId && voicemailStatus && !voicemailStatus.enabled) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-12 px-6">
+        <Voicemail className="h-12 w-12 text-muted-foreground/30 mb-4" />
+        <h3 className="text-base font-medium text-foreground mb-2">Voicemail not configured</h3>
+        <p className="text-sm text-muted-foreground text-center mb-6">
+          Voicemail is not enabled for this phone number. Enable it to receive voicemail messages when you miss calls.
+        </p>
+        <Button
+          onClick={() => enableVoicemailMutation.mutate()}
+          disabled={enableVoicemailMutation.isPending}
+          className="gap-2"
+          data-testid="button-enable-voicemail"
+        >
+          {enableVoicemailMutation.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Enabling...
+            </>
+          ) : (
+            <>
+              <Voicemail className="h-4 w-4" />
+              Enable Voicemail
+            </>
+          )}
+        </Button>
+      </div>
+    );
+  }
 
   if (!voicemails || voicemails.length === 0) {
     return (
@@ -3807,6 +3867,7 @@ export function WebPhoneFloatingWindow() {
                       voicemails={voicemailList}
                       unreadCount={voicemailUnreadCount}
                       refetchVoicemails={refetchVoicemails}
+                      phoneNumberId={primaryTelnyxNumberId}
                     />
                   )}
                 </div>

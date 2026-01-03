@@ -35875,6 +35875,72 @@ CRITICAL REMINDERS:
       res.status(500).json({ message: "Failed to update spam protection settings" });
     }
   });
+
+  // =====================================================
+  // VOICEMAIL ACTIVATION ENDPOINTS
+  // =====================================================
+
+  // GET /api/voicemail/status/:phoneNumberId - Get voicemail status for a phone number
+  app.get("/api/voicemail/status/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+      
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const { getVoicemailStatus } = await import("./services/telnyx-numbers-service");
+      const result = await getVoicemailStatus(phoneNumberId, user.companyId);
+      
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      
+      res.json({
+        enabled: result.enabled,
+        sendToVoicemail: result.sendToVoicemail,
+        voicemailBoxId: result.voicemailBoxId,
+      });
+    } catch (error: any) {
+      console.error("[Voicemail Status] Error:", error);
+      res.status(500).json({ message: "Failed to get voicemail status" });
+    }
+  });
+
+  // POST /api/voicemail/enable/:phoneNumberId - Enable voicemail for a phone number
+  app.post("/api/voicemail/enable/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+      
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const { enableVoicemail } = await import("./services/telnyx-numbers-service");
+      const result = await enableVoicemail(phoneNumberId, user.companyId, req.body);
+      
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      
+      res.json({
+        success: true,
+        enabled: result.enabled,
+        voicemailBoxId: result.voicemailBoxId,
+      });
+    } catch (error: any) {
+      console.error("[Voicemail Enable] Error:", error);
+      res.status(500).json({ message: "Failed to enable voicemail" });
+    }
+  });
   
   // =====================================================
   // E911 EMERGENCY ADDRESS MANAGEMENT

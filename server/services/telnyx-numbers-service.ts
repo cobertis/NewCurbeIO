@@ -1981,6 +1981,354 @@ export interface ReleaseNumberResult {
   error?: string;
 }
 
+// ==================== VOICEMAIL FUNCTIONS ====================
+
+export interface VoicemailStatusResult {
+  success: boolean;
+  enabled?: boolean;
+  sendToVoicemail?: boolean;
+  voicemailBoxId?: string;
+  error?: string;
+}
+
+/**
+ * Get voicemail status for a phone number
+ */
+export async function getVoicemailStatus(
+  phoneNumberId: string,
+  companyId: string
+): Promise<VoicemailStatusResult> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    // Get the company's managed account ID
+    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+    
+    if (!managedAccountId) {
+      return {
+        success: false,
+        error: "Company Telnyx account not found"
+      };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+    };
+    
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+    
+    // GET /v2/phone_numbers/{phone_number_id}/voice to get voice settings
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "GET",
+      headers,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Voicemail] Get status error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to get voicemail status: ${response.status}`,
+      };
+    }
+    
+    const result = await response.json();
+    const voiceSettings = result.data;
+    
+    // Check if send_to_voicemail is enabled in call_forwarding settings
+    const callForwarding = voiceSettings?.call_forwarding;
+    const sendToVoicemail = callForwarding?.send_to_voicemail === true;
+    
+    console.log(`[Telnyx Voicemail] Status for ${phoneNumberId}: send_to_voicemail=${sendToVoicemail}`);
+    
+    return {
+      success: true,
+      enabled: sendToVoicemail,
+      sendToVoicemail,
+      voicemailBoxId: voiceSettings?.voicemail_box_id || undefined,
+    };
+  } catch (error) {
+    console.error("[Telnyx Voicemail] Get status error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get voicemail status",
+    };
+  }
+}
+
+export interface EnableVoicemailResult {
+  success: boolean;
+  enabled?: boolean;
+  voicemailBoxId?: string;
+  error?: string;
+}
+
+export interface EnableVoicemailOptions {
+  greetingMessage?: string;
+  maxRecordingLength?: number;
+}
+
+export interface EnsureVoicemailBoxResult {
+  success: boolean;
+  voicemailBoxId?: string;
+  pin?: string;
+  error?: string;
+}
+
+/**
+ * Create or get existing voicemail box for a connection
+ * Telnyx requires a voicemail box to be created before enabling send_to_voicemail
+ */
+export async function ensureVoicemailBox(
+  connectionId: string,
+  companyId: string,
+  phoneNumber?: string
+): Promise<EnsureVoicemailBoxResult> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+    
+    if (!managedAccountId) {
+      return {
+        success: false,
+        error: "Company Telnyx account not found"
+      };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+    
+    // First, check if a voicemail box already exists for this connection
+    console.log(`[Telnyx Voicemail] Checking existing voicemail boxes for connection ${connectionId}`);
+    
+    const listResponse = await fetch(`${TELNYX_API_BASE}/voicemail/voicemail_boxes?filter[connection_id]=${connectionId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Accept": "application/json",
+        ...(managedAccountId && managedAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": managedAccountId} : {}),
+      },
+    });
+    
+    if (listResponse.ok) {
+      const listResult = await listResponse.json();
+      const existingBox = listResult.data?.[0];
+      if (existingBox?.id) {
+        console.log(`[Telnyx Voicemail] Found existing voicemail box: ${existingBox.id}`);
+        return {
+          success: true,
+          voicemailBoxId: existingBox.id,
+          pin: existingBox.pin?.toString(),
+        };
+      }
+    }
+    
+    // Create new voicemail box
+    const boxName = phoneNumber ? `Voicemail for ${phoneNumber}` : `Voicemail Box`;
+    const pin = Math.floor(1000 + Math.random() * 9000).toString(); // Generate 4-digit PIN
+    
+    console.log(`[Telnyx Voicemail] Creating new voicemail box for connection ${connectionId}`);
+    
+    const createPayload = {
+      connection_id: connectionId,
+      name: boxName,
+      pin: pin,
+    };
+    
+    const createResponse = await fetch(`${TELNYX_API_BASE}/voicemail/voicemail_boxes`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(createPayload),
+    });
+    
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error(`[Telnyx Voicemail] Create box error: ${createResponse.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to create voicemail box: ${createResponse.status} - ${errorText}`,
+      };
+    }
+    
+    const createResult = await createResponse.json();
+    const voicemailBoxId = createResult.data?.id;
+    
+    console.log(`[Telnyx Voicemail] Created voicemail box: ${voicemailBoxId}`);
+    
+    return {
+      success: true,
+      voicemailBoxId,
+      pin,
+    };
+  } catch (error) {
+    console.error("[Telnyx Voicemail] Ensure box error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to ensure voicemail box",
+    };
+  }
+}
+
+/**
+ * Get the connection_id for a phone number from Telnyx voice settings
+ */
+async function getPhoneNumberConnectionId(
+  phoneNumberId: string,
+  companyId: string
+): Promise<{ success: boolean; connectionId?: string; phoneNumber?: string; error?: string }> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+    
+    if (!managedAccountId) {
+      return { success: false, error: "Company Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+    };
+    
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+    
+    // Get voice settings which includes connection_id
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "GET",
+      headers,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Voicemail] Get connection error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to get phone number details: ${response.status}` };
+    }
+    
+    const result = await response.json();
+    const connectionId = result.data?.connection_id;
+    const phoneNumber = result.data?.phone_number;
+    
+    if (!connectionId) {
+      return { success: false, error: "Phone number has no connection_id. Please assign it to a connection first." };
+    }
+    
+    return { success: true, connectionId, phoneNumber };
+  } catch (error) {
+    console.error("[Telnyx Voicemail] Get connection error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to get connection" };
+  }
+}
+
+/**
+ * Enable voicemail for a phone number
+ * This creates a voicemail box if needed and configures the phone number to forward to voicemail
+ */
+export async function enableVoicemail(
+  phoneNumberId: string,
+  companyId: string,
+  options?: EnableVoicemailOptions
+): Promise<EnableVoicemailResult> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    // Get the company's managed account ID
+    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+    
+    if (!managedAccountId) {
+      return {
+        success: false,
+        error: "Company Telnyx account not found"
+      };
+    }
+    
+    // Step 1: Get the phone number's connection_id
+    const connectionResult = await getPhoneNumberConnectionId(phoneNumberId, companyId);
+    if (!connectionResult.success || !connectionResult.connectionId) {
+      return {
+        success: false,
+        error: connectionResult.error || "Failed to get phone number connection"
+      };
+    }
+    
+    console.log(`[Telnyx Voicemail] Phone ${phoneNumberId} has connection_id: ${connectionResult.connectionId}`);
+    
+    // Step 2: Create or get existing voicemail box
+    const boxResult = await ensureVoicemailBox(connectionResult.connectionId, companyId, connectionResult.phoneNumber);
+    if (!boxResult.success || !boxResult.voicemailBoxId) {
+      return {
+        success: false,
+        error: boxResult.error || "Failed to create voicemail box"
+      };
+    }
+    
+    console.log(`[Telnyx Voicemail] Using voicemail box: ${boxResult.voicemailBoxId}`);
+    
+    // Step 3: Update phone number voice settings with voicemail_box_id and send_to_voicemail
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+    
+    // PATCH /v2/phone_numbers/{phone_number_id}/voice with BOTH voicemail_box_id AND send_to_voicemail
+    const payload = {
+      call_forwarding: {
+        send_to_voicemail: true,
+        voicemail_box_id: boxResult.voicemailBoxId,
+        call_forwarding_enabled: false,
+        forwarding_type: "on_failure"
+      }
+    };
+    
+    console.log(`[Telnyx Voicemail] Enabling voicemail for ${phoneNumberId}, payload:`, JSON.stringify(payload));
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Voicemail] Enable error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to enable voicemail: ${response.status} - ${errorText}`,
+      };
+    }
+    
+    const result = await response.json();
+    console.log(`[Telnyx Voicemail] Enabled successfully:`, JSON.stringify(result.data, null, 2));
+    
+    return {
+      success: true,
+      enabled: true,
+      voicemailBoxId: boxResult.voicemailBoxId,
+    };
+  } catch (error) {
+    console.error("[Telnyx Voicemail] Enable error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to enable voicemail",
+    };
+  }
+}
+
 export async function releasePhoneNumber(
   phoneNumberId: string,
   companyId: string
