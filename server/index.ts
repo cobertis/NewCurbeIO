@@ -82,6 +82,9 @@ app.use(cookieParser()); // Required to read cookies like 'trusted_device'
 // Serve static files from uploads directory
 app.use('/uploads', express.static('uploads'));
 
+// Serve public static files (recording announcements, etc.)
+app.use('/public', express.static('public'));
+
 // Configure PostgreSQL session store for persistent sessions
 const PgStore = connectPgSimple(session);
 

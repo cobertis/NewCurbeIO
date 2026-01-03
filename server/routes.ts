@@ -42888,7 +42888,7 @@ CRITICAL REMINDERS:
     }
   });
 
-  // POST /api/admin/recording-media - Upload audio file to Object Storage
+  // POST /api/admin/recording-media - Upload audio file to local storage
   app.post("/api/admin/recording-media", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
@@ -42917,7 +42917,7 @@ CRITICAL REMINDERS:
               if (err.code === 'LIMIT_FILE_SIZE') {
                 return reject(new Error('File size exceeds 10MB limit'));
               }
-              return reject(new Error(`Upload error: ${err.message}`));
+              return reject(new Error('Upload error: ' + err.message));
             }
             return reject(err);
           }
@@ -42940,14 +42940,26 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "Invalid language. Must be 'en' or 'es'" });
       }
 
-      // Upload to Object Storage (public URL accessible by Telnyx)
-      const uploadResult = await objectStorage.uploadRecordingAnnouncement(
-        file.buffer,
-        file.mimetype,
-        file.originalname,
-        type,
-        language
-      );
+      // Generate unique filename
+      const uniqueId = require('crypto').randomUUID();
+      const ext = file.originalname.match(/\.[a-zA-Z0-9]+$/)?.[0] || '.mp3';
+      const filename = type + '_' + language + '_' + uniqueId + ext;
+      const localPath = 'public/recording-announcements/' + filename;
+      
+      // Ensure directory exists
+      const fs = require('fs');
+      const dir = 'public/recording-announcements';
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      
+      // Save file to disk
+      fs.writeFileSync(localPath, file.buffer);
+      
+      // Build absolute public URL using production domain
+      const domain = process.env.REPLIT_DEPLOYMENT_URL || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
+      const protocol = domain.includes('localhost') ? 'http' : 'https';
+      const audioUrl = protocol + '://' + domain + '/public/recording-announcements/' + filename;
 
       // Deactivate any existing active media for this slot
       await db.update(recordingAnnouncementMedia)
@@ -42965,15 +42977,15 @@ CRITICAL REMINDERS:
         .values({
           type,
           language,
-          audioUrl: uploadResult.publicUrl,
-          objectPath: uploadResult.objectPath,
+          audioUrl: audioUrl,
+          objectPath: '/public/recording-announcements/' + filename,
           originalFileName: file.originalname,
           isActive: true,
           uploadedByUserId: user.id,
         })
         .returning();
 
-      console.log(`[RecordingMedia] Uploaded ${type}_${language} to Object Storage: ${uploadResult.objectPath}`);
+      console.log('[RecordingMedia] Uploaded ' + type + '_' + language + ' to local storage: ' + localPath);
 
       res.json({
         success: true,
