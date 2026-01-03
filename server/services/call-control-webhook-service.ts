@@ -2698,6 +2698,7 @@ export class CallControlWebhookService {
    */
   public async rejectCallToVoicemail(agentLegId: string, companyId: string): Promise<{ success: boolean; error?: string }> {
     console.log(`[CallControl] Agent rejecting call ${agentLegId}, routing caller to voicemail`);
+    console.log(`[CallControl] Current pendingBridges keys:`, Array.from(pendingBridges.keys()));
     
     try {
       // Find the pending bridge for this agent leg

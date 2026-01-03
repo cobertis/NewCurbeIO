@@ -2318,18 +2318,26 @@ export function WebPhoneFloatingWindow() {
     // Get the call leg ID for routing to voicemail
     const callLegId = effectiveCall?.callControlId || telnyxIncomingCallInfo?.telnyxCallLegId;
     
+    console.log('[WebPhone] Reject call - effectiveCall:', effectiveCall);
+    console.log('[WebPhone] Reject call - telnyxIncomingCallInfo:', telnyxIncomingCallInfo);
+    console.log('[WebPhone] Reject call - callLegId:', callLegId);
+    
     // Try to route to voicemail via API, then reject locally
     if (callLegId) {
       try {
         console.log('[WebPhone] Rejecting call and routing to voicemail:', callLegId);
-        await fetch(`/api/pbx/calls/${callLegId}/reject-to-voicemail`, {
+        const response = await fetch(`/api/pbx/calls/${callLegId}/reject-to-voicemail`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' }
         });
+        const data = await response.json();
+        console.log('[WebPhone] Reject to voicemail response:', data);
       } catch (error) {
         console.error('[WebPhone] Error routing to voicemail:', error);
       }
+    } else {
+      console.warn('[WebPhone] No callLegId available, cannot route to voicemail');
     }
     
     // Also reject locally to clear UI state
