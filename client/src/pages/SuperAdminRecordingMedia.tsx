@@ -19,7 +19,7 @@ interface MediaSlotData {
   originalFileName: string;
   telnyxMediaId: string;
   uploadedBy: string;
-  createdAt: string;
+  uploadedAt: string;
   isActive: boolean;
 }
 
@@ -228,7 +228,7 @@ export default function SuperAdminRecordingMedia() {
                         {media.originalFileName}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1" data-testid={`text-uploaddate-${slot.key}`}>
-                        Uploaded {format(new Date(media.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                        {media.uploadedAt ? `Uploaded ${format(new Date(media.uploadedAt), "MMM d, yyyy 'at' h:mm a")}` : "Upload date unknown"}
                       </p>
                     </div>
                     <div className="flex gap-2">
