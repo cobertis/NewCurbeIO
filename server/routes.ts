@@ -7756,8 +7756,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
+
       // Method 2: Extract call_leg_id from cached URL and search recordings
-      if (callLog.recordingUrl && callLog.telnyxCallId) {
+      if (callLog.recordingUrl) {
         try {
           // Extract call_leg_id from URL pattern: /{date}/{call_leg_id}-{timestamp}.mp3
           const urlMatch = callLog.recordingUrl.match(/\/([a-f0-9-]{36})-\d+\.mp3/i);
@@ -7775,15 +7776,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
             });
             
-            console.log("[Recording Proxy] Method 2 - Telnyx API status:", response.status);
+            console.log("[Recording Proxy] Method 2a - Telnyx API status:", response.status);
             if (response.ok) {
               const data = await response.json();
               const recording = data.data?.[0];
               
-              console.log("[Recording Proxy] Method 2 - Telnyx response data length:", data.data?.length || 0);
+              console.log("[Recording Proxy] Method 2a - Telnyx response data length:", data.data?.length || 0);
               if (recording) {
                 const downloadUrl = recording.media_url || recording.download_urls?.mp3 || recording.download_urls?.wav;
-                console.log("[Recording Proxy] Method 2 - Found recording:", recording.id, "media_url:", downloadUrl ? "yes" : "no");
+                console.log("[Recording Proxy] Method 2a - Found recording:", recording.id, "media_url:", downloadUrl ? "yes" : "no");
                 
                 // Save the recording_id for future use
                 if (recording.id && !callLog.recordingId) {
@@ -7810,7 +7811,53 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error("[Recording Proxy] Error searching by call_leg_id:", err);
         }
       }
-
+      
+      // Method 2b: Try searching by call_control_id
+      if (callLog.telnyxCallId) {
+        try {
+          console.log("[Recording Proxy] Method 2b - Trying call_control_id:", callLog.telnyxCallId);
+          const searchUrl = `https://api.telnyx.com/v2/recordings?filter[call_control_id]=${encodeURIComponent(callLog.telnyxCallId)}`;
+          const response = await fetch(searchUrl, {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.log("[Recording Proxy] Method 2b - Telnyx API status:", response.status);
+          if (response.ok) {
+            const data = await response.json();
+            const recording = data.data?.[0];
+            
+            console.log("[Recording Proxy] Method 2b - Telnyx response data length:", data.data?.length || 0);
+            if (recording) {
+              const downloadUrl = recording.media_url || recording.download_urls?.mp3 || recording.download_urls?.wav;
+              console.log("[Recording Proxy] Method 2b - Found recording:", recording.id, "media_url:", downloadUrl ? "yes" : "no");
+              
+              // Save the recording_id for future use
+              if (recording.id && !callLog.recordingId) {
+                await db
+                  .update(callLogs)
+                  .set({ recordingId: recording.id })
+                  .where(eq(callLogs.id, callLog.id));
+                console.log("[Recording Proxy] Saved recordingId:", recording.id);
+              }
+              
+              if (downloadUrl) {
+                const audioResponse = await fetch(downloadUrl);
+                if (audioResponse.ok) {
+                  res.set('Content-Type', audioResponse.headers.get('Content-Type') || 'audio/mpeg');
+                  res.set('Cache-Control', 'private, max-age=300');
+                  const arrayBuffer = await audioResponse.arrayBuffer();
+                  return res.send(Buffer.from(arrayBuffer));
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[Recording Proxy] Error searching by call_control_id:", err);
+        }
+      }
       // Method 3: Fallback - try cached URL directly (may be expired)
       if (callLog.recordingUrl) {
         try {
