@@ -864,6 +864,13 @@ export class CallControlWebhookService {
         return;
       }
       
+      // For blind transfers, Telnyx handles the bridge automatically - don't do manual bridge
+      if (pendingBridge.isBlindTransfer) {
+        console.log(`[CallControl] Blind transfer answered - Telnyx handles bridge automatically, no manual bridge needed`);
+        pendingBridges.delete(call_control_id);
+        return;
+      }
+
       console.log(`[CallControl] Agent answered! Bridging with caller ${pendingBridge.callerCallControlId}`);
       pendingBridges.delete(call_control_id);
 
