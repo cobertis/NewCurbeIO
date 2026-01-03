@@ -38266,9 +38266,9 @@ CRITICAL REMINDERS:
       // Get the media name for the selected language
       // Get the media name for the selected language
       // Use audio_url with public URL for Telnyx playback_start
-      const audioUrl = language === 'es' 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}/audio/recording-announcement-es.mp3`
-        : `https://${process.env.REPLIT_DEV_DOMAIN}/audio/recording-announcement-en.mp3`;
+      const audioUrl = language === 'es'
+        ? 'https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-announcement-es.mp3'
+        : 'https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-announcement-en.mp3';
       
       console.log(`[Call Recording] Playing ${language} announcement (audio_url: ${audioUrl}) before recording for call ${telnyxCallControlId}`);
       
@@ -38312,6 +38312,8 @@ CRITICAL REMINDERS:
       
       if (recordResponse.ok) {
         console.log(`[Call Recording] Started recording for call ${telnyxCallControlId}`);
+        // Save the recording language to the database
+        await db.update(callLogs).set({ recordingLanguage: language }).where(eq(callLogs.id, callLog.id));
         return res.json({ success: true });
       } else {
         const errorText = await recordResponse.text();
@@ -38380,6 +38382,43 @@ CRITICAL REMINDERS:
       if (!telnyxApiKey) {
         return res.status(500).json({ success: false, error: "Telnyx API key not configured" });
       }
+      
+      // Get the recording language from the database
+      const recordingLanguage = callLog.recordingLanguage || 'en';
+      
+      // Build stop announcement URL based on recorded language
+      const stopAudioUrl = recordingLanguage === 'es'
+        ? 'https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-stop-es.mp3'
+        : 'https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-stop-en.mp3';
+      
+      console.log(`[Call Recording] Playing ${recordingLanguage} stop announcement for call ${telnyxCallControlId}`);
+      
+      // Step 1: Play the stop announcement audio to both parties
+      const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/playback_start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${telnyxApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          audio_url: stopAudioUrl,
+          overlay: false,
+          target_legs: "both"
+        })
+      });
+      
+      if (!playbackResponse.ok) {
+        const errorText = await playbackResponse.text();
+        console.error(`[Call Recording] Failed to play stop announcement for call ${telnyxCallControlId}:`, errorText);
+        // Continue anyway to stop recording
+      } else {
+        console.log(`[Call Recording] Stop announcement playback started for call ${telnyxCallControlId}`);
+        // Wait for audio to play
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+      
+      // Step 2: Stop the recording and clear recording language
+      await db.update(callLogs).set({ recordingLanguage: null }).where(eq(callLogs.id, callLog.id));
       
       const response = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/record_stop`, {
         method: 'POST',

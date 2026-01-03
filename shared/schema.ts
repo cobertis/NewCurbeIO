@@ -5400,6 +5400,7 @@ export const callLogs = pgTable("call_logs", {
   // Recording
   recordingUrl: text("recording_url"),
   recordingDuration: integer("recording_duration"), // Recording duration in seconds
+  recordingLanguage: text("recording_language").$type<'en' | 'es'>(), // Language used for recording announcement
   
   // Cost
   cost: text("cost"), // Call cost in currency
