@@ -42847,7 +42847,7 @@ CRITICAL REMINDERS:
   // ============================================
 
   // GET /api/admin/recording-media - List all recording announcement media slots
-  app.get("/api/admin/recording-media", async (req: Request, res: Response) => {
+  app.get("/api/admin/recording-media", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
       if (!user || user.role !== "superadmin") {
@@ -42888,7 +42888,7 @@ CRITICAL REMINDERS:
   });
 
   // POST /api/admin/recording-media - Upload audio file to Telnyx Media Storage
-  app.post("/api/admin/recording-media", async (req: Request, res: Response) => {
+  app.post("/api/admin/recording-media", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
       if (!user || user.role !== "superadmin") {
@@ -42995,7 +42995,7 @@ CRITICAL REMINDERS:
   });
 
   // DELETE /api/admin/recording-media/:id - Delete a media entry
-  app.delete("/api/admin/recording-media/:id", async (req: Request, res: Response) => {
+  app.delete("/api/admin/recording-media/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
       if (!user || user.role !== "superadmin") {
