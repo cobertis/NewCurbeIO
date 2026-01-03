@@ -2137,10 +2137,6 @@ export function WebPhoneFloatingWindow() {
         
         if (response.ok) {
           setIsManualRecording(false);
-          toast({
-            title: 'Recording stopped',
-            description: 'Call recording has been stopped'
-          });
         } else {
           const errorData = await response.json();
           toast({
@@ -2182,10 +2178,6 @@ export function WebPhoneFloatingWindow() {
       
       if (response.ok) {
         setIsManualRecording(true);
-        toast({
-          title: 'Recording started',
-          description: `This call is now being recorded (${language === 'es' ? 'Spanish' : 'English'} announcement played)`
-        });
       } else {
         const errorData = await response.json();
         toast({
