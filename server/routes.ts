@@ -31806,7 +31806,7 @@ CRITICAL REMINDERS:
       // Handle recording saved event - save recording URL and charge recording cost
       if (call_control_id && eventType === 'call.recording.saved') {
         try {
-          const recordingId = payload.recording_id || payload.id;
+          const recordingId = payload.recording?.id || payload.recording_id || payload.data?.payload?.recording?.id || payload.id;
           const recordingUrls = payload.recording_urls || {};
           const recordingUrl = recordingUrls.mp3 || recordingUrls.wav || payload.public_recording_urls?.mp3;
           const recordingDurationMs = payload.recording_ended_at && payload.recording_started_at

@@ -73,16 +73,45 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
   const [duration, setDuration] = useState(0);
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   
   // Generate random waveform bars (simulated)
   const waveformBars = useRef(
     Array.from({ length: 28 }, () => Math.random() * 0.7 + 0.3)
   ).current;
 
+  // Check if recording is available before rendering audio element
+  useEffect(() => {
+    let cancelled = false;
+    const checkAvailability = async () => {
+      try {
+        const response = await fetch(src, { method: 'HEAD' });
+        if (!cancelled) {
+          if (response.ok) {
+            setIsAvailable(true);
+            setIsLoading(false);
+          } else {
+            setIsAvailable(false);
+            setHasError(true);
+            setIsLoading(false);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setIsAvailable(false);
+          setHasError(true);
+          setIsLoading(false);
+        }
+      }
+    };
+    checkAvailability();
+    return () => { cancelled = true; };
+  }, [src]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `\${mins.toString().padStart(2, '0')}:\${secs.toString().padStart(2, '0')}`;
   };
 
   const togglePlay = () => {
@@ -90,7 +119,9 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play();
+      audioRef.current.play().catch(() => {
+        setHasError(true);
+      });
     }
     setIsPlaying(!isPlaying);
   };
@@ -119,8 +150,20 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
     setIsLoading(false);
   };
 
+  // Show loading state while checking availability
+  if (isLoading && isAvailable === null) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid={testId}>
+        <div className="h-7 w-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center animate-pulse">
+          <Play className="h-3.5 w-3.5 text-gray-400" />
+        </div>
+        <span>Loading...</span>
+      </div>
+    );
+  }
+
   // Show error state
-  if (hasError) {
+  if (hasError || isAvailable === false) {
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid={testId}>
         <div className="h-7 w-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
@@ -130,7 +173,6 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
       </div>
     );
   }
-
   const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!audioRef.current || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
