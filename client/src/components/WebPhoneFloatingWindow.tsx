@@ -3281,7 +3281,11 @@ export function WebPhoneFloatingWindow() {
                           <span className="text-[8px] sm:text-[9px] text-muted-foreground">keypad</span>
                         </button>
                         
-                        <Popover open={showLanguageDialog} onOpenChange={setShowLanguageDialog}>
+                        <Popover open={showLanguageDialog && !isManualRecording} onOpenChange={(open) => {
+                          if (!isManualRecording) {
+                            setShowLanguageDialog(open);
+                          }
+                        }}>
                           <PopoverTrigger asChild>
                             <button
                               onClick={handleRecordingToggle}
