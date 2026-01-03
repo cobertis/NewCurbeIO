@@ -31619,6 +31619,30 @@ CRITICAL REMINDERS:
         }
       }
       
+      // Handle recording saved event - save recording URL to call log
+      if (call_control_id && eventType === 'call.recording.saved') {
+        try {
+          const recordingUrls = payload.recording_urls || {};
+          const recordingUrl = recordingUrls.mp3 || recordingUrls.wav || payload.public_recording_urls?.mp3;
+          
+          console.log("[Telnyx Voice Status] Recording saved event:", {
+            callControlId: call_control_id,
+            recordingUrl: recordingUrl ? 'present' : 'missing'
+          });
+          
+          if (recordingUrl) {
+            const result = await db
+              .update(callLogs)
+              .set({ recordingUrl: recordingUrl })
+              .where(eq(callLogs.telnyxCallId, call_control_id));
+            console.log("[Telnyx Voice Status] Updated call log with recording URL for call:", call_control_id);
+          }
+        } catch (err) {
+          console.error("[Telnyx Voice Status] Error saving recording URL:", err);
+        }
+      }
+
+      
       res.set("Content-Type", "application/xml");
       res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
     } catch (error: any) {
