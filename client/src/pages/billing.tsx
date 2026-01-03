@@ -116,7 +116,7 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
   const progressIndex = Math.floor((progress / 100) * waveformBars.length);
 
   return (
-    <div className="flex items-center gap-2 min-w-[180px]" data-testid={testId}>
+    <div className="flex items-center gap-2 w-full" data-testid={testId}>
       <audio
         ref={audioRef}
         src={src}
@@ -137,13 +137,13 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
         )}
       </button>
       <div
-        className="flex items-center gap-[2px] h-6 cursor-pointer"
+        className="flex-1 flex items-center justify-between gap-[2px] h-6 cursor-pointer"
         onClick={handleWaveformClick}
       >
         {waveformBars.map((height, i) => (
           <div
             key={i}
-            className={`w-[3px] rounded-full transition-colors ${
+            className={`flex-1 max-w-[4px] min-w-[2px] rounded-full transition-colors ${
               i < progressIndex
                 ? 'bg-blue-500'
                 : 'bg-gray-400 dark:bg-gray-500'
@@ -152,7 +152,7 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
           />
         ))}
       </div>
-      <span className="text-[11px] text-muted-foreground font-medium ml-1 tabular-nums">
+      <span className="flex-shrink-0 text-[11px] text-muted-foreground font-medium tabular-nums">
         {duration ? formatTime(duration - currentTime) : '00:00'}
       </span>
     </div>
