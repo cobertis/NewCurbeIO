@@ -740,7 +740,6 @@ export class CallControlWebhookService {
       if (agentUser && (agentUser.agentAvailabilityStatus === "busy" || agentUser.agentAvailabilityStatus === "offline")) {
         console.log(`[CallControl] Agent ${phoneNumber.ownerUserId} is ${agentUser.agentAvailabilityStatus}, rejecting call to voicemail immediately`);
         await this.answerCall(call_control_id);
-        await this.speakText(call_control_id, "The agent is currently unavailable. Please leave a message after the tone.");
         await this.routeToVoicemail(call_control_id, phoneNumber.companyId);
         return;
       }
@@ -823,7 +822,6 @@ export class CallControlWebhookService {
     // No IVR and no assigned user - answer and route to voicemail
     console.log(`[CallControl] No IVR and no assigned user, routing to voicemail`);
     await this.answerCall(call_control_id);
-    await this.speakText(call_control_id, "This number is not configured. Please leave a message after the tone.");
     await this.routeToVoicemail(call_control_id, phoneNumber.companyId);
   }
 
@@ -2212,7 +2210,6 @@ export class CallControlWebhookService {
 
     if (!extData?.userId) {
       console.log(`[CallControl] Extension ${extensionId} has no assigned user, routing to voicemail`);
-      await this.speakText(callControlId, "This extension is not configured. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
@@ -2222,7 +2219,6 @@ export class CallControlWebhookService {
     
     if (!sipCreds?.sipUsername) {
       console.log(`[CallControl] User ${extData.userId} has no SIP credentials, routing to voicemail`);
-      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
@@ -2261,7 +2257,6 @@ export class CallControlWebhookService {
       });
     } catch (error) {
       console.error(`[CallControl] Failed to dial agent SIP:`, error);
-      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
     }
   }
@@ -2336,7 +2331,6 @@ export class CallControlWebhookService {
     );
 
     if (!result.success || result.notifiedCount === 0) {
-      await this.speakText(callControlId, "No agents are available. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
@@ -2352,7 +2346,6 @@ export class CallControlWebhookService {
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, falling back to voicemail`);
-      await this.speakText(callControlId, "This number is not configured. Please leave a message.");
       await this.routeToVoicemail(callControlId, phoneNumber.companyId);
       return;
     }
@@ -2371,7 +2364,6 @@ export class CallControlWebhookService {
       
       if (!sipCreds?.sipUsername) {
         console.log(`[CallControl] User ${phoneNumber.ownerUserId} has no SIP credentials, routing to voicemail`);
-        await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
         await this.routeToVoicemail(callControlId, companyId);
         return;
       }
@@ -2406,7 +2398,6 @@ export class CallControlWebhookService {
         });
       } catch (error) {
         console.error(`[CallControl] Failed to dial assigned user SIP:`, error);
-        await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
         await this.routeToVoicemail(callControlId, companyId);
       }
       return;
@@ -2440,7 +2431,6 @@ export class CallControlWebhookService {
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
       await this.answerCall(callControlId);
-      await this.speakText(callControlId, "This number is not configured. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
@@ -3001,8 +2991,7 @@ export class CallControlWebhookService {
           // Might already be answered
         }
         
-        // Speak a message and route to voicemail
-        await this.speakText(callerCallControlId, "The agent is currently unavailable. Please leave a message after the tone.");
+        // Route to voicemail (greeting is inside routeToVoicemail)
         await this.routeToVoicemail(callerCallControlId, pendingBridge.companyId);
         
         // Hangup the agent leg
@@ -3023,7 +3012,6 @@ export class CallControlWebhookService {
           // The agentLegId is actually the caller leg, reject directly
           console.log(`[CallControl] Agent leg ${agentLegId} is the caller, routing directly to voicemail`);
           pendingBridges.delete(legId);
-          await this.speakText(agentLegId, "The agent is currently unavailable. Please leave a message after the tone.");
           await this.routeToVoicemail(agentLegId, bridge.companyId);
           return { success: true };
         }
@@ -3046,8 +3034,7 @@ export class CallControlWebhookService {
             // Might already be answered
           }
           
-          // Speak a message and route to voicemail
-          await this.speakText(activeCall.callControlId, "The agent is currently unavailable. Please leave a message after the tone.");
+          // Route to voicemail (greeting is inside routeToVoicemail)
           await this.routeToVoicemail(activeCall.callControlId, companyId);
           
           console.log(`[CallControl] Caller routed to voicemail via number lookup`);
@@ -3058,7 +3045,6 @@ export class CallControlWebhookService {
       // Fallback: try the SDK-provided ID anyway (might work for some call flows)
       console.log(`[CallControl] No pending bridge or active call found, attempting direct voicemail route for ${agentLegId}`);
       try {
-        await this.speakText(agentLegId, "The agent is currently unavailable. Please leave a message after the tone.");
         await this.routeToVoicemail(agentLegId, companyId);
         return { success: true };
       } catch (error: any) {
