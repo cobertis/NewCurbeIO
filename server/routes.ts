@@ -38414,11 +38414,15 @@ CRITICAL REMINDERS:
       // Conditions: status is "ended" or "completed", duration > 0, cost not already set
       const isCallEnding = (status === "ended" || status === "completed");
       const hasDuration = (duration !== undefined && duration > 0) || (existingLog.duration && existingLog.duration > 0);
-      const notAlreadyBilled = !existingLog.cost || existingLog.cost === "0" || existingLog.cost === "0.0000";
+      // Check if call cost was already billed (not recording cost - that's separate)
+      // We use callCostBilled flag stored in the status field suffix or check for significant cost
+      const existingCostNum = parseFloat(existingLog.cost || "0");
+      // If cost is <= 0.01, it's likely just recording cost (~0.002/min), not call cost
+      const callNotBilled = existingCostNum < 0.01;
       
-      console.log(`[Call Logs] Billing check: status=${status}, isCallEnding=${isCallEnding}, hasDuration=${hasDuration}, notAlreadyBilled=${notAlreadyBilled}, existingCost="${existingLog.cost}", duration=${duration}`);
+      console.log(`[Call Logs] Billing check: status=${status}, isCallEnding=${isCallEnding}, hasDuration=${hasDuration}, callNotBilled=${callNotBilled}, existingCost="${existingLog.cost}" (${existingCostNum}), duration=${duration}`);
       
-      if (isCallEnding && hasDuration && notAlreadyBilled) {
+      if (isCallEnding && hasDuration && callNotBilled) {
         console.log(`[Call Logs] WebRTC call ended - charging to wallet. ID: ${id}, Duration: ${duration || existingLog.duration}s`);
         
         // Use provided values or fall back to existing log values
@@ -38444,10 +38448,14 @@ CRITICAL REMINDERS:
           callerName: callerName || existingLog.callerName || undefined,
         });
         if (chargeResult.success) {
-          console.log(`[Call Logs] WebRTC call charged successfully: $${chargeResult.amountCharged}, new balance: $${chargeResult.newBalance}`);
+          console.log(`[Call Logs] WebRTC call charged successfully: ${chargeResult.amountCharged}, new balance: ${chargeResult.newBalance}`);
           
-          // Update the call log with the cost from charging
-          updateData.cost = chargeResult.amountCharged;
+          // Update the call log with the total cost (existing recording cost + call cost)
+          const existingCost = parseFloat(existingLog.cost || "0");
+          const callCost = parseFloat(chargeResult.amountCharged || "0");
+          const totalCost = (existingCost + callCost).toFixed(4);
+          console.log(`[Call Logs] Total cost: existing ${existingCost} + call ${callCost} = ${totalCost}`);
+          updateData.cost = totalCost;
           updateData.costCurrency = "USD";
           updateData.billedDuration = callDuration;
           
