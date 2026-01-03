@@ -111,7 +111,7 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `\${mins.toString().padStart(2, '0')}:\${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const togglePlay = () => {
