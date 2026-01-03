@@ -39602,7 +39602,7 @@ CRITICAL REMINDERS:
       
       // Log the missed call since the SDK already hung up
       await db.insert(callLogs).values({
-        id: nanoid(),
+        id: crypto.randomUUID(),
         companyId: user.companyId,
         userId: user.id,
         fromNumber: callerNumber,
@@ -39617,7 +39617,7 @@ CRITICAL REMINDERS:
       
       // Create missed call notification
       await db.insert(notifications).values({
-        id: nanoid(),
+        id: crypto.randomUUID(),
         userId: user.id,
         companyId: user.companyId,
         title: 'Missed Call (Auto-rejected)',
