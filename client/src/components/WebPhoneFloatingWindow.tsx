@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, CheckCircle, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, Hash, Info, type LucideIcon } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
@@ -182,13 +183,16 @@ interface VoicemailViewProps {
   unreadCount: number;
   refetchVoicemails: () => void;
   phoneNumberId?: string;
+  setDialNumber: (number: string) => void;
+  setViewMode: (mode: ViewMode) => void;
 }
 
-function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumberId }: VoicemailViewProps) {
+function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumberId, setDialNumber, setViewMode }: VoicemailViewProps) {
   const { toast } = useToast();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioProgress, setAudioProgress] = useState<{ [key: string]: number }>({});
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const [, navigate] = useLocation();
 
   const { data: voicemailStatus, isLoading: isLoadingStatus, refetch: refetchStatus } = useQuery<{ enabled: boolean; sendToVoicemail?: boolean; voicemailBoxId?: string }>({
     queryKey: ['/api/voicemail/status', phoneNumberId],
@@ -235,7 +239,11 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
       return res.json();
     },
     onSuccess: () => {
+      toast({ title: "Marked as read" });
       refetchVoicemails();
+    },
+    onError: () => {
+      toast({ title: "Failed to mark as read", variant: "destructive" });
     }
   });
 
@@ -281,7 +289,6 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
   };
 
   const handlePlay = (voicemail: Voicemail) => {
-    // Stop any currently playing audio
     if (playingId && playingId !== voicemail.id) {
       const prevAudio = audioRefs.current[playingId];
       if (prevAudio) {
@@ -312,18 +319,35 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
       audio.play();
       setPlayingId(voicemail.id);
       
-      // Mark as read when played
       if (voicemail.status === 'new') {
         markAsReadMutation.mutate(voicemail.id);
       }
     }
   };
 
+  const handleCall = (phoneNumber: string) => {
+    let digits = phoneNumber.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      digits = digits.slice(1);
+    }
+    const formatted = digits.length === 10 
+      ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+      : digits;
+    setDialNumber(formatted);
+    setViewMode('keypad');
+  };
+
+  const handleSms = (phoneNumber: string) => {
+    const digits = phoneNumber.replace(/\D/g, '');
+    const normalizedNumber = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+    navigate(`/inbox?phone=${normalizedNumber}`);
+  };
+
   if (!voicemails || voicemails.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-full py-12">
-        <Voicemail className="h-12 w-12 text-muted-foreground/30 mb-3" />
-        <p className="text-sm text-muted-foreground">No voicemails</p>
+      <div className="flex flex-col items-center justify-center min-h-full py-8">
+        <Voicemail className="h-10 w-10 text-muted-foreground/30 mb-2" />
+        <p className="text-xs text-muted-foreground">No voicemails</p>
       </div>
     );
   }
@@ -331,95 +355,174 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
   return (
     <div className="flex flex-col h-full">
       {unreadCount > 0 && (
-        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b">
-          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+        <div className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+          <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
             {unreadCount} new voicemail{unreadCount !== 1 ? 's' : ''}
           </p>
         </div>
       )}
       
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-border/50">
         {voicemails.map((vm) => (
           <div 
             key={vm.id} 
             className={cn(
-              "px-4 py-3",
-              vm.status === 'new' && "bg-blue-50/50 dark:bg-blue-900/10"
+              "px-2.5 py-2 transition-colors",
+              vm.status === 'new' 
+                ? "bg-slate-50 dark:bg-slate-800/30 border-l-2 border-l-slate-400 dark:border-l-slate-500" 
+                : "border-l-2 border-l-transparent"
             )}
             data-testid={`voicemail-item-${vm.id}`}
           >
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <User className="h-5 w-5 text-muted-foreground" />
+            <div className="flex items-start gap-2">
+              {/* Compact avatar */}
+              <div className={cn(
+                "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+                vm.status === 'new' 
+                  ? "bg-slate-200 dark:bg-slate-700" 
+                  : "bg-muted"
+              )}>
+                <User className="h-4 w-4 text-muted-foreground" />
               </div>
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                {/* Header row */}
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <span className={cn(
-                      "font-medium text-sm truncate",
-                      vm.status === 'new' && "text-foreground font-semibold"
+                      "text-xs truncate",
+                      vm.status === 'new' ? "font-semibold text-foreground" : "font-medium text-muted-foreground"
                     )}>
                       {vm.callerName || formatPhoneInput(vm.fromNumber)}
                     </span>
                     {vm.status === 'new' && (
-                      <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                      <span className="flex-shrink-0 px-1.5 py-0.5 text-[9px] font-semibold uppercase bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300 rounded">
+                        New
+                      </span>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                  <span className="text-[10px] text-muted-foreground flex-shrink-0">
                     {formatRelativeTime(vm.receivedAt)}
                   </span>
                 </div>
                 
                 {vm.callerName && (
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-[10px] text-muted-foreground truncate mt-0.5">
                     {formatPhoneInput(vm.fromNumber)}
                   </p>
                 )}
                 
-                <div className="flex items-center gap-2 mt-2">
+                {/* Audio player row */}
+                <div className="flex items-center gap-1.5 mt-1.5">
                   <button
                     onClick={() => handlePlay(vm)}
                     className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                      "w-6 h-6 rounded-full flex items-center justify-center transition-colors flex-shrink-0",
                       playingId === vm.id 
-                        ? "bg-blue-500 text-white" 
-                        : "bg-muted hover:bg-muted/80"
+                        ? "bg-slate-600 dark:bg-slate-500 text-white" 
+                        : "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
                     )}
                     data-testid={`button-play-voicemail-${vm.id}`}
                   >
                     {playingId === vm.id ? (
-                      <Square className="h-3 w-3" fill="currentColor" />
+                      <Square className="h-2.5 w-2.5" fill="currentColor" />
                     ) : (
-                      <Play className="h-3 w-3 ml-0.5" fill="currentColor" />
+                      <Play className="h-2.5 w-2.5 ml-0.5" fill="currentColor" />
                     )}
                   </button>
                   
-                  <div className="flex-1 flex items-center gap-2">
-                    <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                  <div className="flex-1 flex items-center gap-1.5">
+                    <div className="flex-1 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-blue-500 transition-all duration-100"
+                        className="h-full bg-slate-500 dark:bg-slate-400 transition-all duration-100"
                         style={{ width: `${audioProgress[vm.id] || 0}%` }}
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground w-10 text-right">
+                    <span className="text-[10px] text-muted-foreground w-8 text-right tabular-nums">
                       {formatDuration(vm.duration)}
                     </span>
                   </div>
+                </div>
+                
+                {/* Action buttons row */}
+                <div className="flex items-center gap-1 mt-1.5">
+                  {/* Call button */}
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => handleCall(vm.fromNumber)}
+                          className="h-6 px-2 rounded flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-colors"
+                          data-testid={`button-call-voicemail-${vm.id}`}
+                        >
+                          <Phone className="h-3 w-3" />
+                          <span className="text-[10px] font-medium">Call</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">Call back</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   
-                  <button
-                    onClick={() => deleteMutation.mutate(vm.id)}
-                    disabled={deleteMutation.isPending}
-                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-colors"
-                    data-testid={`button-delete-voicemail-${vm.id}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {/* SMS button */}
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => handleSms(vm.fromNumber)}
+                          className="h-6 px-2 rounded flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-colors"
+                          data-testid={`button-sms-voicemail-${vm.id}`}
+                        >
+                          <MessageSquare className="h-3 w-3" />
+                          <span className="text-[10px] font-medium">SMS</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">Send SMS</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  {/* Mark as read button (only for unread) */}
+                  {vm.status === 'new' && (
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => markAsReadMutation.mutate(vm.id)}
+                            disabled={markAsReadMutation.isPending}
+                            className="h-6 px-2 rounded flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-50"
+                            data-testid={`button-mark-read-voicemail-${vm.id}`}
+                          >
+                            <Check className="h-3 w-3" />
+                            <span className="text-[10px] font-medium">Read</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">Mark as read</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  
+                  <div className="flex-1" />
+                  
+                  {/* Delete button */}
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => deleteMutation.mutate(vm.id)}
+                          disabled={deleteMutation.isPending}
+                          className="h-6 w-6 rounded flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
+                          data-testid={`button-delete-voicemail-${vm.id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">Delete</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 
                 {vm.transcription && (
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                    {vm.transcription}
+                  <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-2 italic">
+                    "{vm.transcription}"
                   </p>
                 )}
               </div>
@@ -3878,6 +3981,8 @@ export function WebPhoneFloatingWindow() {
                       unreadCount={voicemailUnreadCount}
                       refetchVoicemails={refetchVoicemails}
                       phoneNumberId={selectedNumberId}
+                      setDialNumber={setDialNumber}
+                      setViewMode={setViewMode}
                     />
                   )}
                 </div>
