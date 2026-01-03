@@ -750,25 +750,14 @@ export class CallControlWebhookService {
     });
     console.log(`[CallControl] Stored call context: companyId=${phoneNumber.companyId}, managedAccountId=${managedAccountId}, callerNumber=${from}`);
 
-    // Check if phone number has IVR explicitly disabled ("unassigned")
-    // In this case, transfer directly to the assigned user WITHOUT answering first
-    // This ensures billing only starts when the agent answers, not when the call is received
-    if (phoneNumber.ivrId === "unassigned") {
-      console.log(`[CallControl] IVR disabled (unassigned), transferring directly to assigned user (no answer = no billing until agent picks up)`);
-      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ringing");
-      await this.transferToAssignedUser(call_control_id, phoneNumber, from);
-      return;
-    }
-
-    await this.answerCall(call_control_id);
-
-    // Check for internal call with specific target (IVR or Queue)
+    // Check for internal call with specific target (IVR or Queue) - must answer first for internal routing
     if (client_state) {
       try {
         const state = JSON.parse(Buffer.from(client_state, "base64").toString());
         
         if (state.internalCall) {
           console.log(`[CallControl] Internal call detected, target: ${state.targetType}`);
+          await this.answerCall(call_control_id);
           
           if (state.targetType === "queue" && state.queueId) {
             // Direct route to queue without IVR
@@ -783,34 +772,54 @@ export class CallControlWebhookService {
       }
     }
     
-    // Check if phone number has a specific IVR assigned (multi-IVR support)
-    if (phoneNumber.ivrId) {
+    // PRIORITY 1: Check if phone number has a specific IVR assigned (multi-IVR support)
+    // If IVR is active, answer and play IVR
+    if (phoneNumber.ivrId && phoneNumber.ivrId !== "unassigned") {
       const ivr = await pbxService.getIvr(phoneNumber.companyId, phoneNumber.ivrId);
       if (ivr && ivr.isActive) {
-        console.log(`[CallControl] Phone number has specific IVR: ${ivr.name} (${ivr.id})`);
+        console.log(`[CallControl] Phone number has specific IVR: ${ivr.name} (${ivr.id}), answering call`);
+        await this.answerCall(call_control_id);
         await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ivr");
         await this.playIvrGreetingForIvr(call_control_id, phoneNumber.companyId, ivr);
         return;
       }
     }
 
-    // Check if company has a default IVR (multi-IVR support)
+    // PRIORITY 2: Check if company has a default IVR (multi-IVR support)
     const defaultIvr = await pbxService.getDefaultIvr(phoneNumber.companyId);
     if (defaultIvr && defaultIvr.isActive) {
-      console.log(`[CallControl] Using company default IVR: ${defaultIvr.name} (${defaultIvr.id})`);
+      console.log(`[CallControl] Using company default IVR: ${defaultIvr.name} (${defaultIvr.id}), answering call`);
+      await this.answerCall(call_control_id);
       await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ivr");
       await this.playIvrGreetingForIvr(call_control_id, phoneNumber.companyId, defaultIvr);
       return;
     }
 
-    // Fallback to legacy PBX settings IVR
+    // PRIORITY 3: Check legacy PBX settings IVR
     const settings = await pbxService.getPbxSettings(phoneNumber.companyId);
     if (settings?.ivrEnabled) {
+      console.log(`[CallControl] Legacy IVR enabled, answering call`);
+      await this.answerCall(call_control_id);
       await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ivr");
       await this.playIvrGreeting(call_control_id, phoneNumber.companyId, settings);
-    } else {
-      await this.routeToDefaultAgent(call_control_id, phoneNumber);
+      return;
     }
+
+    // NO IVR CONFIGURED - Ring-through to agent directly
+    // DO NOT answer the call - billing starts only when agent picks up
+    // This is the correct flow: caller hears ringback tone while agent's phone rings
+    if (phoneNumber.ownerUserId) {
+      console.log(`[CallControl] No IVR configured, ring-through to assigned user (billing starts when agent answers)`);
+      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ringing");
+      await this.transferToAssignedUser(call_control_id, phoneNumber, from);
+      return;
+    }
+
+    // No IVR and no assigned user - answer and route to voicemail
+    console.log(`[CallControl] No IVR and no assigned user, routing to voicemail`);
+    await this.answerCall(call_control_id);
+    await this.speakText(call_control_id, "This number is not configured. Please leave a message after the tone.");
+    await this.routeToVoicemail(call_control_id, phoneNumber.companyId);
   }
 
   private async handleCallAnswered(payload: CallControlEvent["data"]["payload"]): Promise<void> {
