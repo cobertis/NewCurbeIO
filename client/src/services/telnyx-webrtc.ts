@@ -567,6 +567,13 @@ class TelnyxWebRTCManager {
               return;
             }
             
+            // Check if we're in reject cooldown (user just pressed Reject, ignore SIP forks)
+            if (this.isInRejectCooldown(callInfo.remoteCallerNumber)) {
+              console.log("[TelnyxRTC] In reject cooldown - auto-rejecting SIP fork from:", callInfo.remoteCallerNumber);
+              call.hangup();
+              return;
+            }
+
             // Check agent availability status - if offline, auto-reject and send to voicemail
             const agentStatus = store.agentAvailabilityStatus;
             console.log("[TelnyxRTC] Agent availability status:", agentStatus);
@@ -694,26 +701,55 @@ class TelnyxWebRTCManager {
   // REJECT CALL
   // ============================================================================
   
+  // Track rejected calls to ignore SIP forks
+  private rejectedCallIds: Set<string> = new Set();
+  private rejectCooldownUntil: number = 0;
+
   public rejectCall(): void {
     const store = useTelnyxStore.getState();
     const call = store.incomingCall;
+    const callInfo = store.incomingCallInfo;
     
     if (!call) return;
 
     console.log("[TelnyxRTC] Rejecting call with SIP 486 Busy");
     this.stopRingtone();
     
-    // Use reject() if available (sends SIP 486 Busy), otherwise fallback to hangup()
-    // Reject tells Telnyx the agent is busy, which should route to voicemail
-    if (typeof (call as any).reject === 'function') {
-      (call as any).reject();
-    } else {
-      // Fallback: try hangup with busy cause code
-      call.hangup({ causeCode: 486, cause: 'Busy Here' } as any);
+    // Set cooldown to ignore SIP forks for the next 5 seconds
+    this.rejectCooldownUntil = Date.now() + 5000;
+    
+    // Track this caller's number to reject forks
+    if (callInfo?.remoteCallerNumber) {
+      this.rejectedCallIds.add(callInfo.remoteCallerNumber);
+      // Clean up after 10 seconds
+      setTimeout(() => {
+        this.rejectedCallIds.delete(callInfo.remoteCallerNumber!);
+      }, 10000);
     }
     
+    // Clear state first to hide UI immediately
     store.setIncomingCall(undefined);
     store.setIncomingCallInfo(undefined);
+    
+    // Then hangup - this will reject the call to Telnyx
+    try {
+      call.hangup();
+    } catch (e) {
+      console.error("[TelnyxRTC] Reject hangup error:", e);
+    }
+  }
+
+  // Check if we should ignore this incoming call (during reject cooldown)
+  public isInRejectCooldown(callerNumber?: string): boolean {
+    // During cooldown period, ignore all calls
+    if (Date.now() < this.rejectCooldownUntil) {
+      return true;
+    }
+    // Also ignore if this specific caller was just rejected
+    if (callerNumber && this.rejectedCallIds.has(callerNumber)) {
+      return true;
+    }
+    return false;
   }
 
   // ============================================================================
