@@ -72,6 +72,7 @@ import SmsCampaignStats from "@/pages/sms-campaign-stats";
 import IncomingSms from "@/pages/incoming-sms";
 import SystemAlerts from "@/pages/system-alerts";
 import SystemSettings from "@/pages/system-settings";
+import SuperAdminRecordingMedia from "@/pages/SuperAdminRecordingMedia";
 import Unsubscribe from "@/pages/unsubscribe";
 import DataDeletionPage from "@/pages/data-deletion";
 import Billing from "@/pages/billing";
@@ -2096,6 +2097,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SystemSettings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/recording-media">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SuperAdminRecordingMedia />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

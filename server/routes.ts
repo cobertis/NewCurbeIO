@@ -98,7 +98,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -38263,16 +38263,27 @@ CRITICAL REMINDERS:
         return res.status(500).json({ success: false, error: "Telnyx API key not configured" });
       }
       
-      // Get the media name for the selected language
-      // Get the media name for the selected language
-      // Use audio_url with public URL for Telnyx playback_start
-      const audioUrl = language === 'es'
-        ? 'https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-announcement-es.mp3'
-        : 'https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-announcement-en.mp3';
+      // Query the database for the active media with type='start' and the selected language
+      const [startMedia] = await db
+        .select()
+        .from(recordingAnnouncementMedia)
+        .where(and(
+          eq(recordingAnnouncementMedia.type, 'start'),
+          eq(recordingAnnouncementMedia.language, language),
+          eq(recordingAnnouncementMedia.isActive, true)
+        ))
+        .limit(1);
       
-      console.log(`[Call Recording] Playing ${language} announcement (audio_url: ${audioUrl}) before recording for call ${telnyxCallControlId}`);
+      if (!startMedia) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `Recording announcement not configured for ${language}` 
+        });
+      }
       
-      // Step 1: Play the announcement audio to both parties
+      console.log(`[Call Recording] Playing ${language} announcement (media_name: ${startMedia.mediaName}) before recording for call ${telnyxCallControlId}`);
+      
+      // Step 1: Play the announcement audio to both parties using Telnyx Media Storage
       const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/playback_start`, {
         method: 'POST',
         headers: {
@@ -38280,9 +38291,9 @@ CRITICAL REMINDERS:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          audio_url: audioUrl,
-          overlay: false, // Don't overlay, play exclusively
-          target_legs: "both" // Play to both caller and agent
+          media_name: startMedia.mediaName,
+          overlay: false,
+          target_legs: "both"
         })
       });
       
@@ -38386,35 +38397,44 @@ CRITICAL REMINDERS:
       // Get the recording language from the database
       const recordingLanguage = callLog.recordingLanguage || 'en';
       
-      // Build stop announcement URL based on recorded language
-      const stopAudioUrl = recordingLanguage === 'es'
-        ? 'https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-stop-es.mp3'
-        : 'https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-stop-en.mp3';
+      // Query the database for the active stop media with the recorded language
+      const [stopMedia] = await db
+        .select()
+        .from(recordingAnnouncementMedia)
+        .where(and(
+          eq(recordingAnnouncementMedia.type, 'stop'),
+          eq(recordingAnnouncementMedia.language, recordingLanguage),
+          eq(recordingAnnouncementMedia.isActive, true)
+        ))
+        .limit(1);
       
-      console.log(`[Call Recording] Playing ${recordingLanguage} stop announcement for call ${telnyxCallControlId}`);
-      
-      // Step 1: Play the stop announcement audio to both parties
-      const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/playback_start`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${telnyxApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          audio_url: stopAudioUrl,
-          overlay: false,
-          target_legs: "both"
-        })
-      });
-      
-      if (!playbackResponse.ok) {
-        const errorText = await playbackResponse.text();
-        console.error(`[Call Recording] Failed to play stop announcement for call ${telnyxCallControlId}:`, errorText);
-        // Continue anyway to stop recording
+      // If no media configured, skip the announcement but don't block stop operation
+      if (!stopMedia) {
+        console.log(`[Call Recording] No stop announcement configured for ${recordingLanguage}, skipping playback`);
       } else {
-        console.log(`[Call Recording] Stop announcement playback started for call ${telnyxCallControlId}`);
-        // Wait for audio to play
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        console.log(`[Call Recording] Playing ${recordingLanguage} stop announcement (media_name: ${stopMedia.mediaName}) for call ${telnyxCallControlId}`);
+        
+        // Play the stop announcement audio to both parties using Telnyx Media Storage
+        const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/playback_start`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${telnyxApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            media_name: stopMedia.mediaName,
+            overlay: false,
+            target_legs: "both"
+          })
+        });
+        
+        if (!playbackResponse.ok) {
+          const errorText = await playbackResponse.text();
+          console.error(`[Call Recording] Failed to play stop announcement for call ${telnyxCallControlId}:`, errorText);
+        } else {
+          console.log(`[Call Recording] Stop announcement playback started for call ${telnyxCallControlId}`);
+          await new Promise(resolve => setTimeout(resolve, 2500));
+        }
       }
       
       // Step 2: Stop the recording and clear recording language
@@ -42821,6 +42841,197 @@ CRITICAL REMINDERS:
 
   // Register SES routes
   registerSesRoutes(app, requireActiveCompany);
+
+  // ============================================
+  // SUPER ADMIN: Recording Announcement Media Management
+  // ============================================
+
+  // GET /api/admin/recording-media - List all recording announcement media slots
+  app.get("/api/admin/recording-media", async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden - Super Admin access required" });
+      }
+
+      // Get all active media entries
+      const mediaEntries = await db.select().from(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.isActive, true));
+
+      // Organize into slots format
+      const slots: Record<string, any> = {
+        start_en: null,
+        start_es: null,
+        stop_en: null,
+        stop_es: null,
+      };
+
+      for (const entry of mediaEntries) {
+        const slotKey = `${entry.type}_${entry.language}`;
+        if (slotKey in slots) {
+          slots[slotKey] = {
+            id: entry.id,
+            type: entry.type,
+            language: entry.language,
+            mediaName: entry.mediaName,
+            originalFileName: entry.originalFileName,
+            uploadedAt: entry.uploadedAt,
+            uploadedByUserId: entry.uploadedByUserId,
+          };
+        }
+      }
+
+      res.json({ slots });
+    } catch (error: any) {
+      console.error("[RecordingMedia] Error listing media:", error);
+      res.status(500).json({ message: "Failed to list recording media" });
+    }
+  });
+
+  // POST /api/admin/recording-media - Upload audio file to Telnyx Media Storage
+  app.post("/api/admin/recording-media", async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden - Super Admin access required" });
+      }
+
+      // Configure multer for memory storage
+      const recordingMediaUpload = multer({
+        storage: multer.memoryStorage(),
+        limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+        fileFilter: (req, file, cb) => {
+          const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm'];
+          if (!allowedTypes.includes(file.mimetype)) {
+            return cb(new Error('Invalid file type. Only audio files (MP3, WAV, OGG, WebM) are allowed.'));
+          }
+          cb(null, true);
+        },
+      });
+
+      // Handle file upload
+      await new Promise<void>((resolve, reject) => {
+        recordingMediaUpload.single('file')(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 10MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { type, language } = req.body;
+
+      // Validate type and language
+      if (!type || !['start', 'stop'].includes(type)) {
+        return res.status(400).json({ message: "Invalid type. Must be 'start' or 'stop'" });
+      }
+      if (!language || !['en', 'es'].includes(language)) {
+        return res.status(400).json({ message: "Invalid language. Must be 'en' or 'es'" });
+      }
+
+      // Upload to Telnyx Media Storage (no companyId for global media)
+      const { uploadMediaToTelnyx } = await import("./services/telnyx-media-service");
+      const uploadResult = await uploadMediaToTelnyx(
+        file.buffer,
+        file.originalname,
+        file.mimetype
+      );
+
+      if (!uploadResult.success) {
+        console.error("[RecordingMedia] Telnyx upload failed:", uploadResult.error);
+        return res.status(500).json({ message: `Failed to upload to Telnyx: ${uploadResult.error}` });
+      }
+
+      // Deactivate any existing active media for this slot
+      await db.update(recordingAnnouncementMedia)
+        .set({ isActive: false })
+        .where(
+          and(
+            eq(recordingAnnouncementMedia.type, type),
+            eq(recordingAnnouncementMedia.language, language),
+            eq(recordingAnnouncementMedia.isActive, true)
+          )
+        );
+
+      // Insert new media entry
+      const [newMedia] = await db.insert(recordingAnnouncementMedia)
+        .values({
+          type,
+          language,
+          mediaName: uploadResult.mediaName!,
+          originalFileName: file.originalname,
+          isActive: true,
+          uploadedByUserId: user.id,
+        })
+        .returning();
+
+      console.log(`[RecordingMedia] Uploaded ${type}_${language}: ${uploadResult.mediaName}`);
+
+      res.json({
+        success: true,
+        media: {
+          id: newMedia.id,
+          type: newMedia.type,
+          language: newMedia.language,
+          mediaName: newMedia.mediaName,
+          originalFileName: newMedia.originalFileName,
+          uploadedAt: newMedia.uploadedAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("[RecordingMedia] Error uploading media:", error);
+      res.status(500).json({ message: error.message || "Failed to upload recording media" });
+    }
+  });
+
+  // DELETE /api/admin/recording-media/:id - Delete a media entry
+  app.delete("/api/admin/recording-media/:id", async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden - Super Admin access required" });
+      }
+
+      const { id } = req.params;
+
+      // Get the media entry
+      const [mediaEntry] = await db.select().from(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.id, id));
+
+      if (!mediaEntry) {
+        return res.status(404).json({ message: "Media entry not found" });
+      }
+
+      // Delete from Telnyx
+      const { deleteMediaFromTelnyx } = await import("./services/telnyx-media-service");
+      const deleteResult = await deleteMediaFromTelnyx(mediaEntry.mediaName);
+
+      if (!deleteResult.success) {
+        console.warn(`[RecordingMedia] Telnyx delete warning: ${deleteResult.error}`);
+      }
+
+      // Delete from database
+      await db.delete(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.id, id));
+
+      console.log(`[RecordingMedia] Deleted ${mediaEntry.type}_${mediaEntry.language}: ${mediaEntry.mediaName}`);
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[RecordingMedia] Error deleting media:", error);
+      res.status(500).json({ message: "Failed to delete recording media" });
+    }
+  });
+
+  // ============================================
 
 
   // ============================================
