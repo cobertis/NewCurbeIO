@@ -39592,6 +39592,48 @@ CRITICAL REMINDERS:
       return res.status(500).json({ success: false, error: error.message });
     }
   });
+  
+  // POST /api/pbx/auto-reject-to-voicemail - Auto-reject call when agent is offline (SDK-side rejection)
+  app.post("/api/pbx/auto-reject-to-voicemail", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { callerNumber, callLegId, reason } = req.body;
+      console.log(`[PBX Auto-Reject] Agent ${user.id} auto-rejecting call from ${callerNumber} (reason: ${reason}, callLegId: ${callLegId})`);
+      
+      // Log the missed call since the SDK already hung up
+      await db.insert(callLogs).values({
+        id: nanoid(),
+        companyId: user.companyId,
+        userId: user.id,
+        fromNumber: callerNumber,
+        toNumber: user.phoneNumber || '',
+        direction: 'inbound',
+        status: 'missed',
+        duration: 0,
+        startedAt: new Date(),
+        endedAt: new Date(),
+        notes: `Auto-rejected: ${reason || 'agent offline'}`,
+      });
+      
+      // Create missed call notification
+      await db.insert(notifications).values({
+        id: nanoid(),
+        userId: user.id,
+        companyId: user.companyId,
+        title: 'Missed Call (Auto-rejected)',
+        message: `Call from ${callerNumber} was auto-rejected because you were ${reason === 'agent_offline' ? 'offline' : 'unavailable'}`,
+        type: 'missed_call',
+        link: '/call-logs',
+        isRead: false,
+        createdAt: new Date(),
+      });
+      
+      return res.json({ success: true, message: 'Call auto-rejected and logged' });
+    } catch (error: any) {
+      console.error("[PBX Auto-Reject] Error:", error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
   // GET /api/pbx/extensions/next - Get next available extension number
   app.get("/api/pbx/extensions/next", requireActiveCompany, async (req: Request, res: Response) => {
     try {

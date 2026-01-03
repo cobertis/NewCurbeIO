@@ -567,6 +567,28 @@ class TelnyxWebRTCManager {
               return;
             }
             
+            // Check agent availability status - if offline, auto-reject and send to voicemail
+            const agentStatus = store.agentAvailabilityStatus;
+            console.log("[TelnyxRTC] Agent availability status:", agentStatus);
+            
+            if (agentStatus === "offline") {
+              console.log("[TelnyxRTC] Agent is OFFLINE - auto-rejecting call and routing to voicemail");
+              // Reject the call via SDK
+              call.hangup();
+              // Try to route to voicemail via server (fire and forget)
+              const callerNumber = callInfo.remoteCallerNumber?.replace(/\D/g, '') || '';
+              const callLegId = (call as any).id || (call as any).callId;
+              if (callerNumber) {
+                fetch(`/api/pbx/auto-reject-to-voicemail`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ callerNumber, callLegId, reason: 'agent_offline' })
+                }).catch(err => console.error("[TelnyxRTC] Auto-reject voicemail request failed:", err));
+              }
+              return;
+            }
+            
             console.log("[TelnyxRTC] Incoming call from:", callInfo.remoteCallerNumber);
             store.setIncomingCall(call);
             store.setIncomingCallInfo(callInfo);
