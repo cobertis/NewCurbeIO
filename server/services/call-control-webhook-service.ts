@@ -87,11 +87,11 @@ export function registerActiveInboundCall(
   
   // Cleanup old entries (older than 10 minutes)
   const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
-  for (const [k, v] of activeInboundCalls.entries()) {
+  Array.from(activeInboundCalls.entries()).forEach(([k, v]) => {
     if (v.timestamp < tenMinutesAgo) {
       activeInboundCalls.delete(k);
     }
-  }
+  });
 }
 
 /**
@@ -961,7 +961,8 @@ export class CallControlWebhookService {
       removeActiveInboundCall(context.callerNumber, context.companyId);
     } else if (from) {
       // Fallback: try to remove by from number (may match multiple companies, but cleanup is best-effort)
-      for (const [key, value] of activeInboundCalls.entries()) {
+      const entries = Array.from(activeInboundCalls.entries());
+      for (const [key, value] of entries) {
         if (value.callControlId === call_control_id) {
           activeInboundCalls.delete(key);
           console.log(`[ActiveCalls] Removed by call_control_id: ${call_control_id}`);

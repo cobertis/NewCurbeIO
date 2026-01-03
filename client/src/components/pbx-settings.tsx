@@ -658,6 +658,41 @@ export function PbxSettings() {
               </div>
 
               <div className="space-y-2">
+                <Label>Voicemail Greeting Audio</Label>
+                <p className="text-sm text-slate-500 mb-2">Select a custom audio file to play as voicemail greeting, or use default text-to-speech</p>
+                <Select
+                  value={settings?.voicemailGreetingUrl || "default"}
+                  onValueChange={(value) => handleSettingChange("voicemailGreetingUrl", value === "default" ? null : value)}
+                >
+                  <SelectTrigger data-testid="select-voicemail-greeting">
+                    <SelectValue placeholder="Select greeting audio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default (Text-to-Speech)</SelectItem>
+                    {audioFiles?.filter((af: any) => af.audioType === "voicemail_greeting").map((audio: any) => (
+                      <SelectItem key={audio.id} value={audio.fileUrl}>
+                        {audio.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {settings?.voicemailGreetingUrl && (
+                  <div className="flex items-center gap-2 mt-2 p-2 bg-muted rounded-md">
+                    <Volume2 className="h-4 w-4 text-muted-foreground" />
+                    <audio 
+                      controls 
+                      src={settings.voicemailGreetingUrl} 
+                      className="h-8 flex-1"
+                      data-testid="audio-voicemail-preview"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload voicemail greeting audio files in the Audio tab
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Voicemail Notification Email</Label>
                 <Input
                   type="email"
