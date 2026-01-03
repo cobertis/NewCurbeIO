@@ -9,7 +9,7 @@ import { Upload, Trash2, FileAudio, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import type { User } from "@shared/schema";
 
-type SlotKey = "start_en" | "start_es" | "stop_en" | "stop_es";
+type SlotKey = "start_en" | "start_es" | "stop_en" | "stop_es" | "voicemail_en" | "voicemail_es";
 
 interface MediaSlotData {
   id: string;
@@ -29,14 +29,18 @@ interface SlotsResponse {
     start_es: MediaSlotData | null;
     stop_en: MediaSlotData | null;
     stop_es: MediaSlotData | null;
+    voicemail_en: MediaSlotData | null;
+    voicemail_es: MediaSlotData | null;
   };
 }
 
-const MEDIA_SLOTS: { key: SlotKey; title: string; description: string }[] = [
-  { key: "start_en", title: "Start Recording (English)", description: "Announcement played when call recording begins (English)" },
-  { key: "start_es", title: "Start Recording (Spanish)", description: "Announcement played when call recording begins (Spanish)" },
-  { key: "stop_en", title: "Stop Recording (English)", description: "Announcement played when call recording ends (English)" },
-  { key: "stop_es", title: "Stop Recording (Spanish)", description: "Announcement played when call recording ends (Spanish)" },
+const MEDIA_SLOTS: { key: SlotKey; title: string; description: string; category: string }[] = [
+  { key: "start_en", title: "Start Recording (English)", description: "Announcement played when call recording begins (English)", category: "recording" },
+  { key: "start_es", title: "Start Recording (Spanish)", description: "Announcement played when call recording begins (Spanish)", category: "recording" },
+  { key: "stop_en", title: "Stop Recording (English)", description: "Announcement played when call recording ends (English)", category: "recording" },
+  { key: "stop_es", title: "Stop Recording (Spanish)", description: "Announcement played when call recording ends (Spanish)", category: "recording" },
+  { key: "voicemail_en", title: "Voicemail Greeting (English)", description: "Greeting played when calls go to voicemail (English)", category: "voicemail" },
+  { key: "voicemail_es", title: "Voicemail Greeting (Spanish)", description: "Greeting played when calls go to voicemail (Spanish)", category: "voicemail" },
 ];
 
 const ACCEPTED_FORMATS = ".mp3,.wav,.ogg,.webm";
@@ -169,15 +173,112 @@ export default function SuperAdminRecordingMedia() {
     return <LoadingSpinner message="Loading media files..." />;
   }
 
+  const renderSlotCard = (slot: typeof MEDIA_SLOTS[0]) => {
+    const media = getMediaForSlot(slot.key);
+    const isUploading = uploadingSlot === slot.key;
+    const isDeleting = deletingSlot === slot.key;
+
+    return (
+      <Card key={slot.key} data-testid={`card-slot-${slot.key}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FileAudio className="h-5 w-5 text-muted-foreground" />
+            {slot.title}
+          </CardTitle>
+          <CardDescription>{slot.description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <input
+            type="file"
+            accept={ACCEPTED_FORMATS}
+            className="hidden"
+            ref={(el) => (fileInputRefs.current[slot.key] = el)}
+            onChange={(e) => handleFileSelect(slot.key, e)}
+            data-testid={`input-file-${slot.key}`}
+          />
+
+          {media ? (
+            <div className="space-y-3">
+              <div className="p-3 bg-muted/50 rounded-lg border">
+                <p className="font-medium text-sm" data-testid={`text-filename-${slot.key}`}>
+                  {media.originalFileName}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1" data-testid={`text-uploaddate-${slot.key}`}>
+                  {media.uploadedAt ? `Uploaded ${format(new Date(media.uploadedAt), "MMM d, yyyy 'at' h:mm a")}` : "Upload date unknown"}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUploadClick(slot.key)}
+                  disabled={isUploading || isDeleting}
+                  data-testid={`button-replace-${slot.key}`}
+                >
+                  {isUploading ? (
+                    <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  Replace
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDelete(slot.key)}
+                  disabled={isUploading || isDeleting}
+                  className="text-destructive hover:text-destructive"
+                  data-testid={`button-delete-${slot.key}`}
+                >
+                  {isDeleting ? (
+                    <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 border-2 border-dashed rounded-lg border-muted-foreground/25">
+              <FileAudio className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground mb-3">No media file uploaded</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleUploadClick(slot.key)}
+                disabled={isUploading}
+                data-testid={`button-upload-${slot.key}`}
+              >
+                {isUploading ? (
+                  <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                Upload Audio File
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Supported: MP3, WAV, OGG, WebM
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const recordingSlots = MEDIA_SLOTS.filter(s => s.category === "recording");
+  const voicemailSlots = MEDIA_SLOTS.filter(s => s.category === "voicemail");
+
   return (
     <div className="p-6 space-y-6" data-testid="recording-media-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground" data-testid="page-title">
-            Recording Announcement Media
+            Call Audio Media
           </h1>
           <p className="text-muted-foreground mt-1" data-testid="page-subtitle">
-            Manage audio files for call recording announcements
+            Manage audio files for call recording announcements and voicemail greetings
           </p>
         </div>
         <Button
@@ -196,100 +297,20 @@ export default function SuperAdminRecordingMedia() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-testid="media-slots-grid">
-        {MEDIA_SLOTS.map((slot) => {
-          const media = getMediaForSlot(slot.key);
-          const isUploading = uploadingSlot === slot.key;
-          const isDeleting = deletingSlot === slot.key;
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-medium mb-4">Recording Announcements</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-testid="media-slots-grid-recording">
+            {recordingSlots.map(renderSlotCard)}
+          </div>
+        </div>
 
-          return (
-            <Card key={slot.key} data-testid={`card-slot-${slot.key}`}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileAudio className="h-5 w-5 text-muted-foreground" />
-                  {slot.title}
-                </CardTitle>
-                <CardDescription>{slot.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <input
-                  type="file"
-                  accept={ACCEPTED_FORMATS}
-                  className="hidden"
-                  ref={(el) => (fileInputRefs.current[slot.key] = el)}
-                  onChange={(e) => handleFileSelect(slot.key, e)}
-                  data-testid={`input-file-${slot.key}`}
-                />
-
-                {media ? (
-                  <div className="space-y-3">
-                    <div className="p-3 bg-muted/50 rounded-lg border">
-                      <p className="font-medium text-sm" data-testid={`text-filename-${slot.key}`}>
-                        {media.originalFileName}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1" data-testid={`text-uploaddate-${slot.key}`}>
-                        {media.uploadedAt ? `Uploaded ${format(new Date(media.uploadedAt), "MMM d, yyyy 'at' h:mm a")}` : "Upload date unknown"}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUploadClick(slot.key)}
-                        disabled={isUploading || isDeleting}
-                        data-testid={`button-replace-${slot.key}`}
-                      >
-                        {isUploading ? (
-                          <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
-                        ) : (
-                          <Upload className="h-4 w-4 mr-2" />
-                        )}
-                        Replace
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(slot.key)}
-                        disabled={isUploading || isDeleting}
-                        className="text-destructive hover:text-destructive"
-                        data-testid={`button-delete-${slot.key}`}
-                      >
-                        {isDeleting ? (
-                          <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 mr-2" />
-                        )}
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-6 border-2 border-dashed rounded-lg border-muted-foreground/25">
-                    <FileAudio className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                    <p className="text-sm text-muted-foreground mb-3">No media file uploaded</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleUploadClick(slot.key)}
-                      disabled={isUploading}
-                      data-testid={`button-upload-${slot.key}`}
-                    >
-                      {isUploading ? (
-                        <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
-                      ) : (
-                        <Upload className="h-4 w-4 mr-2" />
-                      )}
-                      Upload Audio File
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Supported: MP3, WAV, OGG, WebM
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+        <div>
+          <h2 className="text-lg font-medium mb-4">Voicemail Greetings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-testid="media-slots-grid-voicemail">
+            {voicemailSlots.map(renderSlotCard)}
+          </div>
+        </div>
       </div>
     </div>
   );

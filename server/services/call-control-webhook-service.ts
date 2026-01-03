@@ -19,6 +19,7 @@ import {
   pbxIvrs,
   PbxIvr,
   callLogs,
+  recordingAnnouncementMedia,
 } from "@shared/schema";
 import { eq, and, inArray, desc, isNull, or } from "drizzle-orm";
 
@@ -2136,10 +2137,27 @@ export class CallControlWebhookService {
   private async routeToVoicemail(callControlId: string, companyId: string): Promise<void> {
     console.log(`[CallControl] Routing to voicemail for company: ${companyId}`);
 
-    const settings = await pbxService.getPbxSettings(companyId);
-    if (settings?.voicemailGreetingUrl) {
-      await this.playAudio(callControlId, settings.voicemailGreetingUrl);
+    // Get global voicemail greeting from Super Admin settings
+    // Try English first, then Spanish as fallback
+    const voicemailGreetings = await db.select()
+      .from(recordingAnnouncementMedia)
+      .where(
+        and(
+          eq(recordingAnnouncementMedia.type, "voicemail"),
+          eq(recordingAnnouncementMedia.isActive, true)
+        )
+      );
+
+    // Prefer English, fallback to Spanish, then TTS
+    const englishGreeting = voicemailGreetings.find(g => g.language === "en");
+    const spanishGreeting = voicemailGreetings.find(g => g.language === "es");
+    const greetingToUse = englishGreeting || spanishGreeting;
+
+    if (greetingToUse?.audioUrl) {
+      console.log(`[CallControl] Playing global voicemail greeting: ${greetingToUse.audioUrl}`);
+      await this.playAudio(callControlId, greetingToUse.audioUrl);
     } else {
+      console.log(`[CallControl] No global voicemail greeting found, using TTS`);
       await this.speakText(
         callControlId,
         "Please leave your message after the tone. Press pound when finished."

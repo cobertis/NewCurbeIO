@@ -43373,6 +43373,8 @@ CRITICAL REMINDERS:
         start_es: null,
         stop_en: null,
         stop_es: null,
+        voicemail_en: null,
+        voicemail_es: null,
       };
 
       for (const entry of mediaEntries) {
