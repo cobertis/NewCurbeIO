@@ -192,13 +192,26 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
 
   const { data: voicemailStatus, isLoading: isLoadingStatus, refetch: refetchStatus } = useQuery<{ enabled: boolean; sendToVoicemail?: boolean; voicemailBoxId?: string }>({
     queryKey: ['/api/voicemail/status', phoneNumberId],
+    queryFn: async () => {
+      const res = await fetch(`/api/voicemail/status/${phoneNumberId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch voicemail status');
+      return res.json();
+    },
     enabled: !!phoneNumberId,
   });
 
   const enableVoicemailMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest(`/api/voicemail/enable/${phoneNumberId}`, { method: 'POST' });
-      return res;
+      const res = await fetch(`/api/voicemail/enable/${phoneNumberId}`, { 
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Failed to enable voicemail' }));
+        throw new Error(error.message || 'Failed to enable voicemail');
+      }
+      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Voicemail enabled", description: "Voicemail has been activated for this number" });
