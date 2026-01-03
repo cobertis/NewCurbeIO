@@ -21,7 +21,7 @@ import {
   callLogs,
   recordingAnnouncementMedia,
 } from "@shared/schema";
-import { eq, and, inArray, desc, isNull, or } from "drizzle-orm";
+import { eq, and, inArray, desc, isNull, or, sql } from "drizzle-orm";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
@@ -867,6 +867,52 @@ export class CallControlWebhookService {
       // For blind transfers, Telnyx handles the bridge automatically - don't do manual bridge
       if (pendingBridge.isBlindTransfer) {
         console.log(`[CallControl] Blind transfer answered - Telnyx handles bridge automatically, no manual bridge needed`);
+        const pstnCallControlId = pendingBridge.callerCallControlId;
+        const callerNumber = pendingBridge.callerNumber;
+        
+        // Update the call log with the correct PSTN call_control_id for recording
+        // The call log was created by the WebRTC frontend with the SDK's internal ID
+        // We need to update it with the PSTN leg's call_control_id for Call Control API operations
+        if (callerNumber && pstnCallControlId) {
+          const normalizedCaller = callerNumber.replace(/\D/g, '');
+          console.log(`[CallControl] Updating call log for caller ${normalizedCaller} with PSTN call_control_id: ${pstnCallControlId}`);
+          
+          try {
+            // Find the most recent call log for this caller number (created by WebRTC frontend)
+            const recentCallLogs = await db
+              .select()
+              .from(callLogs)
+              .where(and(
+                eq(callLogs.companyId, pendingBridge.companyId),
+                eq(callLogs.direction, 'inbound'),
+                or(
+                  sql`${callLogs.fromNumber} LIKE ${'%' + normalizedCaller}`,
+                  sql`${callLogs.fromNumber} LIKE ${'+' + normalizedCaller}`,
+                  eq(callLogs.fromNumber, normalizedCaller)
+                )
+              ))
+              .orderBy(desc(callLogs.createdAt))
+              .limit(1);
+            
+            if (recentCallLogs.length > 0) {
+              const callLog = recentCallLogs[0];
+              // Update the call log with the PSTN call_control_id
+              await db
+                .update(callLogs)
+                .set({ 
+                  telnyxCallId: pstnCallControlId,
+                  telnyxSessionId: pstnCallControlId // Also store as session ID for backup
+                })
+                .where(eq(callLogs.id, callLog.id));
+              console.log(`[CallControl] Updated call log ${callLog.id} with PSTN call_control_id for recording support`);
+            } else {
+              console.log(`[CallControl] No call log found for caller ${normalizedCaller} to update`);
+            }
+          } catch (updateError) {
+            console.error(`[CallControl] Failed to update call log with PSTN call_control_id:`, updateError);
+          }
+        }
+        
         pendingBridges.delete(call_control_id);
         return;
       }
