@@ -7737,7 +7737,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           if (response.ok) {
             const data = await response.json();
-            const downloadUrl = data.data?.download_urls?.mp3 || data.data?.download_urls?.wav;
+            const downloadUrl = data.data?.media_url || data.data?.download_urls?.mp3 || data.data?.download_urls?.wav;
+            console.log("[Recording Proxy] Method 1 - Found media_url:", downloadUrl ? "yes" : "no");
             
             if (downloadUrl) {
               const audioResponse = await fetch(downloadUrl);
@@ -7778,7 +7779,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               const recording = data.data?.[0];
               
               if (recording) {
-                const downloadUrl = recording.download_urls?.mp3 || recording.download_urls?.wav;
+                const downloadUrl = recording.media_url || recording.download_urls?.mp3 || recording.download_urls?.wav;
+                console.log("[Recording Proxy] Method 2 - Found recording:", recording.id, "media_url:", downloadUrl ? "yes" : "no");
                 
                 // Save the recording_id for future use
                 if (recording.id && !callLog.recordingId) {
