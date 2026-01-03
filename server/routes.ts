@@ -7735,7 +7735,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
           });
           
-          if (response.ok) {
+          console.log("[Recording Proxy] Method 2 - Telnyx API status:", response.status);
+            if (response.ok) {
             const data = await response.json();
             const downloadUrl = data.data?.media_url || data.data?.download_urls?.mp3 || data.data?.download_urls?.wav;
             console.log("[Recording Proxy] Method 1 - Found media_url:", downloadUrl ? "yes" : "no");
@@ -7774,10 +7775,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
             });
             
+            console.log("[Recording Proxy] Method 2 - Telnyx API status:", response.status);
             if (response.ok) {
               const data = await response.json();
               const recording = data.data?.[0];
               
+              console.log("[Recording Proxy] Method 2 - Telnyx response data length:", data.data?.length || 0);
               if (recording) {
                 const downloadUrl = recording.media_url || recording.download_urls?.mp3 || recording.download_urls?.wav;
                 console.log("[Recording Proxy] Method 2 - Found recording:", recording.id, "media_url:", downloadUrl ? "yes" : "no");
@@ -25986,7 +25989,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   body: JSON.stringify({ numbers: [remoteJid.replace('@lid', '')] }),
                 });
                 
-                if (response.ok) {
+                console.log("[Recording Proxy] Method 2 - Telnyx API status:", response.status);
+            if (response.ok) {
                   const results = await response.json();
                   if (results?.[0]?.jid && results?.[0]?.lid) {
                     const phoneJid = results[0].jid;
@@ -34040,7 +34044,8 @@ CRITICAL REMINDERS:
                 headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
               });
               
-              if (response.ok) {
+              console.log("[Recording Proxy] Method 2 - Telnyx API status:", response.status);
+            if (response.ok) {
                 const result = await response.json();
                 const campaigns = result.records || result.data || [];
                 allCampaigns.push(...campaigns);
@@ -38669,7 +38674,8 @@ CRITICAL REMINDERS:
         }
       });
       
-      if (response.ok) {
+      console.log("[Recording Proxy] Method 2 - Telnyx API status:", response.status);
+            if (response.ok) {
         console.log(`[Call Recording] Stopped recording for call ${telnyxCallControlId}`);
         return res.json({ success: true });
       } else {
