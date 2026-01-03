@@ -1993,6 +1993,7 @@ export interface VoicemailStatusResult {
 
 /**
  * Get voicemail status for a phone number
+ * Uses Telnyx API: GET /v2/phone_numbers/{phone_number_id}/voicemail
  */
 export async function getVoicemailStatus(
   phoneNumberId: string,
@@ -2020,11 +2021,21 @@ export async function getVoicemailStatus(
       headers["x-managed-account-id"] = managedAccountId;
     }
     
-    // GET /v2/phone_numbers/{phone_number_id}/voice to get voice settings
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+    // GET /v2/phone_numbers/{phone_number_id}/voicemail - correct endpoint per Telnyx API docs
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
       method: "GET",
       headers,
     });
+    
+    // 404 means voicemail is not configured yet - this is not an error
+    if (response.status === 404) {
+      console.log(`[Telnyx Voicemail] Status for ${phoneNumberId}: not configured (404)`);
+      return {
+        success: true,
+        enabled: false,
+        sendToVoicemail: false,
+      };
+    }
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -2036,19 +2047,14 @@ export async function getVoicemailStatus(
     }
     
     const result = await response.json();
-    const voiceSettings = result.data;
+    const voicemailData = result.data;
     
-    // Check if send_to_voicemail is enabled in call_forwarding settings
-    const callForwarding = voiceSettings?.call_forwarding;
-    const sendToVoicemail = callForwarding?.send_to_voicemail === true;
-    
-    console.log(`[Telnyx Voicemail] Status for ${phoneNumberId}: send_to_voicemail=${sendToVoicemail}`);
+    console.log(`[Telnyx Voicemail] Status for ${phoneNumberId}: enabled=${voicemailData?.enabled}`);
     
     return {
       success: true,
-      enabled: sendToVoicemail,
-      sendToVoicemail,
-      voicemailBoxId: voiceSettings?.voicemail_box_id || undefined,
+      enabled: voicemailData?.enabled === true,
+      sendToVoicemail: voicemailData?.enabled === true,
     };
   } catch (error) {
     console.error("[Telnyx Voicemail] Get status error:", error);
@@ -2233,7 +2239,8 @@ async function getPhoneNumberConnectionId(
 
 /**
  * Enable voicemail for a phone number
- * This creates a voicemail box if needed and configures the phone number to forward to voicemail
+ * Uses Telnyx API: POST /v2/phone_numbers/{phone_number_id}/voicemail
+ * Per Telnyx docs: https://developers.telnyx.com/api/voicemail/create-voicemail
  */
 export async function enableVoicemail(
   phoneNumberId: string,
@@ -2253,29 +2260,6 @@ export async function enableVoicemail(
       };
     }
     
-    // Step 1: Get the phone number's connection_id
-    const connectionResult = await getPhoneNumberConnectionId(phoneNumberId, companyId);
-    if (!connectionResult.success || !connectionResult.connectionId) {
-      return {
-        success: false,
-        error: connectionResult.error || "Failed to get phone number connection"
-      };
-    }
-    
-    console.log(`[Telnyx Voicemail] Phone ${phoneNumberId} has connection_id: ${connectionResult.connectionId}`);
-    
-    // Step 2: Create or get existing voicemail box
-    const boxResult = await ensureVoicemailBox(connectionResult.connectionId, companyId, connectionResult.phoneNumber);
-    if (!boxResult.success || !boxResult.voicemailBoxId) {
-      return {
-        success: false,
-        error: boxResult.error || "Failed to create voicemail box"
-      };
-    }
-    
-    console.log(`[Telnyx Voicemail] Using voicemail box: ${boxResult.voicemailBoxId}`);
-    
-    // Step 3: Update phone number voice settings with voicemail_box_id and send_to_voicemail
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
@@ -2285,20 +2269,19 @@ export async function enableVoicemail(
       headers["x-managed-account-id"] = managedAccountId;
     }
     
-    // PATCH /v2/phone_numbers/{phone_number_id}/voice with BOTH voicemail_box_id AND send_to_voicemail
+    // Generate a 4-digit PIN for voicemail access
+    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    
+    // POST /v2/phone_numbers/{phone_number_id}/voicemail - correct endpoint per Telnyx API docs
     const payload = {
-      call_forwarding: {
-        send_to_voicemail: true,
-        voicemail_box_id: boxResult.voicemailBoxId,
-        call_forwarding_enabled: false,
-        forwarding_type: "on_failure"
-      }
+      enabled: true,
+      pin: pin
     };
     
-    console.log(`[Telnyx Voicemail] Enabling voicemail for ${phoneNumberId}, payload:`, JSON.stringify(payload));
+    console.log(`[Telnyx Voicemail] Enabling voicemail for ${phoneNumberId} with PIN: ${pin}`);
     
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
-      method: "PATCH",
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
+      method: "POST",
       headers,
       body: JSON.stringify(payload),
     });
@@ -2318,7 +2301,6 @@ export async function enableVoicemail(
     return {
       success: true,
       enabled: true,
-      voicemailBoxId: boxResult.voicemailBoxId,
     };
   } catch (error) {
     console.error("[Telnyx Voicemail] Enable error:", error);
