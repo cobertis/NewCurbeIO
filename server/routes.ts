@@ -38759,9 +38759,31 @@ CRITICAL REMINDERS:
         });
       }
       
-      console.log(`[Call Recording] Playing ${language} announcement (audio_url) before recording for call ${telnyxCallControlId}`);
+      console.log(`[Call Recording] Starting recording FIRST, then playing ${language} announcement for call ${telnyxCallControlId}`);
       
-      // Step 1: Play the announcement audio to both parties using Telnyx Media Storage
+      // Step 1: Start the recording FIRST (so announcement is captured in recording)
+      const recordResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/record_start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${telnyxApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          format: 'mp3',
+          channels: 'dual',
+          play_beep: false
+        })
+      });
+      
+      if (!recordResponse.ok) {
+        const errorText = await recordResponse.text();
+        console.error(`[Call Recording] Failed to start recording for call ${telnyxCallControlId}:`, errorText);
+        return res.status(500).json({ success: false, error: errorText });
+      }
+      
+      console.log(`[Call Recording] Recording started for call ${telnyxCallControlId}`);
+      
+      // Step 2: Play the announcement audio (this will be captured in the recording)
       const playbackResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/playback_start`, {
         method: 'POST',
         headers: {
@@ -38777,30 +38799,14 @@ CRITICAL REMINDERS:
       
       if (!playbackResponse.ok) {
         const errorText = await playbackResponse.text();
-        console.error(`[Call Recording] Failed to play announcement for call ${telnyxCallControlId}:`, errorText);
-        // Continue anyway to start recording even if playback fails
+        console.error(`[Call Recording] Failed to play start announcement for call ${telnyxCallControlId}:`, errorText);
+        // Recording is already started, just log the error
       } else {
-        console.log(`[Call Recording] Announcement playback started for call ${telnyxCallControlId}`);
-        // Wait a short moment for audio to play (typical announcement is 1-2 seconds)
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        console.log(`[Call Recording] Start announcement playing (captured in recording) for call ${telnyxCallControlId}`);
       }
       
-      // Step 2: Start the recording
-      const recordResponse = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/record_start`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${telnyxApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          format: 'mp3',
-          channels: 'dual',
-          play_beep: false // We already played an announcement
-        })
-      });
-      
       if (recordResponse.ok) {
-        console.log(`[Call Recording] Started recording for call ${telnyxCallControlId}`);
+        console.log(`[Call Recording] Recording active with announcement for call ${telnyxCallControlId}`);
         // Save the recording language to the database
         await db.update(callLogs).set({ recordingLanguage: language }).where(eq(callLogs.id, callLog.id));
         return res.json({ success: true });
