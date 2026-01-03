@@ -1347,7 +1347,7 @@ export class CallControlWebhookService {
   }
 
   private async handleRecordingSaved(payload: CallControlEvent["data"]["payload"]): Promise<void> {
-    const { call_control_id, recording_urls } = payload;
+    const { call_control_id, recording_urls, recording_started_at, recording_ended_at } = payload as any;
     console.log(`[CallControl] Recording saved for call ${call_control_id}:`, recording_urls);
     
     if (!call_control_id || !recording_urls) {
@@ -1362,6 +1362,15 @@ export class CallControlWebhookService {
       return;
     }
     
+    // Calculate recording duration from timestamps
+    let recordingDurationSeconds = 0;
+    if (recording_started_at && recording_ended_at) {
+      const startTime = new Date(recording_started_at).getTime();
+      const endTime = new Date(recording_ended_at).getTime();
+      recordingDurationSeconds = Math.ceil((endTime - startTime) / 1000);
+      console.log(`[CallControl] Recording duration: ${recordingDurationSeconds}s (from ${recording_started_at} to ${recording_ended_at})`);
+    }
+    
     try {
       // Find the call log by telnyxCallId
       const [callLog] = await db
@@ -1374,13 +1383,16 @@ export class CallControlWebhookService {
         return;
       }
       
-      // Update the call log with the recording URL
+      // Update the call log with the recording URL AND duration
       await db
         .update(callLogs)
-        .set({ recordingUrl })
+        .set({ 
+          recordingUrl,
+          recordingDuration: recordingDurationSeconds > 0 ? recordingDurationSeconds : null
+        })
         .where(eq(callLogs.id, callLog.id));
       
-      console.log(`[CallControl] Updated recording URL for call ${callLog.id}: ${recordingUrl}`);
+      console.log(`[CallControl] Updated recording URL and duration (${recordingDurationSeconds}s) for call ${callLog.id}`);
     } catch (error) {
       console.error(`[CallControl] Failed to save recording URL:`, error);
     }
