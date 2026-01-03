@@ -42941,13 +42941,13 @@ CRITICAL REMINDERS:
       }
 
       // Generate unique filename
-      const uniqueId = require('crypto').randomUUID();
+      const uniqueId = randomUUID();
       const ext = file.originalname.match(/\.[a-zA-Z0-9]+$/)?.[0] || '.mp3';
       const filename = type + '_' + language + '_' + uniqueId + ext;
       const localPath = 'public/recording-announcements/' + filename;
       
       // Ensure directory exists
-      const fs = require('fs');
+      
       const dir = 'public/recording-announcements';
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
