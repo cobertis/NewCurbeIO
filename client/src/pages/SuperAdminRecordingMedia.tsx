@@ -9,7 +9,7 @@ import { Upload, Trash2, FileAudio, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import type { User } from "@shared/schema";
 
-type SlotKey = "start_en" | "start_es" | "stop_en" | "stop_es" | "voicemail_en" | "voicemail_es";
+type SlotKey = "start_en" | "start_es" | "stop_en" | "stop_es" | "voicemail_en" | "hold_en";
 
 interface MediaSlotData {
   id: string;
@@ -30,7 +30,7 @@ interface SlotsResponse {
     stop_en: MediaSlotData | null;
     stop_es: MediaSlotData | null;
     voicemail_en: MediaSlotData | null;
-    voicemail_es: MediaSlotData | null;
+    hold_en: MediaSlotData | null;
   };
 }
 
@@ -39,8 +39,8 @@ const MEDIA_SLOTS: { key: SlotKey; title: string; description: string; category:
   { key: "start_es", title: "Start Recording (Spanish)", description: "Announcement played when call recording begins (Spanish)", category: "recording" },
   { key: "stop_en", title: "Stop Recording (English)", description: "Announcement played when call recording ends (English)", category: "recording" },
   { key: "stop_es", title: "Stop Recording (Spanish)", description: "Announcement played when call recording ends (Spanish)", category: "recording" },
-  { key: "voicemail_en", title: "Voicemail Greeting (English)", description: "Greeting played when calls go to voicemail (English)", category: "voicemail" },
-  { key: "voicemail_es", title: "Voicemail Greeting (Spanish)", description: "Greeting played when calls go to voicemail (Spanish)", category: "voicemail" },
+  { key: "voicemail_en", title: "Voicemail Greeting", description: "Greeting played when calls go to voicemail", category: "voicemail" },
+  { key: "hold_en", title: "Hold Music", description: "Music played while callers are on hold", category: "hold" },
 ];
 
 const ACCEPTED_FORMATS = ".mp3,.wav,.ogg,.webm";
@@ -269,6 +269,7 @@ export default function SuperAdminRecordingMedia() {
 
   const recordingSlots = MEDIA_SLOTS.filter(s => s.category === "recording");
   const voicemailSlots = MEDIA_SLOTS.filter(s => s.category === "voicemail");
+  const holdSlots = MEDIA_SLOTS.filter(s => s.category === "hold");
 
   return (
     <div className="p-6 space-y-6" data-testid="recording-media-page">
@@ -306,9 +307,10 @@ export default function SuperAdminRecordingMedia() {
         </div>
 
         <div>
-          <h2 className="text-lg font-medium mb-4">Voicemail Greetings</h2>
+          <h2 className="text-lg font-medium mb-4">Voicemail & Hold</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-testid="media-slots-grid-voicemail">
             {voicemailSlots.map(renderSlotCard)}
+            {holdSlots.map(renderSlotCard)}
           </div>
         </div>
       </div>
