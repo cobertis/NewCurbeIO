@@ -2315,43 +2315,35 @@ export function WebPhoneFloatingWindow() {
       return;
     }
     
-    // Get the call leg ID for routing to voicemail
-    const callLegId = effectiveCall?.callControlId || telnyxIncomingCallInfo?.telnyxCallLegId;
     const callerNumber = effectiveCall?.phoneNumber || telnyxIncomingCallInfo?.remoteCallerNumber;
+    const callLegId = effectiveCall?.callControlId || telnyxIncomingCallInfo?.telnyxCallLegId;
     
-    console.log('[WebPhone] Reject call - effectiveCall:', effectiveCall);
-    console.log('[WebPhone] Reject call - telnyxIncomingCallInfo:', telnyxIncomingCallInfo);
-    console.log('[WebPhone] Reject call - callLegId:', callLegId);
-    console.log('[WebPhone] Reject call - callerNumber:', callerNumber);
+    console.log('[WebPhone] Reject call - callerNumber:', callerNumber, 'callLegId:', callLegId);
     
-    // Try to route to voicemail via API, then reject locally
-    // Include callerNumber for fallback lookup when SDK UUID doesn't match call_control_id
-    if (callLegId || callerNumber) {
-      try {
-        const rejectId = callLegId || 'unknown';
-        console.log('[WebPhone] Rejecting call and routing to voicemail:', rejectId, 'caller:', callerNumber);
-        const response = await fetch(`/api/pbx/calls/${rejectId}/reject-to-voicemail`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ callerNumber })
-        });
-        const data = await response.json();
-        console.log('[WebPhone] Reject to voicemail response:', data);
-      } catch (error) {
-        console.error('[WebPhone] Error routing to voicemail:', error);
-      }
-    } else {
-      console.warn('[WebPhone] No callLegId or callerNumber available, cannot route to voicemail');
-    }
-    
-    // Also reject locally to clear UI state
+    // First, reject the call locally via SDK (sends SIP 486 Busy to Telnyx)
+    // This should trigger Telnyx to route the caller to voicemail if configured
     if (incomingExtCall) {
       extRejectCall();
     } else if (telnyxIncomingCall) {
       telnyxWebRTC.rejectCall();
     } else {
       webPhone.rejectCall();
+    }
+    
+    // Then log the rejected call via our API (fire and forget for logging/notifications only)
+    if (callerNumber) {
+      fetch('/api/pbx/auto-reject-to-voicemail', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          callerNumber: callerNumber?.replace(/\D/g, ''),
+          callLegId,
+          reason: 'user_rejected'
+        })
+      }).then(res => res.json())
+        .then(data => console.log('[WebPhone] Reject logged:', data))
+        .catch(err => console.error('[WebPhone] Error logging rejection:', err));
     }
   }, [effectiveCall?.isWhatsApp, effectiveCall?.callControlId, effectiveCall?.phoneNumber, telnyxIncomingCallInfo?.telnyxCallLegId, telnyxIncomingCallInfo?.remoteCallerNumber, incomingExtCall, telnyxIncomingCall, extRejectCall, handleWhatsAppDecline]);
   

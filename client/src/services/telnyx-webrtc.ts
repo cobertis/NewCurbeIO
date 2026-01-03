@@ -700,9 +700,18 @@ class TelnyxWebRTCManager {
     
     if (!call) return;
 
-    console.log("[TelnyxRTC] Rejecting call");
+    console.log("[TelnyxRTC] Rejecting call with SIP 486 Busy");
     this.stopRingtone();
-    call.hangup();
+    
+    // Use reject() if available (sends SIP 486 Busy), otherwise fallback to hangup()
+    // Reject tells Telnyx the agent is busy, which should route to voicemail
+    if (typeof (call as any).reject === 'function') {
+      (call as any).reject();
+    } else {
+      // Fallback: try hangup with busy cause code
+      call.hangup({ causeCode: 486, cause: 'Busy Here' } as any);
+    }
+    
     store.setIncomingCall(undefined);
     store.setIncomingCallInfo(undefined);
   }
