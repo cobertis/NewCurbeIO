@@ -43557,6 +43557,61 @@ CRITICAL REMINDERS:
   // ============================================
 
 
+  // POST /api/admin/force-call-control-routing - Force phone number to use Call Control App (superadmin only)
+  app.post("/api/admin/force-call-control-routing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      if (currentUser.role !== "superadmin") {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+      
+      const { phoneNumberId } = req.body;
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "phoneNumberId required" });
+      }
+      
+      const [phoneNumber] = await db.select().from(telnyxPhoneNumbers).where(eq(telnyxPhoneNumbers.id, phoneNumberId));
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+      
+      const [telSettings] = await db.select().from(telephonySettings).where(eq(telephonySettings.companyId, phoneNumber.companyId));
+      const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, phoneNumber.companyId));
+      
+      if (!telSettings?.callControlAppId) {
+        return res.status(400).json({ message: "No Call Control App configured for this company" });
+      }
+      
+      const apiKey = await getTelnyxMasterApiKey();
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        ...(wallet?.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
+      };
+      
+      const response = await fetch(`https://api.telnyx.com/v2/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({
+          connection_id: null,
+          call_control_application_id: telSettings.callControlAppId
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Force Routing] Failed: ${response.status} - ${errorText}`);
+        return res.status(500).json({ message: `Telnyx API error: ${response.status}` });
+      }
+      
+      console.log(`[Force Routing] Number ${phoneNumber.phoneNumber} now routed to Call Control App ${telSettings.callControlAppId}`);
+      res.json({ success: true, message: `Phone number ${phoneNumber.phoneNumber} now using Call Control App` });
+    } catch (error: any) {
+      console.error("[Force Routing] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to force routing" });
+    }
+  });
+
   // ============================================
 
   return httpServer;

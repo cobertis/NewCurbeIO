@@ -1709,21 +1709,10 @@ export async function updateNumberVoiceSettings(
           .where(eq(wallets.companyId, companyId));
         
         if (wallet?.telnyxAccountId && telSettings) {
-          const hasActiveIvr = settings.ivrId && settings.ivrId !== "unassigned";
-          
-          // Determine which connection to use
-          let targetConnectionId: string | null = null;
-          let routingType = "";
-          
-          if (hasActiveIvr && telSettings.callControlAppId) {
-            // IVR is enabled - use Call Control App for webhook-based IVR routing
-            targetConnectionId = telSettings.callControlAppId;
-            routingType = "Call Control App (IVR enabled)";
-          } else if (telSettings.credentialConnectionId) {
-            // IVR disabled - use Credential Connection for direct SIP routing with simultaneous_ringing
-            targetConnectionId = telSettings.credentialConnectionId;
-            routingType = "Credential Connection (direct SIP, simultaneous ring)";
-          }
+          // ALWAYS use Call Control App for ALL calls - this allows us to handle voicemail
+          // with custom greetings when calls are not answered
+          let targetConnectionId: string | null = telSettings.callControlAppId || null;
+          let routingType = "Call Control App (unified routing)";
           
           if (targetConnectionId) {
             const headers: Record<string, string> = {
@@ -1732,17 +1721,12 @@ export async function updateNumberVoiceSettings(
               ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
             };
             
-            // CRITICAL: When IVR is enabled, use call_control_application_id (not connection_id)
-            // When IVR is disabled, use connection_id to route to Credential Connection
-            const routingPayload = hasActiveIvr 
-              ? { 
-                  connection_id: null, 
-                  call_control_application_id: targetConnectionId 
-                }
-              : { 
-                  connection_id: targetConnectionId, 
-                  call_control_application_id: null 
-                };
+            // ALWAYS use call_control_application_id for all calls
+            // This ensures we can handle voicemail with custom greetings
+            const routingPayload = { 
+              connection_id: null, 
+              call_control_application_id: targetConnectionId 
+            };
             
             const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`, {
               method: "PATCH",

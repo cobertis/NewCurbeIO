@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { ComplianceTab } from "@/components/compliance-tab";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -146,6 +147,9 @@ function formatPhoneDisplay(phone: string | undefined | null): string {
 
 export default function PhoneSystem() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "superadmin";
+  const [isForceRouting, setIsForceRouting] = useState(false);
   
   // Access control - check if user has access to Phone System
   const { data: accessData, isLoading: isLoadingAccess } = useQuery<{ 
@@ -462,6 +466,25 @@ export default function PhoneSystem() {
     onError: (error: Error) => {
       if (walletData?.wallet) setAutoRechargeEnabled(walletData.wallet.autoRecharge || false);
       toast({ title: "Failed to Update", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const forceCallControlRoutingMutation = useMutation({
+    mutationFn: async (phoneNumberId: string) => {
+      return await apiRequest("POST", "/api/admin/force-call-control-routing", { phoneNumberId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      refetchNumbers();
+      toast({
+        title: "Routing Updated",
+        description: "Phone number now using Call Control App for voicemail and call handling.",
+      });
+      setIsForceRouting(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to Update Routing", description: error.message, variant: "destructive" });
+      setIsForceRouting(false);
     },
   });
 
@@ -1247,6 +1270,36 @@ export default function PhoneSystem() {
                           <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedNumber.numberType === 'toll_free' ? '$1.50' : '$1.00'}/mo</p>
                         </div>
                       </div>
+
+                      {/* Super Admin Diagnostics Panel */}
+                      {isSuperAdmin && selectedNumber?.id && (
+                        <div className="border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Settings2 className="h-4 w-4 text-red-600" />
+                            <p className="font-medium text-sm text-red-700 dark:text-red-400">Super Admin: Call Control Routing</p>
+                          </div>
+                          <p className="text-xs text-red-600 dark:text-red-400 mb-3">
+                            Fix voicemail greetings by forcing this number to use Call Control App routing instead of Credential Connection.
+                          </p>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (!selectedNumber.id) return;
+                              setIsForceRouting(true);
+                              forceCallControlRoutingMutation.mutate(selectedNumber.id);
+                            }}
+                            disabled={isForceRouting || forceCallControlRoutingMutation.isPending}
+                            data-testid="button-force-call-control-routing"
+                          >
+                            {forceCallControlRoutingMutation.isPending ? (
+                              <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Updating...</>
+                            ) : (
+                              "Force Call Control Routing"
+                            )}
+                          </Button>
+                        </div>
+                      )}
 
                       {/* E911 + Call Routing Row */}
                       <div className="grid grid-cols-2 gap-4">
