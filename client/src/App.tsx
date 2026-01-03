@@ -516,13 +516,21 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     queryKey: ["/api/users/availability-status"],
   });
 
+  // Sync availability status to Telnyx store when data loads
+  useEffect(() => {
+    if (availabilityData?.status) {
+      useTelnyxStore.getState().setAgentAvailabilityStatus(availabilityData.status as "online" | "busy" | "offline");
+    }
+  }, [availabilityData?.status]);
+
   const updateAvailabilityMutation = useMutation({
     mutationFn: async (status: string) => {
       const res = await apiRequest("PATCH", "/api/users/availability-status", { status });
       return res;
     },
-    onSuccess: () => {
+    onSuccess: (_data, status) => {
       queryClient.invalidateQueries({ queryKey: ["/api/users/availability-status"] });
+      useTelnyxStore.getState().setAgentAvailabilityStatus(status as "online" | "busy" | "offline");
     },
   });
 

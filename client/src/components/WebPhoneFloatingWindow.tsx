@@ -1726,6 +1726,7 @@ export function WebPhoneFloatingWindow() {
   const telnyxIsConsulting = useTelnyxStore(state => state.isConsulting);
   const telnyxNetworkQuality = useTelnyxStore(state => state.networkQuality);
   const telnyxCallActiveTimestamp = useTelnyxStore(state => state.callActiveTimestamp);
+  const agentAvailabilityStatus = useTelnyxStore(state => state.agentAvailabilityStatus);
   // NEW: SipCallInfo from store for UI display (replaces SDK extraction)
   const telnyxCurrentCallInfo = useTelnyxStore(state => state.currentCallInfo);
   const telnyxIncomingCallInfo = useTelnyxStore(state => state.incomingCallInfo);
@@ -3003,11 +3004,13 @@ export function WebPhoneFloatingWindow() {
                   "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
                   effectiveCall
                     ? (effectiveCall.status === 'answered' ? "bg-green-500 animate-pulse" : "bg-yellow-500 animate-pulse")
-                    : extConnectionStatus === 'connected' 
-                      ? "bg-green-500" 
-                      : extConnectionStatus === 'connecting' 
-                        ? "bg-yellow-500 animate-pulse" 
-                        : "bg-red-500"
+                    : extConnectionStatus !== 'connected'
+                      ? (extConnectionStatus === 'connecting' ? "bg-yellow-500 animate-pulse" : "bg-red-500")
+                      : agentAvailabilityStatus === 'offline'
+                        ? "bg-red-500"
+                        : agentAvailabilityStatus === 'busy'
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
                 )} />
               </div>
             ) : (

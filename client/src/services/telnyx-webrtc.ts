@@ -61,6 +61,7 @@ interface TelnyxWebRTCState {
   incomingCallInfo?: SipCallInfo;
   outgoingCallInfo?: SipCallInfo;
   activeCallLogId?: string;
+  agentAvailabilityStatus?: "online" | "busy" | "offline";
 
   setConnectionStatus: (status: TelnyxWebRTCState["connectionStatus"], error?: string) => void;
   setCurrentCall: (call?: TelnyxCall) => void;
@@ -82,6 +83,7 @@ interface TelnyxWebRTCState {
   setIncomingCallInfo: (info?: SipCallInfo) => void;
   setOutgoingCallInfo: (info?: SipCallInfo) => void;
   setActiveCallLogId: (id?: string) => void;
+  setAgentAvailabilityStatus: (status?: "online" | "busy" | "offline") => void;
 }
 
 export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
@@ -100,6 +102,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   incomingCallInfo: undefined,
   outgoingCallInfo: undefined,
   activeCallLogId: undefined,
+  agentAvailabilityStatus: undefined,
 
   setConnectionStatus: (status, error) =>
     set({
@@ -126,6 +129,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   setIncomingCallInfo: (info) => set({ incomingCallInfo: info }),
   setOutgoingCallInfo: (info) => set({ outgoingCallInfo: info }),
   setActiveCallLogId: (id) => set({ activeCallLogId: id }),
+  setAgentAvailabilityStatus: (status) => set({ agentAvailabilityStatus: status }),
 }));
 
 export type { NetworkQualityMetrics };
