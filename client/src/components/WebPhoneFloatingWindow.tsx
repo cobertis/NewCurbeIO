@@ -3672,26 +3672,6 @@ export function WebPhoneFloatingWindow() {
                                     </span>
                                   </div>
                                   
-                                  {/* Recording Play Button */}
-                                  {call.recordingUrl && !isEditMode && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const audio = new Audio(call.recordingUrl);
-                                        audio.play();
-                                        toast({
-                                          title: 'Playing recording',
-                                          description: 'Call recording is now playing'
-                                        });
-                                      }}
-                                      className="p-1.5 rounded-full bg-blue-500 hover:bg-blue-600 flex-shrink-0 transition-colors"
-                                      title="Play recording"
-                                      data-testid={`button-play-recording-${call.id}`}
-                                    >
-                                      <Play className="h-3 w-3 text-white" />
-                                    </button>
-                                  )}
-                                  
                                   {/* Time and Date */}
                                   {!isEditMode && (
                                     <div className="flex flex-col items-end flex-shrink-0">
