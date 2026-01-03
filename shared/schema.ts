@@ -5443,6 +5443,64 @@ export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = z.infer<typeof insertCallLogSchema>;
 
 // =====================================================
+// CALL USAGE ITEMS - Itemized billing for call services
+// =====================================================
+export const callUsageTypes = [
+  "toll_free_inbound",
+  "toll_free_outbound", 
+  "local_inbound",
+  "local_outbound",
+  "call_control",
+  "recording",
+  "cnam_lookup",
+  "transcription",
+  "voicemail",
+  "ivr",
+  "call_forwarding_inbound",
+  "call_forwarding_outbound",
+  "sms",
+  "mms"
+] as const;
+export type CallUsageType = typeof callUsageTypes[number];
+
+export const callUsageItems = pgTable("call_usage_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  callLogId: varchar("call_log_id").notNull().references(() => callLogs.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Usage details
+  usageType: text("usage_type").notNull().$type<CallUsageType>(),
+  description: text("description").notNull(),
+  
+  // Quantity and rate
+  quantity: integer("quantity").notNull().default(1), // e.g., minutes, messages, lookups
+  unit: text("unit").notNull().default("unit"), // "minute", "message", "lookup", "unit"
+  ratePerUnit: text("rate_per_unit").notNull(), // Rate in USD
+  
+  // Cost
+  cost: text("cost").notNull(), // Total cost for this item
+  currency: text("currency").notNull().default("USD"),
+  
+  // Wallet transaction reference
+  walletTransactionId: varchar("wallet_transaction_id"),
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Additional details (e.g., recording duration, phone number)
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  callLogIdIdx: index("call_usage_items_call_log_id_idx").on(table.callLogId),
+  companyIdIdx: index("call_usage_items_company_id_idx").on(table.companyId),
+  usageTypeIdx: index("call_usage_items_usage_type_idx").on(table.usageType),
+}));
+
+export const insertCallUsageItemSchema = createInsertSchema(callUsageItems).omit({
+  id: true, createdAt: true
+});
+export type CallUsageItem = typeof callUsageItems.$inferSelect;
+export type InsertCallUsageItem = z.infer<typeof insertCallUsageItemSchema>;
+
+// =====================================================
 // VOICEMAILS (Voicemail Messages)
 // =====================================================
 

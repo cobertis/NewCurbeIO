@@ -15,6 +15,7 @@ import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
 import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage } from "./websocket";
 import { chargeCallToWallet } from "./services/pricing-service";
+import { chargeCallUsage, getCallUsageBreakdown } from "./services/call-usage-service";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -31862,7 +31863,7 @@ CRITICAL REMINDERS:
         }
       }
       
-      // Handle recording saved event - save recording URL and charge recording cost
+      // Handle recording saved event - save recording URL and duration (charging handled when call ends)
       if (call_control_id && eventType === 'call.recording.saved') {
         try {
           const recordingId = payload.recording?.id || payload.recording_id || payload.data?.payload?.recording?.id || payload.id;
@@ -31881,65 +31882,32 @@ CRITICAL REMINDERS:
           });
           
           if (recordingId || recordingUrl) {
+            // Update call log with recording URL and duration (cost will be charged when call ends)
             const [callLog] = await db
               .select()
               .from(callLogs)
               .where(eq(callLogs.telnyxCallId, call_control_id));
             
             if (callLog) {
-              // Calculate recording cost: $0.0020 per minute (rounded up)
-              const recordingMinutes = Math.max(1, Math.ceil(recordingDurationSeconds / 60));
-              const recordingCostPerMinute = 0.0020;
-              const recordingCost = recordingMinutes * recordingCostPerMinute;
-              
-              console.log(`[Telnyx Voice Status] Recording cost: ${recordingMinutes} min * $${recordingCostPerMinute} = $${recordingCost.toFixed(4)}`);
-              
-              // Get current cost and add recording cost
-              const currentCost = parseFloat(callLog.cost || "0");
-              const newTotalCost = (currentCost + recordingCost).toFixed(4);
-              
-              // Charge recording cost to wallet
-              if (callLog.companyId && recordingCost > 0) {
-                const { chargeWalletForUsage } = await import('./services/pricing-service');
-                const chargeResult = await chargeWalletForUsage(
-                  callLog.companyId,
-                  recordingCost,
-                  `Recording cost (${recordingMinutes} min)`,
-                  'RECORDING_COST',
-                  callLog.userId || undefined
-                );
-                
-                if (chargeResult.success) {
-                  console.log(`[Telnyx Voice Status] Recording charged: $${recordingCost.toFixed(4)}, new balance: $${chargeResult.newBalance}`);
-                  
-                  // Broadcast wallet update
-                  const { broadcastWalletUpdate } = await import('./websocket');
-                  broadcastWalletUpdate(callLog.companyId, {
-                    balance: chargeResult.newBalance!,
-                    transactionType: "RECORDING_COST",
-                    description: `Call recording (${recordingMinutes} min)`
-                  });
-                } else {
-                  console.error(`[Telnyx Voice Status] Failed to charge recording: ${chargeResult.error}`);
-                }
-              }
-              
-              // Update call log with recording URL and updated cost
               await db
                 .update(callLogs)
                 .set({ 
                   recordingId: recordingId,
                   recordingUrl: recordingUrl,
-                  cost: newTotalCost
+                  recordingDuration: recordingDurationSeconds
                 })
                 .where(eq(callLogs.id, callLog.id));
               
-              console.log(`[Telnyx Voice Status] Updated call log ${callLog.id} with recording URL and cost: $${newTotalCost}`);
+              console.log(`[Telnyx Voice Status] Updated call log ${callLog.id} with recording URL and duration: ${recordingDurationSeconds}s`);
             } else {
-              // No call log found, just save the URL by telnyxCallId
+              // No call log found, try updating by telnyxCallId
               await db
                 .update(callLogs)
-                .set({ recordingId: recordingId, recordingUrl: recordingUrl })
+                .set({ 
+                  recordingId: recordingId, 
+                  recordingUrl: recordingUrl,
+                  recordingDuration: recordingDurationSeconds
+                })
                 .where(eq(callLogs.telnyxCallId, call_control_id));
               console.log("[Telnyx Voice Status] Updated call log with recording URL for call:", call_control_id);
             }
@@ -38423,48 +38391,29 @@ CRITICAL REMINDERS:
       console.log(`[Call Logs] Billing check: status=${status}, isCallEnding=${isCallEnding}, hasDuration=${hasDuration}, callNotBilled=${callNotBilled}, existingCost="${existingLog.cost}" (${existingCostNum}), duration=${duration}`);
       
       if (isCallEnding && hasDuration && callNotBilled) {
-        console.log(`[Call Logs] WebRTC call ended - charging to wallet. ID: ${id}, Duration: ${duration || existingLog.duration}s`);
+        console.log(`[Call Logs] WebRTC call ended - charging to wallet with unified billing. ID: ${id}, Duration: ${duration || existingLog.duration}s`);
         
         // Use provided values or fall back to existing log values
         const callDuration = duration !== undefined ? duration : (existingLog.duration || 0);
         const callFromNumber = fromNumber || existingLog.fromNumber;
         const callToNumber = toNumber || existingLog.toNumber;
         const callDirection = direction || existingLog.direction;
-        const callStartedAt = startedAt ? new Date(startedAt) : (existingLog.startedAt || new Date());
-        const callEndedAt = endedAt ? new Date(endedAt) : new Date();
         
-        // Charge the call to the wallet
-        const chargeResult = await chargeCallToWallet(user.companyId, {
-          telnyxCallId: existingLog.telnyxCallId || existingLog.sipCallId || id,
+        // Charge the call using unified billing service (includes voice, call control, recording)
+        const chargeResult = await chargeCallUsage(user.companyId, id, {
+          direction: callDirection as "inbound" | "outbound",
           fromNumber: callFromNumber,
           toNumber: callToNumber,
-          direction: callDirection as "inbound" | "outbound",
           durationSeconds: callDuration,
-          status: status,
-          startedAt: callStartedAt,
-          endedAt: callEndedAt,
-          userId: existingLog.userId || user.id,
-          contactId: contactId || existingLog.contactId || undefined,
-          callerName: callerName || existingLog.callerName || undefined,
+          recordingDurationSeconds: existingLog.recordingDuration || 0,
+          userId: user.id
         });
+        
         if (chargeResult.success) {
-          console.log(`[Call Logs] WebRTC call charged successfully: ${chargeResult.amountCharged}, new balance: ${chargeResult.newBalance}`);
+          console.log(`[Call Logs] WebRTC call charged successfully: $${chargeResult.totalCharged.toFixed(4)}, new balance: $${chargeResult.newBalance?.toFixed(4)}`);
           
-          // Update the call log with the total cost (existing recording cost + call cost)
-          const existingCost = parseFloat(existingLog.cost || "0");
-          const callCost = parseFloat(chargeResult.amountCharged || "0");
-          const totalCost = (existingCost + callCost).toFixed(4);
-          console.log(`[Call Logs] Total cost: existing ${existingCost} + call ${callCost} = ${totalCost}`);
-          updateData.cost = totalCost;
-          updateData.costCurrency = "USD";
+          // Cost is already updated by chargeCallUsage, just update billing metadata
           updateData.billedDuration = callDuration;
-          
-          // Broadcast wallet update to clients
-          broadcastWalletUpdate(user.companyId, {
-            balance: chargeResult.newBalance!,
-            transactionType: "CALL_COST",
-            description: `Call to ${callToNumber}`
-          });
         } else if (chargeResult.insufficientFunds) {
           console.error(`[Call Logs] Insufficient funds for WebRTC call: ${chargeResult.error}`);
           // Still update the call log but mark as failed billing
@@ -38487,6 +38436,42 @@ CRITICAL REMINDERS:
       res.status(500).json({ message: "Failed to update call log" });
     }
   });
+
+  // GET /api/call-logs/:id/usage - Get cost breakdown for a call
+  app.get("/api/call-logs/:id/usage", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Verify the call log belongs to this company
+      const [callLog] = await db
+        .select()
+        .from(callLogs)
+        .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)));
+      
+      if (!callLog) {
+        return res.status(404).json({ message: "Call log not found" });
+      }
+      
+      // Get the usage breakdown
+      const breakdown = await getCallUsageBreakdown(id);
+      
+      res.json({
+        callLogId: id,
+        items: breakdown.items,
+        totalCost: breakdown.totalCost,
+        currency: "USD"
+      });
+    } catch (error: any) {
+      console.error("[Call Logs] Usage breakdown error:", error);
+      res.status(500).json({ message: "Failed to get call usage breakdown" });
+    }
+  });
+
   // DELETE /api/call-logs/:id - Delete a call log entry
   app.delete("/api/call-logs/:id", requireAuth, async (req: Request, res: Response) => {
     try {
