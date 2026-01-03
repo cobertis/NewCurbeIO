@@ -31917,6 +31917,61 @@ CRITICAL REMINDERS:
         }
       }
 
+
+      // Handle voicemail completed event
+      if (eventType === 'calls.voicemail.completed') {
+        try {
+          const fromNumber = from || payload.from;
+          const toNumber = to || payload.to;
+          const recordingUrl = payload.recording_url;
+          const duration = payload.duration || 0;
+          
+          console.log("[Telnyx Voice Status] Voicemail completed from", fromNumber, "to", toNumber, "recording:", recordingUrl ? 'present' : 'missing');
+          
+          if (toNumber) {
+            // Find the phone number and its owner
+            const [phoneNumber] = await db
+              .select()
+              .from(telnyxPhoneNumbers)
+              .where(eq(telnyxPhoneNumbers.phoneNumber, toNumber));
+            
+            if (phoneNumber && phoneNumber.companyId) {
+              // Save voicemail to database
+              await db.insert(voicemails).values({
+                id: crypto.randomUUID(),
+                companyId: phoneNumber.companyId,
+                userId: phoneNumber.assignedUserId || null,
+                phoneNumberId: phoneNumber.id,
+                fromNumber: fromNumber,
+                toNumber: toNumber,
+                recordingUrl: recordingUrl || '',
+                duration: duration,
+                isRead: false,
+                createdAt: new Date(),
+              });
+              
+              console.log("[Telnyx Voice Status] Voicemail saved for company", phoneNumber.companyId);
+              
+              // Create notification for the user
+              if (phoneNumber.assignedUserId) {
+                await db.insert(notifications).values({
+                  id: crypto.randomUUID(),
+                  userId: phoneNumber.assignedUserId,
+                  companyId: phoneNumber.companyId,
+                  title: 'New Voicemail',
+                  message: `New voicemail from ${fromNumber}`,
+                  type: 'missed_call',
+                  link: '/phone',
+                  isRead: false,
+                  createdAt: new Date(),
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[Telnyx Voice Status] Error saving voicemail:", err);
+        }
+      }
       
       res.set("Content-Type", "application/xml");
       res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
