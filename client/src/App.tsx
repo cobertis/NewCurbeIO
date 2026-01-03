@@ -1117,13 +1117,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           )}
         >
           <Phone className="h-5 w-5" />
-          {/* Connection status indicator */}
-          <span className={cn(
-            "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
-            effectiveConnectionStatus === 'connected' ? "bg-green-500" : 
-            effectiveConnectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
-            "bg-red-400"
-          )} />
         </button>
       )}
 
