@@ -1516,9 +1516,10 @@ interface BottomNavigationProps {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   missedCallsCount: number;
+  voicemailUnreadCount: number;
 }
 
-function BottomNavigation({ viewMode, setViewMode, missedCallsCount }: BottomNavigationProps) {
+function BottomNavigation({ viewMode, setViewMode, missedCallsCount, voicemailUnreadCount }: BottomNavigationProps) {
   return (
     <div className="border-t border-border/30 px-0.5 sm:px-1 py-1 sm:py-1.5 flex items-center justify-around bg-background h-[50px] sm:h-[60px] flex-shrink-0">
       <button
@@ -1564,7 +1565,16 @@ function BottomNavigation({ viewMode, setViewMode, missedCallsCount }: BottomNav
         onClick={() => setViewMode('voicemail')}
         className="flex flex-col items-center justify-center gap-0.5 py-0.5 sm:py-1 px-1 sm:px-2"
       >
-        <Voicemail className={cn("h-5 w-5 sm:h-7 sm:w-7", viewMode === 'voicemail' ? "text-blue-500" : "text-foreground")} />
+        <div className="relative">
+          <Voicemail className={cn("h-5 w-5 sm:h-7 sm:w-7", viewMode === 'voicemail' ? "text-blue-500" : "text-foreground")} />
+          {voicemailUnreadCount > 0 && (
+            <div className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full min-w-[14px] h-[14px] sm:min-w-[18px] sm:h-[18px] px-0.5 sm:px-1 flex items-center justify-center">
+              <span className="text-white text-[8px] sm:text-[10px] font-semibold">
+                {voicemailUnreadCount}
+              </span>
+            </div>
+          )}
+        </div>
         <span className={cn("text-[8px] sm:text-[9px]", viewMode === 'voicemail' ? "text-blue-500" : "text-foreground/90")}>
           Voicemail
         </span>
@@ -3991,7 +4001,8 @@ export function WebPhoneFloatingWindow() {
                 <BottomNavigation 
                   viewMode={viewMode} 
                   setViewMode={setViewMode} 
-                  missedCallsCount={missedCallsCount} 
+                  missedCallsCount={missedCallsCount}
+                  voicemailUnreadCount={voicemailUnreadCount}
                 />
               </>
             )}
