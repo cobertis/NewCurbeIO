@@ -7717,10 +7717,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Access denied" });
       }
       
-      const credentials = await getCredentialFromDb('telnyx', user.companyId!) || 
-                         await getCredentialFromDb('telnyx');
+      const { apiKey } = await credentialProvider.getTelnyx(); 
+                         
       
-      if (!credentials?.apiKey) {
+      if (!apiKey) {
         console.error("[Recording Proxy] No Telnyx credentials found");
         return res.status(500).json({ message: "Telnyx credentials not configured" });
       }
@@ -7730,7 +7730,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         try {
           const response = await fetch(`https://api.telnyx.com/v2/recordings/${callLog.recordingId}`, {
             headers: {
-              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Authorization': `Bearer ${apiKey}`,
               'Content-Type': 'application/json'
             }
           });
@@ -7768,7 +7768,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const searchUrl = `https://api.telnyx.com/v2/recordings?filter[call_leg_id]=${callLegId}`;
             const response = await fetch(searchUrl, {
               headers: {
-                'Authorization': `Bearer ${credentials.apiKey}`,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
               }
             });
