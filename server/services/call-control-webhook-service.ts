@@ -1301,6 +1301,17 @@ export class CallControlWebhookService {
     for (const member of activeMembers) {
       if (!member.userId) continue;
 
+      // Check agent availability status - skip if busy or offline
+      const [agentUser] = await db
+        .select({ agentAvailabilityStatus: users.agentAvailabilityStatus })
+        .from(users)
+        .where(eq(users.id, member.userId));
+      
+      if (agentUser && (agentUser.agentAvailabilityStatus === "busy" || agentUser.agentAvailabilityStatus === "offline")) {
+        console.log(`[CallControl] Agent ${member.userId} is ${agentUser.agentAvailabilityStatus}, skipping`);
+        continue;
+      }
+
       // Get agent's extension SIP credentials (what WebPhone registers with)
       const [extension] = await db
         .select({
@@ -1852,6 +1863,17 @@ export class CallControlWebhookService {
     for (const member of activeMembers) {
       if (!member.userId) continue;
 
+      // Check agent availability status - skip if busy or offline
+      const [agentUserRetry] = await db
+        .select({ agentAvailabilityStatus: users.agentAvailabilityStatus })
+        .from(users)
+        .where(eq(users.id, member.userId));
+      
+      if (agentUserRetry && (agentUserRetry.agentAvailabilityStatus === "busy" || agentUserRetry.agentAvailabilityStatus === "offline")) {
+        console.log(`[CallControl] Retry: Agent ${member.userId} is ${agentUserRetry.agentAvailabilityStatus}, skipping`);
+        continue;
+      }
+
       // Get agent's extension SIP credentials (what WebPhone registers with)
       const [extension] = await db
         .select({
@@ -2168,6 +2190,20 @@ export class CallControlWebhookService {
       console.log(`[CallControl] No assigned user, cannot transfer`);
       await this.answerCall(callControlId);
       await this.speakText(callControlId, "This number is not configured. Please leave a message.");
+      await this.routeToVoicemail(callControlId, phoneNumber.companyId);
+      return;
+    }
+
+    // Check agent availability status - if busy or offline, go directly to voicemail
+    const [agentUser] = await db
+      .select({ agentAvailabilityStatus: users.agentAvailabilityStatus })
+      .from(users)
+      .where(eq(users.id, phoneNumber.ownerUserId));
+    
+    if (agentUser && (agentUser.agentAvailabilityStatus === "busy" || agentUser.agentAvailabilityStatus === "offline")) {
+      console.log(`[CallControl] Agent ${phoneNumber.ownerUserId} is ${agentUser.agentAvailabilityStatus}, routing to voicemail`);
+      await this.answerCall(callControlId);
+      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message after the tone.");
       await this.routeToVoicemail(callControlId, phoneNumber.companyId);
       return;
     }
