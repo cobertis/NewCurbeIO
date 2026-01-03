@@ -216,6 +216,7 @@ interface Payment {
   stripePaymentIntentId?: string;
   processedAt?: string;
   createdAt: string;
+      recordingUrl: string | null;
   description?: string;
 }
 
@@ -373,6 +374,7 @@ export default function Billing() {
       externalReferenceId: string | null;
       balanceAfter: string;
       createdAt: string;
+      recordingUrl: string | null;
     }>;
   }>({
     queryKey: ["/api/wallet/transactions"],
@@ -393,6 +395,7 @@ export default function Billing() {
       startedAt: string | null;
       endedAt: string | null;
       createdAt: string;
+      recordingUrl: string | null;
     }>;
   }>({
     queryKey: ["/api/billing/call-logs"],
@@ -1500,6 +1503,7 @@ export default function Billing() {
                                 <TableHead className="text-xs text-center">Duration</TableHead>
                                 <TableHead className="text-xs">Date</TableHead>
                                 <TableHead className="text-right text-xs">Cost</TableHead>
+                                <TableHead className="text-xs text-center">Recording</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1552,6 +1556,23 @@ export default function Billing() {
                                         <span className="text-xs font-medium text-red-600">
                                           -${parseFloat(call.cost).toFixed(4)}
                                         </span>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">-</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="py-2 text-center">
+                                      {call.recordingUrl ? (
+                                        <button
+                                          onClick={() => {
+                                            const audio = new Audio(call.recordingUrl!);
+                                            audio.play();
+                                          }}
+                                          className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 transition-colors"
+                                          title="Play recording"
+                                          data-testid={`play-recording-${call.id}`}
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                        </button>
                                       ) : (
                                         <span className="text-xs text-muted-foreground">-</span>
                                       )}
