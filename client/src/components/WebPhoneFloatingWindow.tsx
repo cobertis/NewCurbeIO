@@ -2308,11 +2308,30 @@ export function WebPhoneFloatingWindow() {
     }
   }, [effectiveCall?.isWhatsApp, incomingExtCall, telnyxIncomingCall, extAnswerCall, handleWhatsAppAnswer]);
   
-  const handleRejectCall = useCallback(() => {
+  const handleRejectCall = useCallback(async () => {
     if (effectiveCall?.isWhatsApp) {
       handleWhatsAppDecline();
       return;
     }
+    
+    // Get the call leg ID for routing to voicemail
+    const callLegId = effectiveCall?.callControlId || telnyxIncomingCallInfo?.telnyxCallLegId;
+    
+    // Try to route to voicemail via API, then reject locally
+    if (callLegId) {
+      try {
+        console.log('[WebPhone] Rejecting call and routing to voicemail:', callLegId);
+        await fetch(`/api/pbx/calls/${callLegId}/reject-to-voicemail`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('[WebPhone] Error routing to voicemail:', error);
+      }
+    }
+    
+    // Also reject locally to clear UI state
     if (incomingExtCall) {
       extRejectCall();
     } else if (telnyxIncomingCall) {
@@ -2320,7 +2339,7 @@ export function WebPhoneFloatingWindow() {
     } else {
       webPhone.rejectCall();
     }
-  }, [effectiveCall?.isWhatsApp, incomingExtCall, telnyxIncomingCall, extRejectCall, handleWhatsAppDecline]);
+  }, [effectiveCall?.isWhatsApp, effectiveCall?.callControlId, telnyxIncomingCallInfo?.telnyxCallLegId, incomingExtCall, telnyxIncomingCall, extRejectCall, handleWhatsAppDecline]);
   
   const handleSendDTMF = useCallback((digit: string) => {
     if (isTelnyxCall) {

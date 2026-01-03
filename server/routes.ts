@@ -39573,6 +39573,20 @@ CRITICAL REMINDERS:
       return res.status(500).json({ success: false, error: error.message });
     }
   });
+  // POST /api/pbx/calls/:callControlId/reject-to-voicemail - Reject incoming call and route caller to voicemail
+  app.post("/api/pbx/calls/:callControlId/reject-to-voicemail", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { callControlId } = req.params;
+      console.log(`[PBX] Agent ${user.id} rejecting call ${callControlId} to voicemail`);
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      const result = await callControlWebhookService.rejectCallToVoicemail(callControlId, user.companyId);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error rejecting to voicemail:", error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
   // GET /api/pbx/extensions/next - Get next available extension number
   app.get("/api/pbx/extensions/next", requireActiveCompany, async (req: Request, res: Response) => {
     try {

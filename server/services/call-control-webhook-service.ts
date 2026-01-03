@@ -2655,6 +2655,91 @@ export class CallControlWebhookService {
       return { success: false, error: "Internal error" };
     }
   }
+
+  /**
+   * Reject an incoming call and send the caller to voicemail
+   * This is called when an agent rejects a call instead of just hanging up
+   */
+  public async rejectCallToVoicemail(agentLegId: string, companyId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[CallControl] Agent rejecting call ${agentLegId}, routing caller to voicemail`);
+    
+    try {
+      // Find the pending bridge for this agent leg
+      const pendingBridge = pendingBridges.get(agentLegId);
+      
+      if (pendingBridge) {
+        const callerCallControlId = pendingBridge.callerCallControlId;
+        console.log(`[CallControl] Found caller leg ${callerCallControlId} for agent leg ${agentLegId}`);
+        
+        // Remove this pending bridge
+        pendingBridges.delete(agentLegId);
+        
+        // If ring-all is active, cancel other agent legs
+        const otherLegs = ringAllLegs.get(callerCallControlId);
+        if (otherLegs) {
+          const otherLegsArray = Array.from(otherLegs);
+          for (const otherLegId of otherLegsArray) {
+            if (otherLegId !== agentLegId) {
+              pendingBridges.delete(otherLegId);
+              try {
+                await this.hangupCall(otherLegId, "NORMAL_CLEARING");
+              } catch (e) {
+                // Ignore errors from already-ended calls
+              }
+            }
+          }
+          ringAllLegs.delete(callerCallControlId);
+        }
+        
+        // Stop any hold music
+        await stopHoldPlayback(callerCallControlId);
+        
+        // Answer the caller if not already answered
+        try {
+          await this.answerCall(callerCallControlId);
+        } catch (e) {
+          // Might already be answered
+        }
+        
+        // Speak a message and route to voicemail
+        await this.speakText(callerCallControlId, "The agent is currently unavailable. Please leave a message after the tone.");
+        await this.routeToVoicemail(callerCallControlId, pendingBridge.companyId);
+        
+        // Hangup the agent leg
+        try {
+          await this.hangupCall(agentLegId, "NORMAL_CLEARING");
+        } catch (e) {
+          // Ignore
+        }
+        
+        console.log(`[CallControl] Caller ${callerCallControlId} routed to voicemail`);
+        return { success: true };
+      }
+      
+      // No pending bridge found - try to find by searching all pending bridges
+      const bridgeEntries = Array.from(pendingBridges.entries());
+      for (const [legId, bridge] of bridgeEntries) {
+        if (bridge.callerCallControlId === agentLegId) {
+          // The agentLegId is actually the caller leg, reject directly
+          console.log(`[CallControl] Agent leg ${agentLegId} is the caller, routing directly to voicemail`);
+          pendingBridges.delete(legId);
+          await this.speakText(agentLegId, "The agent is currently unavailable. Please leave a message after the tone.");
+          await this.routeToVoicemail(agentLegId, bridge.companyId);
+          return { success: true };
+        }
+      }
+      
+      // Fallback: just route to voicemail with the provided leg ID
+      console.log(`[CallControl] No pending bridge found, attempting direct voicemail route for ${agentLegId}`);
+      await this.speakText(agentLegId, "The agent is currently unavailable. Please leave a message after the tone.");
+      await this.routeToVoicemail(agentLegId, companyId);
+      return { success: true };
+      
+    } catch (error: any) {
+      console.error(`[CallControl] Error rejecting to voicemail:`, error);
+      return { success: false, error: error.message || "Failed to route to voicemail" };
+    }
+  }
 }
 
 export const callControlWebhookService = new CallControlWebhookService();
