@@ -1698,6 +1698,15 @@ export function WebPhoneFloatingWindow() {
   const defaultCallerIdNumber = userAssignedNumber || telnyxNumbersData?.numbers?.[0]?.phone_number || telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
   const telnyxCallerIdNumber = selectedOutboundNumber || defaultCallerIdNumber;
   
+  // Get the ID of the currently selected number (for voicemail status, etc.)
+  const selectedNumberId = telnyxCallerIdNumber 
+    ? telnyxNumbersData?.numbers?.find((n: any) => {
+        const numPhone = (n.phoneNumber || n.phone_number || '').replace(/\D/g, '');
+        const selectedPhone = telnyxCallerIdNumber.replace(/\D/g, '');
+        return numPhone === selectedPhone || numPhone.endsWith(selectedPhone) || selectedPhone.endsWith(numPhone);
+      })?.id
+    : primaryTelnyxNumberId;
+  
   // Query for PBX special extensions (IVR and queues)
   const { data: pbxSpecialExtensions } = useQuery<{ 
     ivrExtension: string | null; 
@@ -3880,7 +3889,7 @@ export function WebPhoneFloatingWindow() {
                       voicemails={voicemailList}
                       unreadCount={voicemailUnreadCount}
                       refetchVoicemails={refetchVoicemails}
-                      phoneNumberId={primaryTelnyxNumberId}
+                      phoneNumberId={selectedNumberId}
                     />
                   )}
                 </div>
