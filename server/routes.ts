@@ -38416,6 +38416,8 @@ CRITICAL REMINDERS:
       const hasDuration = (duration !== undefined && duration > 0) || (existingLog.duration && existingLog.duration > 0);
       const notAlreadyBilled = !existingLog.cost || existingLog.cost === "0" || existingLog.cost === "0.0000";
       
+      console.log(`[Call Logs] Billing check: status=${status}, isCallEnding=${isCallEnding}, hasDuration=${hasDuration}, notAlreadyBilled=${notAlreadyBilled}, existingCost="${existingLog.cost}", duration=${duration}`);
+      
       if (isCallEnding && hasDuration && notAlreadyBilled) {
         console.log(`[Call Logs] WebRTC call ended - charging to wallet. ID: ${id}, Duration: ${duration || existingLog.duration}s`);
         
