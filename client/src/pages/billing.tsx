@@ -57,7 +57,13 @@ import {
 } from "lucide-react";
 import { formatDate, formatDateTimeWithTimezone, formatDateTimeWithSeconds } from "@/lib/date-formatter";
 import type { BulkvsPhoneNumber } from "@shared/schema";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // iMessage-style Audio Player Component with waveform
 function AudioPlayer({ src, testId }: { src: string; testId: string }) {
@@ -155,6 +161,33 @@ function AudioPlayer({ src, testId }: { src: string; testId: string }) {
       <span className="flex-shrink-0 text-[11px] text-muted-foreground font-medium tabular-nums">
         {duration ? formatTime(duration - currentTime) : '00:00'}
       </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="flex-shrink-0 h-6 w-6 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors"
+            data-testid={`${testId}-menu`}
+          >
+            <MoreVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onClick={() => {
+              const link = document.createElement('a');
+              link.href = src;
+              link.download = `recording-${Date.now()}.mp3`;
+              link.target = '_blank';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+            data-testid={`${testId}-download`}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Download
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
