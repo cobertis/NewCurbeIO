@@ -38281,7 +38281,8 @@ CRITICAL REMINDERS:
         },
         body: JSON.stringify({
           audio_url: audioUrl,
-          overlay: false // Don't overlay, play exclusively
+          overlay: false, // Don't overlay, play exclusively
+          target_legs: "both" // Play to both caller and agent
         })
       });
       
