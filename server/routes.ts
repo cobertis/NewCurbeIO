@@ -38507,7 +38507,7 @@ CRITICAL REMINDERS:
       // We use callCostBilled flag stored in the status field suffix or check for significant cost
       const existingCostNum = parseFloat(existingLog.cost || "0");
       // If cost is <= 0.01, it's likely just recording cost (~0.002/min), not call cost
-      const callNotBilled = existingCostNum < 0.01;
+      const callNotBilled = existingLog.cost === null || (existingCostNum >= 0 && existingCostNum < 0.01);
       
       console.log(`[Call Logs] Billing check: status=${status}, isCallEnding=${isCallEnding}, hasDuration=${hasDuration}, callNotBilled=${callNotBilled}, existingCost="${existingLog.cost}" (${existingCostNum}), duration=${duration}`);
       
@@ -38523,7 +38523,7 @@ CRITICAL REMINDERS:
           .where(and(
             eq(callLogs.id, id), 
             eq(callLogs.companyId, user.companyId),
-            sql`(cost IS NULL OR CAST(cost AS DECIMAL) < 0.01)`
+            sql`(cost IS NULL OR (CAST(cost AS DECIMAL) >= 0 AND CAST(cost AS DECIMAL) < 0.01))`
           ))
           .returning();
         
