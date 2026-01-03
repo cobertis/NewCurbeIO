@@ -7357,3 +7357,28 @@ export const insertPulseAiChatMessageSchema = createInsertSchema(pulseAiChatMess
 
 export type PulseAiChatMessage = typeof pulseAiChatMessages.$inferSelect;
 export type InsertPulseAiChatMessage = z.infer<typeof insertPulseAiChatMessageSchema>;
+
+// =====================================================
+// RECORDING ANNOUNCEMENT MEDIA (Telnyx Media Storage)
+// =====================================================
+
+export const recordingAnnouncementMedia = pgTable("recording_announcement_media", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // 'start' | 'stop'
+  language: text("language").notNull(), // 'en' | 'es'
+  mediaName: text("media_name").notNull(),
+  originalFileName: text("original_file_name"),
+  isActive: boolean("is_active").notNull().default(true),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+  uploadedByUserId: varchar("uploaded_by_user_id").references(() => users.id),
+}, (table) => ({
+  typeLanguageIdx: index("recording_media_type_language_idx").on(table.type, table.language),
+}));
+
+export const insertRecordingAnnouncementMediaSchema = createInsertSchema(recordingAnnouncementMedia).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type RecordingAnnouncementMedia = typeof recordingAnnouncementMedia.$inferSelect;
+export type InsertRecordingAnnouncementMedia = z.infer<typeof insertRecordingAnnouncementMediaSchema>;
