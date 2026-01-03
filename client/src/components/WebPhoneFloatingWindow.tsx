@@ -319,45 +319,6 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
     }
   };
 
-  if (isLoadingStatus) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-full py-12">
-        <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mb-3" />
-        <p className="text-sm text-muted-foreground">Checking voicemail status...</p>
-      </div>
-    );
-  }
-
-  if (phoneNumberId && voicemailStatus && !voicemailStatus.enabled) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-full py-12 px-6">
-        <Voicemail className="h-12 w-12 text-muted-foreground/30 mb-4" />
-        <h3 className="text-base font-medium text-foreground mb-2">Voicemail not configured</h3>
-        <p className="text-sm text-muted-foreground text-center mb-6">
-          Voicemail is not enabled for this phone number. Enable it to receive voicemail messages when you miss calls.
-        </p>
-        <Button
-          onClick={() => enableVoicemailMutation.mutate()}
-          disabled={enableVoicemailMutation.isPending}
-          className="gap-2"
-          data-testid="button-enable-voicemail"
-        >
-          {enableVoicemailMutation.isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Enabling...
-            </>
-          ) : (
-            <>
-              <Voicemail className="h-4 w-4" />
-              Enable Voicemail
-            </>
-          )}
-        </Button>
-      </div>
-    );
-  }
-
   if (!voicemails || voicemails.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12">
