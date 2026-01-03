@@ -2317,19 +2317,24 @@ export function WebPhoneFloatingWindow() {
     
     // Get the call leg ID for routing to voicemail
     const callLegId = effectiveCall?.callControlId || telnyxIncomingCallInfo?.telnyxCallLegId;
+    const callerNumber = effectiveCall?.phoneNumber || telnyxIncomingCallInfo?.remoteCallerNumber;
     
     console.log('[WebPhone] Reject call - effectiveCall:', effectiveCall);
     console.log('[WebPhone] Reject call - telnyxIncomingCallInfo:', telnyxIncomingCallInfo);
     console.log('[WebPhone] Reject call - callLegId:', callLegId);
+    console.log('[WebPhone] Reject call - callerNumber:', callerNumber);
     
     // Try to route to voicemail via API, then reject locally
-    if (callLegId) {
+    // Include callerNumber for fallback lookup when SDK UUID doesn't match call_control_id
+    if (callLegId || callerNumber) {
       try {
-        console.log('[WebPhone] Rejecting call and routing to voicemail:', callLegId);
-        const response = await fetch(`/api/pbx/calls/${callLegId}/reject-to-voicemail`, {
+        const rejectId = callLegId || 'unknown';
+        console.log('[WebPhone] Rejecting call and routing to voicemail:', rejectId, 'caller:', callerNumber);
+        const response = await fetch(`/api/pbx/calls/${rejectId}/reject-to-voicemail`, {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callerNumber })
         });
         const data = await response.json();
         console.log('[WebPhone] Reject to voicemail response:', data);
@@ -2337,7 +2342,7 @@ export function WebPhoneFloatingWindow() {
         console.error('[WebPhone] Error routing to voicemail:', error);
       }
     } else {
-      console.warn('[WebPhone] No callLegId available, cannot route to voicemail');
+      console.warn('[WebPhone] No callLegId or callerNumber available, cannot route to voicemail');
     }
     
     // Also reject locally to clear UI state
@@ -2348,7 +2353,7 @@ export function WebPhoneFloatingWindow() {
     } else {
       webPhone.rejectCall();
     }
-  }, [effectiveCall?.isWhatsApp, effectiveCall?.callControlId, telnyxIncomingCallInfo?.telnyxCallLegId, incomingExtCall, telnyxIncomingCall, extRejectCall, handleWhatsAppDecline]);
+  }, [effectiveCall?.isWhatsApp, effectiveCall?.callControlId, effectiveCall?.phoneNumber, telnyxIncomingCallInfo?.telnyxCallLegId, telnyxIncomingCallInfo?.remoteCallerNumber, incomingExtCall, telnyxIncomingCall, extRejectCall, handleWhatsAppDecline]);
   
   const handleSendDTMF = useCallback((digit: string) => {
     if (isTelnyxCall) {

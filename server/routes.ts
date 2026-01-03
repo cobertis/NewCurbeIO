@@ -38596,6 +38596,7 @@ CRITICAL REMINDERS:
   app.post("/api/calls/:callControlId/recording/start", requireAuth, async (req: Request, res: Response) => {
     try {
       const { callControlId } = req.params;
+      const { callerNumber } = req.body;
       const { language } = req.body; // 'en' or 'es'
       const user = req.user!;
       
@@ -38734,6 +38735,7 @@ CRITICAL REMINDERS:
   app.post("/api/calls/:callControlId/recording/stop", requireAuth, async (req: Request, res: Response) => {
     try {
       const { callControlId } = req.params;
+      const { callerNumber } = req.body;
       const user = req.user!;
       
       if (!user.companyId) {
@@ -39553,6 +39555,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       const { callControlId } = req.params;
+      const { callerNumber } = req.body;
       const { callControlWebhookService } = await import("./services/call-control-webhook-service");
       const result = await callControlWebhookService.startHoldMusic(callControlId, user.companyId);
       return res.json(result);
@@ -39565,6 +39568,7 @@ CRITICAL REMINDERS:
   app.delete("/api/pbx/calls/:callControlId/hold", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const { callControlId } = req.params;
+      const { callerNumber } = req.body;
       const { callControlWebhookService } = await import("./services/call-control-webhook-service");
       const result = await callControlWebhookService.stopHoldMusic(callControlId);
       return res.json(result);
@@ -39578,9 +39582,10 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       const { callControlId } = req.params;
-      console.log(`[PBX] Agent ${user.id} rejecting call ${callControlId} to voicemail`);
+      const { callerNumber } = req.body;
+      console.log(`[PBX] Agent ${user.id} rejecting call ${callControlId} to voicemail (caller: ${callerNumber || 'not provided'})`);
       const { callControlWebhookService } = await import("./services/call-control-webhook-service");
-      const result = await callControlWebhookService.rejectCallToVoicemail(callControlId, user.companyId);
+      const result = await callControlWebhookService.rejectCallToVoicemail(callControlId, user.companyId, callerNumber);
       return res.json(result);
     } catch (error: any) {
       console.error("[PBX] Error rejecting to voicemail:", error);

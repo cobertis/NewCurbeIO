@@ -50,6 +50,70 @@ const pendingBridges = new Map<string, PendingBridge>();
 const ringAllLegs = new Map<string, Set<string>>();
 
 // =====================================================
+// Active Inbound Calls Map - For reject-to-voicemail
+// Maps normalized caller number to active call_control_id
+// =====================================================
+interface ActiveInboundCall {
+  callControlId: string;
+  callerNumber: string;
+  toNumber: string;
+  companyId: string;
+  timestamp: number;
+}
+const activeInboundCalls = new Map<string, ActiveInboundCall>();
+
+/**
+ * Register an active inbound call for reject-to-voicemail lookup
+ */
+export function registerActiveInboundCall(
+  callControlId: string,
+  callerNumber: string,
+  toNumber: string,
+  companyId: string
+): void {
+  // Use normalized caller number as key (last 10 digits)
+  const normalizedCaller = callerNumber.replace(/\D/g, '').slice(-10);
+  const key = `${normalizedCaller}_${companyId}`;
+  
+  activeInboundCalls.set(key, {
+    callControlId,
+    callerNumber,
+    toNumber,
+    companyId,
+    timestamp: Date.now()
+  });
+  
+  console.log(`[ActiveCalls] Registered: ${normalizedCaller} -> ${callControlId}`);
+  
+  // Cleanup old entries (older than 10 minutes)
+  const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+  for (const [k, v] of activeInboundCalls.entries()) {
+    if (v.timestamp < tenMinutesAgo) {
+      activeInboundCalls.delete(k);
+    }
+  }
+}
+
+/**
+ * Get active inbound call by caller number
+ */
+export function getActiveInboundCall(callerNumber: string, companyId: string): ActiveInboundCall | undefined {
+  const normalizedCaller = callerNumber.replace(/\D/g, '').slice(-10);
+  const key = `${normalizedCaller}_${companyId}`;
+  return activeInboundCalls.get(key);
+}
+
+/**
+ * Remove active inbound call (on hangup or answered)
+ */
+export function removeActiveInboundCall(callerNumber: string, companyId: string): void {
+  const normalizedCaller = callerNumber.replace(/\D/g, '').slice(-10);
+  const key = `${normalizedCaller}_${companyId}`;
+  activeInboundCalls.delete(key);
+  console.log(`[ActiveCalls] Removed: ${normalizedCaller}`);
+}
+
+// =====================================================
 // Hold Playback Manager - Music + Ads for Queue Hold
 // =====================================================
 interface HoldPlaybackState {
@@ -655,6 +719,27 @@ export class CallControlWebhookService {
       return;
     }
 
+    // Register this call for reject-to-voicemail lookup
+    // This allows the WebPhone to find the real call_control_id when rejecting
+    registerActiveInboundCall(call_control_id, from, to, phoneNumber.companyId);
+
+    // CRITICAL: For SIP Forking calls, check agent availability BEFORE the call is forked
+    // If the number has an assigned user and they're offline/busy, reject immediately
+    if (phoneNumber.ownerUserId) {
+      const [agentUser] = await db
+        .select({ agentAvailabilityStatus: users.agentAvailabilityStatus })
+        .from(users)
+        .where(eq(users.id, phoneNumber.ownerUserId));
+      
+      if (agentUser && (agentUser.agentAvailabilityStatus === "busy" || agentUser.agentAvailabilityStatus === "offline")) {
+        console.log(`[CallControl] Agent ${phoneNumber.ownerUserId} is ${agentUser.agentAvailabilityStatus}, rejecting call to voicemail immediately`);
+        await this.answerCall(call_control_id);
+        await this.speakText(call_control_id, "The agent is currently unavailable. Please leave a message after the tone.");
+        await this.routeToVoicemail(call_control_id, phoneNumber.companyId);
+        return;
+      }
+    }
+
     // Store call context for managed account routing (including caller number for queue routing)
     const managedAccountId = await getCompanyManagedAccountId(phoneNumber.companyId);
     callContextMap.set(call_control_id, {
@@ -859,7 +944,7 @@ export class CallControlWebhookService {
   }
 
   private async handleCallHangup(payload: CallControlEvent["data"]["payload"]): Promise<void> {
-    const { call_control_id, hangup_cause, client_state } = payload;
+    const { call_control_id, hangup_cause, client_state, from } = payload;
     console.log(`[CallControl] Call hangup, cause: ${hangup_cause}`);
 
     await pbxService.removeActiveCall(call_control_id);
@@ -870,7 +955,20 @@ export class CallControlWebhookService {
     // End any queue call notifications for this call
     extensionCallService.endQueueCall(call_control_id, "caller_hangup");
 
-    // Clean up call context
+    // Clean up call context and active inbound calls map
+    const context = callContextMap.get(call_control_id);
+    if (context?.callerNumber) {
+      removeActiveInboundCall(context.callerNumber, context.companyId);
+    } else if (from) {
+      // Fallback: try to remove by from number (may match multiple companies, but cleanup is best-effort)
+      for (const [key, value] of activeInboundCalls.entries()) {
+        if (value.callControlId === call_control_id) {
+          activeInboundCalls.delete(key);
+          console.log(`[ActiveCalls] Removed by call_control_id: ${call_control_id}`);
+          break;
+        }
+      }
+    }
     callContextMap.delete(call_control_id);
 
     // Clean up ring-all legs if caller hangs up during ringing
@@ -2695,14 +2793,23 @@ export class CallControlWebhookService {
   /**
    * Reject an incoming call and send the caller to voicemail
    * This is called when an agent rejects a call instead of just hanging up
+   * 
+   * @param agentLegId - The call leg ID from the WebPhone (SDK UUID)
+   * @param companyId - The company ID
+   * @param callerNumber - Optional: the caller's phone number for fallback lookup
    */
-  public async rejectCallToVoicemail(agentLegId: string, companyId: string): Promise<{ success: boolean; error?: string }> {
+  public async rejectCallToVoicemail(
+    agentLegId: string, 
+    companyId: string,
+    callerNumber?: string
+  ): Promise<{ success: boolean; error?: string }> {
     console.log(`[CallControl] Agent rejecting call ${agentLegId}, routing caller to voicemail`);
     console.log(`[CallControl] Current pendingBridges keys:`, Array.from(pendingBridges.keys()));
+    console.log(`[CallControl] Caller number for fallback lookup: ${callerNumber || 'not provided'}`);
     
     try {
       // Find the pending bridge for this agent leg
-      const pendingBridge = pendingBridges.get(agentLegId);
+      let pendingBridge = pendingBridges.get(agentLegId);
       
       if (pendingBridge) {
         const callerCallControlId = pendingBridge.callerCallControlId;
@@ -2766,11 +2873,42 @@ export class CallControlWebhookService {
         }
       }
       
-      // Fallback: just route to voicemail with the provided leg ID
-      console.log(`[CallControl] No pending bridge found, attempting direct voicemail route for ${agentLegId}`);
-      await this.speakText(agentLegId, "The agent is currently unavailable. Please leave a message after the tone.");
-      await this.routeToVoicemail(agentLegId, companyId);
-      return { success: true };
+      // NEW: Try to find by caller number using activeInboundCalls map
+      // This is used when the WebPhone SDK provides an internal UUID instead of the real call_control_id
+      if (callerNumber) {
+        const activeCall = getActiveInboundCall(callerNumber, companyId);
+        if (activeCall) {
+          console.log(`[CallControl] Found active call by caller number ${callerNumber}: ${activeCall.callControlId}`);
+          
+          // Remove from active calls map
+          removeActiveInboundCall(callerNumber, companyId);
+          
+          // Answer if not already answered
+          try {
+            await this.answerCall(activeCall.callControlId);
+          } catch (e) {
+            // Might already be answered
+          }
+          
+          // Speak a message and route to voicemail
+          await this.speakText(activeCall.callControlId, "The agent is currently unavailable. Please leave a message after the tone.");
+          await this.routeToVoicemail(activeCall.callControlId, companyId);
+          
+          console.log(`[CallControl] Caller routed to voicemail via number lookup`);
+          return { success: true };
+        }
+      }
+      
+      // Fallback: try the SDK-provided ID anyway (might work for some call flows)
+      console.log(`[CallControl] No pending bridge or active call found, attempting direct voicemail route for ${agentLegId}`);
+      try {
+        await this.speakText(agentLegId, "The agent is currently unavailable. Please leave a message after the tone.");
+        await this.routeToVoicemail(agentLegId, companyId);
+        return { success: true };
+      } catch (error: any) {
+        console.error(`[CallControl] Direct voicemail route failed:`, error);
+        return { success: false, error: "Could not find active call to reject. The call may have already ended." };
+      }
       
     } catch (error: any) {
       console.error(`[CallControl] Error rejecting to voicemail:`, error);
