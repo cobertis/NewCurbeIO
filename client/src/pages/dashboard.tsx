@@ -1,4 +1,4 @@
-import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, BarChart3, PieChart, MapPin, Building2, CreditCard, Sparkles, Receipt, LifeBuoy, FileText, Key, Mail, DollarSign } from "lucide-react";
+import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, BarChart3, PieChart, MapPin, Building2, CreditCard, Sparkles, Receipt, LifeBuoy, FileText, Key, Mail, DollarSign, Mic } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -179,6 +179,7 @@ export default function Dashboard() {
       { title: "API Credentials", path: "/system-settings", icon: Key, description: "API keys and secrets" },
       { title: "Telnyx Pricing", path: "/system-settings?tab=pricing", icon: DollarSign, description: "Global telephony pricing" },
       { title: "Email Templates", path: "/email-configuration", icon: Mail, description: "Email templates and configuration" },
+      { title: "Recording Media", path: "/admin/recording-media", icon: Mic, description: "Call recording announcements" },
     ];
 
     return (
