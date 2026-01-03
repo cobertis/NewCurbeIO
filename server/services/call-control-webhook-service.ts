@@ -20,8 +20,11 @@ import {
   PbxIvr,
   callLogs,
   recordingAnnouncementMedia,
+  voicemails,
 } from "@shared/schema";
 import { eq, and, inArray, desc, isNull, or, sql } from "drizzle-orm";
+import { chargeCallUsage } from "./usage-billing-service";
+import { broadcastNewVoicemailToUser } from "../websocket";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
@@ -54,6 +57,20 @@ const pendingBridges = new Map<string, PendingBridge>();
 // Ring-All tracking: Map caller call_control_id to all agent legs
 // When one agent answers, we cancel all the other legs
 const ringAllLegs = new Map<string, Set<string>>();
+
+// =====================================================
+// Pending Voicemails Map - Track voicemail recordings
+// Maps call_control_id -> voicemail metadata for creating records when recording saves
+// =====================================================
+interface PendingVoicemail {
+  companyId: string;
+  fromNumber: string;
+  toNumber: string;
+  userId: string | null;
+  startedAt: Date;
+  callerName?: string;
+}
+const pendingVoicemails = new Map<string, PendingVoicemail>();
 
 // =====================================================
 // Active Inbound Calls Map - For reject-to-voicemail
@@ -1369,6 +1386,84 @@ export class CallControlWebhookService {
       console.log(`[CallControl] Recording duration: ${recordingDurationSeconds}s (from ${recording_started_at} to ${recording_ended_at})`);
     }
     
+    // Check if this is a voicemail recording
+    const pendingVoicemail = pendingVoicemails.get(call_control_id);
+    if (pendingVoicemail) {
+      console.log(`[CallControl] This is a voicemail recording for ${pendingVoicemail.fromNumber}`);
+      
+      try {
+        // Create the voicemail record in the database
+        const [voicemail] = await db.insert(voicemails).values({
+          id: crypto.randomUUID(),
+          companyId: pendingVoicemail.companyId,
+          userId: pendingVoicemail.userId,
+          fromNumber: pendingVoicemail.fromNumber,
+          toNumber: pendingVoicemail.toNumber,
+          callerName: pendingVoicemail.callerName || null,
+          recordingUrl,
+          duration: recordingDurationSeconds,
+          status: "new",
+          receivedAt: pendingVoicemail.startedAt,
+        }).returning();
+        
+        console.log(`[CallControl] Created voicemail record: ${voicemail.id}`);
+        
+        // Update the call log with the recording URL if it exists
+        const [callLog] = await db
+          .select()
+          .from(callLogs)
+          .where(eq(callLogs.telnyxCallId, call_control_id));
+        
+        if (callLog) {
+          await db
+            .update(callLogs)
+            .set({ 
+              recordingUrl,
+              recordingDuration: recordingDurationSeconds > 0 ? recordingDurationSeconds : null,
+              endedAt: new Date(),
+              duration: recordingDurationSeconds,
+            })
+            .where(eq(callLogs.id, callLog.id));
+          console.log(`[CallControl] Updated voicemail call log: ${callLog.id}`);
+          
+          // Charge for voicemail usage
+          try {
+            await chargeCallUsage(pendingVoicemail.companyId, callLog.id, {
+              direction: "inbound",
+              fromNumber: pendingVoicemail.fromNumber,
+              toNumber: pendingVoicemail.toNumber,
+              durationSeconds: recordingDurationSeconds,
+              voicemailDurationSeconds: recordingDurationSeconds,
+            });
+            console.log(`[CallControl] Charged voicemail usage for call ${callLog.id}`);
+          } catch (billingError) {
+            console.error(`[CallControl] Failed to charge voicemail usage:`, billingError);
+          }
+        }
+        
+        // Broadcast new voicemail notification to the assigned user
+        if (pendingVoicemail.userId) {
+          broadcastNewVoicemailToUser(
+            pendingVoicemail.userId,
+            pendingVoicemail.fromNumber,
+            pendingVoicemail.callerName || null
+          );
+          console.log(`[CallControl] Broadcast new_voicemail to user ${pendingVoicemail.userId}`);
+        }
+        
+        // Remove from pending voicemails map
+        pendingVoicemails.delete(call_control_id);
+        console.log(`[CallControl] Voicemail saved successfully for ${call_control_id}`);
+        
+      } catch (error) {
+        console.error(`[CallControl] Failed to save voicemail:`, error);
+        pendingVoicemails.delete(call_control_id);
+      }
+      
+      return;
+    }
+    
+    // Not a voicemail - handle as regular call recording
     try {
       // Find the call log by telnyxCallId
       const [callLog] = await db
@@ -2263,6 +2358,53 @@ export class CallControlWebhookService {
 
   private async routeToVoicemail(callControlId: string, companyId: string): Promise<void> {
     console.log(`[CallControl] Routing to voicemail for company: ${companyId}`);
+
+    // Get call info to capture caller details for the voicemail record
+    const activeCall = await pbxService.getActiveCall(callControlId);
+    const context = callContextMap.get(callControlId);
+    
+    const fromNumber = activeCall?.fromNumber || context?.callerNumber || "Unknown";
+    const toNumber = activeCall?.toNumber || "Unknown";
+    
+    // Get the phone number record to find the assigned user
+    let userId: string | null = null;
+    if (toNumber && toNumber !== "Unknown") {
+      const [phoneNumberRecord] = await db
+        .select({ ownerUserId: telnyxPhoneNumbers.ownerUserId })
+        .from(telnyxPhoneNumbers)
+        .where(eq(telnyxPhoneNumbers.phoneNumber, toNumber))
+        .limit(1);
+      userId = phoneNumberRecord?.ownerUserId || null;
+    }
+    
+    // Store pending voicemail metadata for when recording saves
+    pendingVoicemails.set(callControlId, {
+      companyId,
+      fromNumber,
+      toNumber,
+      userId,
+      startedAt: new Date(),
+      callerName: undefined, // Could be enhanced with CNAM lookup result
+    });
+    console.log(`[CallControl] Stored pending voicemail for ${callControlId}: from=${fromNumber}, to=${toNumber}, userId=${userId}`);
+    
+    // Create a call log entry marked as voicemail/missed
+    try {
+      const [callLog] = await db.insert(callLogs).values({
+        companyId,
+        userId,
+        telnyxCallId: callControlId,
+        direction: "inbound",
+        status: "voicemail",
+        fromNumber,
+        toNumber,
+        startedAt: new Date(),
+        duration: 0,
+      }).returning();
+      console.log(`[CallControl] Created voicemail call log: ${callLog.id}`);
+    } catch (error) {
+      console.error(`[CallControl] Failed to create voicemail call log:`, error);
+    }
 
     // Get global voicemail greeting from Super Admin settings
     // Try English first, then Spanish as fallback
