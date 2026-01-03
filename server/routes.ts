@@ -7717,14 +7717,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Access denied" });
       }
       
-      // If we have a recording ID, try to get fresh URL from Telnyx
+      const credentials = await getCredentialFromDb('telnyx', user.companyId!) || 
+                         await getCredentialFromDb('telnyx');
+      
+      if (!credentials?.apiKey) {
+        console.error("[Recording Proxy] No Telnyx credentials found");
+        return res.status(500).json({ message: "Telnyx credentials not configured" });
+      }
+
+      // Method 1: If we have a recording ID, fetch directly
       if (callLog.recordingId) {
         try {
-          const credentials = await getCredentialFromDb('telnyx', user.companyId!) || 
-                             await getCredentialFromDb('telnyx');
+          const response = await fetch(`https://api.telnyx.com/v2/recordings/${callLog.recordingId}`, {
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json'
+            }
+          });
           
-          if (credentials?.apiKey) {
-            const response = await fetch(`https://api.telnyx.com/v2/recordings/${callLog.recordingId}`, {
+          if (response.ok) {
+            const data = await response.json();
+            const downloadUrl = data.data?.download_urls?.mp3 || data.data?.download_urls?.wav;
+            
+            if (downloadUrl) {
+              const audioResponse = await fetch(downloadUrl);
+              if (audioResponse.ok) {
+                res.set('Content-Type', audioResponse.headers.get('Content-Type') || 'audio/mpeg');
+                res.set('Cache-Control', 'private, max-age=300');
+                const arrayBuffer = await audioResponse.arrayBuffer();
+                return res.send(Buffer.from(arrayBuffer));
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[Recording Proxy] Error fetching by recordingId:", err);
+        }
+      }
+
+      // Method 2: Extract call_leg_id from cached URL and search recordings
+      if (callLog.recordingUrl && callLog.telnyxCallId) {
+        try {
+          // Extract call_leg_id from URL pattern: /{date}/{call_leg_id}-{timestamp}.mp3
+          const urlMatch = callLog.recordingUrl.match(/\/([a-f0-9-]{36})-\d+\.mp3/i);
+          const callLegId = urlMatch ? urlMatch[1] : null;
+          
+          console.log("[Recording Proxy] Extracted call_leg_id:", callLegId, "from URL");
+          
+          if (callLegId) {
+            // Search for recordings by call_leg_id
+            const searchUrl = `https://api.telnyx.com/v2/recordings?filter[call_leg_id]=${callLegId}`;
+            const response = await fetch(searchUrl, {
               headers: {
                 'Authorization': `Bearer ${credentials.apiKey}`,
                 'Content-Type': 'application/json'
@@ -7733,26 +7775,38 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             
             if (response.ok) {
               const data = await response.json();
-              const downloadUrl = data.data?.download_urls?.mp3 || data.data?.download_urls?.wav;
+              const recording = data.data?.[0];
               
-              if (downloadUrl) {
-                // Stream the audio through our server to avoid CORS issues
-                const audioResponse = await fetch(downloadUrl);
-                if (audioResponse.ok) {
-                  res.set('Content-Type', audioResponse.headers.get('Content-Type') || 'audio/mpeg');
-                  res.set('Cache-Control', 'private, max-age=300');
-                  const arrayBuffer = await audioResponse.arrayBuffer();
-                  return res.send(Buffer.from(arrayBuffer));
+              if (recording) {
+                const downloadUrl = recording.download_urls?.mp3 || recording.download_urls?.wav;
+                
+                // Save the recording_id for future use
+                if (recording.id && !callLog.recordingId) {
+                  await db
+                    .update(callLogs)
+                    .set({ recordingId: recording.id })
+                    .where(eq(callLogs.id, callLog.id));
+                  console.log("[Recording Proxy] Saved recordingId:", recording.id);
+                }
+                
+                if (downloadUrl) {
+                  const audioResponse = await fetch(downloadUrl);
+                  if (audioResponse.ok) {
+                    res.set('Content-Type', audioResponse.headers.get('Content-Type') || 'audio/mpeg');
+                    res.set('Cache-Control', 'private, max-age=300');
+                    const arrayBuffer = await audioResponse.arrayBuffer();
+                    return res.send(Buffer.from(arrayBuffer));
+                  }
                 }
               }
             }
           }
         } catch (err) {
-          console.error("[Recording Proxy] Error fetching from Telnyx API:", err);
+          console.error("[Recording Proxy] Error searching by call_leg_id:", err);
         }
       }
-      
-      // Fallback: try to stream from cached URL if available
+
+      // Method 3: Fallback - try cached URL directly (may be expired)
       if (callLog.recordingUrl) {
         try {
           const audioResponse = await fetch(callLog.recordingUrl);
@@ -7773,7 +7827,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: error.message });
     }
   });
-  // Get billing subscription details from Stripe
   app.get("/api/billing/subscription", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     // Only admin or superadmin can view subscription details
