@@ -400,7 +400,8 @@ export async function chargeCallUsage(
   }
 
   if (options.callForwardingDurationSeconds && options.callForwardingDurationSeconds > 0) {
-    await collector.addCallForwarding("outbound", options.callForwardingDurationSeconds);
+    // Call forwarding inherits the main call direction for accurate billing
+    await collector.addCallForwarding(options.direction, options.callForwardingDurationSeconds);
   }
 
   return collector.chargeToWallet(options.userId);
