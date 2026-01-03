@@ -43445,8 +43445,8 @@ CRITICAL REMINDERS:
       const { type, language } = req.body;
 
       // Validate type and language
-      if (!type || !['start', 'stop'].includes(type)) {
-        return res.status(400).json({ message: "Invalid type. Must be 'start' or 'stop'" });
+      if (!type || !['start', 'stop', 'voicemail'].includes(type)) {
+        return res.status(400).json({ message: "Invalid type. Must be 'start', 'stop', or 'voicemail'" });
       }
       if (!language || !['en', 'es'].includes(language)) {
         return res.status(400).json({ message: "Invalid language. Must be 'en' or 'es'" });
