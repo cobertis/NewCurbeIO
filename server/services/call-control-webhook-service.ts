@@ -42,6 +42,7 @@ interface PendingBridge {
   queueId?: string;
   isDirectCall?: boolean; // true when it's a direct call to assigned user (not queue)
   isDirectRingThrough?: boolean; // true for new dial+bridge ring-through pattern
+  isBlindTransfer?: boolean; // true for blind transfer pattern (no answer first)
   isOutboundPstn?: boolean; // true when this is an outbound PSTN call from WebRTC
   destinationNumber?: string; // The destination number for outbound calls
   agentUserId?: string; // The user ID of the agent being called
@@ -1071,15 +1072,37 @@ export class CallControlWebhookService {
             console.log(`[CallControl] No queueId in pendingBridge, caller stays on hold`);
           }
         }
-      } else if (pendingBridge.isDirectCall || pendingBridge.isDirectRingThrough) {
+      } else if (pendingBridge.isDirectCall || pendingBridge.isDirectRingThrough || pendingBridge.isBlindTransfer) {
         // Direct call with single agent leg (no ringAllLegs) - route to voicemail on timeout
-        console.log(`[CallControl] Direct ring-through timeout, routing caller ${pendingBridge.callerCallControlId} to voicemail`);
+        console.log(`[CallControl] Direct call/transfer timeout, routing caller ${pendingBridge.callerCallControlId} to voicemail`);
         this.answerCall(pendingBridge.callerCallControlId).then(() => {
           // Route directly to voicemail - it will play the custom greeting
           this.routeToVoicemail(pendingBridge.callerCallControlId, pendingBridge.companyId);
         }).catch((err) => {
-          console.error(`[CallControl] Error routing to voicemail after direct call timeout:`, err);
+          console.error(`[CallControl] Error routing to voicemail after timeout:`, err);
         });
+      }
+    }
+
+    // Handle blind transfer timeout - the transfer leg hung up but caller may still be active
+    // When transfer times out, we receive call.hangup with the client_state we passed
+    if (client_state && hangup_cause === "timeout") {
+      try {
+        const state = JSON.parse(Buffer.from(client_state, "base64").toString());
+        if (state.blindTransferToVoicemail && state.callerCallControlId) {
+          console.log(`[CallControl] Blind transfer timeout detected, routing caller ${state.callerCallControlId} to voicemail`);
+          // Clean up the pending bridge for this caller
+          pendingBridges.delete(state.callerCallControlId);
+          
+          // Answer the original caller leg and route to voicemail
+          this.answerCall(state.callerCallControlId).then(() => {
+            this.routeToVoicemail(state.callerCallControlId, state.companyId);
+          }).catch((err) => {
+            console.error(`[CallControl] Error routing to voicemail after blind transfer timeout:`, err);
+          });
+        }
+      } catch (e) {
+        // Ignore parse errors
       }
     }
 
@@ -2331,16 +2354,15 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Transfer call to assigned user using Dial + Bridge pattern
+   * Transfer call to assigned user using blind transfer (no answer required)
    * 
-   * Per Telnyx documentation: We must answer the caller first, then create an outbound
-   * call to the agent and bridge when the agent answers.
-   * 
-   * Flow:
-   * 1. Answer the inbound call (billing starts but caller hears silence briefly)
-   * 2. Create outbound call to agent's SIP endpoint with POST /calls
-   * 3. When agent answers, bridge the two legs
-   * 4. If timeout/no answer, route to voicemail with custom greeting
+   * Per Telnyx documentation: The transfer command performs a BLIND TRANSFER
+   * without requiring the answer command first. This means:
+   * - Caller continues to hear ringback (billing hasn't started)
+   * - Agent's phone rings with correct caller ID
+   * - If agent answers: call is bridged, billing starts
+   * - If agent doesn't answer (timeout): original call remains active,
+   *   we then answer and route to voicemail
    */
   private async transferToAssignedUser(
     callControlId: string,
@@ -2348,7 +2370,7 @@ export class CallControlWebhookService {
     callerNumber?: string
   ): Promise<void> {
     const companyId = phoneNumber.companyId;
-    console.log(`[CallControl] Transfer to assigned user using Dial+Bridge, caller: ${callerNumber}`);
+    console.log(`[CallControl] Blind transfer to assigned user (no answer first), caller: ${callerNumber}`);
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
@@ -2371,39 +2393,41 @@ export class CallControlWebhookService {
     const sipUri = `sip:${extension.sipUsername}@sip.telnyx.com`;
     const ringTimeout = extension.ringTimeout || 25;
     
-    console.log(`[CallControl] Dialing agent SIP: ${sipUri} with timeout: ${ringTimeout}s`);
+    console.log(`[CallControl] Blind transferring to agent SIP: ${sipUri} with timeout: ${ringTimeout}s`);
+    console.log(`[CallControl] Caller ${callerNumber} will continue to hear ringback (NOT answered yet)`);
 
-    // Create client state to track this dial for bridging when agent answers
+    // Store pending transfer info for handling timeout/voicemail
     const clientState = Buffer.from(JSON.stringify({
       companyId,
       callerCallControlId: callControlId,
       agentUserId: phoneNumber.ownerUserId,
-      directCallRingThrough: true,
+      callerNumber: callerNumber || "",
+      blindTransferToVoicemail: true,
     })).toString("base64");
 
     try {
-      // Step 1: Answer the caller (required for bridging per Telnyx docs)
-      console.log(`[CallControl] Answering caller for bridge setup`);
-      await this.answerCall(callControlId);
-
-      // Step 2: Create outbound call to agent SIP using POST /calls
-      // This uses the existing dialAndBridgeToSip function
-      await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
+      // BLIND TRANSFER - does NOT answer the call first
+      // Per Telnyx docs: "No answer required: You can transfer an incoming call 
+      // immediately without calling the answer command first"
+      // The caller ID passed to "from" will show on the agent's phone
+      await this.makeCallControlRequest(callControlId, "transfer", {
+        to: sipUri,
+        from: callerNumber || phoneNumber.phoneNumber, // Show caller's number to agent
+        timeout_secs: ringTimeout,
+        client_state: clientState,
+      });
       
-      // Mark the pending bridge as direct ring-through for voicemail handling
-      // Find the agent call control ID from the pendingBridges map
-      const bridgeEntries = Array.from(pendingBridges.entries());
-      for (const [agentCallId, bridge] of bridgeEntries) {
-        if (bridge.callerCallControlId === callControlId) {
-          pendingBridges.set(agentCallId, {
-            ...bridge,
-            isDirectRingThrough: true,
-            agentUserId: phoneNumber.ownerUserId,
-            callerNumber: callerNumber || "",
-          });
-          break;
-        }
-      }
+      console.log(`[CallControl] Blind transfer initiated - agent phone should ring with caller ID: ${callerNumber}`);
+      
+      // Store pending transfer for voicemail fallback on timeout
+      pendingBridges.set(callControlId, {
+        callerCallControlId: callControlId,
+        companyId,
+        agentUserId: phoneNumber.ownerUserId,
+        callerNumber: callerNumber || "",
+        isBlindTransfer: true,
+        sipUri,
+      });
       
       await pbxService.trackActiveCall(companyId, callControlId, callerNumber || "", sipUri, "ringing", {
         agentUserId: phoneNumber.ownerUserId,
@@ -2411,8 +2435,9 @@ export class CallControlWebhookService {
       });
       
     } catch (error) {
-      console.error(`[CallControl] Dial to agent SIP failed:`, error);
-      // If dial fails, route to voicemail (already answered)
+      console.error(`[CallControl] Blind transfer failed:`, error);
+      // If transfer fails, answer and route to voicemail
+      await this.answerCall(callControlId);
       await this.routeToVoicemail(callControlId, companyId);
     }
   }
