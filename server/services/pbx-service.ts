@@ -283,6 +283,7 @@ export class PbxService {
         displayName: pbxExtensions.displayName,
         ringTimeout: pbxExtensions.ringTimeout,
         isActive: pbxExtensions.isActive,
+        sipUsername: pbxExtensions.sipUsername,
       })
       .from(pbxExtensions)
       .where(and(
