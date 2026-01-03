@@ -31151,6 +31151,7 @@ CRITICAL REMINDERS:
         const callSessionId = payload.call_session_id;
         const connectionId = payload.connection_id;
         const occurredAt = req.body.data.occurred_at;
+        const duration = payload.duration || 0;
         
         console.log("[Telnyx Voicemail] New voicemail from", fromNumber, "to", toNumber);
         
@@ -31182,8 +31183,12 @@ CRITICAL REMINDERS:
             callerName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || null;
           }
           
+          // Generate unique id for voicemail for billing reference
+          const voicemailId = crypto.randomUUID();
+          
           // Store voicemail in database
           await db.insert(voicemails).values({
+            id: voicemailId,
             companyId: phoneNumber.companyId,
             userId: phoneNumber.ownerUserId,
             telnyxCallSessionId: callSessionId,
@@ -31193,10 +31198,21 @@ CRITICAL REMINDERS:
             callerName,
             contactId,
             recordingUrl,
+            duration,
             status: 'new',
             receivedAt: new Date(occurredAt),
           });
           
+          // Bill for voicemail call
+          const vmDuration = duration || 30; // Use actual duration or estimate 30 seconds
+          await chargeCallUsage(phoneNumber.companyId, voicemailId, {
+            direction: "inbound",
+            fromNumber: fromNumber,
+            toNumber: toNumber,
+            durationSeconds: vmDuration,
+            voicemailDurationSeconds: vmDuration,
+          });
+          console.log("[Voicemail Billing] Charged voicemail call for company", phoneNumber.companyId);
           console.log("[Telnyx Voicemail] Stored voicemail for company", phoneNumber.companyId);
           
           // Notify user via WebSocket if they have one assigned
@@ -31965,9 +31981,12 @@ CRITICAL REMINDERS:
               .where(eq(telnyxPhoneNumbers.phoneNumber, toNumber));
             
             if (phoneNumber && phoneNumber.companyId) {
+              // Generate unique id for voicemail for billing reference
+              const voicemailId = crypto.randomUUID();
+              
               // Save voicemail to database
               await db.insert(voicemails).values({
-                id: crypto.randomUUID(),
+                id: voicemailId,
                 companyId: phoneNumber.companyId,
                 userId: phoneNumber.assignedUserId || null,
                 fromNumber: fromNumber,
@@ -31978,6 +31997,17 @@ CRITICAL REMINDERS:
                 receivedAt: new Date(),
                 createdAt: new Date(),
               });
+              
+              // Bill for voicemail call
+              const vmDuration = duration || 30; // Use actual duration or estimate 30 seconds
+              await chargeCallUsage(phoneNumber.companyId, voicemailId, {
+                direction: "inbound",
+                fromNumber: fromNumber,
+                toNumber: toNumber,
+                durationSeconds: vmDuration,
+                voicemailDurationSeconds: vmDuration,
+              });
+              console.log("[Voicemail Billing] Charged voicemail call for company", phoneNumber.companyId);
               
               console.log("[Telnyx Voice Status] Voicemail saved for company", phoneNumber.companyId);
               
