@@ -7858,7 +7858,66 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error("[Recording Proxy] Error searching by call_control_id:", err);
         }
       }
-      // Method 3: Fallback - try cached URL directly (may be expired)
+      
+      // Method 3: Search ALL recordings by date range and match exact call
+      if (callLog.createdAt) {
+        try {
+          const callDate = new Date(callLog.createdAt);
+          const startDate = new Date(callDate.getTime() - 5 * 60 * 1000).toISOString();
+          const endDate = new Date(callDate.getTime() + 60 * 60 * 1000).toISOString();
+          
+          console.log("[Recording Proxy] Method 3 - Searching recordings:", startDate, "to", endDate);
+          
+          const searchUrl = `https://api.telnyx.com/v2/recordings?filter[created_at][gte]=${encodeURIComponent(startDate)}&filter[created_at][lte]=${encodeURIComponent(endDate)}&page[size]=50`;
+          const response = await fetch(searchUrl, {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const recordings = data.data || [];
+            console.log("[Recording Proxy] Method 3 - Found", recordings.length, "recordings");
+            
+            const fromNum = callLog.fromNumber?.replace(/\D/g, '') || '';
+            const toNum = callLog.toNumber?.replace(/\D/g, '') || '';
+            
+            for (const rec of recordings) {
+              const recFrom = (rec.from || '').replace(/\D/g, '');
+              const recTo = (rec.to || '').replace(/\D/g, '');
+              console.log("[Recording Proxy] Checking:", rec.id, recFrom, "->", recTo);
+              
+              if ((fromNum && recFrom === fromNum && toNum && recTo === toNum) ||
+                  (fromNum && recTo === fromNum && toNum && recFrom === toNum)) {
+                console.log("[Recording Proxy] Method 3 - EXACT MATCH:", rec.id);
+                const downloadUrl = rec.media_url || rec.download_urls?.mp3 || rec.download_urls?.wav;
+                
+                if (rec.id && !callLog.recordingId) {
+                  await db.update(callLogs).set({ recordingId: rec.id }).where(eq(callLogs.id, callLog.id));
+                  console.log("[Recording Proxy] Saved recordingId:", rec.id);
+                }
+                
+                if (downloadUrl) {
+                  const audioResponse = await fetch(downloadUrl);
+                  if (audioResponse.ok) {
+                    res.set('Content-Type', audioResponse.headers.get('Content-Type') || 'audio/mpeg');
+                    res.set('Cache-Control', 'private, max-age=300');
+                    const arrayBuffer = await audioResponse.arrayBuffer();
+                    return res.send(Buffer.from(arrayBuffer));
+                  }
+                }
+              }
+            }
+            console.log("[Recording Proxy] Method 3 - No exact match for:", fromNum, "->", toNum);
+          }
+        } catch (err) {
+          console.error("[Recording Proxy] Error in Method 3:", err);
+        }
+      }
+      
+      // Method 4: Fallback - try cached URL directly (may be expired)
       if (callLog.recordingUrl) {
         try {
           const audioResponse = await fetch(callLog.recordingUrl);
