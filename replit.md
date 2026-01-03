@@ -45,7 +45,12 @@ Implements Telnyx WebRTC with specific call options and audio settings. Uses a d
 - **Recording Format**: MP3, dual channel, custom announcement audio (no beep)
 - **Storage**: Recording URLs stored in `call_logs.recordingUrl` via `call.recording.saved` webhook
 - **Playback**: Blue play button in call history (Recents tab) for calls with recordings
-- **Announcement Media**: Stored in Telnyx Media Storage; env vars `TELNYX_RECORDING_MEDIA_EN` and `TELNYX_RECORDING_MEDIA_ES`
+- **Announcement Media Management (Super Admin Only):**
+  - **UI**: Super Admin page at `/admin/recording-media` to upload/replace/delete audio files
+  - **Database Table**: `recording_announcement_media` stores 4 slots: start_en, start_es, stop_en, stop_es
+  - **API Endpoints**: GET/POST/DELETE `/api/admin/recording-media` (superadmin role required)
+  - **Telnyx Integration**: Audio files uploaded to Telnyx Media Storage, referenced by `media_name` in playback_start API
+  - **Fallback**: If no media configured for a slot, recording start returns error; recording stop skips announcement
 
 **Wallet System Architecture:**
 Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, and APNs push notifications for proactive payment collection. Key components include dedicated services, PassKit Web Service, and a scheduler for daily payment reminders. The "Cenicienta Strategy" ensures lock-screen persistence for passes by setting `relevantDate` to the end of the day. Pass images are "baked in," with only text/data updated via push notifications.
