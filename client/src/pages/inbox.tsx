@@ -59,7 +59,8 @@ import {
   Heart,
   Lightbulb,
   AlertCircle,
-  Check
+  Check,
+  Play
 } from "lucide-react";
 import { Link } from "wouter";
 import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp, SiImessage, SiGooglemessages } from "react-icons/si";
@@ -232,6 +233,7 @@ export default function InboxPage() {
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewVideo, setPreviewVideo] = useState<string | null>(null);
   const [copilotDraft, setCopilotDraft] = useState<string | null>(null);
   const [copilotSource, setCopilotSource] = useState<"knowledge_base" | "general" | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"details" | "pulse-ai">("details");
@@ -2106,16 +2108,25 @@ export default function InboxPage() {
                                     
                                     if (mimeType?.startsWith('video/')) {
                                       return (
-                                        <video 
+                                        <button
                                           key={idx}
-                                          src={streamUrl}
-                                          controls
-                                          preload="metadata"
-                                          className="max-w-[300px] max-h-[300px] rounded-lg"
+                                          onClick={() => setPreviewVideo(streamUrl)}
+                                          className="block text-left relative group"
                                           data-testid={`im-video-${idx}`}
                                         >
-                                          Your browser does not support the video tag.
-                                        </video>
+                                          <video 
+                                            src={streamUrl}
+                                            preload="metadata"
+                                            className="max-w-[300px] max-h-[300px] rounded-lg cursor-pointer"
+                                          >
+                                            Your browser does not support the video tag.
+                                          </video>
+                                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                                              <Play className="h-6 w-6 text-gray-800 ml-1" />
+                                            </div>
+                                          </div>
+                                        </button>
                                       );
                                     }
                                     
@@ -3813,6 +3824,33 @@ export default function InboxPage() {
             onClick={(e) => e.stopPropagation()}
             data-testid="image-preview"
           />
+        </div>
+      )}
+
+      {/* Video Preview Modal */}
+      {previewVideo && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setPreviewVideo(null)}
+          data-testid="video-preview-overlay"
+        >
+          <button
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10"
+            onClick={() => setPreviewVideo(null)}
+            data-testid="btn-close-video-preview"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <video 
+            src={previewVideo} 
+            controls
+            autoPlay
+            className="max-w-[90vw] max-h-[90vh] rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="video-preview"
+          >
+            Your browser does not support the video tag.
+          </video>
         </div>
       )}
 
