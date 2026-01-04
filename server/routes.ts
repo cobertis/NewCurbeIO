@@ -7713,6 +7713,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Call log not found" });
       }
       
+      // PRIORITY: Check if recording is saved in Object Storage (permanent storage)
+      // These URLs start with /objects/ and should be served from there first
+      if (callLog.recordingUrl && callLog.recordingUrl.startsWith("/objects/")) {
+        try {
+          console.log("[Recording Proxy] Serving from Object Storage:", callLog.recordingUrl);
+          const objectFile = await objectStorage.getObjectEntityFile(callLog.recordingUrl);
+          res.set("Content-Type", "audio/mpeg");
+          res.set("Cache-Control", "public, max-age=3600");
+          const stream = objectFile.createReadStream();
+          stream.on("error", (err) => {
+            console.error("[Recording Proxy] Stream error from Object Storage:", err);
+            if (!res.headersSent) {
+              res.status(500).json({ message: "Error streaming recording" });
+            }
+          });
+          return stream.pipe(res);
+        } catch (objError: any) {
+          console.error("[Recording Proxy] Object Storage error:", objError.message);
+          // Fall through to Telnyx API methods if Object Storage fails
+        }
+      }
+
       // Verify multi-tenant access
       if (callLog.companyId !== user.companyId && user.role !== 'superadmin') {
         return res.status(403).json({ message: "Access denied" });
