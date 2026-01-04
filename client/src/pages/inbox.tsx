@@ -1927,7 +1927,7 @@ export default function InboxPage() {
                            message.text !== "[audio]" && 
                            message.text !== "[document]" && 
                            message.text !== "[sticker]" && 
-                           !/^(d+ attachments?)$/.test(message.text || '') && (
+                           !/^\(\d+ attachments?\)$/.test(message.text || '') && (
                             <p className={cn(
                               "text-sm whitespace-pre-wrap",
                               isNote ? "text-yellow-900" : "text-gray-900 dark:text-gray-100"
