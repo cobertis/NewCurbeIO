@@ -2240,12 +2240,14 @@ export function WebPhoneFloatingWindow() {
     }
     if (isExtensionCall) {
       extToggleMute();
-    } else if (isTelnyxCall) {
+    } else if (hasTelnyxNumber || isTelnyxCall) {
+      // If user has Telnyx number, ALWAYS use Telnyx
       telnyxWebRTC.muteToggle();
     } else {
+      // Only use webPhone for legacy PBX users without Telnyx
       isMuted ? webPhone.unmuteCall() : webPhone.muteCall();
     }
-  }, [isWhatsAppCall, isExtensionCall, isTelnyxCall, isMuted, extToggleMute, handleWhatsAppMuteToggle]);
+  }, [isWhatsAppCall, isExtensionCall, isTelnyxCall, hasTelnyxNumber, isMuted, extToggleMute, handleWhatsAppMuteToggle]);
   
   const handleHoldToggle = useCallback(async () => {
     // For queue calls with Call Control, use server-side hold with music
@@ -2277,12 +2279,14 @@ export function WebPhoneFloatingWindow() {
           variant: "destructive",
         });
       }
-    } else if (isTelnyxCall) {
+    } else if (hasTelnyxNumber || isTelnyxCall) {
+      // If user has Telnyx number, ALWAYS use Telnyx
       telnyxWebRTC.holdToggle();
     } else {
+      // Only use webPhone for legacy PBX users without Telnyx
       isOnHold ? webPhone.unholdCall() : webPhone.holdCall();
     }
-  }, [isTelnyxCall, isOnHold, queueCall, toast]);
+  }, [hasTelnyxNumber, isTelnyxCall, isOnHold, queueCall, toast]);
 
   const handleRecordingToggle = useCallback(async () => {
     if (!effectiveCall?.callLogId) {
@@ -2372,12 +2376,14 @@ export function WebPhoneFloatingWindow() {
     }
     if (isExtensionCall) {
       extEndCall();
-    } else if (isTelnyxCall) {
+    } else if (hasTelnyxNumber || isTelnyxCall) {
+      // If user has Telnyx number, ALWAYS use Telnyx
       telnyxWebRTC.hangupCall();
     } else {
+      // Only use webPhone for legacy PBX users without Telnyx
       webPhone.hangupCall();
     }
-  }, [effectiveCall?.isWhatsApp, isExtensionCall, isTelnyxCall, extEndCall, handleWhatsAppHangup]);
+  }, [effectiveCall?.isWhatsApp, isExtensionCall, isTelnyxCall, hasTelnyxNumber, extEndCall, handleWhatsAppHangup]);
   
   const handleAnswerCall = useCallback(() => {
     if (effectiveCall?.isWhatsApp) {
@@ -2386,12 +2392,14 @@ export function WebPhoneFloatingWindow() {
     }
     if (incomingExtCall) {
       extAnswerCall();
-    } else if (telnyxIncomingCall) {
+    } else if (hasTelnyxNumber || telnyxIncomingCall) {
+      // If user has Telnyx number, ALWAYS use Telnyx
       telnyxWebRTC.answerCall();
     } else {
+      // Only use webPhone for legacy PBX users without Telnyx
       webPhone.answerCall();
     }
-  }, [effectiveCall?.isWhatsApp, incomingExtCall, telnyxIncomingCall, extAnswerCall, handleWhatsAppAnswer]);
+  }, [effectiveCall?.isWhatsApp, incomingExtCall, telnyxIncomingCall, hasTelnyxNumber, extAnswerCall, handleWhatsAppAnswer]);
   
   const handleRejectCall = useCallback(async () => {
     if (effectiveCall?.isWhatsApp) {
@@ -2404,13 +2412,16 @@ export function WebPhoneFloatingWindow() {
     
     console.log('[WebPhone] Reject call - callerNumber:', callerNumber, 'callLegId:', callLegId);
     
-    // First, reject the call locally via SDK (sends SIP 486 Busy to Telnyx)
-    // This should trigger Telnyx to route the caller to voicemail if configured
+    // Reject the call via the appropriate service
+    // IMPORTANT: Telnyx uses backend Call Control API to send SIP 603 "Decline" (not SIP 486)
     if (incomingExtCall) {
       extRejectCall();
-    } else if (telnyxIncomingCall) {
+    } else if (hasTelnyxNumber || telnyxIncomingCall) {
+      // If user has Telnyx number, ALWAYS use Telnyx (sends SIP 603 via backend)
+      // This ensures proper voicemail fallback
       telnyxWebRTC.rejectCall();
     } else {
+      // Only use webPhone for legacy PBX users without Telnyx
       webPhone.rejectCall();
     }
     
@@ -2429,15 +2440,17 @@ export function WebPhoneFloatingWindow() {
         .then(data => console.log('[WebPhone] Reject logged:', data))
         .catch(err => console.error('[WebPhone] Error logging rejection:', err));
     }
-  }, [effectiveCall?.isWhatsApp, effectiveCall?.callControlId, effectiveCall?.phoneNumber, telnyxIncomingCallInfo?.telnyxCallLegId, telnyxIncomingCallInfo?.remoteCallerNumber, incomingExtCall, telnyxIncomingCall, extRejectCall, handleWhatsAppDecline]);
+  }, [effectiveCall?.isWhatsApp, effectiveCall?.callControlId, effectiveCall?.phoneNumber, telnyxIncomingCallInfo?.telnyxCallLegId, telnyxIncomingCallInfo?.remoteCallerNumber, incomingExtCall, telnyxIncomingCall, hasTelnyxNumber, extRejectCall, handleWhatsAppDecline]);
   
   const handleSendDTMF = useCallback((digit: string) => {
-    if (isTelnyxCall) {
+    if (hasTelnyxNumber || isTelnyxCall) {
+      // If user has Telnyx number, ALWAYS use Telnyx
       telnyxWebRTC.sendDTMF(digit);
     } else {
+      // Only use webPhone for legacy PBX users without Telnyx
       webPhone.sendDTMF(digit);
     }
-  }, [isTelnyxCall]);
+  }, [hasTelnyxNumber, isTelnyxCall]);
   
   // Get effective call duration
   const effectiveCallDuration = isWhatsAppCall ? waCallDuration : (isExtensionCall ? extCallDuration : (isTelnyxCall ? telnyxCallDuration : callDuration));
@@ -3323,9 +3336,11 @@ export function WebPhoneFloatingWindow() {
                         <div className="grid grid-cols-2 gap-3 px-2 sm:px-4">
                           <Button
                             onClick={() => {
-                              if (effectiveCall.isTelnyx) {
+                              if (effectiveCall.isTelnyx || hasTelnyxNumber) {
+                                // If Telnyx call or user has Telnyx number, use Telnyx
                                 telnyxWebRTC.completeConsultTransfer(attendedTransferNumber);
                               } else {
+                                // Only use webPhone for legacy PBX users without Telnyx
                                 webPhone.completeAttendedTransfer();
                               }
                             }}
@@ -3338,9 +3353,11 @@ export function WebPhoneFloatingWindow() {
                           
                           <Button
                             onClick={() => {
-                              if (effectiveCall.isTelnyx) {
+                              if (effectiveCall.isTelnyx || hasTelnyxNumber) {
+                                // If Telnyx call or user has Telnyx number, use Telnyx
                                 telnyxWebRTC.cancelConsultTransfer();
                               } else {
+                                // Only use webPhone for legacy PBX users without Telnyx
                                 webPhone.cancelAttendedTransfer();
                               }
                             }}
@@ -3428,9 +3445,11 @@ export function WebPhoneFloatingWindow() {
                       <div className="px-2 sm:px-4 flex justify-center">
                         <DtmfKeypad
                           onSendDigit={(digit) => {
-                            if (effectiveCall.isTelnyx) {
+                            if (effectiveCall.isTelnyx || hasTelnyxNumber) {
+                              // If Telnyx call or user has Telnyx number, use Telnyx
                               telnyxWebRTC.sendDTMF(digit);
                             } else {
+                              // Only use webPhone for legacy PBX users without Telnyx
                               webPhone.sendDTMF(digit);
                             }
                           }}
@@ -3614,9 +3633,11 @@ export function WebPhoneFloatingWindow() {
                             
                             <Button
                               onClick={() => {
-                                if (effectiveCall.isTelnyx) {
+                                if (effectiveCall.isTelnyx || hasTelnyxNumber) {
+                                  // If Telnyx call or user has Telnyx number, use Telnyx
                                   telnyxWebRTC.blindTransfer(transferNumber);
                                 } else {
+                                  // Only use webPhone for legacy PBX users without Telnyx
                                   webPhone.blindTransfer(transferNumber);
                                 }
                                 setShowTransferDialog(false);
@@ -3649,9 +3670,11 @@ export function WebPhoneFloatingWindow() {
                             <div className="space-y-2">
                               <Button
                                 onClick={async () => {
-                                  if (effectiveCall.isTelnyx) {
+                                  if (effectiveCall.isTelnyx || hasTelnyxNumber) {
+                                    // If Telnyx call or user has Telnyx number, use Telnyx
                                     await telnyxWebRTC.startConsultTransfer(attendedTransferNumber);
                                   } else {
+                                    // Only use webPhone for legacy PBX users without Telnyx
                                     webPhone.attendedTransfer(attendedTransferNumber);
                                   }
                                   setShowTransferDialog(false);
