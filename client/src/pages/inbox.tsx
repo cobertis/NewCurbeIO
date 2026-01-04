@@ -241,9 +241,14 @@ export default function InboxPage() {
   // Audio recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [audioPreview, setAudioPreview] = useState<{ blob: Blob; url: string } | null>(null);
+  const [audioVolume, setAudioVolume] = useState<number[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [copilotDraft, setCopilotDraft] = useState<string | null>(null);
   const [copilotSource, setCopilotSource] = useState<"knowledge_base" | "general" | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"details" | "pulse-ai">("details");
@@ -1415,7 +1420,24 @@ export default function InboxPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      streamRef.current = stream;
+      
+      // Set up audio analyser for visualization
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+      
+      // Get supported mimeType
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus' 
+        : MediaRecorder.isTypeSupported('audio/webm') 
+          ? 'audio/webm' 
+          : 'audio/mp4';
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
@@ -1425,18 +1447,29 @@ export default function InboxPage() {
         }
       };
       
-      mediaRecorder.onstop = () => {
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      mediaRecorder.start();
+      mediaRecorder.start(100); // Collect data every 100ms
       setIsRecording(true);
       setRecordingTime(0);
+      setAudioVolume([]);
       
       // Start timer
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
+      
+      // Start volume visualization
+      const updateVolume = () => {
+        if (analyserRef.current) {
+          const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+          analyserRef.current.getByteFrequencyData(dataArray);
+          const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          const normalizedVolume = Math.min(100, average * 1.5);
+          setAudioVolume(prev => [...prev.slice(-30), normalizedVolume]);
+        }
+        animationFrameRef.current = requestAnimationFrame(updateVolume);
+      };
+      updateVolume();
+      
     } catch (error) {
       console.error('Error starting recording:', error);
       toast({
@@ -1448,37 +1481,84 @@ export default function InboxPage() {
   };
 
   const stopRecording = () => {
+    // Stop visualization
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
       
-      // Wait for the last data to be collected
-      setTimeout(() => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
-        setSelectedFiles(prev => [...prev, audioFile]);
+      mediaRecorderRef.current.onstop = () => {
+        // Stop all tracks
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
         
-        // Cleanup
+        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        // Set audio preview instead of directly adding to files
+        setAudioPreview({ blob: audioBlob, url: audioUrl });
+        
+        // Cleanup recording state
         setIsRecording(false);
         if (recordingTimerRef.current) {
           clearInterval(recordingTimerRef.current);
           recordingTimerRef.current = null;
         }
-        setRecordingTime(0);
         audioChunksRef.current = [];
-      }, 100);
+      };
+    }
+  };
+
+  const confirmAudioRecording = () => {
+    if (audioPreview) {
+      const extension = audioPreview.blob.type.includes('webm') ? 'webm' : 'mp4';
+      const audioFile = new File([audioPreview.blob], `voice-message-${Date.now()}.${extension}`, { 
+        type: audioPreview.blob.type 
+      });
+      setSelectedFiles(prev => [...prev, audioFile]);
+      URL.revokeObjectURL(audioPreview.url);
+      setAudioPreview(null);
+      setRecordingTime(0);
+      setAudioVolume([]);
     }
   };
 
   const cancelRecording = () => {
+    // Stop visualization
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
+    
+    // Stop all tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    // Clean up audio preview if exists
+    if (audioPreview) {
+      URL.revokeObjectURL(audioPreview.url);
+      setAudioPreview(null);
+    }
+    
     setIsRecording(false);
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
     }
     setRecordingTime(0);
+    setAudioVolume([]);
     audioChunksRef.current = [];
   };
 
@@ -2769,7 +2849,7 @@ export default function InboxPage() {
                   </TooltipProvider>
                   
                   {/* Audio Recording Button */}
-                  {!isRecording ? (
+                  {!isRecording && !audioPreview && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -2786,44 +2866,73 @@ export default function InboxPage() {
                         <TooltipContent>Record voice message</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                  ) : (
-                    <div className="flex items-center gap-1 bg-red-50 dark:bg-red-900/20 rounded-md px-2 py-0.5">
-                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-xs font-medium text-red-600 dark:text-red-400">
+                  )}
+                  
+                  {/* Recording UI with waveform */}
+                  {isRecording && (
+                    <div className="flex items-center gap-2 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-full px-3 py-1 border border-red-200 dark:border-red-800">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-lg shadow-red-500/50" />
+                      <div className="flex items-center gap-0.5 h-5">
+                        {audioVolume.slice(-15).map((vol, i) => (
+                          <div
+                            key={i}
+                            className="w-1 bg-red-500 dark:bg-red-400 rounded-full transition-all duration-75"
+                            style={{ height: `${Math.max(4, vol / 5)}px` }}
+                          />
+                        ))}
+                        {audioVolume.length < 15 && Array(15 - audioVolume.length).fill(0).map((_, i) => (
+                          <div key={`empty-${i}`} className="w-1 h-1 bg-red-300 dark:bg-red-600 rounded-full" />
+                        ))}
+                      </div>
+                      <span className="text-xs font-mono font-medium text-red-600 dark:text-red-400 min-w-[32px]">
                         {formatRecordingTime(recordingTime)}
                       </span>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/40" 
-                              onClick={cancelRecording}
-                              data-testid="btn-cancel-recording"
-                            >
-                              <TrashIcon className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Cancel recording</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/40" 
-                              onClick={stopRecording}
-                              data-testid="btn-stop-recording"
-                            >
-                              <Square className="h-3 w-3 fill-current" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Stop and attach</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-gray-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-full" 
+                        onClick={cancelRecording}
+                        data-testid="btn-cancel-recording"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 bg-green-500 hover:bg-green-600 text-white rounded-full" 
+                        onClick={stopRecording}
+                        data-testid="btn-stop-recording"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Audio Preview UI */}
+                  {audioPreview && !isRecording && (
+                    <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-full px-3 py-1 border border-blue-200 dark:border-blue-800">
+                      <audio src={audioPreview.url} controls className="h-6 max-w-[140px]" />
+                      <span className="text-xs text-muted-foreground">
+                        {formatRecordingTime(recordingTime)}
+                      </span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-gray-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-full" 
+                        onClick={cancelRecording}
+                        data-testid="btn-discard-audio"
+                      >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 bg-blue-500 hover:bg-blue-600 text-white rounded-full" 
+                        onClick={confirmAudioRecording}
+                        data-testid="btn-confirm-audio"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   )}
                   
