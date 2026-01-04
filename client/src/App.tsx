@@ -1378,35 +1378,69 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                             ? getTimeAgo(new Date(notification.createdAt))
                             : '';
 
-                          // Extract name and message
+                          // Format phone number for display (e.g., 13054578187 -> (305) 457-8187)
+                          const formatPhone = (phone) => {
+                            const digits = phone.replace(/\D/g, '');
+                            if (digits.length === 11 && digits.startsWith('1')) {
+                              return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+                            }
+                            if (digits.length === 10) {
+                              return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+                            }
+                            return phone;
+                          };
+
+                          // Extract phone number from text
+                          const extractPhone = (text) => {
+                            const match = text.match(/\d{10,11}/);
+                            return match ? match[0] : null;
+                          };
+
+                          // Extract name and message - CLEAN AND CONCISE
                           const getName = () => {
-                            // For SMS notifications, use the title directly
-                            if (notification.type === 'sms_received' || notification.title.toLowerCase().includes('sms from')) {
-                              return notification.title;
+                            const title = notification.title.toLowerCase();
+                            const phone = extractPhone(notification.title) || extractPhone(notification.message);
+                            
+                            // Missed call notifications - just show formatted phone
+                            if (title.includes('missed call') || notification.type === 'missed_call') {
+                              return phone ? formatPhone(phone) : 'Unknown Caller';
                             }
-                            // For old format SMS with "New SMS Message"
-                            if (notification.title.toLowerCase().includes('sms')) {
+                            // SMS notifications
+                            if (notification.type === 'sms_received' || title.includes('sms from')) {
+                              return phone ? formatPhone(phone) : notification.title.replace(/SMS from /i, '');
+                            }
+                            if (title.includes('sms')) {
                               const parts = notification.message.split(':');
-                              return `SMS from ${parts[0] || 'Unknown'}`;
+                              return parts[0] ? formatPhone(parts[0]) : 'Unknown';
                             }
-                            // For quote notifications, show "New Quote"
-                            if (notification.title.toLowerCase().includes('quote')) {
+                            // Quote notifications
+                            if (title.includes('quote')) {
                               return 'New Quote';
                             }
                             return notification.title.replace('New ', '').replace(' Created', '');
                           };
 
                           const getMessagePreview = () => {
-                            // For new SMS format, show the message directly
-                            if (notification.type === 'sms_received' || notification.title.toLowerCase().includes('sms from')) {
+                            const title = notification.title.toLowerCase();
+                            
+                            // Missed call - short message
+                            if (title.includes('missed call') || notification.type === 'missed_call') {
+                              if (title.includes('auto-rejected') || notification.message.includes('auto-rejected')) {
+                                return 'Missed call - auto rejected';
+                              }
+                              return 'Missed call';
+                            }
+                            // SMS notifications
+                            if (notification.type === 'sms_received' || title.includes('sms from')) {
                               return notification.message;
                             }
-                            // For old format SMS
-                            if (notification.title.toLowerCase().includes('sms')) {
+                            if (title.includes('sms')) {
                               const parts = notification.message.split(':');
                               return parts.slice(1).join(':').trim();
                             }
-                            return notification.message;
+                            // Truncate long messages
+                            const msg = notification.message;
+                            return msg.length > 80 ? msg.slice(0, 77) + '...' : msg;
                           };
 
                           return (
