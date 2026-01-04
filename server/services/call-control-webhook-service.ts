@@ -3039,9 +3039,13 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Public method to reject an incoming call by SIP username.
+   * Public method to reject an incoming call by SIP username and route caller to voicemail.
    * This allows the frontend to reject calls using the Call Control API
    * instead of the WebRTC SDK, which sends SIP 603 "Decline" instead of SIP 486 "Busy".
+   * 
+   * CRITICAL: When agent rejects, we must route the caller to voicemail BEFORE rejecting
+   * the agent leg, otherwise Telnyx will just hang up on the caller.
+   * 
    * @returns true if the call was rejected, false if not found
    */
   public async rejectIncomingCallBySipUsername(sipUsername: string): Promise<boolean> {
@@ -3052,10 +3056,37 @@ export class CallControlWebhookService {
     }
 
     console.log(`[CallControl] Rejecting call for ${sipUsername}: ${agentLeg.callControlId}`);
+    console.log(`[CallControl] Caller leg to route to voicemail: ${agentLeg.callerCallControlId}`);
     
     try {
-      // Use reject API with "CALL_REJECTED" cause (SIP 603) instead of "USER_BUSY" (SIP 486)
-      await this.rejectCall(agentLeg.callControlId, "CALL_REJECTED");
+      // STEP 1: Try to answer the caller leg first (so we can route to voicemail)
+      // The caller is still hearing ringback - we need to answer to take control
+      const callerCallControlId = agentLeg.callerCallControlId;
+      const companyId = agentLeg.companyId;
+      
+      if (callerCallControlId && companyId) {
+        console.log(`[CallControl] Answering caller leg ${callerCallControlId} to route to voicemail`);
+        try {
+          await this.answerCall(callerCallControlId);
+          console.log(`[CallControl] Caller leg answered, routing to voicemail`);
+          
+          // STEP 2: Route caller to voicemail
+          await this.routeToVoicemail(callerCallControlId, companyId);
+          console.log(`[CallControl] Caller routed to voicemail successfully`);
+        } catch (answerError: any) {
+          // If answer fails (call already ended), just reject the agent leg
+          console.log(`[CallControl] Could not answer caller leg (may have hung up): ${answerError.message}`);
+        }
+      }
+      
+      // STEP 3: Reject the agent leg with SIP 603 (this will clean up the agent's phone)
+      try {
+        await this.rejectCall(agentLeg.callControlId, "CALL_REJECTED");
+        console.log(`[CallControl] Agent leg rejected with SIP 603`);
+      } catch (rejectError: any) {
+        // Agent leg may have already been cleaned up by the caller answer
+        console.log(`[CallControl] Agent leg reject failed (may already be ended): ${rejectError.message}`);
+      }
       
       // Clean up the tracking
       removeAgentLeg(sipUsername);
