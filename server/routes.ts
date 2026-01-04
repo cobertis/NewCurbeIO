@@ -41722,7 +41722,7 @@ CRITICAL REMINDERS:
           
           try {
             let lastResult: any = null;
-            const sentAttachments: string[] = [];
+            const sentAttachments: any[] = [];
             
             // Handle file attachments for iMessage
             if (files && files.length > 0) {
@@ -41746,8 +41746,25 @@ CRITICAL REMINDERS:
                     companyId
                   );
                   lastResult = attachResult;
-                  sentAttachments.push(file.originalname || 'attachment');
-                  console.log(`[Inbox iMessage] Attachment sent: ${file.originalname}`);
+                  
+                  // Extract attachment info from result (BlueBubbles returns attachments array)
+                  const attachmentData = attachResult.data?.attachments?.[0];
+                  if (attachmentData) {
+                    sentAttachments.push({
+                      guid: attachmentData.guid,
+                      mimeType: attachmentData.mimeType || file.mimetype,
+                      fileName: file.originalname || 'attachment',
+                      totalBytes: attachmentData.totalBytes || file.size,
+                      url: `/api/imessage/attachments/${attachmentData.guid}`
+                    });
+                  } else {
+                    // Fallback if no attachment data returned
+                    sentAttachments.push({
+                      fileName: file.originalname || 'attachment',
+                      mimeType: file.mimetype
+                    });
+                  }
+                  console.log(`[Inbox iMessage] Attachment sent: ${file.originalname}, guid: ${attachmentData?.guid}`);
                 } finally {
                   // Clean up temp file
                   try {
@@ -41799,6 +41816,11 @@ CRITICAL REMINDERS:
             // Broadcast update
             broadcastInboxMessage(companyId, id);
             
+            // Generate mediaUrls from attachments for frontend preview
+            const mediaUrls = sentAttachments
+              .filter((att: any) => att.guid)
+              .map((att: any) => `/api/imessage/attachments/${att.guid}`);
+            
             return res.status(201).json({
               id: message.id,
               direction: 'outbound',
@@ -41806,6 +41828,8 @@ CRITICAL REMINDERS:
               createdAt: message.dateSent,
               status: message.status,
               attachments: sentAttachments,
+              mediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
+              contentType: mediaUrls.length > 0 ? 'media' : 'text',
             });
           } catch (imessageError: any) {
             console.error("[Inbox iMessage] Error sending message:", imessageError);
