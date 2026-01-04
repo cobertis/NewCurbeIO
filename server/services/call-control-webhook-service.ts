@@ -47,11 +47,14 @@ interface PendingBridge {
   isDirectCall?: boolean; // true when it's a direct call to assigned user (not queue)
   isDirectRingThrough?: boolean; // true for new dial+bridge ring-through pattern
   isBlindTransfer?: boolean; // true for blind transfer pattern (no answer first)
+  isDialPlusBridge?: boolean; // true for dial+bridge pattern with voicemail fallback
   isOutboundPstn?: boolean; // true when this is an outbound PSTN call from WebRTC
   destinationNumber?: string; // The destination number for outbound calls
   agentUserId?: string; // The user ID of the agent being called
+  agentCallControlId?: string; // The agent's call_control_id when using dial+bridge
   callerNumber?: string; // The caller's phone number
   sipUri?: string; // The SIP URI being dialed
+  sipUsername?: string; // The SIP username being dialed
 }
 const pendingBridges = new Map<string, PendingBridge>();
 
@@ -1023,6 +1026,47 @@ export class CallControlWebhookService {
         pendingBridges.delete(call_control_id);
         return;
       }
+      
+      // Handle dial+bridge pattern - agent answered, stop ringback and bridge with caller
+      if (pendingBridge.isDialPlusBridge) {
+        console.log(`[CallControl] Dial+bridge agent answered! Bridging with caller ${pendingBridge.callerCallControlId}`);
+        pendingBridges.delete(call_control_id);
+        // Clean up the caller's pending bridge too
+        pendingBridges.delete(pendingBridge.callerCallControlId);
+        
+        try {
+          // Stop ringback playback on the caller leg
+          console.log(`[CallControl] Stopping ringback on caller leg`);
+          await this.makeCallControlRequest(pendingBridge.callerCallControlId, "playback_stop", {});
+        } catch (e) {
+          // Ignore playback_stop errors
+        }
+        
+        try {
+          // Bridge the caller with the agent
+          console.log(`[CallControl] Bridging caller ${pendingBridge.callerCallControlId} with agent ${call_control_id}`);
+          await this.makeCallControlRequest(pendingBridge.callerCallControlId, "bridge", {
+            call_control_id: call_control_id,
+            client_state: "",
+          });
+          console.log(`[CallControl] Dial+bridge successful - caller and agent are now connected`);
+          
+          // Update call tracking
+          await pbxService.trackActiveCall(pendingBridge.companyId, pendingBridge.callerCallControlId, 
+            pendingBridge.callerNumber || "", pendingBridge.sipUri || "", "connected", {
+            agentUserId: pendingBridge.agentUserId,
+            agentCallControlId: call_control_id,
+          });
+        } catch (bridgeError) {
+          console.error(`[CallControl] Failed to bridge dial+bridge call:`, bridgeError);
+          // If bridge fails, hangup both legs
+          try {
+            await this.hangupCall(call_control_id, "NORMAL_CLEARING");
+            await this.hangupCall(pendingBridge.callerCallControlId, "NORMAL_CLEARING");
+          } catch (e) { /* ignore */ }
+        }
+        return;
+      }
 
       console.log(`[CallControl] Agent answered! Bridging with caller ${pendingBridge.callerCallControlId}`);
       pendingBridges.delete(call_control_id);
@@ -1207,6 +1251,18 @@ export class CallControlWebhookService {
     if (pendingBridge) {
       console.log(`[CallControl] Agent leg ${call_control_id} ended without answering, caller: ${pendingBridge.callerCallControlId}`);
       pendingBridges.delete(call_control_id);
+      
+      // Handle dial+bridge pattern - caller is already answered, stop ringback and route to voicemail
+      if (pendingBridge.isDialPlusBridge && pendingBridge.callerCallControlId) {
+        console.log(`[CallControl] Dial+bridge agent rejected/timeout, routing caller ${pendingBridge.callerCallControlId} to voicemail`);
+        // Clean up the caller's pending bridge too
+        pendingBridges.delete(pendingBridge.callerCallControlId);
+        // Stop ringback and route to voicemail (caller is already answered)
+        this.stopPlaybackAndRouteToVoicemail(pendingBridge.callerCallControlId, pendingBridge.companyId).catch((err) => {
+          console.error(`[CallControl] Error routing to voicemail after dial+bridge hangup:`, err);
+        });
+        return; // Don't continue to other handlers
+      }
       
       // Remove this agent leg from the caller's ringAllLegs set
       const callerLegs = ringAllLegs.get(pendingBridge.callerCallControlId);
@@ -2749,15 +2805,17 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Transfer call to assigned user using blind transfer (no answer required)
+   * Ring-through to assigned user using dial+bridge pattern with voicemail fallback.
    * 
-   * Per Telnyx documentation: The transfer command performs a BLIND TRANSFER
-   * without requiring the answer command first. This means:
-   * - Caller continues to hear ringback (billing hasn't started)
-   * - Agent's phone rings with correct caller ID
-   * - If agent answers: call is bridged, billing starts
-   * - If agent doesn't answer (timeout): original call remains active,
-   *   we then answer and route to voicemail
+   * Per Telnyx documentation: Using dial+bridge (instead of blind transfer) keeps the
+   * caller leg active even if the agent rejects or times out, allowing voicemail fallback.
+   * 
+   * Flow:
+   * 1. Answer the inbound call (caller leg stays active)
+   * 2. Play ringback audio to caller while dialing agent
+   * 3. Dial agent's SIP URI as a separate call
+   * 4. If agent answers: bridge the two legs
+   * 5. If agent rejects/times out: route caller to voicemail
    */
   private async transferToAssignedUser(
     callControlId: string,
@@ -2765,7 +2823,7 @@ export class CallControlWebhookService {
     callerNumber?: string
   ): Promise<void> {
     const companyId = phoneNumber.companyId;
-    console.log(`[CallControl] Blind transfer to assigned user (no answer first), caller: ${callerNumber}`);
+    console.log(`[CallControl] Ring-through with dial+bridge pattern, caller: ${callerNumber}`);
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
@@ -2785,55 +2843,184 @@ export class CallControlWebhookService {
     }
 
     const sipUri = `sip:${extension.sipUsername}@sip.telnyx.com`;
-    const ringTimeout = extension.ringTimeout || 25;
+    const ringTimeout = extension.ringTimeout || 20;
     
-    console.log(`[CallControl] Blind transferring to agent SIP: ${sipUri} with timeout: ${ringTimeout}s`);
-    console.log(`[CallControl] Caller ${callerNumber} will continue to hear ringback (NOT answered yet)`);
-
-    // Store pending transfer info for handling timeout/voicemail
-    const clientState = Buffer.from(JSON.stringify({
-      companyId,
-      callerCallControlId: callControlId,
-      agentUserId: phoneNumber.ownerUserId,
-      callerNumber: callerNumber || "",
-      blindTransferToVoicemail: true,
-    })).toString("base64");
+    console.log(`[CallControl] Dial+bridge to agent SIP: ${sipUri} with timeout: ${ringTimeout}s`);
 
     try {
-      // BLIND TRANSFER - does NOT answer the call first
-      // Per Telnyx docs: "No answer required: You can transfer an incoming call 
-      // immediately without calling the answer command first"
-      // The caller ID passed to "from" will show on the agent's phone
-      await this.makeCallControlRequest(callControlId, "transfer", {
-        to: sipUri,
-        from: callerNumber || phoneNumber.phoneNumber, // Show caller's number to agent
-        timeout_secs: ringTimeout,
-        client_state: clientState,
+      // STEP 1: Answer the caller leg (keeps it active for voicemail fallback)
+      console.log(`[CallControl] Answering caller leg to keep it active for voicemail fallback`);
+      await this.answerCall(callControlId);
+      
+      // STEP 2: Play ringback audio to caller while we dial the agent
+      // Use playback_start with a ringback tone media
+      console.log(`[CallControl] Playing ringback to caller while dialing agent`);
+      await this.makeCallControlRequest(callControlId, "playback_start", {
+        audio_url: "https://media.twiliocdn.com/sdk/js/client/sounds/releases/1.0.0/outgoing.mp3",
+        loop: "infinity",
       });
       
-      console.log(`[CallControl] Blind transfer initiated - agent phone should ring with caller ID: ${callerNumber}`);
+      // Get managed account for dialing
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
       
-      // Store pending transfer for voicemail fallback on timeout
-      pendingBridges.set(callControlId, {
+      // STEP 3: Dial the agent as a separate call
+      // Store state so when agent answers/hangs up, we know which caller to bridge/route to voicemail
+      const clientState = Buffer.from(JSON.stringify({
+        companyId,
+        callerCallControlId: callControlId,
+        agentUserId: phoneNumber.ownerUserId,
+        callerNumber: callerNumber || "",
+        dialPlusBridge: true,
+        sipUsername: extension.sipUsername,
+      })).toString("base64");
+      
+      console.log(`[CallControl] Dialing agent SIP: ${sipUri}`);
+      
+      // Use the dial command to create a new outbound call to the agent
+      const response = await this.makeCallControlRequestWithManaged(managedAccountId, "calls", {
+        connection_id: await this.getConnectionId(companyId),
+        to: sipUri,
+        from: callerNumber || phoneNumber.phoneNumber,
+        from_display_name: callerNumber || "Incoming Call",
+        timeout_secs: ringTimeout,
+        client_state: clientState,
+        webhook_url: `${process.env.REPL_URL || process.env.PUBLIC_URL}/api/telnyx/call-control-webhook`,
+      }, "POST", true);
+      
+      const agentCallControlId = response?.data?.call_control_id;
+      if (!agentCallControlId) {
+        console.error(`[CallControl] Failed to get agent call_control_id from dial response`);
+        await this.stopPlaybackAndRouteToVoicemail(callControlId, companyId);
+        return;
+      }
+      
+      console.log(`[CallControl] Agent dial initiated, agent call_control_id: ${agentCallControlId}`);
+      
+      // Store pending bridge info for when agent answers or hangs up
+      pendingBridges.set(agentCallControlId, {
         callerCallControlId: callControlId,
         companyId,
         agentUserId: phoneNumber.ownerUserId,
         callerNumber: callerNumber || "",
-        isBlindTransfer: true,
+        isDialPlusBridge: true,
         sipUri,
+        sipUsername: extension.sipUsername,
+      });
+      
+      // Also store mapping from caller to agent for cleanup
+      pendingBridges.set(callControlId, {
+        callerCallControlId: callControlId,
+        agentCallControlId,
+        companyId,
+        agentUserId: phoneNumber.ownerUserId,
+        callerNumber: callerNumber || "",
+        isDialPlusBridge: true,
+        sipUri,
+        sipUsername: extension.sipUsername,
       });
       
       await pbxService.trackActiveCall(companyId, callControlId, callerNumber || "", sipUri, "ringing", {
         agentUserId: phoneNumber.ownerUserId,
         agentSipUri: sipUri,
+        agentCallControlId,
       });
       
     } catch (error) {
-      console.error(`[CallControl] Blind transfer failed:`, error);
-      // If transfer fails, answer and route to voicemail
-      await this.answerCall(callControlId);
-      await this.routeToVoicemail(callControlId, companyId);
+      console.error(`[CallControl] Dial+bridge failed:`, error);
+      // If dial fails, route to voicemail (caller is already answered)
+      await this.stopPlaybackAndRouteToVoicemail(callControlId, companyId);
     }
+  }
+  
+  /**
+   * Helper to stop ringback playback and route to voicemail
+   */
+  private async stopPlaybackAndRouteToVoicemail(callControlId: string, companyId: string): Promise<void> {
+    try {
+      // Stop ringback playback
+      await this.makeCallControlRequest(callControlId, "playback_stop", {});
+    } catch (e) {
+      // Ignore playback_stop errors
+    }
+    await this.routeToVoicemail(callControlId, companyId, {});
+  }
+  
+  /**
+   * Make a Call Control request using managed account (for creating new calls)
+   */
+  private async makeCallControlRequestWithManaged(
+    managedAccountId: string | null | undefined,
+    endpoint: string,
+    body: any,
+    method: string = "POST",
+    isAbsoluteEndpoint: boolean = false
+  ): Promise<any> {
+    const apiKey = await getTelnyxApiKey();
+    
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    };
+    
+    if (managedAccountId) {
+      headers["X-Managed-Account-Id"] = managedAccountId;
+    }
+    
+    const url = isAbsoluteEndpoint
+      ? `https://api.telnyx.com/v2/${endpoint}`
+      : `https://api.telnyx.com/v2/calls/${endpoint}`;
+    
+    console.log(`[CallControl] API call to ${url} with managed account: ${managedAccountId}`);
+    
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: JSON.stringify(body),
+    });
+    
+    const responseText = await response.text();
+    
+    if (!response.ok) {
+      console.error(`[CallControl] API error for ${endpoint}: ${response.status} ${responseText}`);
+      throw new Error(`Call Control API error: ${response.status}`);
+    }
+    
+    return JSON.parse(responseText);
+  }
+  
+  /**
+   * Get the Telnyx Connection ID for a company (for dialing new calls)
+   */
+  private async getConnectionId(companyId: string): Promise<string> {
+    // Get the connection ID from the company's Telnyx phone numbers
+    const [phoneNumber] = await db
+      .select({ connectionId: telnyxPhoneNumbers.connectionId })
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId))
+      .limit(1);
+    
+    if (phoneNumber?.connectionId) {
+      return phoneNumber.connectionId;
+    }
+    
+    // Fallback: get from managed account
+    const managedAccountId = await getCompanyManagedAccountId(companyId);
+    if (managedAccountId) {
+      // Get connection from API
+      const apiKey = await getTelnyxApiKey();
+      const response = await fetch(`https://api.telnyx.com/v2/credential_connections`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "X-Managed-Account-Id": managedAccountId,
+        },
+      });
+      const data = await response.json();
+      if (data?.data?.[0]?.id) {
+        return data.data[0].id;
+      }
+    }
+    
+    throw new Error("No connection ID found for company");
   }
 
 
