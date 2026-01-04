@@ -99,7 +99,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -41103,8 +41103,35 @@ CRITICAL REMINDERS:
         .where(eq(telnyxConversations.companyId, companyId))
         .orderBy(desc(telnyxConversations.lastMessageAt));
       
+      // Also include iMessage conversations
+      const imessageConversations = await db
+        .select()
+        .from(imessageConversationsTable)
+        .where(eq(imessageConversationsTable.companyId, companyId))
+        .orderBy(desc(imessageConversationsTable.lastMessageAt));
+      
+      // Map iMessage conversations to unified format
+      const mappedImessage = imessageConversations.map((conv: any) => ({
+        id: conv.id,
+        companyId: conv.companyId,
+        phoneNumber: conv.participants?.[0] || conv.chatGuid?.split(';-;')[1] || 'Unknown',
+        displayName: conv.displayName || conv.participants?.[0] || 'Unknown',
+        companyPhoneNumber: 'iMessage',
+        lastMessage: conv.lastMessage || '',
+        lastMessageAt: conv.lastMessageAt,
+        unreadCount: conv.unreadCount || 0,
+        channel: 'imessage',
+        status: conv.status || 'active',
+        assignedUserId: conv.assignedUserId,
+        metadata: { chatGuid: conv.chatGuid, isGroup: conv.isGroup },
+      }));
+      
+      // Combine and sort all conversations by last message time
+      const allConversations = [...rawConversations, ...mappedImessage]
+        .sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime());
+      
       // Enrich waiting live chats with visitor activity status
-      const conversations = rawConversations.map(conv => {
+      const conversations = allConversations.map(conv => {
         if (conv.channel !== "live_chat" || conv.status !== "waiting") {
           return conv;
         }
