@@ -284,6 +284,7 @@ export class PbxService {
         ringTimeout: pbxExtensions.ringTimeout,
         isActive: pbxExtensions.isActive,
         sipUsername: pbxExtensions.sipUsername,
+        telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
       })
       .from(pbxExtensions)
       .where(and(
