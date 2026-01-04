@@ -261,6 +261,10 @@ export default function InboxPage() {
   const [waWindowTimeLeft, setWaWindowTimeLeft] = useState<string | null>(null);
   const [waWindowExpired, setWaWindowExpired] = useState(false);
   
+  // Typing indicator state for incoming typing signals
+  const [contactTyping, setContactTyping] = useState<{ conversationId: string; isTyping: boolean } | null>(null);
+  const contactTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pulseAiMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -420,7 +424,21 @@ export default function InboxPage() {
 
   useWebSocket((message) => {
     const msg = message as any;
-    if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update' || msg.type === 'imessage_message') {
+    if (msg.type === 'imessage_typing') {
+      // Handle typing indicator from contact
+      const conversationId = msg.conversationId;
+      const isTyping = msg.type === 'imessage_typing' && msg.isTyping !== false;
+      if (conversationId) {
+        setContactTyping({ conversationId, isTyping });
+        // Auto-clear typing after 5 seconds
+        if (contactTypingTimeoutRef.current) {
+          clearTimeout(contactTypingTimeoutRef.current);
+        }
+        contactTypingTimeoutRef.current = setTimeout(() => {
+          setContactTyping(null);
+        }, 5000);
+      }
+    } else if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update' || msg.type === 'imessage_message') {
       // Force immediate refetch for real-time updates
       queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });
       // Always refresh messages for the selected conversation on any update
@@ -459,6 +477,13 @@ export default function InboxPage() {
     
     const markAsRead = async () => {
       try {
+        // For iMessage, also send read receipt to BlueBubbles
+        if (selectedConversation.channel === "imessage") {
+          await fetch(`/api/imessage/conversations/${selectedConversation.id}/read`, {
+            method: "POST",
+            credentials: "include",
+          }).catch(err => console.error("Failed to send iMessage read receipt:", err));
+        }
         await apiRequest("PATCH", `/api/inbox/conversations/${selectedConversation.id}`, {
           unreadCount: 0
         });
@@ -2189,6 +2214,17 @@ export default function InboxPage() {
                     </div>
                   )}
                   
+                  {/* Typing indicator when contact is typing */}
+                  {contactTyping && contactTyping.conversationId === selectedConversationId && contactTyping.isTyping && (
+                    <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                      <span>Escribiendo...</span>
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               )}
