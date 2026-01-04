@@ -2196,10 +2196,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Send typing indicator via BlueBubbles
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
-      if (imessageSettings?.serverUrl && companySettings) {
-        // Note: sendTypingIndicator not implemented in our client
-        // const { blueBubblesManager } = await import("./bluebubbles");
-        // await blueBubblesManager.sendTypingIndicator(user.companyId, conversation.chatGuid, isTyping);
+      if (imessageSettings?.serverUrl && companySettings && conversation.chatGuid) {
+        // Send typing indicator to BlueBubbles server
+        const { blueBubblesManager } = await import("./bluebubbles");
+        await blueBubblesManager.sendTypingIndicator(user.companyId, conversation.chatGuid, isTyping);
       }
       // Broadcast typing update
       const { broadcastImessageUpdate } = await import("./websocket");

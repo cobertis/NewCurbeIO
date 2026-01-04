@@ -342,6 +342,18 @@ export class BlueBubblesClient {
     });
   }
 
+  async sendTypingIndicator(chatGuid: string, isTyping: boolean): Promise<void> {
+    try {
+      await this.request(`/api/v1/chat/${encodeURIComponent(chatGuid)}/typing`, {
+        method: 'POST',
+        body: JSON.stringify({ display: isTyping }),
+      });
+      console.log(`[BlueBubbles] Typing indicator sent: ${isTyping ? 'start' : 'stop'} for chat ${chatGuid}`);
+    } catch (error) {
+      console.error('[BlueBubbles] Failed to send typing indicator:', error);
+    }
+  }
+
   async getServerInfo(): Promise<{
     status: number;
     message: string;
@@ -502,6 +514,11 @@ class BlueBubblesClientManager {
   async markAsRead(companyId: string, chatGuid: string): Promise<void> {
     const client = await this.getClient(companyId);
     return client.markAsRead(chatGuid);
+  }
+
+  async sendTypingIndicator(companyId: string, chatGuid: string, isTyping: boolean): Promise<void> {
+    const client = await this.getClient(companyId);
+    return client.sendTypingIndicator(chatGuid, isTyping);
   }
 
   async getServerInfo(companyId: string): Promise<any> {
