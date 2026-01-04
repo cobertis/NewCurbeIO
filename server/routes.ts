@@ -41702,7 +41702,7 @@ CRITICAL REMINDERS:
                 chatGuid: imessageConv.chatGuid,
                 messageGuid: result.guid || `outbound-${Date.now()}`,
                 text: text || "",
-                isFromMe: true,
+                fromMe: true,
                 dateSent: new Date(),
                 status: result.status === "sent" ? "delivered" : "sent",
               })
