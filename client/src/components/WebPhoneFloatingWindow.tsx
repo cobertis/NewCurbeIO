@@ -240,7 +240,6 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Marked as read" });
       refetchVoicemails();
     },
     onError: () => {
