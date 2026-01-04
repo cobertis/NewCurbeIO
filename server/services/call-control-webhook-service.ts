@@ -757,7 +757,7 @@ export class CallControlWebhookService {
       if (agentUser && (agentUser.agentAvailabilityStatus === "busy" || agentUser.agentAvailabilityStatus === "offline")) {
         console.log(`[CallControl] Agent ${phoneNumber.ownerUserId} is ${agentUser.agentAvailabilityStatus}, rejecting call to voicemail immediately`);
         await this.answerCall(call_control_id);
-        await this.routeToVoicemail(call_control_id, phoneNumber.companyId);
+        await this.routeToVoicemail(call_control_id, phoneNumber.companyId, { from, to });
         return;
       }
     }
@@ -839,7 +839,7 @@ export class CallControlWebhookService {
     // No IVR and no assigned user - answer and route to voicemail
     console.log(`[CallControl] No IVR and no assigned user, routing to voicemail`);
     await this.answerCall(call_control_id);
-    await this.routeToVoicemail(call_control_id, phoneNumber.companyId);
+    await this.routeToVoicemail(call_control_id, phoneNumber.companyId, { from, to });
   }
 
   private async handleCallAnswered(payload: CallControlEvent["data"]["payload"]): Promise<void> {
@@ -1313,6 +1313,23 @@ export class CallControlWebhookService {
           return;
         }
         
+        // Handle voicemail greeting ended - start recording
+        if (state.startRecordAfterPlayback) {
+          console.log(`[CallControl] Voicemail greeting ended, starting recording`);
+          const recordClientState = Buffer.from(
+            JSON.stringify({ companyId: state.companyId, action: "voicemail" })
+          ).toString("base64");
+          await this.makeCallControlRequest(call_control_id, "record_start", {
+            format: "mp3",
+            channels: "single",
+            client_state: recordClientState,
+            max_length: 180,
+            timeout_secs: 5,
+            play_beep: true,
+          });
+          return;
+        }
+        
         if (state.pendingGather) {
           console.log(`[CallControl] Starting DTMF gather after playback for company: ${state.companyId}`);
           // Include ivrId in gather state for multi-IVR support
@@ -1339,6 +1356,24 @@ export class CallControlWebhookService {
     if (client_state) {
       try {
         const state = JSON.parse(Buffer.from(client_state, "base64").toString());
+        
+        // Handle voicemail greeting ended (TTS) - start recording
+        if (state.startRecordAfterPlayback) {
+          console.log(`[CallControl] Voicemail TTS greeting ended, starting recording`);
+          const recordClientState = Buffer.from(
+            JSON.stringify({ companyId: state.companyId, action: "voicemail" })
+          ).toString("base64");
+          await this.makeCallControlRequest(call_control_id, "record_start", {
+            format: "mp3",
+            channels: "single",
+            client_state: recordClientState,
+            max_length: 180,
+            timeout_secs: 5,
+            play_beep: true,
+          });
+          return;
+        }
+        
         if (state.pendingGather) {
           console.log(`[CallControl] Starting DTMF gather after speak for company: ${state.companyId}`);
           // Include ivrId in gather state for multi-IVR support
@@ -2356,25 +2391,34 @@ export class CallControlWebhookService {
     }
   }
 
-  private async routeToVoicemail(callControlId: string, companyId: string): Promise<void> {
+  private async routeToVoicemail(callControlId: string, companyId: string, callerInfo?: { from?: string; to?: string }): Promise<void> {
     console.log(`[CallControl] Routing to voicemail for company: ${companyId}`);
 
     // Get call info to capture caller details for the voicemail record
     const activeCall = await pbxService.getActiveCall(callControlId);
     const context = callContextMap.get(callControlId);
     
-    const fromNumber = activeCall?.fromNumber || context?.callerNumber || "Unknown";
-    const toNumber = activeCall?.toNumber || "Unknown";
+    // Use passed callerInfo first, then activeCall, then context
+    const fromNumber = callerInfo?.from || activeCall?.fromNumber || context?.callerNumber || "Unknown";
+    const toNumber = callerInfo?.to || activeCall?.toNumber || "Unknown";
+    
+    console.log(`[CallControl] Voicemail caller info: from=${fromNumber}, to=${toNumber}`);
     
     // Get the phone number record to find the assigned user
     let userId: string | null = null;
     if (toNumber && toNumber !== "Unknown") {
+      // Try with and without + prefix
       const [phoneNumberRecord] = await db
         .select({ ownerUserId: telnyxPhoneNumbers.ownerUserId })
         .from(telnyxPhoneNumbers)
-        .where(eq(telnyxPhoneNumbers.phoneNumber, toNumber))
+        .where(or(
+          eq(telnyxPhoneNumbers.phoneNumber, toNumber),
+          eq(telnyxPhoneNumbers.phoneNumber, toNumber.replace(/^\+/, '')),
+          eq(telnyxPhoneNumbers.phoneNumber, `+${toNumber.replace(/^\+/, '')}`)
+        ))
         .limit(1);
       userId = phoneNumberRecord?.ownerUserId || null;
+      console.log(`[CallControl] Found phone number owner: ${userId}`);
     }
     
     // Store pending voicemail metadata for when recording saves
@@ -2422,29 +2466,27 @@ export class CallControlWebhookService {
     const spanishGreeting = voicemailGreetings.find(g => g.language === "es");
     const greetingToUse = englishGreeting || spanishGreeting;
 
-    if (greetingToUse?.audioUrl) {
-      console.log(`[CallControl] Playing global voicemail greeting: ${greetingToUse.audioUrl}`);
-      await this.playAudio(callControlId, greetingToUse.audioUrl);
-    } else {
-      console.log(`[CallControl] No global voicemail greeting found, using TTS`);
-      await this.speakText(
-        callControlId,
-        "Please leave your message after the tone. Press pound when finished."
-      );
-    }
-
+    // Create client state that tells playback.ended to start recording
     const clientState = Buffer.from(
-      JSON.stringify({ companyId, action: "voicemail" })
+      JSON.stringify({ 
+        companyId, 
+        action: "voicemail_greeting",
+        startRecordAfterPlayback: true 
+      })
     ).toString("base64");
 
-    await this.makeCallControlRequest(callControlId, "record_start", {
-      format: "mp3",
-      channels: "single",
-      client_state: clientState,
-      max_length: 180,
-      timeout_secs: 5,
-      play_beep: true,
-    });
+    if (greetingToUse?.audioUrl) {
+      console.log(`[CallControl] Playing global voicemail greeting: ${greetingToUse.audioUrl}`);
+      await this.playAudioWithState(callControlId, greetingToUse.audioUrl, clientState);
+    } else {
+      console.log(`[CallControl] No global voicemail greeting found, using TTS`);
+      await this.speakTextWithState(
+        callControlId,
+        "Please leave your message after the tone. Press pound when finished.",
+        clientState
+      );
+    }
+    // Recording will be started after playback.ended or speak.ended webhook
   }
 
   private async routeToDefaultAgent(
