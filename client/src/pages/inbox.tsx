@@ -2129,11 +2129,17 @@ export default function InboxPage() {
                               {new Intl.DateTimeFormat('default', { hour: 'numeric', minute: '2-digit' }).format(new Date(message.createdAt))}
                             </span>
                             {isOutbound && !isNote && (
-                              <span className="text-green-500">
-                                {message.status === "delivered" ? (
-                                  <CheckCheck className="h-3.5 w-3.5" />
+                              <span>
+                                {message.status === "read" ? (
+                                  <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
+                                ) : message.status === "delivered" ? (
+                                  <CheckCheck className="h-3.5 w-3.5 text-green-500" />
                                 ) : message.status === "sent" ? (
-                                  <CheckCheck className="h-3.5 w-3.5 opacity-50" />
+                                  <CheckCheck className="h-3.5 w-3.5 text-gray-400" />
+                                ) : message.status === "sending" ? (
+                                  <Clock className="h-3.5 w-3.5 text-gray-400" />
+                                ) : message.status === "failed" ? (
+                                  <span className="text-red-500 text-[10px]">!</span>
                                 ) : (
                                   <Clock className="h-3.5 w-3.5 text-gray-400" />
                                 )}

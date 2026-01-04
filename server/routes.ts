@@ -1136,9 +1136,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             // Only update dates if webhook provides new data
             if (messageData.dateRead) {
               updateData.dateRead = new Date(messageData.dateRead);
-            }
-            if (messageData.dateDelivered) {
+              updateData.status = 'read';
+            } else if (messageData.dateDelivered) {
               updateData.dateDelivered = new Date(messageData.dateDelivered);
+              updateData.status = 'delivered';
             }
             // CRITICAL: Always update attachments for ALL message types (replies, regular messages, etc.)
             // Download and save attachments to local storage immediately
