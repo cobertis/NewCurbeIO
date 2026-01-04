@@ -41243,6 +41243,17 @@ CRITICAL REMINDERS:
               else if (m.dateDelivered) messageStatus = 'delivered';
               else if (m.dateSent) messageStatus = 'sent';
             }
+            // Convert attachments to mediaUrls for frontend preview
+            const mediaUrls: string[] = [];
+            if (m.attachments && Array.isArray(m.attachments)) {
+              for (const att of m.attachments as any[]) {
+                if (att.guid) {
+                  mediaUrls.push(`/api/imessage/attachments/${att.guid}`);
+                } else if (att.url) {
+                  mediaUrls.push(att.url);
+                }
+              }
+            }
             return {
               id: m.id,
               direction: m.fromMe ? 'outbound' : 'inbound',
@@ -41251,7 +41262,9 @@ CRITICAL REMINDERS:
               status: messageStatus,
               dateDelivered: m.dateDelivered,
               dateRead: m.dateRead,
-              attachments: m.attachments
+              attachments: m.attachments,
+              mediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
+              contentType: mediaUrls.length > 0 ? 'media' : 'text'
             };
           })
         });
