@@ -2959,10 +2959,10 @@ export class CallControlWebhookService {
 
   /**
    * Reject an incoming call (before answering) with a specific SIP response code.
-   * Use "decline" for SIP 603 (cleaner than "busy" which sends SIP 486).
+   * Use "CALL_REJECTED" for SIP 603 (cleaner than "USER_BUSY" which sends SIP 486).
    * @see https://developers.telnyx.com/api/call-control/reject-call
    */
-  private async rejectCall(callControlId: string, cause: "decline" | "busy" = "decline"): Promise<void> {
+  private async rejectCall(callControlId: string, cause: "CALL_REJECTED" | "USER_BUSY" = "CALL_REJECTED"): Promise<void> {
     await this.makeCallControlRequest(callControlId, "reject", {
       cause: cause,
     });
@@ -2984,8 +2984,8 @@ export class CallControlWebhookService {
     console.log(`[CallControl] Rejecting call for ${sipUsername}: ${agentLeg.callControlId}`);
     
     try {
-      // Use reject API with "decline" cause (SIP 603) instead of "busy" (SIP 486)
-      await this.rejectCall(agentLeg.callControlId, "decline");
+      // Use reject API with "CALL_REJECTED" cause (SIP 603) instead of "USER_BUSY" (SIP 486)
+      await this.rejectCall(agentLeg.callControlId, "CALL_REJECTED");
       
       // Clean up the tracking
       removeAgentLeg(sipUsername);
