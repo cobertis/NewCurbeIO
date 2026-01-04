@@ -1164,6 +1164,36 @@ class TelnyxWebRTCManager {
   public getClient(): TelnyxRTC | null {
     return this.client;
   }
+
+  /**
+   * Ensure WebRTC is connected when agent goes online
+   * If not connected and we have saved credentials, reconnect
+   */
+  public async ensureConnected(): Promise<void> {
+    const store = useTelnyxStore.getState();
+    
+    // Already connected - nothing to do
+    if (store.isConnected && this.client) {
+      console.log("[TelnyxRTC] Already connected, no reconnection needed");
+      return;
+    }
+
+    // Not connected but have credentials - reconnect
+    if (this.savedCredentials) {
+      console.log("[TelnyxRTC] Agent went online - reconnecting WebRTC...");
+      this.reconnectAttempts = 0; // Reset reconnect attempts
+      
+      await this.initialize(
+        this.savedCredentials.sipUser,
+        this.savedCredentials.sipPass,
+        this.savedCredentials.callerId,
+        undefined,
+        this.savedCredentials.sipDomain
+      );
+    } else {
+      console.log("[TelnyxRTC] No saved credentials, cannot reconnect");
+    }
+  }
 }
 
 export const telnyxWebRTC = TelnyxWebRTCManager.getInstance();

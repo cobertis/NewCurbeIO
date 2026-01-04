@@ -528,9 +528,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       const res = await apiRequest("PATCH", "/api/users/availability-status", { status });
       return res;
     },
-    onSuccess: (_data, status) => {
+    onSuccess: async (_data, status) => {
       queryClient.invalidateQueries({ queryKey: ["/api/users/availability-status"] });
       useTelnyxStore.getState().setAgentAvailabilityStatus(status as "online" | "busy" | "offline");
+      
+      // When going online, ensure WebRTC is connected
+      if (status === "online") {
+        const { telnyxWebRTC } = await import("@/services/telnyx-webrtc");
+        await telnyxWebRTC.ensureConnected();
+      }
     },
   });
 
