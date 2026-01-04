@@ -719,6 +719,40 @@ export class CallControlWebhookService {
 
     console.log(`[CallControl] Call initiated: from=${from}, to=${to}, direction=${direction}`);
 
+    // For OUTGOING calls to SIP agents (from transfer), register the agent leg for reject lookup
+    if (direction === "outgoing" && to.includes('@sip.telnyx.com') && to.startsWith('sip:ext')) {
+      console.log(`[CallControl] Outgoing agent leg detected: ${to}`);
+      
+      // Extract SIP username from the destination
+      const sipUsername = to.replace(/^sip:/i, '').split('@')[0];
+      
+      // Find the caller's call_control_id from activeInboundCalls using the from number
+      const callerNumber = from.replace(/\D/g, '').slice(-10);
+      
+      // Search activeInboundCalls for a matching caller number
+      let callerCallControlId: string | undefined;
+      let companyId = '';
+      
+      const entries = Array.from(activeInboundCalls.entries());
+      for (let i = 0; i < entries.length; i++) {
+        const [, callInfo] = entries[i];
+        const storedCaller = callInfo.callerNumber.replace(/\D/g, '').slice(-10);
+        if (storedCaller === callerNumber) {
+          callerCallControlId = callInfo.callControlId;
+          companyId = callInfo.companyId;
+          break;
+        }
+      }
+      
+      if (callerCallControlId) {
+        registerAgentLeg(sipUsername, call_control_id, callerCallControlId, companyId, to);
+        console.log(`[CallControl] Registered agent leg ${call_control_id} for SIP ${sipUsername}, caller: ${callerCallControlId}`);
+      } else {
+        console.log(`[CallControl] Could not find caller call_control_id for ${callerNumber}, skipping agent leg registration`);
+      }
+      return;
+    }
+
     if (direction !== "incoming") {
       console.log(`[CallControl] Ignoring outgoing call initiated event (direction=${direction})`);
       return;
