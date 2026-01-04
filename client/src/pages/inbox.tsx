@@ -1235,8 +1235,11 @@ export default function InboxPage() {
     return phone.slice(-2);
   };
 
-  const sendTypingIndicator = (conversationId: string, isTyping: boolean) => {
-    fetch("/api/inbox/live-chat/typing", {
+  const sendTypingIndicator = (conversationId: string, isTyping: boolean, channel?: string) => {
+    const endpoint = channel === "imessage" 
+      ? "/api/imessage/typing" 
+      : "/api/inbox/live-chat/typing";
+    fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -1248,10 +1251,11 @@ export default function InboxPage() {
     const value = e.target.value;
     setNewMessage(value);
     
-    if (selectedConversation?.channel === "live_chat" && value.length > 0 && !isInternalNote) {
+    const channel = selectedConversation?.channel;
+    if ((channel === "live_chat" || channel === "imessage") && value.length > 0 && !isInternalNote) {
       const now = Date.now();
       if (now - lastTypingSentRef.current > 2000) {
-        sendTypingIndicator(selectedConversation.id, true);
+        sendTypingIndicator(selectedConversation!.id, true, channel);
         lastTypingSentRef.current = now;
       }
       
@@ -1259,7 +1263,7 @@ export default function InboxPage() {
         clearTimeout(typingTimeoutRef.current);
       }
       typingTimeoutRef.current = setTimeout(() => {
-        sendTypingIndicator(selectedConversation.id, false);
+        sendTypingIndicator(selectedConversation!.id, false, channel);
       }, 3000);
     }
   };
@@ -1297,11 +1301,11 @@ export default function InboxPage() {
       }
     }
     
-    if (selectedConversation?.channel === "live_chat") {
+    if (selectedConversation?.channel === "live_chat" || selectedConversation?.channel === "imessage") {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      sendTypingIndicator(selectedConversation.id, false);
+      sendTypingIndicator(selectedConversation.id, false, selectedConversation.channel);
     }
     
     const messageText = newMessage.trim();
