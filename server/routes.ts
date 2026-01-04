@@ -42783,23 +42783,33 @@ CRITICAL REMINDERS:
     }
     
     try {
-      // Verify conversation belongs to company
-      const [conversation] = await db
+      // Try to find conversation in Telnyx (SMS) table first
+      const [telnyxConv] = await db
         .select()
         .from(telnyxConversations)
         .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
       
-      if (!conversation) {
-        return res.status(404).json({ message: "Conversation not found" });
+      if (telnyxConv) {
+        // Delete Telnyx conversation
+        await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+        await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+        console.log(`[Inbox] Deleted Telnyx conversation ${id} for company ${companyId}`);
+      } else {
+        // Try iMessage conversation
+        const [imessageConv] = await db
+          .select()
+          .from(imessageConversationsTable)
+          .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)));
+        
+        if (imessageConv) {
+          // Delete iMessage conversation
+          await db.delete(imessageMessagesTable).where(eq(imessageMessagesTable.conversationId, id));
+          await db.delete(imessageConversationsTable).where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Deleted iMessage conversation ${id} for company ${companyId}`);
+        } else {
+          return res.status(404).json({ message: "Conversation not found" });
+        }
       }
-      
-      // Delete all messages for this conversation first
-      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
-      
-      // Delete the conversation
-      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
-      
-      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
       
       // Broadcast conversation update to refresh UI
       if (req.app.get('wsService')) {
