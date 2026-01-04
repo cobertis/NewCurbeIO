@@ -41201,21 +41201,6 @@ CRITICAL REMINDERS:
           .orderBy(asc(telnyxMessages.createdAt));
         return res.json({ 
           conversation: { ...telnyxConv, channel: 'sms' }, 
-          messages: messages.map(m => {
-            // Determine status based on dates for iMessage
-            let messageStatus = m.status || 'sent';
-            if (m.fromMe) {
-              if (m.dateRead) messageStatus = 'read';
-              else if (m.dateDelivered) messageStatus = 'delivered';
-              else if (m.dateSent) messageStatus = 'sent';
-            }
-            return {
-            ...m,
-            direction: m.direction,
-            text: m.text,
-            createdAt: m.createdAt,
-            status: m.status
-          })
         });
       }
       
