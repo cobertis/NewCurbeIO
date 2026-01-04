@@ -1648,6 +1648,8 @@ export default function Billing() {
                         return <Badge variant="outline" className="text-[10px] px-1.5 py-0">Busy</Badge>;
                       case 'failed':
                         return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Failed</Badge>;
+                      case 'voicemail':
+                        return <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-yellow-500">Voicemail</Badge>;
                       default:
                         return <Badge variant="outline" className="text-[10px] px-1.5 py-0">{status}</Badge>;
                     }
