@@ -353,13 +353,6 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
 
   return (
     <div className="flex flex-col h-full">
-      {selectedPhoneNumber && (
-        <div className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
-          <p className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
-            {formatPhoneInput(selectedPhoneNumber)}
-          </p>
-        </div>
-      )}
       {unreadCount > 0 && (
         <div className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
           <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
