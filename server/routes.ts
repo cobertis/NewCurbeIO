@@ -41703,26 +41703,72 @@ CRITICAL REMINDERS:
         // === IMESSAGE CHANNEL ROUTING ===
         if (isImessageConversation && imessageConv) {
           const { blueBubblesClient } = await import("./bluebubbles");
+          const fsSync = await import("fs");
+          const pathMod = await import("path");
+          const osMod = await import("os");
           
           try {
-            // Send via BlueBubbles
-            const result = await blueBubblesClient.sendMessage({
-              chatGuid: imessageConv.chatGuid,
-              message: text || "",
-            }, companyId);
+            let lastResult: any = null;
+            const sentAttachments: string[] = [];
+            
+            // Handle file attachments for iMessage
+            if (files && files.length > 0) {
+              for (const file of files) {
+                // Save file temporarily to disk (BlueBubbles requires file path)
+                const tempDir = osMod.tmpdir();
+                const tempFileName = `imessage_${Date.now()}_${Math.random().toString(36).substring(7)}_${file.originalname || 'attachment'}`;
+                const tempFilePath = pathMod.join(tempDir, tempFileName);
+                
+                fsSync.writeFileSync(tempFilePath, file.buffer);
+                console.log(`[Inbox iMessage] Saved temp file: ${tempFilePath}`);
+                
+                try {
+                  // Send attachment via BlueBubbles
+                  const attachResult = await blueBubblesClient.sendAttachment(
+                    imessageConv.chatGuid,
+                    tempFilePath,
+                    undefined,
+                    false,
+                    undefined,
+                    companyId
+                  );
+                  lastResult = attachResult;
+                  sentAttachments.push(file.originalname || 'attachment');
+                  console.log(`[Inbox iMessage] Attachment sent: ${file.originalname}`);
+                } finally {
+                  // Clean up temp file
+                  try {
+                    fsSync.unlinkSync(tempFilePath);
+                  } catch (e) {
+                    console.warn(`[Inbox iMessage] Failed to delete temp file: ${tempFilePath}`);
+                  }
+                }
+              }
+            }
+            
+            // Send text message if provided
+            if (text && text.trim()) {
+              const result = await blueBubblesClient.sendMessage({
+                chatGuid: imessageConv.chatGuid,
+                message: text,
+              }, companyId);
+              lastResult = result;
+            }
             
             // Save message to database
+            const messageText = text || (sentAttachments.length > 0 ? `(${sentAttachments.length} attachment${sentAttachments.length > 1 ? 's' : ''})` : '');
             const [message] = await db
               .insert(imessageMessagesTable)
               .values({
                 conversationId: id,
                 companyId,
                 chatGuid: imessageConv.chatGuid,
-                messageGuid: result.guid || `outbound-${Date.now()}`,
-                text: text || "",
+                messageGuid: lastResult?.guid || `outbound-${Date.now()}`,
+                text: messageText,
                 fromMe: true,
                 dateSent: new Date(),
-                status: result.status === "sent" ? "delivered" : "sent",
+                status: lastResult?.status === "sent" ? "delivered" : "sent",
+                attachments: sentAttachments.length > 0 ? sentAttachments : null,
               })
               .returning();
             
@@ -41730,7 +41776,7 @@ CRITICAL REMINDERS:
             await db
               .update(imessageConversationsTable)
               .set({
-                lastMessageText: text?.substring(0, 100) || "(attachment)",
+                lastMessageText: (text?.substring(0, 100) || (sentAttachments.length > 0 ? "(attachment)" : "")),
                 lastMessageAt: new Date(),
                 lastMessageFromMe: true,
                 updatedAt: new Date(),
@@ -41746,6 +41792,7 @@ CRITICAL REMINDERS:
               text: message.text,
               createdAt: message.dateSent,
               status: message.status,
+              attachments: sentAttachments,
             });
           } catch (imessageError: any) {
             console.error("[Inbox iMessage] Error sending message:", imessageError);
