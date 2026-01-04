@@ -41237,12 +41237,17 @@ CRITICAL REMINDERS:
               else if (m.dateDelivered) messageStatus = 'delivered';
               else if (m.dateSent) messageStatus = 'sent';
             }
-            // Convert attachments to mediaUrls for frontend preview
+            // Convert attachments to mediaUrls with metadata for frontend preview
             const mediaUrls: string[] = [];
             if (m.attachments && Array.isArray(m.attachments)) {
               for (const att of m.attachments as any[]) {
                 if (att.guid) {
-                  mediaUrls.push(`/api/imessage/attachments/${att.guid}`);
+                  const mediaData = {
+                    guid: att.guid,
+                    mimeType: att.mimeType || 'application/octet-stream',
+                    url: att.url,
+                  };
+                  mediaUrls.push(`im_media:${JSON.stringify(mediaData)}`);
                 } else if (att.url) {
                   mediaUrls.push(att.url);
                 }
@@ -41816,10 +41821,17 @@ CRITICAL REMINDERS:
             // Broadcast update
             broadcastInboxMessage(companyId, id);
             
-            // Generate mediaUrls from attachments for frontend preview
+            // Generate mediaUrls with metadata for frontend preview (like WhatsApp pattern)
             const mediaUrls = sentAttachments
               .filter((att: any) => att.guid)
-              .map((att: any) => `/api/imessage/attachments/${att.guid}`);
+              .map((att: any) => {
+                const mediaData = {
+                  guid: att.guid,
+                  mimeType: att.mimeType || 'application/octet-stream',
+                  url: att.url,
+                };
+                return `im_media:${JSON.stringify(mediaData)}`;
+              });
             
             return res.status(201).json({
               id: message.id,

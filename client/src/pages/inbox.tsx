@@ -2078,6 +2078,81 @@ export default function InboxPage() {
                                   }
                                 }
                                 
+                                // Check if this is iMessage media metadata (stored as JSON string with im_media: prefix)
+                                if (url.startsWith('im_media:')) {
+                                  try {
+                                    const imMedia = JSON.parse(url.substring(9));
+                                    const { guid, mimeType, url: fileUrl } = imMedia;
+                                    const streamUrl = `/api/imessage/attachments/${guid}`;
+                                    
+                                    // Render based on mime type
+                                    if (mimeType?.startsWith('image/')) {
+                                      return (
+                                        <button 
+                                          key={idx} 
+                                          onClick={() => setPreviewImage(streamUrl)}
+                                          className="block text-left"
+                                          data-testid={`im-image-${idx}`}
+                                        >
+                                          <img 
+                                            src={streamUrl} 
+                                            alt="Image" 
+                                            className="max-w-[300px] max-h-[300px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                          />
+                                        </button>
+                                      );
+                                    }
+                                    
+                                    if (mimeType?.startsWith('video/')) {
+                                      return (
+                                        <video 
+                                          key={idx}
+                                          src={streamUrl}
+                                          controls
+                                          preload="metadata"
+                                          className="max-w-[300px] max-h-[300px] rounded-lg"
+                                          data-testid={`im-video-${idx}`}
+                                        >
+                                          Your browser does not support the video tag.
+                                        </video>
+                                      );
+                                    }
+                                    
+                                    if (mimeType?.startsWith('audio/')) {
+                                      return (
+                                        <audio 
+                                          key={idx}
+                                          src={streamUrl}
+                                          controls
+                                          className="max-w-[300px]"
+                                          data-testid={`im-audio-${idx}`}
+                                        >
+                                          Your browser does not support the audio tag.
+                                        </audio>
+                                      );
+                                    }
+                                    
+                                    // Default: download link for other file types
+                                    return (
+                                      <a 
+                                        key={idx}
+                                        href={streamUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        data-testid={`im-file-${idx}`}
+                                      >
+                                        <FileText className="h-5 w-5 text-gray-500" />
+                                        <span className="text-sm text-gray-700 dark:text-gray-300">Attachment</span>
+                                        <Download className="h-4 w-4 text-gray-400" />
+                                      </a>
+                                    );
+                                  } catch (e) {
+                                    console.error('Failed to parse iMessage media metadata:', e);
+                                    return null;
+                                  }
+                                }
+                                
                                 // Regular URL handling (for non-WhatsApp media)
                                 const isPdf = url.toLowerCase().includes('.pdf') || url.toLowerCase().includes('application/pdf');
                                 
