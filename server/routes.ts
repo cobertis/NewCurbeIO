@@ -1091,42 +1091,36 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const messageGuid = messageData.guid || messageData.message_guid || `msg_${Date.now()}`;
           // First, try to find by BlueBubbles GUID
           let existingMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
-          // If not found AND message is from us, check if we have a pending message from this conversation
-          // This handles the case where we sent a message with clientGuid and webhook arrives with real BlueBubbles GUID
+          // If not found AND message is from us, check if we have a pending message
+          // This handles the case where we sent a message with tempGuid and webhook arrives with real BlueBubbles GUID
           if (!existingMessage && messageData.isFromMe) {
             // Get tempGuid from webhook (BlueBubbles sends this back)
             const tempGuid = messageData.tempGuid || messageData.temp_guid;
             console.log(`[BlueBubbles Webhook] Self-sent message - searching for pending message with tempGuid: ${tempGuid}`);
-            // Find recent "sending" status message in this conversation (within last 30 seconds)
-            const recentMessages = await storage.getImessageMessages(conversation.id, company.id, 50, 0);
-            console.log(`[BlueBubbles Webhook] Found ${recentMessages.length} recent messages in conversation`);
-            // CRITICAL: Match by tempGuid in metadata (works for both text AND images)
-            const pendingMessage = recentMessages.find((msg: any) => {
-              // FIXED: Use 'fromMe' (iMessage table field) not 'isFromMe'
-              if (msg.status !== 'sending' || !msg.fromMe) return false;
-              console.log(`[BlueBubbles Webhook] Checking message ${msg.messageGuid}: clientGuid=${msg.metadata?.clientGuid}, tempGuid=${tempGuid}, text="${(msg.text || '').substring(0, 30)}"`);
-              // Primary match: tempGuid in metadata (works for images and text)
-              if (tempGuid && msg.metadata?.clientGuid === tempGuid) {
-                console.log(`[BlueBubbles Webhook] ✓ Match found by tempGuid!`);
-                return true;
+            
+            // DIRECT DB LOOKUP: First try to find by messageGuid === tempGuid (most reliable)
+            if (tempGuid) {
+              const directMatch = await storage.getImessageMessageByGuid(company.id, tempGuid);
+              if (directMatch) {
+                console.log(`[BlueBubbles Webhook] ✓ DIRECT MATCH found by messageGuid === tempGuid!`);
+                existingMessage = directMatch;
               }
-              // Secondary match: messageGuid equals tempGuid
-              if (tempGuid && msg.messageGuid === tempGuid) {
-                console.log(`[BlueBubbles Webhook] ✓ Match found by messageGuid === tempGuid!`);
-                return true;
+            }
+            
+            // If still not found, try text match for legacy messages
+            if (!existingMessage && messageData.text) {
+              const recentMessages = await storage.getImessageMessages(conversation.id, company.id, 10, 0);
+              const textMatch = recentMessages.find((msg: any) => 
+                msg.fromMe && msg.text === messageData.text && 
+                (msg.status === 'sending' || msg.status === 'sent')
+              );
+              if (textMatch) {
+                console.log(`[BlueBubbles Webhook] ✓ Text match found for: "${messageData.text.substring(0, 30)}"`);
+                existingMessage = textMatch;
               }
-              // Fallback match: text comparison (for legacy messages without tempGuid)
-              // Only use for text messages (images have empty text)
-              if (msg.text && messageData.text && msg.text === messageData.text) {
-                console.log(`[BlueBubbles Webhook] ✓ Match found by text!`);
-                return true;
-              }
-              return false;
-            });
-            if (pendingMessage) {
-              console.log(`[BlueBubbles Webhook] Found pending message with clientGuid: ${tempGuid || 'text-based match'}`);
-              existingMessage = pendingMessage;
-            } else {
+            }
+            
+            if (!existingMessage) {
               console.log(`[BlueBubbles Webhook] ⚠ No pending message found for tempGuid: ${tempGuid}`);
             }
           }
