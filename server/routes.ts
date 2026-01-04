@@ -41201,6 +41201,13 @@ CRITICAL REMINDERS:
           .orderBy(asc(telnyxMessages.createdAt));
         return res.json({ 
           conversation: { ...telnyxConv, channel: 'sms' }, 
+          messages: messages.map(m => ({
+            ...m,
+            direction: m.direction,
+            text: m.text,
+            createdAt: m.createdAt,
+            status: m.status
+          }))
         });
       }
       
@@ -41237,15 +41244,15 @@ CRITICAL REMINDERS:
               else if (m.dateSent) messageStatus = 'sent';
             }
             return {
-            id: m.id,
-            direction: m.fromMe ? 'outbound' : 'inbound',
-            text: m.text || '',
-            createdAt: m.dateSent || m.createdAt,
-            status: messageStatus,
-            dateDelivered: m.dateDelivered,
-            dateRead: m.dateRead,
-            attachments: m.attachments
-          };
+              id: m.id,
+              direction: m.fromMe ? 'outbound' : 'inbound',
+              text: m.text || '',
+              createdAt: m.dateSent || m.createdAt,
+              status: messageStatus,
+              dateDelivered: m.dateDelivered,
+              dateRead: m.dateRead,
+              attachments: m.attachments
+            };
           })
         });
       }
