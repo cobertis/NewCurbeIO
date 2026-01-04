@@ -2842,10 +2842,16 @@ export class CallControlWebhookService {
       return;
     }
     
-    // Get the credential connection ID from the extension - needed for dialing to SIP
-    const credentialConnectionId = extension.telnyxCredentialConnectionId;
-    if (!credentialConnectionId) {
-      console.log(`[CallControl] Extension ${extension.sipUsername} has no credential connection ID`);
+    // Get Call Control App ID from telephony settings - REQUIRED for POST /calls API
+    // The connection_id in POST /calls MUST be a Call Control App ID, NOT a Credential Connection
+    const [settings] = await db
+      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    
+    const callControlAppId = settings?.callControlAppId;
+    if (!callControlAppId) {
+      console.log(`[CallControl] Company ${companyId} has no Call Control App ID configured`);
       await this.answerCall(callControlId);
       await this.routeToVoicemail(callControlId, companyId);
       return;
@@ -2854,7 +2860,7 @@ export class CallControlWebhookService {
     const sipUri = `sip:${extension.sipUsername}@sip.telnyx.com`;
     const ringTimeout = extension.ringTimeout || 20;
     
-    console.log(`[CallControl] Dial+bridge to agent SIP: ${sipUri} with timeout: ${ringTimeout}s, connectionId: ${credentialConnectionId}`);
+    console.log(`[CallControl] Dial+bridge to agent SIP: ${sipUri} with timeout: ${ringTimeout}s, callControlAppId: ${callControlAppId}`);
 
     try {
       // STEP 1: Answer the caller leg (keeps it active for voicemail fallback)
@@ -2886,9 +2892,9 @@ export class CallControlWebhookService {
       console.log(`[CallControl] Dialing agent SIP: ${sipUri}`);
       
       // Use the dial command to create a new outbound call to the agent
-      // Use the extension's credential_connection_id for dialing to SIP endpoints
+      // MUST use Call Control App ID, not Credential Connection ID
       const response = await this.makeCallControlRequestWithManaged(managedAccountId, "calls", {
-        connection_id: credentialConnectionId,
+        connection_id: callControlAppId,
         to: sipUri,
         from: callerNumber || phoneNumber.phoneNumber,
         from_display_name: callerNumber || "Incoming Call",
