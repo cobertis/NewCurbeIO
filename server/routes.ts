@@ -41230,7 +41230,7 @@ CRITICAL REMINDERS:
           }, 
           messages: messages.map(m => ({
             id: m.id,
-            direction: m.isFromMe ? 'outbound' : 'inbound',
+            direction: m.fromMe ? 'outbound' : 'inbound',
             text: m.text || '',
             createdAt: m.dateSent || m.createdAt,
             status: m.status || 'delivered',
