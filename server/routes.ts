@@ -1606,6 +1606,49 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // If file found locally, serve it directly
       if (filePath) {
         console.log(`[iMessage Attachment] Serving from local storage: ${filePath}`);
+        
+        // Check if it's a webm file that needs conversion for browser playback
+        const ext = pathMod.extname(filePath).toLowerCase();
+        if (ext === '.webm') {
+          console.log(`[iMessage Attachment] Converting webm to mp3 for browser playback: ${filePath}`);
+          const mp3Path = filePath.replace('.webm', '.mp3');
+          
+          // Check if mp3 version already exists
+          if (!fs.existsSync(mp3Path)) {
+            try {
+              const { spawn } = await import('child_process');
+              await new Promise<void>((resolve, reject) => {
+                const ffmpeg = spawn('ffmpeg', [
+                  '-i', filePath,
+                  '-y',
+                  '-acodec', 'libmp3lame',
+                  '-ab', '128k',
+                  '-ar', '44100',
+                  mp3Path
+                ]);
+                ffmpeg.on('close', (code) => {
+                  if (code === 0) {
+                    console.log(`[iMessage Attachment] Converted webm to mp3: ${mp3Path}`);
+                    resolve();
+                  } else {
+                    reject(new Error(`FFmpeg exited with code ${code}`));
+                  }
+                });
+                ffmpeg.on('error', reject);
+              });
+            } catch (convErr: any) {
+              console.error(`[iMessage Attachment] Failed to convert webm to mp3:`, convErr.message);
+              // Fall through to serve original webm
+            }
+          }
+          
+          // Serve mp3 version if it exists
+          if (fs.existsSync(mp3Path)) {
+            filePath = mp3Path;
+            mimeType = 'audio/mpeg';
+          }
+        }
+        
         // Set headers for local file
         res.setHeader('Content-Type', mimeType);
         res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
