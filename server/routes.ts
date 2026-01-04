@@ -1356,8 +1356,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 lastMessageText: previewText,
                 unreadCount: await storage.recalculateImessageUnreadCount(conversation.id),
               });
-              // Broadcast to WebSocket clients
+              // Broadcast to WebSocket clients (iMessage-specific and unified inbox)
               broadcastImessageMessage(company.id, conversation.id, newMessage);
+              broadcastInboxMessage(company.id, conversation.id);
               // Send browser notification if enabled
               // CRITICAL: Use isFromMe (not fromMe) - mapper transforms the field name
               if (!newMessage.isFromMe) {
@@ -41114,15 +41115,15 @@ CRITICAL REMINDERS:
       const mappedImessage = imessageConversations.map((conv: any) => ({
         id: conv.id,
         companyId: conv.companyId,
-        phoneNumber: conv.participants?.[0] || conv.chatGuid?.split(';-;')[1] || 'Unknown',
-        displayName: conv.displayName || conv.participants?.[0] || 'Unknown',
+        phoneNumber: conv.contactPhone || conv.participants?.[0] || conv.chatGuid?.split(';-;')[1] || 'Unknown',
+        displayName: conv.contactName || conv.displayName || conv.participants?.[0] || 'Unknown',
         companyPhoneNumber: 'iMessage',
-        lastMessage: conv.lastMessage || '',
+        lastMessage: conv.lastMessageText || '',
         lastMessageAt: conv.lastMessageAt,
         unreadCount: conv.unreadCount || 0,
         channel: 'imessage',
         status: conv.status || 'active',
-        assignedUserId: conv.assignedUserId,
+        assignedUserId: conv.assignedTo,
         metadata: { chatGuid: conv.chatGuid, isGroup: conv.isGroup },
       }));
       
@@ -42352,7 +42353,7 @@ CRITICAL REMINDERS:
       }
     });
   });
-  // PATCH /api/inbox/conversations/:id - Update conversation details
+  // PATCH /api/inbox/conversations/:id - Update conversation details (SMS or iMessage)
   app.patch("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -42362,31 +42363,58 @@ CRITICAL REMINDERS:
     const companyId = (req.user as any).companyId;
     
     try {
-      // Get conversation before update to check if it's a live chat
-      const [conversation] = await db.select()
+      // First try Telnyx conversation
+      const [telnyxConv] = await db.select()
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.id, id),
           eq(telnyxConversations.companyId, companyId)
         ));
       
-      const updateData: any = { updatedAt: new Date() };
-      if (displayName !== undefined) updateData.displayName = displayName || null;
-      if (email !== undefined) updateData.email = email || null;
-      if (jobTitle !== undefined) updateData.jobTitle = jobTitle || null;
-      if (organization !== undefined) updateData.organization = organization || null;
-      if (status !== undefined) updateData.status = status;
-      // unreadCount removed - not applicable for call logs
+      if (telnyxConv) {
+        const updateData: any = { updatedAt: new Date() };
+        if (displayName !== undefined) updateData.displayName = displayName || null;
+        if (email !== undefined) updateData.email = email || null;
+        if (jobTitle !== undefined) updateData.jobTitle = jobTitle || null;
+        if (organization !== undefined) updateData.organization = organization || null;
+        if (status !== undefined) updateData.status = status;
+        if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
+        
+        await db.update(telnyxConversations)
+          .set(updateData)
+          .where(and(
+            eq(telnyxConversations.id, id),
+            eq(telnyxConversations.companyId, companyId)
+          ));
+        
+        return res.json({ success: true });
+      }
       
-      await db.update(telnyxConversations)
-        .set(updateData)
+      // Try iMessage conversation
+      const [imessageConv] = await db.select()
+        .from(imessageConversationsTable)
         .where(and(
-          eq(telnyxConversations.id, id),
-          eq(telnyxConversations.companyId, companyId)
+          eq(imessageConversationsTable.id, id),
+          eq(imessageConversationsTable.companyId, companyId)
         ));
       
+      if (imessageConv) {
+        const updateData: any = { updatedAt: new Date() };
+        if (displayName !== undefined) updateData.displayName = displayName || null;
+        if (status !== undefined) updateData.status = status;
+        if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
+        
+        await db.update(imessageConversationsTable)
+          .set(updateData)
+          .where(and(
+            eq(imessageConversationsTable.id, id),
+            eq(imessageConversationsTable.companyId, companyId)
+          ));
+        
+        return res.json({ success: true });
+      }
       
-      res.json({ success: true });
+      return res.status(404).json({ message: "Conversation not found" });
     } catch (error: any) {
       console.error("[Inbox] Error updating conversation:", error);
       res.status(500).json({ message: "Failed to update conversation" });
