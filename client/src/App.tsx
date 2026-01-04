@@ -914,48 +914,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <TooltipContent side="right" className="font-medium">Inbox</TooltipContent>
           </Tooltip>
 
-
-          {hasImessageAccess && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setLocation("/imessage")}
-                  data-testid="sidebar-button-imessage"
-                  className={circularButtonClass}
-                >
-                  <MessageSquare className="h-[18px] w-[18px] text-blue-500" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="font-medium">iMessage</TooltipContent>
-            </Tooltip>
-          )}
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setLocation("/sms-mms")}
-                data-testid="sidebar-button-sms"
-                className={circularButtonClass}
-              >
-                <Phone className="h-[18px] w-[18px] text-purple-600" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">SMS</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setLocation("/email-marketing")}
-                data-testid="sidebar-button-email"
-                className={circularButtonClass}
-              >
-                <Mail className="h-[18px] w-[18px] text-orange-500" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">Email</TooltipContent>
-          </Tooltip>
-
           {/* Separator */}
           <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
 
