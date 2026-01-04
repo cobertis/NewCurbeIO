@@ -39757,6 +39757,7 @@ CRITICAL REMINDERS:
       
       console.log(`[PBX Reject] Rejecting incoming call for SIP username: ${sipUsername}`);
       
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
       const rejected = await callControlWebhookService.rejectIncomingCallBySipUsername(sipUsername);
       
       if (rejected) {
