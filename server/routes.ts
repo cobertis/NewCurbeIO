@@ -124,6 +124,7 @@ setInterval(() => {
   }
 }, 60000); // Clean up every minute
 import ffmpeg from "fluent-ffmpeg";
+import { convertWebMToCAF, extractAudioDuration, generateAudioWaveform, isAudioFile, type AudioMetadata } from "./audio-converter";
 import "./types";
 import { type AuditAction } from "./types";
 import { cloudflareService } from "./services/cloudflare";
@@ -41736,14 +41737,40 @@ CRITICAL REMINDERS:
                 fsSync.writeFileSync(tempFilePath, file.buffer);
                 console.log(`[Inbox iMessage] Saved temp file: ${tempFilePath}`);
                 
+                // AUDIO CONVERSION: Convert webm/other audio to CAF for iMessage voice memos
+                let finalFilePath = tempFilePath;
+                let isAudioMessage = false;
+                let audioMetadata: any = undefined;
+                
+                // Detect audio by MIME type or extension
+                const isAudioByMime = file.mimetype.startsWith('audio/');
+                const audioExtensions = ['.webm', '.mp3', '.wav', '.ogg', '.m4a', '.aac', '.opus'];
+                const fileExt = pathMod.extname(file.originalname || '').toLowerCase();
+                const isAudioByExt = audioExtensions.includes(fileExt);
+                
+                if (isAudioByMime || isAudioByExt) {
+                  console.log(`[Inbox iMessage] Detected audio file: ${file.originalname} (mime: ${file.mimetype}, ext: ${fileExt})`);
+                  try {
+                    const { convertWebMToCAF } = await import("./audio-converter");
+                    const conversionResult = await convertWebMToCAF(tempFilePath);
+                    finalFilePath = conversionResult.path;
+                    audioMetadata = conversionResult.metadata;
+                    isAudioMessage = true;
+                    console.log(`[Inbox iMessage] Audio converted to: ${finalFilePath}`);
+                  } catch (convErr: any) {
+                    console.error(`[Inbox iMessage] Audio conversion failed, sending original:`, convErr.message);
+                    // Continue with original file if conversion fails
+                  }
+                }
+                
                 try {
                   // Send attachment via BlueBubbles with tempGuid for webhook reconciliation
                   const attachResult = await blueBubblesClient.sendAttachment(
                     imessageConv.chatGuid,
-                    tempFilePath,
+                    finalFilePath,
                     messageTempGuid, // Pass tempGuid for webhook reconciliation
-                    false,
-                    undefined,
+                    isAudioMessage,
+                    audioMetadata,
                     companyId
                   );
                   lastResult = attachResult;
