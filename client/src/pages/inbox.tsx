@@ -60,7 +60,10 @@ import {
   Lightbulb,
   AlertCircle,
   Check,
-  Play
+  Play,
+  Mic,
+  Square,
+  Trash2 as TrashIcon
 } from "lucide-react";
 import { Link } from "wouter";
 import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp, SiImessage, SiGooglemessages } from "react-icons/si";
@@ -234,6 +237,13 @@ export default function InboxPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewVideo, setPreviewVideo] = useState<string | null>(null);
+  
+  // Audio recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [copilotDraft, setCopilotDraft] = useState<string | null>(null);
   const [copilotSource, setCopilotSource] = useState<"knowledge_base" | "general" | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"details" | "pulse-ai">("details");
@@ -1399,6 +1409,83 @@ export default function InboxPage() {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  // Audio recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      // Start timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast({
+        title: "Microphone Error",
+        description: "Could not access microphone. Please check permissions.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      
+      // Wait for the last data to be collected
+      setTimeout(() => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
+        setSelectedFiles(prev => [...prev, audioFile]);
+        
+        // Cleanup
+        setIsRecording(false);
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+        setRecordingTime(0);
+        audioChunksRef.current = [];
+      }, 100);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    setRecordingTime(0);
+    audioChunksRef.current = [];
+  };
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleCreateConversation = () => {
@@ -2680,6 +2767,66 @@ export default function InboxPage() {
                       <TooltipContent>Preview</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  
+                  {/* Audio Recording Button */}
+                  {!isRecording ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7" 
+                            onClick={startRecording}
+                            data-testid="btn-microphone"
+                          >
+                            <Mic className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Record voice message</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <div className="flex items-center gap-1 bg-red-50 dark:bg-red-900/20 rounded-md px-2 py-0.5">
+                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-xs font-medium text-red-600 dark:text-red-400">
+                        {formatRecordingTime(recordingTime)}
+                      </span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/40" 
+                              onClick={cancelRecording}
+                              data-testid="btn-cancel-recording"
+                            >
+                              <TrashIcon className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Cancel recording</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/40" 
+                              onClick={stopRecording}
+                              data-testid="btn-stop-recording"
+                            >
+                              <Square className="h-3 w-3 fill-current" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Stop and attach</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  )}
+                  
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
