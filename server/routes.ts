@@ -41610,10 +41610,7 @@ CRITICAL REMINDERS:
         .returning();
 
       // Broadcast update
-      broadcastInboxMessage(companyId, {
-        conversationId: conversation.id,
-        message,
-      });
+      broadcastInboxMessage(companyId, conversation.id);
 
       res.status(201).json({ conversationId: conversation.id, conversation, message });
     } catch (error: any) {
@@ -41723,16 +41720,7 @@ CRITICAL REMINDERS:
               .where(eq(imessageConversationsTable.id, id));
             
             // Broadcast update
-            broadcastInboxMessage(companyId, {
-              conversationId: id,
-              message: {
-                id: message.id,
-                direction: 'outbound',
-                text: message.text,
-                createdAt: message.dateSent,
-                status: message.status,
-              },
-            });
+            broadcastInboxMessage(companyId, id);
             
             return res.status(201).json({
               id: message.id,

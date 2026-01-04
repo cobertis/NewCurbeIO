@@ -420,7 +420,7 @@ export default function InboxPage() {
 
   useWebSocket((message) => {
     const msg = message as any;
-    if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update') {
+    if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update' || msg.type === 'imessage_message') {
       // Force immediate refetch for real-time updates
       queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });
       // Always refresh messages for the selected conversation on any update
