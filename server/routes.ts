@@ -41195,7 +41195,15 @@ CRITICAL REMINDERS:
           .orderBy(asc(telnyxMessages.createdAt));
         return res.json({ 
           conversation: { ...telnyxConv, channel: 'sms' }, 
-          messages: messages.map(m => ({
+          messages: messages.map(m => {
+            // Determine status based on dates for iMessage
+            let messageStatus = m.status || 'sent';
+            if (m.fromMe) {
+              if (m.dateRead) messageStatus = 'read';
+              else if (m.dateDelivered) messageStatus = 'delivered';
+              else if (m.dateSent) messageStatus = 'sent';
+            }
+            return {
             ...m,
             direction: m.direction,
             text: m.text,
@@ -41229,12 +41237,22 @@ CRITICAL REMINDERS:
             channel: 'imessage',
             phoneNumber: imessageConv.contactPhone || imessageConv.participants?.[0] || ''
           }, 
-          messages: messages.map(m => ({
+          messages: messages.map(m => {
+            // Determine status based on dates for iMessage
+            let messageStatus = m.status || 'sent';
+            if (m.fromMe) {
+              if (m.dateRead) messageStatus = 'read';
+              else if (m.dateDelivered) messageStatus = 'delivered';
+              else if (m.dateSent) messageStatus = 'sent';
+            }
+            return {
             id: m.id,
             direction: m.fromMe ? 'outbound' : 'inbound',
             text: m.text || '',
             createdAt: m.dateSent || m.createdAt,
-            status: m.status || 'delivered',
+            status: messageStatus,
+            dateDelivered: m.dateDelivered,
+            dateRead: m.dateRead,
             attachments: m.attachments
           }))
         });

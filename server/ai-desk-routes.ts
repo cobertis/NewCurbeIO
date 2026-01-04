@@ -663,23 +663,48 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
 
       const { db } = await import("./db");
       const { eq, asc } = await import("drizzle-orm");
-      const { telnyxMessages, telnyxConversations } = await import("@shared/schema");
+      const { telnyxMessages, telnyxConversations, imessageConversations, imessageMessages } = await import("@shared/schema");
 
+      // First try Telnyx/SMS conversation
+      let messagesResult: Array<{ text: string | null; direction?: string; fromMe?: boolean; isInternalNote?: boolean | null }> = [];
+      
       const [conversation] = await db
         .select()
         .from(telnyxConversations)
         .where(eq(telnyxConversations.id, conversationId))
         .limit(1);
 
-      if (!conversation || conversation.companyId !== companyId) {
-        return res.status(404).json({ error: "Conversation not found" });
-      }
+      if (conversation && conversation.companyId === companyId) {
+        messagesResult = await db
+          .select()
+          .from(telnyxMessages)
+          .where(eq(telnyxMessages.conversationId, conversationId))
+          .orderBy(asc(telnyxMessages.createdAt));
+      } else {
+        // Try iMessage conversation
+        const [imessageConv] = await db
+          .select()
+          .from(imessageConversations)
+          .where(eq(imessageConversations.id, conversationId))
+          .limit(1);
 
-      const messagesResult = await db
-        .select()
-        .from(telnyxMessages)
-        .where(eq(telnyxMessages.conversationId, conversationId))
-        .orderBy(asc(telnyxMessages.createdAt));
+        if (imessageConv && imessageConv.companyId === companyId) {
+          const imessageResult = await db
+            .select()
+            .from(imessageMessages)
+            .where(eq(imessageMessages.conversationId, conversationId))
+            .orderBy(asc(imessageMessages.dateSent));
+          
+          messagesResult = imessageResult.map(m => ({
+            text: m.text,
+            direction: m.fromMe ? "outbound" : "inbound",
+            fromMe: m.fromMe,
+            isInternalNote: false,
+          }));
+        } else {
+          return res.status(404).json({ error: "Conversation not found" });
+        }
+      }
 
       if (messagesResult.length === 0) {
         return res.json({
@@ -691,7 +716,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
       const messageHistory = messagesResult
         .filter((m) => !m.isInternalNote && m.text)
         .map((m) => {
-          const role = m.direction === "inbound" ? "Customer" : "Agent";
+          const role = m.direction === "inbound" || m.fromMe === false ? "Customer" : "Agent";
           return `${role}: ${m.text}`;
         })
         .join("\n");
