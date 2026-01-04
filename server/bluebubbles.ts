@@ -28,6 +28,7 @@ interface SendMessageRequest {
   effectId?: string;
   selectedMessageGuid?: string; // For replies
   partIndex?: number; // For replies (default: 0)
+  tempGuid?: string; // For webhook reconciliation
 }
 
 interface SendMessageResponse {
@@ -140,6 +141,12 @@ export class BlueBubblesClient {
       subject: request.subject,
       effectId: request.effectId,
     };
+    
+    // Add tempGuid for webhook reconciliation (prevents duplicates)
+    if (request.tempGuid) {
+      payload.tempGuid = request.tempGuid;
+      console.log('[iMessage] Sending message with tempGuid:', request.tempGuid);
+    }
     
     // Add reply fields if provided
     if (request.selectedMessageGuid) {

@@ -249,6 +249,9 @@ export default function InboxPage() {
   const [voiceCallButtonText, setVoiceCallButtonText] = useState("Call Now");
   const [voiceCallTtl, setVoiceCallTtl] = useState(60);
   
+  // Emoji picker state
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  
   // WhatsApp Template Picker state
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [selectedTemplateForSend, setSelectedTemplateForSend] = useState<any>(null);
@@ -2493,7 +2496,7 @@ export default function InboxPage() {
               <div className="px-4 pb-2 flex items-center justify-between">
                 {/* Left: Toolbar Icons */}
                 <div className="flex items-center gap-0.5">
-                  <Popover>
+                  <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-7 w-7" data-testid="btn-emoji">
                         <Smile className="h-3.5 w-3.5 text-muted-foreground" />
@@ -2504,6 +2507,7 @@ export default function InboxPage() {
                         data={data} 
                         onEmojiSelect={(emoji: any) => {
                           setNewMessage(prev => prev + emoji.native);
+                          setEmojiPickerOpen(false);
                         }}
                         theme="light"
                         previewPosition="none"
