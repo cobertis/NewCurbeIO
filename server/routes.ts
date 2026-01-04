@@ -32042,7 +32042,7 @@ CRITICAL REMINDERS:
                   title: 'New Voicemail',
                   message: `New voicemail from ${fromNumber}`,
                   type: 'missed_call',
-                  link: '/phone',
+                  link: '/phone-system',
                   isRead: false,
                   createdAt: new Date(),
                 });
@@ -39850,7 +39850,7 @@ CRITICAL REMINDERS:
         title: 'Missed Call (Auto-rejected)',
         message: `Call from ${callerNumber} was auto-rejected because you were ${reason === 'agent_offline' ? 'offline' : 'unavailable'}`,
         type: 'missed_call',
-        link: '/call-logs',
+        link: '/phone-system',
         isRead: false,
         createdAt: new Date(),
       });
