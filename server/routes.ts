@@ -1102,11 +1102,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.log(`[BlueBubbles Webhook] Found ${recentMessages.length} recent messages in conversation`);
             // CRITICAL: Match by tempGuid in metadata (works for both text AND images)
             const pendingMessage = recentMessages.find((msg: any) => {
-              if (msg.status !== 'sending' || !msg.isFromMe) return false;
-              console.log(`[BlueBubbles Webhook] Checking message ${msg.messageGuid}: metadata.clientGuid=${msg.metadata?.clientGuid}, tempGuid=${tempGuid}`);
+              // FIXED: Use 'fromMe' (iMessage table field) not 'isFromMe'
+              if (msg.status !== 'sending' || !msg.fromMe) return false;
+              console.log(`[BlueBubbles Webhook] Checking message ${msg.messageGuid}: clientGuid=${msg.metadata?.clientGuid}, tempGuid=${tempGuid}, text="${(msg.text || '').substring(0, 30)}"`);
               // Primary match: tempGuid in metadata (works for images and text)
               if (tempGuid && msg.metadata?.clientGuid === tempGuid) {
                 console.log(`[BlueBubbles Webhook] ✓ Match found by tempGuid!`);
+                return true;
+              }
+              // Secondary match: messageGuid equals tempGuid
+              if (tempGuid && msg.messageGuid === tempGuid) {
+                console.log(`[BlueBubbles Webhook] ✓ Match found by messageGuid === tempGuid!`);
                 return true;
               }
               // Fallback match: text comparison (for legacy messages without tempGuid)
@@ -41209,7 +41215,7 @@ CRITICAL REMINDERS:
             text: m.text,
             createdAt: m.createdAt,
             status: m.status
-          }))
+          })
         });
       }
       
@@ -41254,7 +41260,8 @@ CRITICAL REMINDERS:
             dateDelivered: m.dateDelivered,
             dateRead: m.dateRead,
             attachments: m.attachments
-          }))
+          };
+          })
         });
       }
       
