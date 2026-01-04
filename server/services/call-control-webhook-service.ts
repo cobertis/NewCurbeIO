@@ -2841,11 +2841,20 @@ export class CallControlWebhookService {
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
+    
+    // Get the credential connection ID from the extension - needed for dialing to SIP
+    const credentialConnectionId = extension.telnyxCredentialConnectionId;
+    if (!credentialConnectionId) {
+      console.log(`[CallControl] Extension ${extension.sipUsername} has no credential connection ID`);
+      await this.answerCall(callControlId);
+      await this.routeToVoicemail(callControlId, companyId);
+      return;
+    }
 
     const sipUri = `sip:${extension.sipUsername}@sip.telnyx.com`;
     const ringTimeout = extension.ringTimeout || 20;
     
-    console.log(`[CallControl] Dial+bridge to agent SIP: ${sipUri} with timeout: ${ringTimeout}s`);
+    console.log(`[CallControl] Dial+bridge to agent SIP: ${sipUri} with timeout: ${ringTimeout}s, connectionId: ${credentialConnectionId}`);
 
     try {
       // STEP 1: Answer the caller leg (keeps it active for voicemail fallback)
@@ -2877,8 +2886,9 @@ export class CallControlWebhookService {
       console.log(`[CallControl] Dialing agent SIP: ${sipUri}`);
       
       // Use the dial command to create a new outbound call to the agent
+      // Use the extension's credential_connection_id for dialing to SIP endpoints
       const response = await this.makeCallControlRequestWithManaged(managedAccountId, "calls", {
-        connection_id: await this.getConnectionId(companyId),
+        connection_id: credentialConnectionId,
         to: sipUri,
         from: callerNumber || phoneNumber.phoneNumber,
         from_display_name: callerNumber || "Incoming Call",
