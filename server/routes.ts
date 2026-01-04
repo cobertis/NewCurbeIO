@@ -99,7 +99,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -41162,7 +41162,7 @@ CRITICAL REMINDERS:
       res.status(500).json({ message: "Failed to fetch conversations" });
     }
   });
-  // GET /api/inbox/conversations/:id/messages - Get messages for a conversation
+  // GET /api/inbox/conversations/:id/messages - Get messages for a conversation (SMS or iMessage)
   app.get("/api/inbox/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -41173,26 +41173,72 @@ CRITICAL REMINDERS:
     }
     const { id } = req.params;
     try {
-      // Verify conversation belongs to company
-      const [conversation] = await db
+      // First try Telnyx conversation
+      const [telnyxConv] = await db
         .select()
         .from(telnyxConversations)
         .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
-      if (!conversation) {
-        return res.status(404).json({ message: "Conversation not found" });
+      
+      if (telnyxConv) {
+        // Mark as read
+        await db
+          .update(telnyxConversations)
+          .set({ unreadCount: 0, updatedAt: new Date() })
+          .where(eq(telnyxConversations.id, id));
+        // Fetch messages
+        const messages = await db
+          .select()
+          .from(telnyxMessages)
+          .where(eq(telnyxMessages.conversationId, id))
+          .orderBy(asc(telnyxMessages.createdAt));
+        return res.json({ 
+          conversation: { ...telnyxConv, channel: 'sms' }, 
+          messages: messages.map(m => ({
+            ...m,
+            direction: m.direction,
+            text: m.text,
+            createdAt: m.createdAt,
+            status: m.status
+          }))
+        });
       }
-      // Mark as read (reset unread count)
-      await db
-        .update(telnyxConversations)
-        .set({ unreadCount: 0, updatedAt: new Date() })
-        .where(eq(telnyxConversations.id, id));
-      // Fetch messages
-      const messages = await db
+      
+      // Try iMessage conversation
+      const [imessageConv] = await db
         .select()
-        .from(telnyxMessages)
-        .where(eq(telnyxMessages.conversationId, id))
-        .orderBy(asc(telnyxMessages.createdAt));
-      res.json({ conversation, messages });
+        .from(imessageConversationsTable)
+        .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)));
+      
+      if (imessageConv) {
+        // Mark as read
+        await db
+          .update(imessageConversationsTable)
+          .set({ unreadCount: 0, updatedAt: new Date() })
+          .where(eq(imessageConversationsTable.id, id));
+        // Fetch messages
+        const messages = await db
+          .select()
+          .from(imessageMessagesTable)
+          .where(eq(imessageMessagesTable.conversationId, id))
+          .orderBy(asc(imessageMessagesTable.dateSent));
+        return res.json({ 
+          conversation: { 
+            ...imessageConv, 
+            channel: 'imessage',
+            phoneNumber: imessageConv.contactPhone || imessageConv.participants?.[0] || ''
+          }, 
+          messages: messages.map(m => ({
+            id: m.id,
+            direction: m.isFromMe ? 'outbound' : 'inbound',
+            text: m.text || '',
+            createdAt: m.dateSent || m.createdAt,
+            status: m.status || 'delivered',
+            attachments: m.attachments
+          }))
+        });
+      }
+      
+      return res.status(404).json({ message: "Conversation not found" });
     } catch (error: any) {
       console.error("[Inbox] Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -41607,13 +41653,97 @@ CRITICAL REMINDERS:
       }
       
       try {
-        // Verify conversation belongs to company
-        const [conversation] = await db
+        // First try Telnyx conversation
+        let [conversation] = await db
           .select()
           .from(telnyxConversations)
           .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+        
+        let isImessageConversation = false;
+        let imessageConv: any = null;
+        
+        if (!conversation) {
+          // Try iMessage conversation
+          [imessageConv] = await db
+            .select()
+            .from(imessageConversationsTable)
+            .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)));
+          
+          if (imessageConv) {
+            isImessageConversation = true;
+            // Map iMessage conversation to conversation-like object for compatibility
+            conversation = {
+              ...imessageConv,
+              channel: 'imessage',
+              phoneNumber: imessageConv.contactPhone || imessageConv.participants?.[0] || '',
+            } as any;
+          }
+        }
+        
         if (!conversation) {
           return res.status(404).json({ message: "Conversation not found" });
+        }
+        
+        // === IMESSAGE CHANNEL ROUTING ===
+        if (isImessageConversation && imessageConv) {
+          const { blueBubblesService } = await import("./bluebubbles");
+          
+          try {
+            // Send via BlueBubbles
+            const result = await blueBubblesService.sendMessage({
+              chatGuid: imessageConv.chatGuid,
+              message: text || "",
+            }, companyId);
+            
+            // Save message to database
+            const [message] = await db
+              .insert(imessageMessagesTable)
+              .values({
+                conversationId: id,
+                companyId,
+                chatGuid: imessageConv.chatGuid,
+                messageGuid: result.guid || `outbound-${Date.now()}`,
+                text: text || "",
+                isFromMe: true,
+                dateSent: new Date(),
+                status: result.status === "sent" ? "delivered" : "sent",
+              })
+              .returning();
+            
+            // Update conversation
+            await db
+              .update(imessageConversationsTable)
+              .set({
+                lastMessageText: text?.substring(0, 100) || "(attachment)",
+                lastMessageAt: new Date(),
+                lastMessageFromMe: true,
+                updatedAt: new Date(),
+              })
+              .where(eq(imessageConversationsTable.id, id));
+            
+            // Broadcast update
+            broadcastInboxMessage(companyId, {
+              conversationId: id,
+              message: {
+                id: message.id,
+                direction: 'outbound',
+                text: message.text,
+                createdAt: message.dateSent,
+                status: message.status,
+              },
+            });
+            
+            return res.status(201).json({
+              id: message.id,
+              direction: 'outbound',
+              text: message.text,
+              createdAt: message.dateSent,
+              status: message.status,
+            });
+          } catch (imessageError: any) {
+            console.error("[Inbox iMessage] Error sending message:", imessageError);
+            return res.status(500).json({ message: imessageError.message || "Failed to send iMessage" });
+          }
         }
         // Upload files to permanent object storage for MMS
         let mediaUrls: string[] = [];
