@@ -320,6 +320,32 @@ export class ObjectStorageService {
     return { publicUrl, objectPath: `/objects/${objectName}` };
   }
 
+  async uploadCallRecording(
+    buffer: Buffer,
+    companyId: string,
+    callId: string,
+    type: 'call' | 'voicemail' = 'call'
+  ): Promise<string> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    const timestamp = Date.now();
+    const objectName = `${type}-recordings/${companyId}/${callId}_${timestamp}.mp3`;
+    const fullPath = `${privateObjectDir}/${objectName}`;
+    const { bucketName, objectName: storagePath } = parseObjectPath(fullPath);
+    
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      contentType: 'audio/mpeg',
+      metadata: {
+        cacheControl: "public, max-age=31536000",
+      },
+    });
+    
+    console.log(`[ObjectStorage] ${type} recording uploaded: ${objectName}`);
+    return `/objects/${objectName}`;
+  }
+
   async deleteObject(objectPath: string): Promise<void> {
     if (!objectPath.startsWith("/objects/")) {
       return;

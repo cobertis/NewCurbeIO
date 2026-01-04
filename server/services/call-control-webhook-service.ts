@@ -4,6 +4,7 @@ import { extensionCallService } from "./extension-call-service";
 import { getCompanyManagedAccountId } from "./telnyx-managed-accounts";
 import { SecretsService } from "./secrets-service";
 import { getUserSipCredentials } from "./telnyx-e911-service";
+import { objectStorage } from "../objectStorage";
 import {
   pbxSettings,
   pbxQueues,
@@ -1406,8 +1407,8 @@ export class CallControlWebhookService {
     }
     
     // Get the MP3 URL (preferred) or WAV URL
-    const recordingUrl = recording_urls.mp3 || recording_urls.wav;
-    if (!recordingUrl) {
+    const telnyxRecordingUrl = recording_urls.mp3 || recording_urls.wav;
+    if (!telnyxRecordingUrl) {
       console.log(`[CallControl] No recording URL found in payload`);
       return;
     }
@@ -1427,6 +1428,27 @@ export class CallControlWebhookService {
       console.log(`[CallControl] This is a voicemail recording for ${pendingVoicemail.fromNumber}`);
       
       try {
+        // Download recording from Telnyx and save to permanent storage
+        let permanentRecordingUrl = telnyxRecordingUrl;
+        try {
+          console.log(`[CallControl] Downloading voicemail recording from Telnyx...`);
+          const response = await fetch(telnyxRecordingUrl);
+          if (response.ok) {
+            const buffer = Buffer.from(await response.arrayBuffer());
+            permanentRecordingUrl = await objectStorage.uploadCallRecording(
+              buffer,
+              pendingVoicemail.companyId,
+              call_control_id,
+              'voicemail'
+            );
+            console.log(`[CallControl] Voicemail recording saved permanently: ${permanentRecordingUrl}`);
+          } else {
+            console.error(`[CallControl] Failed to download voicemail recording: ${response.status}`);
+          }
+        } catch (downloadError) {
+          console.error(`[CallControl] Error downloading voicemail recording:`, downloadError);
+        }
+        
         // Create the voicemail record in the database
         const [voicemail] = await db.insert(voicemails).values({
           id: crypto.randomUUID(),
@@ -1435,7 +1457,7 @@ export class CallControlWebhookService {
           fromNumber: pendingVoicemail.fromNumber,
           toNumber: pendingVoicemail.toNumber,
           callerName: pendingVoicemail.callerName || null,
-          recordingUrl,
+          recordingUrl: permanentRecordingUrl,
           duration: recordingDurationSeconds,
           status: "new",
           receivedAt: pendingVoicemail.startedAt,
@@ -1453,7 +1475,7 @@ export class CallControlWebhookService {
           await db
             .update(callLogs)
             .set({ 
-              recordingUrl,
+              recordingUrl: permanentRecordingUrl,
               recordingDuration: recordingDurationSeconds > 0 ? recordingDurationSeconds : null,
               endedAt: new Date(),
               duration: recordingDurationSeconds,
@@ -1511,11 +1533,32 @@ export class CallControlWebhookService {
         return;
       }
       
+      // Download recording from Telnyx and save to permanent storage
+      let permanentRecordingUrl = telnyxRecordingUrl;
+      try {
+        console.log(`[CallControl] Downloading call recording from Telnyx...`);
+        const response = await fetch(telnyxRecordingUrl);
+        if (response.ok) {
+          const buffer = Buffer.from(await response.arrayBuffer());
+          permanentRecordingUrl = await objectStorage.uploadCallRecording(
+            buffer,
+            callLog.companyId,
+            call_control_id,
+            'call'
+          );
+          console.log(`[CallControl] Call recording saved permanently: ${permanentRecordingUrl}`);
+        } else {
+          console.error(`[CallControl] Failed to download call recording: ${response.status}`);
+        }
+      } catch (downloadError) {
+        console.error(`[CallControl] Error downloading call recording:`, downloadError);
+      }
+      
       // Update the call log with the recording URL AND duration
       await db
         .update(callLogs)
         .set({ 
-          recordingUrl,
+          recordingUrl: permanentRecordingUrl,
           recordingDuration: recordingDurationSeconds > 0 ? recordingDurationSeconds : null
         })
         .where(eq(callLogs.id, callLog.id));
