@@ -60,6 +60,63 @@ const pendingBridges = new Map<string, PendingBridge>();
 const ringAllLegs = new Map<string, Set<string>>();
 
 // =====================================================
+// Agent Leg Tracking - Map SIP username to active call_control_id
+// Used to allow frontend to reject calls via backend Call Control API
+// =====================================================
+interface AgentLegInfo {
+  callControlId: string;
+  callerCallControlId: string;
+  companyId: string;
+  sipUri: string;
+  timestamp: number;
+}
+const agentLegs = new Map<string, AgentLegInfo>();
+
+/**
+ * Register an agent leg for reject lookup
+ */
+export function registerAgentLeg(
+  sipUsername: string,
+  callControlId: string,
+  callerCallControlId: string,
+  companyId: string,
+  sipUri: string
+): void {
+  agentLegs.set(sipUsername, {
+    callControlId,
+    callerCallControlId,
+    companyId,
+    sipUri,
+    timestamp: Date.now()
+  });
+  console.log(`[AgentLegs] Registered: ${sipUsername} -> ${callControlId}`);
+  
+  // Cleanup old entries (older than 5 minutes)
+  const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+  Array.from(agentLegs.entries()).forEach(([k, v]) => {
+    if (v.timestamp < fiveMinutesAgo) {
+      agentLegs.delete(k);
+    }
+  });
+}
+
+/**
+ * Get agent leg by SIP username
+ */
+export function getAgentLegBySipUsername(sipUsername: string): AgentLegInfo | undefined {
+  return agentLegs.get(sipUsername);
+}
+
+/**
+ * Remove agent leg after call ends
+ */
+export function removeAgentLeg(sipUsername: string): void {
+  if (agentLegs.delete(sipUsername)) {
+    console.log(`[AgentLegs] Removed: ${sipUsername}`);
+  }
+}
+
+// =====================================================
 // Pending Voicemails Map - Track voicemail recordings
 // Maps call_control_id -> voicemail metadata for creating records when recording saves
 // =====================================================
@@ -1089,6 +1146,13 @@ export class CallControlWebhookService {
     }
     callContextMap.delete(call_control_id);
 
+    // Clean up agent leg tracking - find by callControlId
+    Array.from(agentLegs.entries()).forEach(([sipUsername, info]) => {
+      if (info.callControlId === call_control_id) {
+        removeAgentLeg(sipUsername);
+      }
+    });
+
     // Clean up ring-all legs if caller hangs up during ringing
     const ringAllForCaller = ringAllLegs.get(call_control_id);
     if (ringAllForCaller) {
@@ -1796,6 +1860,11 @@ export class CallControlWebhookService {
             queueId,
           });
           
+          // Register agent leg for reject lookup
+          // Extract SIP username from sipUri (e.g., sip:ext1017errgwc5@sip.telnyx.com -> ext1017errgwc5)
+          const sipUsername = sipUri.replace(/^sip:/i, '').split('@')[0];
+          registerAgentLeg(sipUsername, agentCallControlId, callControlId, companyId, sipUri);
+          
           successfulDials++;
         }
       } catch (error) {
@@ -2029,6 +2098,10 @@ export class CallControlWebhookService {
       clientState,
       companyId,
     });
+
+    // Register agent leg for reject lookup
+    const sipUsername = sipUri.replace(/^sip:/i, '').split('@')[0];
+    registerAgentLeg(sipUsername, agentCallControlId, callControlId, companyId, sipUri);
 
     console.log(`[CallControl] Waiting for agent to answer call ${agentCallControlId}, will bridge with ${callControlId}`);
   }
@@ -2342,6 +2415,11 @@ export class CallControlWebhookService {
               companyId,
               queueId,
             });
+            
+            // Register agent leg for reject lookup
+            const sipUsernameRetry = sipUri.replace(/^sip:/i, '').split('@')[0];
+            registerAgentLeg(sipUsernameRetry, agentCallControlId, callControlId, companyId, sipUri);
+            
             successfulDials++;
           }
         }
@@ -2835,10 +2913,54 @@ export class CallControlWebhookService {
     await this.makeCallControlRequest(callControlId, "answer", {});
   }
 
-  private async hangupCall(callControlId: string, cause: string): Promise<void> {
-    await this.makeCallControlRequest(callControlId, "hangup", {
-      hangup_cause: cause,
+  /**
+   * Hang up an active call. Per Telnyx Call Control v2 docs, the hangup endpoint
+   * only accepts client_state and command_id - not hangup_cause.
+   * The cause parameter is kept for logging purposes only.
+   * @see https://developers.telnyx.com/api/call-control/hangup-call
+   */
+  private async hangupCall(callControlId: string, _cause?: string): Promise<void> {
+    await this.makeCallControlRequest(callControlId, "hangup", {});
+  }
+
+  /**
+   * Reject an incoming call (before answering) with a specific SIP response code.
+   * Use "decline" for SIP 603 (cleaner than "busy" which sends SIP 486).
+   * @see https://developers.telnyx.com/api/call-control/reject-call
+   */
+  private async rejectCall(callControlId: string, cause: "decline" | "busy" = "decline"): Promise<void> {
+    await this.makeCallControlRequest(callControlId, "reject", {
+      cause: cause,
     });
+  }
+
+  /**
+   * Public method to reject an incoming call by SIP username.
+   * This allows the frontend to reject calls using the Call Control API
+   * instead of the WebRTC SDK, which sends SIP 603 "Decline" instead of SIP 486 "Busy".
+   * @returns true if the call was rejected, false if not found
+   */
+  public async rejectIncomingCallBySipUsername(sipUsername: string): Promise<boolean> {
+    const agentLeg = getAgentLegBySipUsername(sipUsername);
+    if (!agentLeg) {
+      console.log(`[CallControl] No agent leg found for SIP username: ${sipUsername}`);
+      return false;
+    }
+
+    console.log(`[CallControl] Rejecting call for ${sipUsername}: ${agentLeg.callControlId}`);
+    
+    try {
+      // Use reject API with "decline" cause (SIP 603) instead of "busy" (SIP 486)
+      await this.rejectCall(agentLeg.callControlId, "decline");
+      
+      // Clean up the tracking
+      removeAgentLeg(sipUsername);
+      
+      return true;
+    } catch (error) {
+      console.error(`[CallControl] Failed to reject call for ${sipUsername}:`, error);
+      return false;
+    }
   }
 
   private async speakText(callControlId: string, text: string): Promise<void> {

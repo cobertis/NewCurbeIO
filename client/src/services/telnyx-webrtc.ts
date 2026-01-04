@@ -741,20 +741,53 @@ class TelnyxWebRTCManager {
     store.setIncomingCall(undefined);
     store.setIncomingCallInfo(undefined);
     
-    // Reject the incoming call - hangup before answering sends SIP rejection
+    // Try to reject via backend Call Control API first (sends SIP 603 Decline instead of SIP 486 Busy)
+    // This provides a cleaner disconnect message to the caller
+    const sipUsername = store.sipUsername;
+    if (sipUsername) {
+      console.log("[TelnyxRTC] Trying backend reject via Call Control API for:", sipUsername);
+      fetch('/api/pbx/reject-incoming-call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ sipUsername })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            console.log("[TelnyxRTC] Call rejected via Call Control API (SIP 603 Decline)");
+          } else {
+            // Backend couldn't find the call - fallback to SDK hangup
+            console.log("[TelnyxRTC] Backend reject failed, falling back to SDK hangup:", data.message);
+            this.fallbackSdkReject(call);
+          }
+        })
+        .catch(err => {
+          console.error("[TelnyxRTC] Backend reject error, falling back to SDK:", err);
+          this.fallbackSdkReject(call);
+        });
+    } else {
+      // No SIP username - fallback to SDK hangup
+      console.log("[TelnyxRTC] No SIP username, using SDK hangup");
+      this.fallbackSdkReject(call);
+    }
+  }
+
+  private fallbackSdkReject(call: TelnyxCall): void {
+    // Reject the incoming call via SDK - hangup before answering sends SIP 486 rejection
     try {
       // Try reject() method first if available (some SDK versions have it)
       if (typeof (call as any).reject === 'function') {
         console.log("[TelnyxRTC] Using call.reject() method");
         (call as any).reject();
       } else {
-        // Fall back to hangup() which should send proper SIP rejection for unanswered calls
+        // Fall back to hangup() which sends SIP 486 rejection for unanswered calls
         console.log("[TelnyxRTC] Using call.hangup() method (no reject available)");
         call.hangup();
       }
-      console.log("[TelnyxRTC] Call rejection sent successfully");
+      console.log("[TelnyxRTC] Call rejection sent successfully via SDK");
     } catch (e) {
-      console.error("[TelnyxRTC] Reject error:", e);
+      console.error("[TelnyxRTC] SDK reject error:", e);
     }
   }
 

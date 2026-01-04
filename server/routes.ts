@@ -39745,6 +39745,31 @@ CRITICAL REMINDERS:
     }
   });
   
+
+  // POST /api/pbx/reject-incoming-call - Reject incoming call via Call Control API (sends SIP 603 Decline)
+  // This is called by the frontend when user presses Reject, to avoid SIP 486 "User Busy"
+  app.post("/api/pbx/reject-incoming-call", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { sipUsername } = req.body;
+      if (!sipUsername) {
+        return res.status(400).json({ success: false, error: "sipUsername is required" });
+      }
+      
+      console.log(`[PBX Reject] Rejecting incoming call for SIP username: ${sipUsername}`);
+      
+      const rejected = await callControlWebhookService.rejectIncomingCallBySipUsername(sipUsername);
+      
+      if (rejected) {
+        return res.json({ success: true, message: "Call rejected via Call Control API (SIP 603)" });
+      } else {
+        // No active call found for this SIP username - let frontend fallback to SDK hangup
+        return res.json({ success: false, message: "No active incoming call found for this SIP username" });
+      }
+    } catch (error: any) {
+      console.error("[PBX Reject] Error:", error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
   // POST /api/pbx/auto-reject-to-voicemail - Auto-reject call when agent is offline (SDK-side rejection)
   app.post("/api/pbx/auto-reject-to-voicemail", requireActiveCompany, async (req: Request, res: Response) => {
     try {
