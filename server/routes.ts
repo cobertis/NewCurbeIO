@@ -1056,12 +1056,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Find or create conversation
           // BlueBubbles sends chat info in chats array
           const chatData = messageData.chats?.[0] || {};
-          const chatGuid = messageData.chats?.[0]?.guid || chatData.guid || messageData.chatGuid || messageData.chat_guid || messageData.conversationId;
           const handle = messageData.handle?.address || messageData.from || 'Unknown';
+          // Try multiple sources for chatGuid, fallback to constructing from handle
+          let chatGuid = messageData.chats?.[0]?.guid || chatData.guid || messageData.chatGuid || messageData.chat_guid || messageData.conversationId;
+          // If no chatGuid but we have a handle, construct it (format: iMessage;-;+1234567890)
+          if (!chatGuid && handle && handle !== 'Unknown') {
+            const service = messageData.handle?.service || 'iMessage';
+            chatGuid = `${service};-;${handle}`;
+            console.log(`[BlueBubbles Webhook] Constructed chatGuid from handle: ${chatGuid}`);
+          }
           const participants = messageData.participants || [handle];
           // Validate chat GUID
           if (!chatGuid) {
-            console.error('[BlueBubbles Webhook] No chat GUID found in payload');
+            console.error('[BlueBubbles Webhook] No chat GUID found in payload and could not construct from handle');
             return res.status(400).json({ message: 'Invalid payload: missing chat GUID' });
           }
           let conversation = await storage.getImessageConversationByChatGuid(company.id, chatGuid);
