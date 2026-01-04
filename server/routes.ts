@@ -41686,11 +41686,11 @@ CRITICAL REMINDERS:
         
         // === IMESSAGE CHANNEL ROUTING ===
         if (isImessageConversation && imessageConv) {
-          const { blueBubblesService } = await import("./bluebubbles");
+          const { blueBubblesClient } = await import("./bluebubbles");
           
           try {
             // Send via BlueBubbles
-            const result = await blueBubblesService.sendMessage({
+            const result = await blueBubblesClient.sendMessage({
               chatGuid: imessageConv.chatGuid,
               message: text || "",
             }, companyId);
