@@ -3039,6 +3039,39 @@ export class CallControlWebhookService {
   }
 
   /**
+   * Public method to hang up an ACTIVE call by SIP username.
+   * This uses the Call Control API to send a proper hangup (normal_clearing)
+   * instead of the SDK's hangup which sends SIP 486 "User Busy".
+   * 
+   * @returns true if the call was hung up, false if not found
+   */
+  public async hangupActiveCallBySipUsername(sipUsername: string): Promise<boolean> {
+    const agentLeg = getAgentLegBySipUsername(sipUsername);
+    if (!agentLeg) {
+      console.log(`[CallControl] No agent leg found for hangup, SIP username: ${sipUsername}`);
+      return false;
+    }
+
+    console.log(`[CallControl] Hanging up active call for ${sipUsername}: ${agentLeg.callControlId}`);
+    
+    try {
+      // Hang up the agent leg - this will trigger normal_clearing on the PSTN side
+      await this.hangupCall(agentLeg.callControlId);
+      console.log(`[CallControl] Agent leg hung up with normal_clearing`);
+      
+      // Clean up the tracking
+      removeAgentLeg(sipUsername);
+      
+      return true;
+    } catch (error: any) {
+      console.error(`[CallControl] Failed to hangup call for ${sipUsername}:`, error);
+      // Still try to clean up
+      removeAgentLeg(sipUsername);
+      return false;
+    }
+  }
+
+  /**
    * Public method to reject an incoming call by SIP username and route caller to voicemail.
    * This allows the frontend to reject calls using the Call Control API
    * instead of the WebRTC SDK, which sends SIP 603 "Decline" instead of SIP 486 "Busy".

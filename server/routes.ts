@@ -39746,6 +39746,33 @@ CRITICAL REMINDERS:
   });
   
 
+  // POST /api/pbx/hangup-active-call - Hang up an active call via Call Control API (sends proper hangup)
+  // This is called by the frontend when user presses Hangup, to avoid SIP 486 "User Busy"
+  app.post("/api/pbx/hangup-active-call", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { sipUsername } = req.body;
+      if (!sipUsername) {
+        return res.status(400).json({ success: false, error: "sipUsername is required" });
+      }
+      
+      console.log(`[PBX Hangup] Hanging up active call for SIP username: ${sipUsername}`);
+      
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      const hungUp = await callControlWebhookService.hangupActiveCallBySipUsername(sipUsername);
+      
+      if (hungUp) {
+        return res.json({ success: true, message: "Call hung up via Call Control API (normal_clearing)" });
+      } else {
+        // No active call found - this is fine, the call may have ended already
+        return res.json({ success: false, message: "No active call found for this SIP username" });
+      }
+    } catch (error: any) {
+      console.error("[PBX Hangup] Error:", error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+
   // POST /api/pbx/reject-incoming-call - Reject incoming call via Call Control API (sends SIP 603 Decline)
   // This is called by the frontend when user presses Reject, to avoid SIP 486 "User Busy"
   app.post("/api/pbx/reject-incoming-call", requireActiveCompany, async (req: Request, res: Response) => {

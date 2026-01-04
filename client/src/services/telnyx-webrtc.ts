@@ -819,8 +819,9 @@ class TelnyxWebRTCManager {
       return;
     }
 
-    console.log("[TelnyxRTC] Hanging up call");
+    console.log("[TelnyxRTC] Hanging up call via backend (to avoid SIP 486 User Busy)");
     
+    // Clear state first
     store.setCurrentCall(undefined);
     store.setOutgoingCall(undefined);
     store.setIncomingCall(undefined);
@@ -832,10 +833,38 @@ class TelnyxWebRTCManager {
     store.setOutboundPstnRinging(false);
     this.stopRingtone();
 
+    // CRITICAL: Use backend Call Control API to hang up (sends proper normal_clearing)
+    // The SDK's hangup() sends SIP 486 "User Busy" which is wrong
+    const sipUsername = store.sipUsername;
+    if (sipUsername) {
+      try {
+        console.log("[TelnyxRTC] Calling backend hangup for:", sipUsername);
+        const response = await fetch('/api/pbx/hangup-active-call', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sipUsername })
+        });
+        const data = await response.json();
+        if (data.success) {
+          console.log("[TelnyxRTC] Call hung up via backend (normal_clearing)");
+          return; // Success - don't use SDK
+        } else {
+          // Backend couldn't find the call - may be outbound or already ended
+          console.log("[TelnyxRTC] Backend hangup returned false:", data.message);
+        }
+      } catch (err) {
+        console.error("[TelnyxRTC] Backend hangup error:", err);
+      }
+    }
+
+    // Fallback to SDK hangup for outbound calls or if backend fails
+    // This is needed for outbound calls where agent leg may not be tracked
+    console.log("[TelnyxRTC] Using SDK hangup as fallback");
     try {
       activeCall.hangup();
     } catch (e) {
-      console.error("[TelnyxRTC] Hangup error:", e);
+      console.error("[TelnyxRTC] SDK hangup error:", e);
     }
   }
 
