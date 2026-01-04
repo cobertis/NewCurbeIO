@@ -41723,6 +41723,8 @@ CRITICAL REMINDERS:
           try {
             let lastResult: any = null;
             const sentAttachments: any[] = [];
+            // Generate tempGuid BEFORE sending for webhook reconciliation
+            const messageTempGuid = `temp-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
             
             // Handle file attachments for iMessage
             if (files && files.length > 0) {
@@ -41736,11 +41738,11 @@ CRITICAL REMINDERS:
                 console.log(`[Inbox iMessage] Saved temp file: ${tempFilePath}`);
                 
                 try {
-                  // Send attachment via BlueBubbles
+                  // Send attachment via BlueBubbles with tempGuid for webhook reconciliation
                   const attachResult = await blueBubblesClient.sendAttachment(
                     imessageConv.chatGuid,
                     tempFilePath,
-                    undefined,
+                    messageTempGuid, // Pass tempGuid for webhook reconciliation
                     false,
                     undefined,
                     companyId
@@ -41781,11 +41783,12 @@ CRITICAL REMINDERS:
               const result = await blueBubblesClient.sendMessage({
                 chatGuid: imessageConv.chatGuid,
                 message: text,
+                tempGuid: messageTempGuid, // Pass tempGuid for webhook reconciliation
               }, companyId);
               lastResult = result;
             }
             
-            // Save message to database
+            // Save message to database with tempGuid for webhook reconciliation
             const messageText = text || (sentAttachments.length > 0 ? `(${sentAttachments.length} attachment${sentAttachments.length > 1 ? 's' : ''})` : '');
             const [message] = await db
               .insert(imessageMessagesTable)
@@ -41793,12 +41796,15 @@ CRITICAL REMINDERS:
                 conversationId: id,
                 companyId,
                 chatGuid: imessageConv.chatGuid,
-                messageGuid: lastResult?.guid || `outbound-${Date.now()}`,
+                // Use tempGuid as initial messageGuid - webhook will update to real BlueBubbles GUID
+                messageGuid: messageTempGuid,
                 text: messageText,
                 fromMe: true,
                 dateSent: new Date(),
-                status: lastResult?.status === "sent" ? "delivered" : "sent",
+                status: "sending", // Start as sending, webhook will update to sent/delivered
                 attachments: sentAttachments.length > 0 ? sentAttachments : null,
+                // Store clientGuid in metadata for webhook reconciliation
+                metadata: { clientGuid: messageTempGuid },
               })
               .returning();
             
