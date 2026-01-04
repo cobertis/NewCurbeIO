@@ -568,30 +568,48 @@ class TelnyxWebRTCManager {
             }
             
             // Check if we're in reject cooldown (user just pressed Reject, ignore SIP forks)
+            // The backend already rejected the main call, so just ignore these duplicates silently
             if (this.isInRejectCooldown(callInfo.remoteCallerNumber)) {
-              console.log("[TelnyxRTC] In reject cooldown - auto-rejecting SIP fork from:", callInfo.remoteCallerNumber);
-              call.hangup();
+              console.log("[TelnyxRTC] In reject cooldown - ignoring SIP fork from:", callInfo.remoteCallerNumber);
+              // Don't call SDK hangup - the backend already handled the rejection with SIP 603
+              // Just ignore this SIP fork silently
               return;
             }
 
-            // Check agent availability status - if offline, auto-reject and send to voicemail
+            // Check agent availability status - if offline, reject via backend (SIP 603)
             const agentStatus = store.agentAvailabilityStatus;
             console.log("[TelnyxRTC] Agent availability status:", agentStatus);
             
             if (agentStatus === "offline") {
-              console.log("[TelnyxRTC] Agent is OFFLINE - auto-rejecting call and routing to voicemail");
-              // Reject the call via SDK
-              call.hangup();
-              // Try to route to voicemail via server (fire and forget)
+              console.log("[TelnyxRTC] Agent is OFFLINE - rejecting via backend (SIP 603) and routing to voicemail");
+              // DO NOT use SDK hangup - that sends SIP 486 "Busy Here"
+              // Use backend to reject with SIP 603 and route to voicemail
               const callerNumber = callInfo.remoteCallerNumber?.replace(/\D/g, '') || '';
               const callLegId = (call as any).id || (call as any).callId;
+              const sipUsername = store.sipUsername;
+              
+              // Reject via backend (SIP 603) - the backend handles voicemail routing
+              if (sipUsername) {
+                fetch('/api/pbx/reject-incoming-call', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ sipUsername })
+                }).then(res => res.json())
+                  .then(data => {
+                    console.log("[TelnyxRTC] Agent offline - backend reject result:", data.success ? "SIP 603" : data.message);
+                  })
+                  .catch(err => console.error("[TelnyxRTC] Agent offline - backend reject failed:", err));
+              }
+              
+              // Also log the rejection for voicemail/missed call tracking
               if (callerNumber) {
-                fetch(`/api/pbx/auto-reject-to-voicemail`, {
+                fetch('/api/pbx/auto-reject-to-voicemail', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',
                   body: JSON.stringify({ callerNumber, callLegId, reason: 'agent_offline' })
-                }).catch(err => console.error("[TelnyxRTC] Auto-reject voicemail request failed:", err));
+                }).catch(err => console.error("[TelnyxRTC] Auto-reject voicemail log failed:", err));
               }
               return;
             }
