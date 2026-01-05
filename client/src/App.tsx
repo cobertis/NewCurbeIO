@@ -1120,7 +1120,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <span className="text-sm font-medium">Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={() => setWalletTopupOpen(true)}
+                  onClick={() => setLocation("/settings/billing")}
                   data-testid="sidebar-menu-billing"
                   className="py-2.5 px-3 cursor-pointer rounded-md"
                 >
