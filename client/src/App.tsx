@@ -1043,6 +1043,122 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">Log out</TooltipContent>
           </Tooltip>
+
+          {/* User Avatar with Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button 
+                className="relative focus:outline-none"
+                data-testid="sidebar-button-avatar"
+              >
+                <Avatar className="h-9 w-9 cursor-pointer hover:scale-105 transition-transform">
+                  <AvatarImage src={user?.avatar || undefined} alt={userName} />
+                  <AvatarFallback className="bg-amber-100 text-amber-700 text-sm font-semibold">
+                    {userInitial}
+                  </AvatarFallback>
+                </Avatar>
+                <span 
+                  className={cn(
+                    "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-gray-800 z-10",
+                    getStatusColor(availabilityData?.status || "offline")
+                  )}
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="end" className="w-72 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-0 shadow-xl rounded-xl">
+              {/* User Info Header */}
+              <div className="flex items-center gap-3 mb-3">
+                <Avatar 
+                  className="h-12 w-12 cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => setUploadAvatarOpen(true)}
+                  data-testid="sidebar-avatar-upload-trigger"
+                >
+                  <AvatarImage src={user?.avatar || undefined} alt={userName} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+                    {userInitial}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{userName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  <Badge variant="secondary" className="mt-1 text-[10px] px-1.5 py-0">
+                    {userSubtitle}
+                  </Badge>
+                </div>
+              </div>
+              
+              <DropdownMenuSeparator className="my-2" />
+              
+              {/* Availability Status */}
+              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-2 py-1.5">
+                Availability
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => updateAvailabilityMutation.mutate("online")}
+                data-testid="sidebar-menu-status-online"
+                className="py-2 px-3 cursor-pointer rounded-md"
+              >
+                <span className="h-3 w-3 rounded-full bg-green-500 mr-3" />
+                <span className="text-sm font-medium flex-1">Online</span>
+                {availabilityData?.status === "online" && <Check className="h-4 w-4 text-green-500" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => updateAvailabilityMutation.mutate("busy")}
+                data-testid="sidebar-menu-status-busy"
+                className="py-2 px-3 cursor-pointer rounded-md"
+              >
+                <span className="h-3 w-3 rounded-full bg-yellow-500 mr-3" />
+                <span className="text-sm font-medium flex-1">Busy</span>
+                {availabilityData?.status === "busy" && <Check className="h-4 w-4 text-yellow-500" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => updateAvailabilityMutation.mutate("offline")}
+                data-testid="sidebar-menu-status-offline"
+                className="py-2 px-3 cursor-pointer rounded-md"
+              >
+                <span className="h-3 w-3 rounded-full bg-gray-400 mr-3" />
+                <span className="text-sm font-medium flex-1">Offline</span>
+                {availabilityData?.status === "offline" && <Check className="h-4 w-4 text-gray-400" />}
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator className="my-2" />
+              
+              <div className="space-y-0.5">
+                <DropdownMenuItem 
+                  onClick={() => setLocation("/settings")}
+                  data-testid="sidebar-menu-settings"
+                  className="py-2.5 px-3 cursor-pointer rounded-md"
+                >
+                  <SettingsIcon className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm font-medium">Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setWalletTopupOpen(true)}
+                  data-testid="sidebar-menu-billing"
+                  className="py-2.5 px-3 cursor-pointer rounded-md"
+                >
+                  <CreditCard className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm font-medium">Billing</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setTimezoneDialogOpen(true)}
+                  data-testid="sidebar-menu-timezone"
+                  className="py-2.5 px-3 cursor-pointer rounded-md"
+                >
+                  <Globe className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm font-medium">Timezone</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleLogout} 
+                  data-testid="sidebar-menu-logout"
+                  className="py-2.5 px-3 cursor-pointer rounded-md text-destructive"
+                >
+                  <LogOut className="mr-3 h-5 w-5" />
+                  <span className="text-sm font-medium">Sign out</span>
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         
         {/* Content Area - Row 2, Column 2 */}
