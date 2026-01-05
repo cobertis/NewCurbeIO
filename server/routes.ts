@@ -31436,6 +31436,124 @@ CRITICAL REMINDERS:
       res.status(500).json({ message: "Failed to delete voicemail" });
     }
   });
+  // GET /api/voicemails/:id/audio - Proxy endpoint to serve voicemail audio
+  app.get("/api/voicemails/:id/audio", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId && user.role !== 'superadmin') {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Get voicemail
+      const [voicemail] = await db
+        .select()
+        .from(voicemails)
+        .where(eq(voicemails.id, id));
+      
+      if (!voicemail) {
+        return res.status(404).json({ message: "Voicemail not found" });
+      }
+      
+      // Verify access
+      if (voicemail.companyId !== user.companyId && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Check if we have a local cached copy
+      const localPath = `uploads/voicemails/${id}.mp3`;
+      if (fs.existsSync(localPath)) {
+        console.log(`[Voicemail Proxy] Serving from local cache: ${localPath}`);
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        const fileStream = fs.createReadStream(localPath);
+        return fileStream.pipe(res);
+      }
+      
+      // Try to download from recording URL
+      if (voicemail.recordingUrl) {
+        try {
+          console.log(`[Voicemail Proxy] Downloading from Telnyx: ${voicemail.recordingUrl.substring(0, 100)}...`);
+          const response = await fetch(voicemail.recordingUrl);
+          
+          if (response.ok) {
+            const buffer = Buffer.from(await response.arrayBuffer());
+            
+            // Save locally for future requests
+            const dir = 'uploads/voicemails';
+            if (!fs.existsSync(dir)) {
+              fs.mkdirSync(dir, { recursive: true });
+            }
+            fs.writeFileSync(localPath, buffer);
+            console.log(`[Voicemail Proxy] Saved to local cache: ${localPath}`);
+            
+            res.setHeader('Content-Type', 'audio/mpeg');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.send(buffer);
+          } else {
+            console.error(`[Voicemail Proxy] Download failed: ${response.status}`);
+          }
+        } catch (err: any) {
+          console.error(`[Voicemail Proxy] Download error: ${err.message}`);
+        }
+      }
+      
+      // If URL expired, try to get fresh URL from Telnyx API
+      // Extract recording ID from URL if possible
+      if (voicemail.recordingUrl) {
+        const urlMatch = voicemail.recordingUrl.match(/\/([a-f0-9-]{36})-\d+\.mp3/i);
+        const recordingIdMatch = urlMatch ? urlMatch[1] : null;
+        
+        if (recordingIdMatch) {
+          try {
+            const { apiKey } = await credentialProvider.getTelnyx();
+            if (apiKey) {
+              console.log(`[Voicemail Proxy] Trying Telnyx API with recording ID: ${recordingIdMatch}`);
+              const apiResponse = await fetch(`https://api.telnyx.com/v2/recordings/${recordingIdMatch}`, {
+                headers: {
+                  'Authorization': `Bearer ${apiKey}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              if (apiResponse.ok) {
+                const data = await apiResponse.json();
+                const downloadUrl = data.data?.media_url || data.data?.download_urls?.mp3;
+                
+                if (downloadUrl) {
+                  const audioResponse = await fetch(downloadUrl);
+                  if (audioResponse.ok) {
+                    const buffer = Buffer.from(await audioResponse.arrayBuffer());
+                    
+                    // Save locally
+                    const dir = 'uploads/voicemails';
+                    if (!fs.existsSync(dir)) {
+                      fs.mkdirSync(dir, { recursive: true });
+                    }
+                    fs.writeFileSync(localPath, buffer);
+                    console.log(`[Voicemail Proxy] Saved from Telnyx API: ${localPath}`);
+                    
+                    res.setHeader('Content-Type', 'audio/mpeg');
+                    res.setHeader('Cache-Control', 'public, max-age=86400');
+                    return res.send(buffer);
+                  }
+                }
+              }
+            }
+          } catch (apiErr: any) {
+            console.error(`[Voicemail Proxy] Telnyx API error: ${apiErr.message}`);
+          }
+        }
+      }
+      
+      return res.status(404).json({ message: "Voicemail recording not available. The recording may have expired." });
+    } catch (error: any) {
+      console.error("[Voicemail Proxy] Error:", error);
+      res.status(500).json({ message: "Failed to fetch voicemail recording" });
+    }
+  });
+
   // GET /api/mms-file/:id - Public endpoint to serve MMS files for Telnyx
   app.get("/api/mms-file/:id", async (req: Request, res: Response) => {
     const { id } = req.params;

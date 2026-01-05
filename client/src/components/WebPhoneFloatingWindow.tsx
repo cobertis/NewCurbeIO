@@ -297,7 +297,7 @@ function VoicemailView({ voicemails, unreadCount, refetchVoicemails, phoneNumber
     }
 
     if (!audioRefs.current[voicemail.id]) {
-      const audio = new Audio(voicemail.recordingUrl);
+      const audio = new Audio(`/api/voicemails/${voicemail.id}/audio`);
       audio.onended = () => {
         setPlayingId(null);
         setAudioProgress(prev => ({ ...prev, [voicemail.id]: 0 }));
