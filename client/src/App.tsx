@@ -1112,14 +1112,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               
               <div className="space-y-0.5">
                 <DropdownMenuItem 
-                  onClick={() => setLocation("/settings")}
-                  data-testid="sidebar-menu-settings"
-                  className="py-2.5 px-3 cursor-pointer rounded-md"
-                >
-                  <SettingsIcon className="mr-3 h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm font-medium">Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
                   onClick={() => setLocation("/settings/billing")}
                   data-testid="sidebar-menu-billing"
                   className="py-2.5 px-3 cursor-pointer rounded-md"
