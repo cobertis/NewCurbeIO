@@ -658,91 +658,10 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      {/* CSS Grid Layout: Row 1 = Header (spans both cols), Row 2 = Sidebar + Content */}
-      <div className="grid grid-rows-[auto,1fr] grid-cols-[4rem,1fr] h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        {/* Header - Spans both columns (full width) */}
-        <div className="col-span-2 p-4 pb-2">
-          <header className="h-14 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center px-6">
-            {/* Left: Company Logo - Always links to dashboard (SPA navigation) */}
-            <div className="flex items-center shrink-0 mr-8 h-10">
-              {displayLogo && (
-                <Link href="/dashboard" data-testid="logo-link">
-                  <img 
-                    src={displayLogo} 
-                    alt="Logo" 
-                    className="h-9 max-w-[140px] object-contain cursor-pointer hover:opacity-80 transition-opacity"
-                  />
-                </Link>
-              )}
-            </div>
-
-            {/* Center: Navigation Pills */}
-            <nav className="flex-1 flex items-center justify-center gap-2">
-              {navigationItems.map((item) => (
-                <Link key={item.url} href={item.url}>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className={cn(
-                      "text-sm font-medium transition-all duration-200 px-4 py-1.5 h-8 rounded-lg",
-                      location === item.url 
-                        ? "bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100" 
-                        : "bg-white/80 text-gray-700 shadow-sm border border-gray-200/60 hover:bg-white hover:text-gray-900 hover:border-gray-300 dark:bg-gray-800/80 dark:text-gray-300 dark:border-gray-700/60 dark:hover:bg-gray-700 dark:hover:text-white"
-                    )}
-                    data-testid={`nav-${item.title.toLowerCase()}`}
-                  >
-                    {item.title}
-                  </Button>
-                </Link>
-              ))}
-            </nav>
-
-            {/* Right: Action Icons - SugarCRM circular style */}
-            <div className="flex items-center gap-3 shrink-0">
-              {/* New Policy Button - Quick access */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setLocation("/customers/new")}
-                    data-testid="header-button-new-policy"
-                    className="w-9 h-9 rounded-full flex items-center justify-center bg-primary hover:bg-primary/90 text-white transition-all duration-200"
-                  >
-                    <Plus className="h-[18px] w-[18px]" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>New Policy</TooltipContent>
-              </Tooltip>
-
-              {/* Phone Credits Balance - Uses session balance for instant display */}
-              <div className="flex items-center gap-2">
-                <div 
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => setLocation("/settings/billing?tab=phone")}
-                  data-testid="link-phone-balance"
-                >
-                  <Wallet className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                  <span className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-phone-balance">
-                    ${phoneBalance.toFixed(2)}
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setWalletTopupOpen(true)}
-                  className="h-8 text-xs font-medium"
-                  data-testid="button-buy-credits"
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Buy Credits
-                </Button>
-              </div>
-
-          </div>
-          </header>
-        </div>
-        
-        {/* Sidebar - Row 2, Column 1 - Simple icon column below header */}
-        <div className="pl-4 flex flex-col items-center py-4 space-y-3">
+      {/* CSS Grid Layout: Col 1 = Sidebar (full height), Col 2 = Header + Content */}
+      <div className="grid grid-cols-[4rem,1fr] h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        {/* Sidebar - Column 1 - Full height from top to bottom */}
+        <div className="row-span-full pl-4 flex flex-col items-center py-4 space-y-3">
           {/* Communications Icons */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -982,12 +901,96 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        
-        {/* Content Area - Row 2, Column 2 */}
-        <div className="flex flex-col min-w-0 min-h-0 h-full pr-2 pt-1 overflow-hidden">
-          <main className="flex-1 min-h-0 overflow-auto p-3">
-            {children}
-          </main>
+
+        {/* Right side - Column 2 - Header + Content stacked vertically */}
+        <div className="flex flex-col h-screen">
+          {/* Header */}
+          <div className="p-4 pb-2">
+            <header className="h-14 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center px-6">
+            {/* Left: Company Logo - Always links to dashboard (SPA navigation) */}
+            <div className="flex items-center shrink-0 mr-8 h-10">
+              {displayLogo && (
+                <Link href="/dashboard" data-testid="logo-link">
+                  <img 
+                    src={displayLogo} 
+                    alt="Logo" 
+                    className="h-9 max-w-[140px] object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                  />
+                </Link>
+              )}
+            </div>
+
+            {/* Center: Navigation Pills */}
+            <nav className="flex-1 flex items-center justify-center gap-2">
+              {navigationItems.map((item) => (
+                <Link key={item.url} href={item.url}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className={cn(
+                      "text-sm font-medium transition-all duration-200 px-4 py-1.5 h-8 rounded-lg",
+                      location === item.url 
+                        ? "bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100" 
+                        : "bg-white/80 text-gray-700 shadow-sm border border-gray-200/60 hover:bg-white hover:text-gray-900 hover:border-gray-300 dark:bg-gray-800/80 dark:text-gray-300 dark:border-gray-700/60 dark:hover:bg-gray-700 dark:hover:text-white"
+                    )}
+                    data-testid={`nav-${item.title.toLowerCase()}`}
+                  >
+                    {item.title}
+                  </Button>
+                </Link>
+              ))}
+            </nav>
+
+            {/* Right: Action Icons - SugarCRM circular style */}
+            <div className="flex items-center gap-3 shrink-0">
+              {/* New Policy Button - Quick access */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setLocation("/customers/new")}
+                    data-testid="header-button-new-policy"
+                    className="w-9 h-9 rounded-full flex items-center justify-center bg-primary hover:bg-primary/90 text-white transition-all duration-200"
+                  >
+                    <Plus className="h-[18px] w-[18px]" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>New Policy</TooltipContent>
+              </Tooltip>
+
+              {/* Phone Credits Balance - Uses session balance for instant display */}
+              <div className="flex items-center gap-2">
+                <div 
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => setLocation("/settings/billing?tab=phone")}
+                  data-testid="link-phone-balance"
+                >
+                  <Wallet className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-phone-balance">
+                    ${phoneBalance.toFixed(2)}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setWalletTopupOpen(true)}
+                  className="h-8 text-xs font-medium"
+                  data-testid="button-buy-credits"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Buy Credits
+                </Button>
+              </div>
+
+            </div>
+            </header>
+          </div>
+          
+          {/* Content Area */}
+          <div className="flex-1 min-h-0 overflow-hidden pr-2 pb-2">
+            <main className="h-full overflow-auto p-3">
+              {children}
+            </main>
+          </div>
         </div>
       </div>
 
