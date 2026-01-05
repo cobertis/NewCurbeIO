@@ -662,6 +662,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="grid grid-cols-[4rem,1fr] h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         {/* Sidebar - Column 1 - Full height from top to bottom */}
         <div className="row-span-full pl-4 flex flex-col items-center py-4 space-y-3">
+          {/* Curbe Logo */}
+          <Link href="/dashboard" className="mb-1">
+            <img 
+              src="/curbe-icon.png" 
+              alt="Curbe" 
+              className="h-10 w-10 object-contain cursor-pointer hover:scale-105 transition-transform"
+              data-testid="sidebar-logo"
+            />
+          </Link>
+
+          {/* Separator */}
+          <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
+
           {/* Communications Icons */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -675,9 +688,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">Inbox</TooltipContent>
           </Tooltip>
-
-          {/* Separator */}
-          <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
 
           {/* Marketing Icons */}
           <Tooltip>
