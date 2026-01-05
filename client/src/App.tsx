@@ -672,9 +672,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
-          {/* Separator */}
-          <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
-
           {/* Communications Icons */}
           <Tooltip>
             <TooltipTrigger asChild>
