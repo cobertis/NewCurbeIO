@@ -1103,9 +1103,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 data-testid="sidebar-menu-status-offline"
                 className="py-2 px-3 cursor-pointer rounded-md"
               >
-                <span className="h-3 w-3 rounded-full bg-gray-400 mr-3" />
+                <span className="h-3 w-3 rounded-full bg-red-500 mr-3" />
                 <span className="text-sm font-medium flex-1">Offline</span>
-                {availabilityData?.status === "offline" && <Check className="h-4 w-4 text-gray-400" />}
+                {availabilityData?.status === "offline" && <Check className="h-4 w-4 text-red-500" />}
               </DropdownMenuItem>
               
               <DropdownMenuSeparator className="my-2" />

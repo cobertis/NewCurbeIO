@@ -5436,6 +5436,29 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
+
+  // Update current user's timezone
+  app.patch("/api/users/timezone", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { timezone } = req.body;
+      
+      if (!timezone || typeof timezone !== 'string') {
+        return res.status(400).json({ message: "Valid timezone is required" });
+      }
+      
+      const updatedUser = await storage.updateUser(user.id, { timezone });
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      console.log(`[Timezone] User ${user.email} updated timezone to: ${timezone}`);
+      res.json({ success: true, timezone: updatedUser.timezone });
+    } catch (error: any) {
+      console.error("[Timezone] Error updating timezone:", error);
+      res.status(500).json({ message: "Failed to update timezone" });
+    }
+  });
   // Update user by ID (admins can update users in their company)
   app.patch("/api/users/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
