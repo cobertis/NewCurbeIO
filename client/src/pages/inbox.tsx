@@ -3680,18 +3680,6 @@ export default function InboxPage() {
                           </div>
                         </div>
                       )}
-
-                      {/* Contact Owner */}
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-5 w-5">
-                          <AvatarFallback className="text-[10px] bg-gray-200">?</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Contact owner</p>
-                          <p className="text-sm text-muted-foreground" data-testid="text-contact-owner">Unassigned</p>
-                        </div>
-                      </div>
-
                       {/* Lists */}
                       <div className="flex items-center gap-3">
                         <List className="h-4 w-4 text-muted-foreground" />
