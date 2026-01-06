@@ -1755,7 +1755,7 @@ export default function InboxPage() {
       activeView={activeView} 
       onViewChange={setActiveView}
       counts={{
-        open: conversations.filter(c => (c as any).status !== "waiting" && c.status !== "solved" && c.status !== "archived").length,
+        open: conversations.length,
         assigned: conversations.filter(c => c.assignedTo === user?.id && c.status !== "solved" && c.status !== "archived").length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
       }}
