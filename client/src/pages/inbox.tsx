@@ -304,6 +304,17 @@ export default function InboxPage() {
   // Emoji picker state
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   
+  // Lifecycle options matching messenger-layout
+  const lifecycleOptions = [
+    { id: "new_lead", label: "New Lead", emoji: "🆕", color: "bg-blue-100 text-blue-700 border-blue-200" },
+    { id: "hot_lead", label: "Hot Lead", emoji: "🔥", color: "bg-orange-100 text-orange-700 border-orange-200" },
+    { id: "payment", label: "Payment", emoji: "🤑", color: "bg-green-100 text-green-700 border-green-200" },
+    { id: "customer", label: "Customer", emoji: "🤩", color: "bg-purple-100 text-purple-700 border-purple-200" },
+  ];
+  
+  // Lifecycle popover state
+  const [lifecyclePopoverOpen, setLifecyclePopoverOpen] = useState(false);
+  
   // Filter state for sidebar
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [filterShow, setFilterShow] = useState<"all" | "open" | "closed" | "snoozed">("open");
@@ -1037,6 +1048,44 @@ export default function InboxPage() {
       }
       toast({
         title: "Failed to solve conversation",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateLifecycleMutation = useMutation({
+    mutationFn: async ({ conversationId, lifecycleStage }: { conversationId: string; lifecycleStage: string }) => {
+      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { lifecycleStage });
+    },
+    onMutate: async ({ conversationId, lifecycleStage }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/inbox/conversations"] });
+      const previousData = queryClient.getQueryData(["/api/inbox/conversations"]);
+      queryClient.setQueryData(["/api/inbox/conversations"], (old: any) => {
+        if (!old?.conversations) return old;
+        return {
+          ...old,
+          conversations: old.conversations.map((conv: any) =>
+            conv.id === conversationId ? { ...conv, lifecycleStage } : conv
+          ),
+        };
+      });
+      return { previousData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      setLifecyclePopoverOpen(false);
+      toast({
+        title: "Lifecycle updated",
+        description: "Contact lifecycle stage has been updated.",
+      });
+    },
+    onError: (error: any, _variables, context: any) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["/api/inbox/conversations"], context.previousData);
+      }
+      toast({
+        title: "Failed to update lifecycle",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -2151,6 +2200,52 @@ export default function InboxPage() {
                       : formatForDisplay(selectedConversation.phoneNumber)}
                   </p>
                 </div>
+                
+                {/* Lifecycle Badge with Dropdown */}
+                <Popover open={lifecyclePopoverOpen} onOpenChange={setLifecyclePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-7 gap-1.5 text-xs font-medium border",
+                        lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.color || "bg-blue-100 text-blue-700 border-blue-200"
+                      )}
+                      data-testid="btn-lifecycle"
+                    >
+                      <span>{lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.emoji || "🆕"}</span>
+                      <span>{lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.label || "New Lead"}</span>
+                      <ChevronRight className="h-3 w-3 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 p-1" align="start">
+                    <div className="space-y-0.5">
+                      {lifecycleOptions.map((option) => (
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            updateLifecycleMutation.mutate({
+                              conversationId: selectedConversation.id,
+                              lifecycleStage: option.id
+                            });
+                          }}
+                          disabled={updateLifecycleMutation.isPending}
+                          className={cn(
+                            "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
+                            (selectedConversation as any).lifecycleStage === option.id && "bg-gray-100 dark:bg-gray-800"
+                          )}
+                          data-testid={`lifecycle-option-${option.id}`}
+                        >
+                          <span>{option.emoji}</span>
+                          <span>{option.label}</span>
+                          {(selectedConversation as any).lifecycleStage === option.id && (
+                            <Check className="h-4 w-4 ml-auto text-blue-600" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="flex items-center gap-1">
                 <Button

@@ -4031,6 +4031,9 @@ export const imessageConversations = pgTable("imessage_conversations", {
   // Unread tracking
   unreadCount: integer("unread_count").notNull().default(0),
   
+  // Lifecycle stage for CRM funnel
+  lifecycleStage: text("lifecycle_stage").default("new_lead"), // new_lead, hot_lead, payment, customer
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
@@ -6741,6 +6744,9 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   
   // WhatsApp 24-hour conversation window tracking
   conversationExpiresAt: timestamp("conversation_expires_at"), // When the 24h free-form messaging window expires
+  
+  // Lifecycle stage for CRM funnel
+  lifecycleStage: text("lifecycle_stage").default("new_lead"), // new_lead, hot_lead, payment, customer
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
