@@ -670,6 +670,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <img 
               src="/curbe-icon.png" 
               alt="Curbe" 
+              loading="eager"
+              decoding="sync"
+              fetchPriority="high"
               className="w-12 h-12 object-contain cursor-pointer hover:scale-105 transition-transform"
               data-testid="sidebar-logo"
             />
