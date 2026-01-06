@@ -1409,12 +1409,15 @@ export default function InboxPage() {
     }
     
     // Apply sidebar filter: Show (all, open, closed, snoozed)
-    if (filterShow === "open") {
-      filtered = filtered.filter(c => (c as any).status !== "solved" && (c as any).status !== "archived" && (c as any).status !== "snoozed");
-    } else if (filterShow === "closed") {
-      filtered = filtered.filter(c => (c as any).status === "solved" || (c as any).status === "archived");
-    } else if (filterShow === "snoozed") {
-      filtered = filtered.filter(c => (c as any).status === "snoozed");
+    // Skip this filter when viewing "solved" or when a lifecycle filter is active
+    if (activeView !== "solved" && !activeLifecycle) {
+      if (filterShow === "open") {
+        filtered = filtered.filter(c => (c as any).status !== "solved" && (c as any).status !== "archived" && (c as any).status !== "snoozed");
+      } else if (filterShow === "closed") {
+        filtered = filtered.filter(c => (c as any).status === "solved" || (c as any).status === "archived");
+      } else if (filterShow === "snoozed") {
+        filtered = filtered.filter(c => (c as any).status === "snoozed");
+      }
     }
     // "all" shows everything already filtered by activeView
     
