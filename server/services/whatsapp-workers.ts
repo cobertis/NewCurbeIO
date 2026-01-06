@@ -12,6 +12,7 @@ import {
 import { eq, and, lte, sql } from "drizzle-orm";
 import { decryptToken } from "../crypto";
 import { whatsappCallService } from "./whatsapp-call-service";
+import { broadcastNewMessage } from "../websocket";
 
 const WEBHOOK_POLL_INTERVAL_MS = 500;
 const SEND_POLL_INTERVAL_MS = 500;
@@ -205,6 +206,13 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             deliveredAt: callTimestamp,
           });
 
+          // Broadcast to frontend for real-time update
+          broadcastNewMessage(customerPhone, {
+            conversationId: inboxConversation.id,
+            channel: "whatsapp",
+            type: "call",
+          }, companyId);
+
           console.log(`[WhatsApp Webhook Worker] Saved inbound call to inbox: ${call.id} - ${callEvent}`);
         }
       }
@@ -356,6 +364,13 @@ async function processWebhookEvent(event: typeof waWebhookEvents.$inferSelect): 
             telnyxMessageId: msg.id,
             deliveredAt: msg.timestamp ? new Date(parseInt(msg.timestamp) * 1000) : new Date(),
           });
+
+          // Broadcast to frontend for real-time update
+          broadcastNewMessage(customerPhone, {
+            conversationId: inboxConversation.id,
+            channel: "whatsapp",
+            text: messageText,
+          }, companyId);
 
           console.log(`[WhatsApp Webhook Worker] Saved inbound message to inbox: ${msg.id}`);
         }
