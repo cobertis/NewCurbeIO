@@ -770,16 +770,26 @@ export default function InboxPage() {
   });
 
   const updateConversationMutation = useMutation({
-    mutationFn: async ({ conversationId, displayName, email, jobTitle, organization }: { conversationId: string; displayName: string; email: string; jobTitle: string; organization: string }) => {
-      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { displayName, email, jobTitle, organization });
+    mutationFn: async ({ conversationId, displayName, email, jobTitle, organization, status }: { conversationId: string; displayName: string; email: string; jobTitle: string; organization: string; status?: string }) => {
+      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { displayName, email, jobTitle, organization, status });
     },
-    onSuccess: async () => {
+    onSuccess: async (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       setEditingField(null);
-      toast({
-        title: "Contact updated",
-        description: "Contact information has been saved successfully.",
-      });
+      if (variables.status) {
+        toast({
+          title: "Status updated",
+          description: `Conversation marked as ${variables.status === "solved" ? "Solved" : "Open"}.`,
+        });
+        if (variables.status === "solved" && statusFilter === "all") {
+          setSelectedConversationId(null);
+        }
+      } else {
+        toast({
+          title: "Contact updated",
+          description: "Contact information has been saved successfully.",
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -3152,21 +3162,33 @@ export default function InboxPage() {
                   </button>
                   {chatInfoOpen && (
                     <div className="space-y-3" data-testid="section-chat-info">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center">
                         <span className="text-xs text-muted-foreground">Status</span>
-                        <Badge 
-                          variant="secondary" 
-                          className={cn(
-                            "text-xs",
-                            selectedConversation.status === "waiting" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-                            selectedConversation.status === "open" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-                            selectedConversation.status === "solved" && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                          )}
+                        <Select
+                          value={selectedConversation.status || "open"}
+                          onValueChange={(value) => {
+                            updateConversationMutation.mutate({
+                              conversationId: selectedConversation.id,
+                              displayName: selectedConversation.displayName || "",
+                              email: selectedConversation.email || "",
+                              jobTitle: selectedConversation.jobTitle || "",
+                              organization: selectedConversation.organization || "",
+                              status: value,
+                            });
+                          }}
                         >
-                          {selectedConversation.status === "waiting" ? "Waiting" : 
-                           selectedConversation.status === "open" ? "Open" : 
-                           selectedConversation.status?.charAt(0).toUpperCase() + selectedConversation.status?.slice(1)}
-                        </Badge>
+                          <SelectTrigger className="w-[100px] h-7 text-xs" data-testid="select-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="open">
+                              <span className="text-green-600 font-medium">Open</span>
+                            </SelectItem>
+                            <SelectItem value="solved">
+                              <span className="text-gray-600 font-medium">Solved</span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-muted-foreground">Assignee</span>
