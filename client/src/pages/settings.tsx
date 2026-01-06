@@ -2589,34 +2589,7 @@ function TeamMembersTable() {
 
   return (
     <div className="space-y-4">
-      {/* Header with Add button */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Team Members</h3>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Button 
-                  onClick={() => setCreateOpen(true)} 
-                  size="sm"
-                  disabled={!canAddUsers}
-                  data-testid="button-add-team-member"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Team Member
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {!canAddUsers && (
-              <TooltipContent>
-                <p>You have reached the maximum number of users allowed on your plan ({limitsData?.maxUsers} users). Upgrade your plan to add more team members.</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-
-      {/* Search and Filters */}
+      {/* Search, Filters, and Add button */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2649,6 +2622,29 @@ function TeamMembersTable() {
             <SelectItem value="deactivated">Deactivated</SelectItem>
           </SelectContent>
         </Select>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button 
+                  onClick={() => setCreateOpen(true)} 
+                  size="sm"
+                  disabled={!canAddUsers}
+                  className="w-full sm:w-auto"
+                  data-testid="button-add-team-member"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Team Member
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canAddUsers && (
+              <TooltipContent>
+                <p>You have reached the maximum number of users allowed on your plan ({limitsData?.maxUsers} users). Upgrade your plan to add more team members.</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Results count */}
