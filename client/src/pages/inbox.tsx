@@ -1222,9 +1222,6 @@ export default function InboxPage() {
       case "assigned":
         filtered = conversations.filter(c => c.assignedTo === user?.id && !isSolvedOrArchived(c));
         break;
-      case "unassigned":
-        filtered = conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting" && !isSolvedOrArchived(c));
-        break;
       case "waiting":
         // Show all live chats with status "waiting" - visitors waiting for an agent to accept
         filtered = conversations.filter(c => {
@@ -1273,7 +1270,6 @@ export default function InboxPage() {
       case "open": return "All";
       case "unread": return "Unread";
       case "assigned": return "Assigned to me";
-      case "unassigned": return "Unassigned";
       case "waiting": return "Waiting live chats";
       case "solved": return "Solved";
       case "all": return "All chats";
@@ -1759,9 +1755,8 @@ export default function InboxPage() {
       activeView={activeView} 
       onViewChange={setActiveView}
       counts={{
-        open: conversations.filter(c => (c.status === "open" || c.status === "pending" || !c.status) && (c as any).status !== "waiting" && c.status !== "solved" && c.status !== "archived").length,
+        open: conversations.filter(c => (c as any).status !== "waiting" && c.status !== "solved" && c.status !== "archived").length,
         assigned: conversations.filter(c => c.assignedTo === user?.id && c.status !== "solved" && c.status !== "archived").length,
-        unassigned: conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting" && c.status !== "solved" && c.status !== "archived").length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
       }}
     >

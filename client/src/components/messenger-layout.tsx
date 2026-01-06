@@ -29,7 +29,6 @@ export function useMessengerSidebar() {
 export type MessengerView = 
   | "open" 
   | "assigned" 
-  | "unassigned" 
   | "solved";
 
 interface MessengerLayoutProps {
@@ -39,7 +38,6 @@ interface MessengerLayoutProps {
   counts?: {
     open?: number;
     assigned?: number;
-    unassigned?: number;
     solved?: number;
   };
 }
@@ -47,7 +45,6 @@ interface MessengerLayoutProps {
 const viewItems = [
   { id: "open" as const, label: "All", icon: Inbox },
   { id: "assigned" as const, label: "Assigned to me", icon: User },
-  { id: "unassigned" as const, label: "Unassigned", icon: UserMinus },
   { id: "solved" as const, label: "Solved", icon: CheckCircle2 },
 ];
 
