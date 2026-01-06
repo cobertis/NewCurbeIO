@@ -3285,20 +3285,28 @@ export default function InboxPage() {
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-muted-foreground">Channel</span>
                         <div className="flex items-center gap-2">
-                          {selectedConversation.channel === "live_chat" ? (
-                            <>
-                              <Globe className="h-3.5 w-3.5 text-orange-500" />
-                              <span className="text-sm font-medium">Live Chat</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>🇺🇸</span>
-                              <span className="text-sm font-medium">
-                                {formatForDisplay(selectedConversation.phoneNumber)}
-                              </span>
-                              <span className="text-xs text-blue-600">(United States)</span>
-                            </>
-                          )}
+                          {selectedConversation.channel === "whatsapp" && <SiWhatsapp className="h-3.5 w-3.5 text-green-500" />}
+                          {selectedConversation.channel === "sms" && <MessageSquare className="h-3.5 w-3.5 text-blue-500" />}
+                          {selectedConversation.channel === "mms" && <MessageSquare className="h-3.5 w-3.5 text-blue-600" />}
+                          {selectedConversation.channel === "imessage" && <SiApple className="h-3.5 w-3.5 text-gray-800 dark:text-gray-200" />}
+                          {selectedConversation.channel === "messenger" && <SiMessenger className="h-3.5 w-3.5 text-blue-500" />}
+                          {selectedConversation.channel === "telegram" && <SiTelegram className="h-3.5 w-3.5 text-sky-500" />}
+                          {selectedConversation.channel === "instagram" && <SiInstagram className="h-3.5 w-3.5 text-pink-500" />}
+                          {selectedConversation.channel === "live_chat" && <Globe className="h-3.5 w-3.5 text-orange-500" />}
+                          {selectedConversation.channel === "email" && <Mail className="h-3.5 w-3.5 text-red-500" />}
+                          {!["whatsapp", "sms", "mms", "imessage", "messenger", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && <MessageSquare className="h-3.5 w-3.5 text-gray-500" />}
+                          <span className="text-sm font-medium">
+                            {selectedConversation.channel === "whatsapp" && "WhatsApp"}
+                            {selectedConversation.channel === "sms" && "SMS"}
+                            {selectedConversation.channel === "mms" && "MMS"}
+                            {selectedConversation.channel === "imessage" && "iMessage"}
+                            {selectedConversation.channel === "messenger" && "Messenger"}
+                            {selectedConversation.channel === "telegram" && "Telegram"}
+                            {selectedConversation.channel === "instagram" && "Instagram"}
+                            {selectedConversation.channel === "live_chat" && "Live Chat"}
+                            {selectedConversation.channel === "email" && "Email"}
+                            {!["whatsapp", "sms", "mms", "imessage", "messenger", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && (selectedConversation.channel?.charAt(0).toUpperCase() + selectedConversation.channel?.slice(1) || "Unknown")}
+                          </span>
                         </div>
                       </div>
                       <div className="flex justify-between items-center">
@@ -3570,34 +3578,6 @@ export default function InboxPage() {
                   </button>
                   {insightsOpen && (
                     <div className="space-y-3" data-testid="section-insights">
-                      {/* Communication Channel */}
-                      <div className="flex items-center gap-3">
-                        {selectedConversation.channel === "whatsapp" && <SiWhatsapp className="h-4 w-4 text-green-500" />}
-                        {selectedConversation.channel === "sms" && <MessageSquare className="h-4 w-4 text-blue-500" />}
-                        {selectedConversation.channel === "mms" && <MessageSquare className="h-4 w-4 text-blue-600" />}
-                        {selectedConversation.channel === "imessage" && <SiApple className="h-4 w-4 text-gray-800 dark:text-gray-200" />}
-                        {selectedConversation.channel === "messenger" && <SiMessenger className="h-4 w-4 text-blue-500" />}
-                        {selectedConversation.channel === "telegram" && <SiTelegram className="h-4 w-4 text-sky-500" />}
-                        {selectedConversation.channel === "instagram" && <SiInstagram className="h-4 w-4 text-pink-500" />}
-                        {selectedConversation.channel === "live_chat" && <Globe className="h-4 w-4 text-orange-500" />}
-                        {selectedConversation.channel === "email" && <Mail className="h-4 w-4 text-red-500" />}
-                        {!["whatsapp", "sms", "mms", "imessage", "messenger", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && <MessageSquare className="h-4 w-4 text-gray-500" />}
-                        <div>
-                          <p className="text-xs text-muted-foreground">Channel</p>
-                          <p className="text-sm font-medium" data-testid="text-channel">
-                            {selectedConversation.channel === "whatsapp" && "WhatsApp"}
-                            {selectedConversation.channel === "sms" && "SMS"}
-                            {selectedConversation.channel === "mms" && "MMS"}
-                            {selectedConversation.channel === "imessage" && "iMessage"}
-                            {selectedConversation.channel === "messenger" && "Messenger"}
-                            {selectedConversation.channel === "telegram" && "Telegram"}
-                            {selectedConversation.channel === "instagram" && "Instagram"}
-                            {selectedConversation.channel === "live_chat" && "Live Chat"}
-                            {selectedConversation.channel === "email" && "Email"}
-                            {!["whatsapp", "sms", "mms", "imessage", "messenger", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && (selectedConversation.channel?.charAt(0).toUpperCase() + selectedConversation.channel?.slice(1) || "Unknown")}
-                          </p>
-                        </div>
-                      </div>
 
                       {/* Lead Status */}
                       <div className="flex items-center gap-3">
