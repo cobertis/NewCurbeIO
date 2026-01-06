@@ -960,9 +960,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* Right side - Column 2 - Content only (no header) */}
         <div className="flex flex-col h-screen">
-          {/* Content Area */}
-          <div className="flex-1 min-h-0 overflow-hidden p-2">
-            <main className="h-full overflow-auto p-3">
+          {/* Content Area - Full coverage, no padding */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <main className="h-full overflow-auto">
               {children}
             </main>
           </div>
