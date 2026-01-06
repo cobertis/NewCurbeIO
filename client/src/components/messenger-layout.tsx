@@ -6,10 +6,14 @@ import {
   CheckCircle2,
   Inbox,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Plus,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface MessengerSidebarContextType {
   sidebarHidden: boolean;
@@ -47,6 +51,13 @@ const viewItems = [
   { id: "solved" as const, label: "Solved", icon: CheckCircle2 },
 ];
 
+const lifecycleItems = [
+  { id: "new_lead", label: "New Lead", emoji: "🆕" },
+  { id: "hot_lead", label: "Hot Lead", emoji: "🔥" },
+  { id: "payment", label: "Payment", emoji: "🤑" },
+  { id: "customer", label: "Customer", emoji: "🤩" },
+];
+
 export function MessengerLayout({ 
   children, 
   activeView, 
@@ -54,6 +65,8 @@ export function MessengerLayout({
   counts = {}
 }: MessengerLayoutProps) {
   const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [teamInboxOpen, setTeamInboxOpen] = useState(true);
+  const [customInboxOpen, setCustomInboxOpen] = useState(true);
 
   const isViewActive = (id: MessengerView) => activeView === id;
 
@@ -104,6 +117,73 @@ export function MessengerLayout({
                 </button>
               ))}
             </nav>
+
+            {/* Lifecycle Section */}
+            <div className="mt-4 px-2">
+              <div className="px-3 py-1.5">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Lifecycle</span>
+              </div>
+              <nav className="space-y-0.5">
+                {lifecycleItems.map((item) => (
+                  <button
+                    key={item.id}
+                    data-testid={`nav-lifecycle-${item.id}`}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <span className="text-base">{item.emoji}</span>
+                    <span className="flex-1 text-left">{item.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            {/* Team Inbox Section */}
+            <div className="mt-4 px-2">
+              <Collapsible open={teamInboxOpen} onOpenChange={setTeamInboxOpen}>
+                <div className="flex items-center justify-between px-3 py-1.5">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Team Inbox</span>
+                  <div className="flex items-center gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-5 w-5" data-testid="btn-add-team-inbox">
+                      <Plus className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-5 w-5">
+                        {teamInboxOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                </div>
+                <CollapsibleContent>
+                  <div className="px-3 py-2">
+                    <p className="text-xs text-muted-foreground">No inboxes created</p>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Custom Inbox Section */}
+            <div className="mt-2 px-2">
+              <Collapsible open={customInboxOpen} onOpenChange={setCustomInboxOpen}>
+                <div className="flex items-center justify-between px-3 py-1.5">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Custom Inbox</span>
+                  <div className="flex items-center gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-5 w-5" data-testid="btn-add-custom-inbox">
+                      <Plus className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-5 w-5">
+                        {customInboxOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                </div>
+                <CollapsibleContent>
+                  <div className="px-3 py-2">
+                    <p className="text-xs text-muted-foreground">No inboxes created</p>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
           </div>
         </div>
         )}
