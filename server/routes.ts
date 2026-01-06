@@ -44582,8 +44582,16 @@ CRITICAL REMINDERS:
         return res.status(404).json({ message: "Inbox not found" });
       }
 
+      const isAdmin = user.role === "admin" || user.role === "superadmin";
+
+      // Custom inboxes: only creator can delete
+      // Team inboxes: only creator or admin can delete
       if (existing.type === "custom" && existing.createdByUserId !== userId) {
         return res.status(403).json({ message: "You can only delete your own custom inboxes" });
+      }
+
+      if (existing.type === "team" && existing.createdByUserId !== userId && !isAdmin) {
+        return res.status(403).json({ message: "Only the creator or an admin can delete team inboxes" });
       }
 
       await db.delete(customInboxes).where(eq(customInboxes.id, id));
