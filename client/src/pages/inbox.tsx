@@ -3481,22 +3481,6 @@ export default function InboxPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 shrink-0">
-                          <SiFacebook className="h-4 w-4 text-blue-600 cursor-pointer hover:opacity-80" data-testid="icon-facebook" />
-                          <SiInstagram className="h-4 w-4 text-pink-600 cursor-pointer hover:opacity-80" data-testid="icon-instagram" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground">Social media</p>
-                          <p className="text-sm text-muted-foreground" data-testid="text-social">Not connected</p>
-                        </div>
-                      </div>
-                      <button 
-                        className="text-xs text-violet-600 hover:text-violet-700 font-medium"
-                        data-testid="btn-show-more-contact"
-                      >
-                        Show more
-                      </button>
                     </div>
                   )}
                 </div>
