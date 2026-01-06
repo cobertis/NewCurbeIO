@@ -252,7 +252,7 @@ export default function InboxPage() {
   const [insightsOpen, setInsightsOpen] = useState(true);
   const [pulseAiSettingsOpen, setPulseAiSettingsOpen] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     displayName: "",
     email: "",
@@ -774,7 +774,7 @@ export default function InboxPage() {
     },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
-      setIsEditingDetails(false);
+      setEditingField(null);
       toast({
         title: "Contact updated",
         description: "Contact information has been saved successfully.",
@@ -1734,21 +1734,21 @@ export default function InboxPage() {
     return message.isInternalNote || message.messageType === "internal_note";
   };
 
-  const startEditing = () => {
+  const startEditingField = (field: string) => {
     setEditForm({
       displayName: matchedContact?.displayName || selectedConversation?.displayName || "",
       email: selectedConversation?.email || matchedContact?.email || "",
       jobTitle: selectedConversation?.jobTitle || "",
       organization: selectedConversation?.organization || matchedContact?.companyName || "",
     });
-    setIsEditingDetails(true);
+    setEditingField(field);
   };
 
   const cancelEditing = () => {
-    setIsEditingDetails(false);
+    setEditingField(null);
   };
 
-  const saveContactEdit = () => {
+  const saveFieldEdit = (field: string) => {
     if (!selectedConversationId) return;
     updateConversationMutation.mutate({
       conversationId: selectedConversationId,
@@ -1757,12 +1757,16 @@ export default function InboxPage() {
       jobTitle: editForm.jobTitle,
       organization: editForm.organization,
     });
+    setEditingField(null);
   };
 
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleFieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: string) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      saveContactEdit();
+      saveFieldEdit(field);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelEditing();
     }
   };
 
@@ -3104,39 +3108,16 @@ export default function InboxPage() {
               </div>
               <div className="flex items-center gap-1">
                 {rightPanelTab === "details" && (
-                  <>
-                    {isEditingDetails ? (
-                      <>
-                        <Button variant="ghost" size="sm" onClick={cancelEditing} data-testid="btn-cancel-edit">
-                          Cancel
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-search-details">
+                          <Search className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" onClick={saveContactEdit} data-testid="btn-save-edit">
-                          Save
-                        </Button>
-                      </>
-                    ) : (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={startEditing} data-testid="btn-edit-details">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Edit</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-search-details">
-                            <Search className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Search</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </>
+                      </TooltipTrigger>
+                      <TooltipContent>Search</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 <Button
                   variant="ghost"
@@ -3367,16 +3348,22 @@ export default function InboxPage() {
                         <User className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Full name</p>
-                          {isEditingDetails ? (
+                          {editingField === "displayName" ? (
                             <Input
+                              autoFocus
                               value={editForm.displayName}
                               onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
-                              onKeyDown={handleEditKeyDown}
+                              onKeyDown={(e) => handleFieldKeyDown(e, "displayName")}
+                              onBlur={() => saveFieldEdit("displayName")}
                               className="h-7 text-sm"
                               data-testid="input-fullname"
                             />
                           ) : (
-                            <p className="text-sm font-medium" data-testid="text-fullname">
+                            <p 
+                              className="text-sm font-medium cursor-pointer hover:text-primary transition-colors" 
+                              onClick={() => startEditingField("displayName")}
+                              data-testid="text-fullname"
+                            >
                               {matchedContact?.displayName || selectedConversation.displayName || "Unknown"}
                             </p>
                           )}
@@ -3407,17 +3394,23 @@ export default function InboxPage() {
                         <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Email</p>
-                          {isEditingDetails ? (
+                          {editingField === "email" ? (
                             <Input
+                              autoFocus
                               value={editForm.email}
                               onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                              onKeyDown={handleEditKeyDown}
+                              onKeyDown={(e) => handleFieldKeyDown(e, "email")}
+                              onBlur={() => saveFieldEdit("email")}
                               className="h-7 text-sm"
                               placeholder="email@example.com"
                               data-testid="input-email"
                             />
                           ) : (
-                            <p className="text-sm font-medium" data-testid="text-email">
+                            <p 
+                              className="text-sm font-medium cursor-pointer hover:text-primary transition-colors" 
+                              onClick={() => startEditingField("email")}
+                              data-testid="text-email"
+                            >
                               {selectedConversation.email || matchedContact?.email || "—"}
                             </p>
                           )}
@@ -3440,17 +3433,23 @@ export default function InboxPage() {
                         <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Job title</p>
-                          {isEditingDetails ? (
+                          {editingField === "jobTitle" ? (
                             <Input
+                              autoFocus
                               value={editForm.jobTitle}
                               onChange={(e) => setEditForm({ ...editForm, jobTitle: e.target.value })}
-                              onKeyDown={handleEditKeyDown}
+                              onKeyDown={(e) => handleFieldKeyDown(e, "jobTitle")}
+                              onBlur={() => saveFieldEdit("jobTitle")}
                               className="h-7 text-sm"
                               placeholder="Enter job title"
                               data-testid="input-jobtitle"
                             />
                           ) : (
-                            <p className="text-sm font-medium" data-testid="text-jobtitle">
+                            <p 
+                              className="text-sm font-medium cursor-pointer hover:text-primary transition-colors" 
+                              onClick={() => startEditingField("jobTitle")}
+                              data-testid="text-jobtitle"
+                            >
                               {selectedConversation.jobTitle || "—"}
                             </p>
                           )}
@@ -3460,17 +3459,23 @@ export default function InboxPage() {
                         <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Organization</p>
-                          {isEditingDetails ? (
+                          {editingField === "organization" ? (
                             <Input
+                              autoFocus
                               value={editForm.organization}
                               onChange={(e) => setEditForm({ ...editForm, organization: e.target.value })}
-                              onKeyDown={handleEditKeyDown}
+                              onKeyDown={(e) => handleFieldKeyDown(e, "organization")}
+                              onBlur={() => saveFieldEdit("organization")}
                               className="h-7 text-sm"
                               placeholder="Enter organization"
                               data-testid="input-organization"
                             />
                           ) : (
-                            <p className="text-sm font-medium" data-testid="text-organization">
+                            <p 
+                              className="text-sm font-medium cursor-pointer hover:text-primary transition-colors" 
+                              onClick={() => startEditingField("organization")}
+                              data-testid="text-organization"
+                            >
                               {selectedConversation.organization || matchedContact?.companyName || "—"}
                             </p>
                           )}
@@ -3486,14 +3491,12 @@ export default function InboxPage() {
                           <p className="text-sm text-muted-foreground" data-testid="text-social">Not connected</p>
                         </div>
                       </div>
-                      {!isEditingDetails && (
-                        <button 
-                          className="text-xs text-violet-600 hover:text-violet-700 font-medium"
-                          data-testid="btn-show-more-contact"
-                        >
-                          Show more
-                        </button>
-                      )}
+                      <button 
+                        className="text-xs text-violet-600 hover:text-violet-700 font-medium"
+                        data-testid="btn-show-more-contact"
+                      >
+                        Show more
+                      </button>
                     </div>
                   )}
                 </div>
