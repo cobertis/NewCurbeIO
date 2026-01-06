@@ -800,6 +800,27 @@ export default function InboxPage() {
     },
   });
 
+  const assignConversationMutation = useMutation({
+    mutationFn: async ({ conversationId, userId }: { conversationId: string; userId: string | null }) => {
+      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { assignedTo: userId });
+    },
+    onSuccess: async (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      const assigneeName = variables.userId ? getUserDisplayName(variables.userId) : "Unassigned";
+      toast({
+        title: "Assignee updated",
+        description: variables.userId ? `Conversation assigned to ${assigneeName}.` : "Conversation is now unassigned.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to assign",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: string) => {
       return apiRequest("DELETE", `/api/inbox/conversations/${conversationId}`);
@@ -3192,21 +3213,55 @@ export default function InboxPage() {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-muted-foreground">Assignee</span>
-                        {selectedConversation.assignedTo ? (
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-5 w-5">
-                              <AvatarFallback className="text-[10px] bg-primary/10">
-                                {getUserInitial(selectedConversation.assignedTo)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium">
-                              {getUserDisplayName(selectedConversation.assignedTo)}
-                              {String(user?.id) === selectedConversation.assignedTo && <span className="text-muted-foreground ml-1">(You)</span>}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Unassigned</span>
-                        )}
+                        <Select
+                          value={selectedConversation.assignedTo || "unassigned"}
+                          onValueChange={(value) => {
+                            assignConversationMutation.mutate({
+                              conversationId: selectedConversation.id,
+                              userId: value === "unassigned" ? null : value,
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="w-[160px] h-7 text-xs" data-testid="select-assignee">
+                            <SelectValue>
+                              {selectedConversation.assignedTo ? (
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-4 w-4">
+                                    <AvatarFallback className="text-[8px] bg-primary/10">
+                                      {getUserInitial(selectedConversation.assignedTo)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="truncate">
+                                    {getUserDisplayName(selectedConversation.assignedTo)}
+                                    {String(user?.id) === selectedConversation.assignedTo && " (You)"}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">Unassigned</span>
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">
+                              <span className="text-muted-foreground">Unassigned</span>
+                            </SelectItem>
+                            {companyUsers.map((u) => (
+                              <SelectItem key={u.id} value={String(u.id)}>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-4 w-4">
+                                    <AvatarFallback className="text-[8px] bg-primary/10">
+                                      {u.firstName?.charAt(0) || u.email?.charAt(0) || "?"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span>
+                                    {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.email}
+                                    {String(u.id) === String(user?.id) && " (You)"}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-muted-foreground">Channel</span>
