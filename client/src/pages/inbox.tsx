@@ -1467,8 +1467,19 @@ export default function InboxPage() {
   }, [conversations, searchQuery, activeView, activeLifecycle, filterShow, filterSortBy, filterUnreplied]);
 
   const viewLabel = useMemo(() => {
+    // If a lifecycle filter is active, show that label
+    if (activeLifecycle) {
+      const lifecycleLabels: Record<string, string> = {
+        new_lead: "🆕 New Lead",
+        hot_lead: "🔥 Hot Lead", 
+        payment: "🤑 Payment",
+        customer: "🤩 Customer"
+      };
+      return lifecycleLabels[activeLifecycle] || "Conversations";
+    }
+    
     switch (activeView) {
-      case "open": return "All";
+      case "open": return "All Open";
       case "unread": return "Unread";
       case "assigned": return "Assigned to me";
       case "waiting": return "Waiting live chats";
@@ -1479,9 +1490,9 @@ export default function InboxPage() {
       case "whatsapp": return "WhatsApp";
       case "facebook": return "Facebook";
       case "instagram": return "Instagram";
-      default: return "Open";
+      default: return "All Open";
     }
-  }, [activeView]);
+  }, [activeView, activeLifecycle]);
 
   const formatMessageTime = (dateStr: string) => {
     const date = new Date(dateStr);
