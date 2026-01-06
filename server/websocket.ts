@@ -1414,3 +1414,43 @@ export function broadcastWalletAnalyticsUpdate(companyId: string, data: WalletAn
     console.log(`[WebSocket] Broadcast wallet_analytics_updated (${data.eventType}) to ${sentCount} client(s) for company ${companyId}`);
   }
 }
+
+export interface ContactUpdateData {
+  contactId: string;
+  conversationId?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+}
+
+export function broadcastContactUpdate(companyId: string, data: ContactUpdateData): void {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'contact_updated',
+    companyId,
+    data
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.companyId === companyId) {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  if (sentCount > 0) {
+    console.log(`[WebSocket] Broadcast contact_updated to ${sentCount} client(s) for company ${companyId}`);
+  }
+}

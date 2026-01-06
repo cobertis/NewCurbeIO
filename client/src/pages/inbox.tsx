@@ -483,6 +483,14 @@ export default function InboxPage() {
           setContactTyping(null);
         }, 5000);
       }
+    } else if (msg.type === 'contact_updated') {
+      // Refresh conversations to get updated contact info
+      queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });
+      if (selectedConversationId) {
+        queryClient.refetchQueries({ 
+          queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
+        });
+      }
     } else if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update' || msg.type === 'imessage_message') {
       // Force immediate refetch for real-time updates
       queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });

@@ -17,10 +17,13 @@ import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si"
 interface SettingsLayoutProps {
   children: React.ReactNode;
   activeSection?: string;
+  userRole?: string;
 }
 
-export function SettingsLayout({ children, activeSection }: SettingsLayoutProps) {
+export function SettingsLayout({ children, activeSection, userRole }: SettingsLayoutProps) {
   const [location, setLocation] = useLocation();
+  
+  const isAdmin = userRole === "admin" || userRole === "superadmin";
   
   const getActiveView = () => {
     if (activeSection) return activeSection;
@@ -44,15 +47,17 @@ export function SettingsLayout({ children, activeSection }: SettingsLayoutProps)
   
   const activeView = getActiveView();
 
+  const allAccountItems = [
+    { label: "Profile", href: "/settings/profile", icon: UserIcon, active: activeView === "profile", adminOnly: false },
+    { label: "Company", href: "/settings/company", icon: Building, active: activeView === "company", adminOnly: true },
+    { label: "Team", href: "/settings/team", icon: UsersRound, active: activeView === "team", adminOnly: true },
+    { label: "Billing", href: "/settings/billing", icon: CreditCard, active: activeView === "billing", adminOnly: true },
+    { label: "Security", href: "/settings/security", icon: Shield, active: activeView === "security", adminOnly: false },
+    { label: "White Label", href: "/settings/white-label", icon: Palette, active: activeView === "white-label", adminOnly: true },
+  ];
+
   const menuItems = {
-    account: [
-      { label: "Profile", href: "/settings/profile", icon: UserIcon, active: activeView === "profile" },
-      { label: "Company", href: "/settings/company", icon: Building, active: activeView === "company" },
-      { label: "Team", href: "/settings/team", icon: UsersRound, active: activeView === "team" },
-      { label: "Billing", href: "/settings/billing", icon: CreditCard, active: activeView === "billing" },
-      { label: "Security", href: "/settings/security", icon: Shield, active: activeView === "security" },
-      { label: "White Label", href: "/settings/white-label", icon: Palette, active: activeView === "white-label" },
-    ],
+    account: allAccountItems.filter(item => !item.adminOnly || isAdmin),
     channels: [
       { label: "SMS & Voice", href: "/settings/sms-voice", icon: Phone, active: activeView === "sms-voice" },
       { label: "Email", href: "/settings/email", icon: Mail, active: activeView === "email" },

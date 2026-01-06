@@ -1415,7 +1415,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
   };
 
   return (
-    <SettingsLayout activeSection={getActiveSection()}>
+    <SettingsLayout activeSection={getActiveSection()} userRole={user?.role}>
     <div className="flex flex-col gap-4 sm:gap-6">
       <div>
         {/* Settings Content */}

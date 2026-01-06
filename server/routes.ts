@@ -10769,6 +10769,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Contact not found" });
       }
       const contact = await storage.updateManualContact(req.params.id, req.body);
+      // Broadcast contact update to all connected clients
+      const { broadcastContactUpdate } = await import("./websocket.js");
+      broadcastContactUpdate(currentUser.companyId!, {
+        contactId: req.params.id,
+        firstName: contact?.firstName,
+        lastName: contact?.lastName,
+        phone: contact?.phone,
+        email: contact?.email,
+      });
       res.json(contact);
     } catch (error: any) {
       console.error("[CONTACTS] Error updating contact:", error);
