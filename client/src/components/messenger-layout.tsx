@@ -110,11 +110,14 @@ export function MessengerLayout({
               {viewItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => onViewChange(item.id)}
+                  onClick={() => {
+                    onViewChange(item.id);
+                    onLifecycleChange?.(null);
+                  }}
                   data-testid={`nav-${item.id}`}
                   className={cn(
                     "w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors",
-                    isViewActive(item.id)
+                    isViewActive(item.id) && !activeLifecycle
                       ? "bg-primary/10 text-primary font-medium" 
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   )}
@@ -124,7 +127,7 @@ export function MessengerLayout({
                   {counts[item.id as keyof typeof counts] !== undefined && counts[item.id as keyof typeof counts]! > 0 && (
                     <span className={cn(
                       "text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
-                      isViewActive(item.id) 
+                      isViewActive(item.id) && !activeLifecycle
                         ? "bg-primary/20 text-primary" 
                         : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                     )}>
