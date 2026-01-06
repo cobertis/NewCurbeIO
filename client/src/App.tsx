@@ -216,6 +216,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     queryKey: ["/api/notifications"],
   });
 
+  // Query for inbox unread count
+  const { data: inboxData } = useQuery<{ conversations: Array<{ unreadCount: number }> }>({
+    queryKey: ["/api/inbox/conversations"],
+    enabled: !!user,
+  });
+  const inboxUnreadCount = inboxData?.conversations?.reduce((sum, c) => sum + (c.unreadCount || 0), 0) || 0;
   
   // Query for Phone System access - only owners can see the Phone System tab
   const { data: phoneSystemAccessData } = useQuery<{ hasAccess: boolean; isOwner: boolean; reason: string }>({
@@ -675,9 +681,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setLocation("/inbox")}
                 data-testid="sidebar-button-inbox"
-                className={circularButtonClass}
+                className={cn(circularButtonClass, "relative")}
               >
                 <Inbox className="h-[18px] w-[18px] text-sky-600" />
+                {inboxUnreadCount > 0 && (
+                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-[9px] font-bold">{inboxUnreadCount > 9 ? '9+' : inboxUnreadCount}</span>
+                  </div>
+                )}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">Inbox</TooltipContent>
