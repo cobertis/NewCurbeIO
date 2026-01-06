@@ -41460,6 +41460,12 @@ CRITICAL REMINDERS:
         channel: 'imessage',
         status: conv.status || 'active',
         assignedTo: conv.assignedTo,
+        email: conv.email || null,
+        jobTitle: conv.jobTitle || null,
+        organization: conv.organization || null,
+        tags: conv.tags || [],
+        createdAt: conv.createdAt,
+        updatedAt: conv.updatedAt,
         metadata: { chatGuid: conv.chatGuid, isGroup: conv.isGroup },
       }));
       
