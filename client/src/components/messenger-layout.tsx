@@ -53,7 +53,7 @@ interface MessengerLayoutProps {
 }
 
 const viewItems = [
-  { id: "open" as const, label: "All", icon: Inbox },
+  { id: "open" as const, label: "Open", icon: Inbox },
   { id: "assigned" as const, label: "Assigned to me", icon: User },
   { id: "solved" as const, label: "Solved", icon: CheckCircle2 },
 ];
