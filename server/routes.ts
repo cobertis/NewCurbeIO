@@ -41476,6 +41476,7 @@ CRITICAL REMINDERS:
         email: conv.email || null,
         jobTitle: conv.jobTitle || null,
         organization: conv.organization || null,
+        lifecycleStage: conv.lifecycleStage || 'new_lead',
         tags: conv.tags || [],
         createdAt: conv.createdAt,
         updatedAt: conv.updatedAt,
