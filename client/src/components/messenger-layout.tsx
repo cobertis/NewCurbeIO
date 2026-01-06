@@ -137,7 +137,23 @@ export function MessengerLayout({
       toast({ title: "Inbox deleted" });
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to delete inbox", variant: "destructive" });
+      // Parse error message - may contain JSON or be a plain message
+      let errorMessage = "Failed to delete inbox";
+      try {
+        if (error.message) {
+          // Check if message contains JSON
+          const jsonMatch = error.message.match(/\{.*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            errorMessage = parsed.message || errorMessage;
+          } else {
+            errorMessage = error.message;
+          }
+        }
+      } catch {
+        errorMessage = error.message || errorMessage;
+      }
+      toast({ title: "Cannot Delete Inbox", description: errorMessage, variant: "destructive" });
     },
   });
 
