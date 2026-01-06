@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatForDisplay } from "@shared/phone";
-import { MessengerLayout, type MessengerView, useMessengerSidebar } from "@/components/messenger-layout";
+import { MessengerLayout, type MessengerView, type LifecycleStage, useMessengerSidebar } from "@/components/messenger-layout";
 import { Filter, PanelLeft } from "lucide-react";
 import { 
   Search, 
@@ -247,6 +247,7 @@ type MobileView = "threads" | "messages" | "details";
 export default function InboxPage() {
   const { toast } = useToast();
   const [activeView, setActiveView] = useState<MessengerView>("open");
+  const [activeLifecycle, setActiveLifecycle] = useState<LifecycleStage | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>("threads");
   const [searchQuery, setSearchQuery] = useState("");
@@ -1416,6 +1417,11 @@ export default function InboxPage() {
       });
     }
     
+    // Apply lifecycle filter
+    if (activeLifecycle) {
+      filtered = filtered.filter(c => (c as any).lifecycleStage === activeLifecycle);
+    }
+    
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -1450,7 +1456,7 @@ export default function InboxPage() {
     });
     
     return filtered;
-  }, [conversations, searchQuery, activeView, filterShow, filterSortBy, filterUnreplied]);
+  }, [conversations, searchQuery, activeView, activeLifecycle, filterShow, filterSortBy, filterUnreplied]);
 
   const viewLabel = useMemo(() => {
     switch (activeView) {
@@ -1950,6 +1956,14 @@ export default function InboxPage() {
         assigned: conversations.filter(c => c.assignedTo === user?.id && c.status !== "solved" && c.status !== "archived").length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
       }}
+      lifecycleCounts={{
+        new_lead: conversations.filter(c => (c as any).lifecycleStage === "new_lead" || !(c as any).lifecycleStage).length,
+        hot_lead: conversations.filter(c => (c as any).lifecycleStage === "hot_lead").length,
+        payment: conversations.filter(c => (c as any).lifecycleStage === "payment").length,
+        customer: conversations.filter(c => (c as any).lifecycleStage === "customer").length,
+      }}
+      activeLifecycle={activeLifecycle}
+      onLifecycleChange={setActiveLifecycle}
     >
       {/* Conversation List Panel */}
       <div className={cn(

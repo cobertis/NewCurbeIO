@@ -31,6 +31,8 @@ export type MessengerView =
   | "assigned" 
   | "solved";
 
+export type LifecycleStage = "new_lead" | "hot_lead" | "payment" | "customer";
+
 interface MessengerLayoutProps {
   children: React.ReactNode;
   activeView: MessengerView;
@@ -40,6 +42,14 @@ interface MessengerLayoutProps {
     assigned?: number;
     solved?: number;
   };
+  lifecycleCounts?: {
+    new_lead?: number;
+    hot_lead?: number;
+    payment?: number;
+    customer?: number;
+  };
+  activeLifecycle?: LifecycleStage | null;
+  onLifecycleChange?: (lifecycle: LifecycleStage | null) => void;
 }
 
 const viewItems = [
@@ -59,7 +69,10 @@ export function MessengerLayout({
   children, 
   activeView, 
   onViewChange,
-  counts = {}
+  counts = {},
+  lifecycleCounts = {},
+  activeLifecycle = null,
+  onLifecycleChange
 }: MessengerLayoutProps) {
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [teamInboxOpen, setTeamInboxOpen] = useState(true);
@@ -121,16 +134,36 @@ export function MessengerLayout({
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Lifecycle</span>
               </div>
               <nav className="space-y-0.5">
-                {lifecycleItems.map((item) => (
-                  <button
-                    key={item.id}
-                    data-testid={`nav-lifecycle-${item.id}`}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  >
-                    <span className="text-base">{item.emoji}</span>
-                    <span className="flex-1 text-left">{item.label}</span>
-                  </button>
-                ))}
+                {lifecycleItems.map((item) => {
+                  const count = lifecycleCounts[item.id as keyof typeof lifecycleCounts] || 0;
+                  const isActive = activeLifecycle === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => onLifecycleChange?.(isActive ? null : item.id as LifecycleStage)}
+                      data-testid={`nav-lifecycle-${item.id}`}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors",
+                        isActive
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      <span className="text-base">{item.emoji}</span>
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {count > 0 && (
+                        <span className={cn(
+                          "text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
+                          isActive 
+                            ? "bg-primary/20 text-primary" 
+                            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                        )}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </nav>
             </div>
 
