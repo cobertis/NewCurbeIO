@@ -99,7 +99,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -44500,6 +44500,100 @@ CRITICAL REMINDERS:
   });
 
   // ============================================
+
+
+  // ============================================
+  // CUSTOM INBOXES API
+  // ============================================
+
+  // GET /api/custom-inboxes - Get all inboxes (team + user's custom)
+  app.get("/api/custom-inboxes", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.activeCompanyId;
+      const userId = user.id;
+
+      // Fetch team inboxes (visible to all) and custom inboxes (only user's own)
+      const inboxes = await db.select()
+        .from(customInboxes)
+        .where(
+          and(
+            eq(customInboxes.companyId, companyId),
+            or(
+              eq(customInboxes.type, "team"),
+              and(eq(customInboxes.type, "custom"), eq(customInboxes.createdByUserId, userId))
+            )
+          )
+        )
+        .orderBy(customInboxes.createdAt);
+
+      res.json(inboxes);
+    } catch (error: any) {
+      console.error("[Custom Inboxes] Error fetching:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch inboxes" });
+    }
+  });
+
+  // POST /api/custom-inboxes - Create a new inbox
+  app.post("/api/custom-inboxes", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.activeCompanyId;
+      const userId = user.id;
+      const { name, emoji, type, description } = req.body;
+
+      if (!name || !type) {
+        return res.status(400).json({ message: "Name and type are required" });
+      }
+
+      if (!["team", "custom"].includes(type)) {
+        return res.status(400).json({ message: "Type must be 'team' or 'custom'" });
+      }
+
+      const [inbox] = await db.insert(customInboxes).values({
+        companyId,
+        name,
+        emoji: emoji || "📥",
+        type,
+        description,
+        createdByUserId: userId,
+      }).returning();
+
+      res.json(inbox);
+    } catch (error: any) {
+      console.error("[Custom Inboxes] Error creating:", error);
+      res.status(500).json({ message: error.message || "Failed to create inbox" });
+    }
+  });
+
+  // DELETE /api/custom-inboxes/:id - Delete an inbox
+  app.delete("/api/custom-inboxes/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.activeCompanyId;
+      const userId = user.id;
+      const { id } = req.params;
+
+      const [existing] = await db.select().from(customInboxes).where(
+        and(eq(customInboxes.id, id), eq(customInboxes.companyId, companyId))
+      );
+
+      if (!existing) {
+        return res.status(404).json({ message: "Inbox not found" });
+      }
+
+      if (existing.type === "custom" && existing.createdByUserId !== userId) {
+        return res.status(403).json({ message: "You can only delete your own custom inboxes" });
+      }
+
+      await db.delete(customInboxes).where(eq(customInboxes.id, id));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Custom Inboxes] Error deleting:", error);
+      res.status(500).json({ message: error.message || "Failed to delete inbox" });
+    }
+  });
 
   return httpServer;
 }
