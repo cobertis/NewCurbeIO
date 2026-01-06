@@ -4888,7 +4888,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // Activate account - password was already set during registration
   app.post("/api/auth/activate-account", async (req: Request, res: Response) => {
     try {
-      const { token } = req.body;
+      const { token, password } = req.body;
       if (!token) {
         return res.status(400).json({ message: "Activation token is required" });
       }
@@ -4902,11 +4902,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      // Update user: mark email as verified, activate account, and set status to active
+      // Hash and set password if provided
+      let hashedPassword: string | null = null;
+      if (password) {
+        const bcrypt = await import('bcrypt');
+        hashedPassword = await bcrypt.hash(password, 10);
+      }
+      
+      // Update user: mark email as verified, activate account, set password, and set status to active
       await storage.updateUser(userId, {
         emailVerified: true,
         isActive: true,
         status: 'active',
+        ...(hashedPassword && { password: hashedPassword }),
       });
       await logger.logAuth({
         req,
