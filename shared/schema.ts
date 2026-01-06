@@ -7545,3 +7545,31 @@ export const insertRecordingAnnouncementMediaSchema = createInsertSchema(recordi
 
 export type RecordingAnnouncementMedia = typeof recordingAnnouncementMedia.$inferSelect;
 export type InsertRecordingAnnouncementMedia = z.infer<typeof insertRecordingAnnouncementMediaSchema>;
+
+// =====================================================
+// CUSTOM INBOXES (Team Inbox & Custom Inbox)
+// =====================================================
+
+export const customInboxes = pgTable("custom_inboxes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  emoji: text("emoji").notNull().default("📥"),
+  type: text("type").notNull(), // 'team' | 'custom'
+  description: text("description"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("custom_inboxes_company_id_idx").on(table.companyId),
+  typeIdx: index("custom_inboxes_type_idx").on(table.type),
+}));
+
+export const insertCustomInboxSchema = createInsertSchema(customInboxes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CustomInbox = typeof customInboxes.$inferSelect;
+export type InsertCustomInbox = z.infer<typeof insertCustomInboxSchema>;
