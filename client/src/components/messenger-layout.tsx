@@ -113,10 +113,7 @@ export function MessengerLayout({
   // Create inbox mutation
   const createInboxMutation = useMutation({
     mutationFn: async (data: { name: string; emoji: string; type: "team" | "custom" }) => {
-      return apiRequest("/api/custom-inboxes", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/custom-inboxes", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/custom-inboxes"] });
@@ -133,7 +130,7 @@ export function MessengerLayout({
   // Delete inbox mutation
   const deleteInboxMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/custom-inboxes/${id}`, { method: "DELETE" });
+      return apiRequest("DELETE", `/api/custom-inboxes/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/custom-inboxes"] });
