@@ -467,14 +467,6 @@ export default function PulseAiSettings({ embedded = false }: PulseAiSettingsPro
   const landingPageContent = (
     <>
       <div className="space-y-8" data-testid="page-pulse-ai">
-        {!embedded && (
-          <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-pulse-ai">
-            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">Pulse AI</span>
-          </div>
-        )}
-        
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-6 md:py-8 md:px-[10%]">
             <div className="flex flex-col md:flex-row gap-8 items-center">
@@ -656,14 +648,6 @@ export default function PulseAiSettings({ embedded = false }: PulseAiSettingsPro
 
   const settingsContent = (
     <div className="space-y-6" data-testid="page-pulse-ai-settings">
-      {!embedded && (
-        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-pulse-ai-settings">
-          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">Pulse AI</span>
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" data-testid="heading-pulse-ai-settings">Pulse AI Settings</h1>

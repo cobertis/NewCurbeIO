@@ -155,12 +155,6 @@ export default function InstagramPage() {
     return (
       <SettingsLayout activeSection="instagram">
         <div className="space-y-8" data-testid="page-instagram-landing">
-          <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-instagram">
-            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">Instagram</span>
-          </div>
-          
           <Card className="border-slate-200 dark:border-slate-800">
             <CardContent className="p-6 md:py-8 md:px-[10%]">
               <div className="flex flex-col md:flex-row gap-8 items-center">
@@ -291,12 +285,6 @@ export default function InstagramPage() {
   return (
     <SettingsLayout activeSection="instagram">
       <div className="space-y-6" data-testid="page-instagram">
-        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-instagram">
-          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">Instagram</span>
-        </div>
-
         <div className="flex items-center justify-between gap-4">
           <Button 
             variant="outline" 
