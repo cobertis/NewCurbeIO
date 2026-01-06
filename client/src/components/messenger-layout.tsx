@@ -2,18 +2,25 @@ import { useState, createContext, useContext } from "react";
 import { cn } from "@/lib/utils";
 import { 
   User,
-  UserMinus,
   CheckCircle2,
   Inbox,
   PanelLeftClose,
   PanelLeft,
   Plus,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  X,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface MessengerSidebarContextType {
   sidebarHidden: boolean;
@@ -32,6 +39,14 @@ export type MessengerView =
   | "solved";
 
 export type LifecycleStage = "new_lead" | "hot_lead" | "payment" | "customer";
+
+interface CustomInbox {
+  id: string;
+  name: string;
+  emoji: string;
+  type: "team" | "custom";
+  description?: string;
+}
 
 interface MessengerLayoutProps {
   children: React.ReactNode;
@@ -65,6 +80,8 @@ const lifecycleItems = [
   { id: "customer", label: "Customer", emoji: "🤩" },
 ];
 
+const commonEmojis = ["📥", "📧", "💼", "🎯", "⭐", "🚀", "💡", "📌", "🔔", "📂", "🏷️", "✨"];
+
 export function MessengerLayout({ 
   children, 
   activeView, 
@@ -77,8 +94,74 @@ export function MessengerLayout({
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [teamInboxOpen, setTeamInboxOpen] = useState(true);
   const [customInboxOpen, setCustomInboxOpen] = useState(true);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createType, setCreateType] = useState<"team" | "custom">("team");
+  const [newInboxName, setNewInboxName] = useState("");
+  const [newInboxEmoji, setNewInboxEmoji] = useState("📥");
+  const { toast } = useToast();
 
   const isViewActive = (id: MessengerView) => activeView === id;
+
+  // Fetch custom inboxes
+  const { data: inboxes = [] } = useQuery<CustomInbox[]>({
+    queryKey: ["/api/custom-inboxes"],
+  });
+
+  const teamInboxes = inboxes.filter(i => i.type === "team");
+  const userInboxes = inboxes.filter(i => i.type === "custom");
+
+  // Create inbox mutation
+  const createInboxMutation = useMutation({
+    mutationFn: async (data: { name: string; emoji: string; type: "team" | "custom" }) => {
+      return apiRequest("/api/custom-inboxes", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-inboxes"] });
+      setCreateDialogOpen(false);
+      setNewInboxName("");
+      setNewInboxEmoji("📥");
+      toast({ title: "Inbox created", description: "Your new inbox has been created successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to create inbox", variant: "destructive" });
+    },
+  });
+
+  // Delete inbox mutation
+  const deleteInboxMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/custom-inboxes/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-inboxes"] });
+      toast({ title: "Inbox deleted" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete inbox", variant: "destructive" });
+    },
+  });
+
+  const handleCreateInbox = () => {
+    if (!newInboxName.trim()) {
+      toast({ title: "Error", description: "Please enter a name for the inbox", variant: "destructive" });
+      return;
+    }
+    createInboxMutation.mutate({
+      name: newInboxName.trim(),
+      emoji: newInboxEmoji,
+      type: createType,
+    });
+  };
+
+  const openCreateDialog = (type: "team" | "custom") => {
+    setCreateType(type);
+    setNewInboxName("");
+    setNewInboxEmoji("📥");
+    setCreateDialogOpen(true);
+  };
 
   return (
     <MessengerSidebarContext.Provider value={{ sidebarHidden, setSidebarHidden }}>
@@ -183,7 +266,13 @@ export function MessengerLayout({
                 <div className="flex items-center justify-between px-3 py-1.5">
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Team Inbox</span>
                   <div className="flex items-center gap-0.5">
-                    <Button variant="ghost" size="icon" className="h-5 w-5" data-testid="btn-add-team-inbox">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-5 w-5" 
+                      onClick={() => openCreateDialog("team")}
+                      data-testid="btn-add-team-inbox"
+                    >
                       <Plus className="h-3 w-3 text-muted-foreground" />
                     </Button>
                     <CollapsibleTrigger asChild>
@@ -194,9 +283,34 @@ export function MessengerLayout({
                   </div>
                 </div>
                 <CollapsibleContent>
-                  <div className="px-3 py-2">
-                    <p className="text-xs text-muted-foreground">No inboxes created</p>
-                  </div>
+                  <nav className="space-y-0.5">
+                    {teamInboxes.length === 0 ? (
+                      <div className="px-3 py-2">
+                        <p className="text-xs text-muted-foreground">No inboxes created</p>
+                      </div>
+                    ) : (
+                      teamInboxes.map((inbox) => (
+                        <div
+                          key={inbox.id}
+                          className="group w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          data-testid={`inbox-${inbox.id}`}
+                        >
+                          <span className="text-base">{inbox.emoji}</span>
+                          <span className="flex-1 text-left truncate">{inbox.name}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteInboxMutation.mutate(inbox.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`delete-inbox-${inbox.id}`}
+                          >
+                            <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </nav>
                 </CollapsibleContent>
               </Collapsible>
             </div>
@@ -207,7 +321,13 @@ export function MessengerLayout({
                 <div className="flex items-center justify-between px-3 py-1.5">
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Custom Inbox</span>
                   <div className="flex items-center gap-0.5">
-                    <Button variant="ghost" size="icon" className="h-5 w-5" data-testid="btn-add-custom-inbox">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-5 w-5" 
+                      onClick={() => openCreateDialog("custom")}
+                      data-testid="btn-add-custom-inbox"
+                    >
                       <Plus className="h-3 w-3 text-muted-foreground" />
                     </Button>
                     <CollapsibleTrigger asChild>
@@ -218,9 +338,34 @@ export function MessengerLayout({
                   </div>
                 </div>
                 <CollapsibleContent>
-                  <div className="px-3 py-2">
-                    <p className="text-xs text-muted-foreground">No inboxes created</p>
-                  </div>
+                  <nav className="space-y-0.5">
+                    {userInboxes.length === 0 ? (
+                      <div className="px-3 py-2">
+                        <p className="text-xs text-muted-foreground">No inboxes created</p>
+                      </div>
+                    ) : (
+                      userInboxes.map((inbox) => (
+                        <div
+                          key={inbox.id}
+                          className="group w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          data-testid={`inbox-${inbox.id}`}
+                        >
+                          <span className="text-base">{inbox.emoji}</span>
+                          <span className="flex-1 text-left truncate">{inbox.name}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteInboxMutation.mutate(inbox.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`delete-inbox-${inbox.id}`}
+                          >
+                            <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </nav>
                 </CollapsibleContent>
               </Collapsible>
             </div>
@@ -231,6 +376,94 @@ export function MessengerLayout({
           {children}
         </div>
       </div>
+
+      {/* Create Inbox Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>
+              Create {createType === "team" ? "Team" : "Custom"} Inbox
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Emoji</Label>
+              <div className="flex flex-wrap gap-2">
+                {commonEmojis.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setNewInboxEmoji(emoji)}
+                    className={cn(
+                      "w-9 h-9 text-lg rounded-md border flex items-center justify-center transition-colors",
+                      newInboxEmoji === emoji 
+                        ? "border-primary bg-primary/10" 
+                        : "border-gray-200 hover:border-gray-300 dark:border-gray-700"
+                    )}
+                    data-testid={`emoji-${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inbox-name">Name</Label>
+              <Input
+                id="inbox-name"
+                placeholder="Enter inbox name..."
+                value={newInboxName}
+                onChange={(e) => setNewInboxName(e.target.value)}
+                data-testid="input-inbox-name"
+              />
+            </div>
+            {createType === "team" && (
+              <p className="text-xs text-muted-foreground">
+                Team inboxes are visible to all users in your company.
+              </p>
+            )}
+            {createType === "custom" && (
+              <p className="text-xs text-muted-foreground">
+                Custom inboxes are private and only visible to you.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)} data-testid="btn-cancel-inbox">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateInbox} 
+              disabled={createInboxMutation.isPending}
+              data-testid="btn-create-inbox"
+            >
+              {createInboxMutation.isPending ? "Creating..." : "Create Inbox"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MessengerSidebarContext.Provider>
+  );
+}
+
+export function ExpandSidebarButton() {
+  const context = useMessengerSidebar();
+  if (!context || !context.sidebarHidden) return null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => context.setSidebarHidden(false)}
+          data-testid="btn-expand-sidebar"
+        >
+          <PanelLeft className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Show sidebar</TooltipContent>
+    </Tooltip>
   );
 }
