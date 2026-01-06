@@ -41459,7 +41459,7 @@ CRITICAL REMINDERS:
         unreadCount: conv.unreadCount || 0,
         channel: 'imessage',
         status: conv.status || 'active',
-        assignedUserId: conv.assignedTo,
+        assignedTo: conv.assignedTo,
         metadata: { chatGuid: conv.chatGuid, isGroup: conv.isGroup },
       }));
       
