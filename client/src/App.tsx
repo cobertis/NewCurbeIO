@@ -669,7 +669,20 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
-          {/* Core Navigation Icons */}
+          {/* Core Navigation Icons - Inbox first */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/inbox")}
+                data-testid="sidebar-button-inbox"
+                className={circularButtonClass}
+              >
+                <Inbox className="h-[18px] w-[18px] text-sky-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Inbox</TooltipContent>
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -720,20 +733,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">Tasks</TooltipContent>
-          </Tooltip>
-
-          {/* Communications Icons */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setLocation("/inbox")}
-                data-testid="sidebar-button-inbox"
-                className={circularButtonClass}
-              >
-                <Inbox className="h-[18px] w-[18px] text-sky-600" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">Inbox</TooltipContent>
           </Tooltip>
 
           {/* Marketing Icons */}
