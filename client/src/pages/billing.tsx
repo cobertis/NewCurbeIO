@@ -500,6 +500,8 @@ export default function Billing() {
   const [cancelReason, setCancelReason] = useState("missing_features");
   const [financialSituation, setFinancialSituation] = useState("");
   const [proposedSolution, setProposedSolution] = useState("");
+  const [showAddFundsDialog, setShowAddFundsDialog] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState<string>("50");
 
   // Read URL params to determine which tab to show
   const urlParams = new URLSearchParams(window.location.search);
@@ -561,6 +563,12 @@ export default function Billing() {
   const { data: bulkvsPhoneNumbers, isLoading: isLoadingBulkvsNumbers } = useQuery<BulkvsPhoneNumberWithDisplay[]>({
     queryKey: ["/api/bulkvs/numbers"],
   });
+
+  // Fetch wallet balance
+  const { data: walletBalanceData, refetch: refetchWalletBalance } = useQuery<{ balance: string; currency: string }>({
+    queryKey: ['/api/wallet/balance'],
+  });
+  const walletBalance = walletBalanceData?.balance ? parseFloat(walletBalanceData.balance) : 0;
 
   // Fetch wallet transactions
   const { data: walletTransactionsData, isLoading: isLoadingWalletTransactions } = useQuery<{
@@ -931,6 +939,23 @@ export default function Billing() {
         description: error.message || "Failed to remove payment method",
         variant: "destructive",
       });
+    },
+  });
+
+  // Top-up wallet mutation
+  const topUpMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      return await apiRequest("POST", "/api/wallet/top-up", { amount });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Wallet topped up successfully" });
+      setShowAddFundsDialog(false);
+      setTopUpAmount("50");
+      refetchWalletBalance();
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Top-Up Failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -1356,85 +1381,116 @@ export default function Billing() {
               </Card>
             ) : null}
 
-            {/* Payment Methods - Right Column */}
+            {/* Wallet & Payment Methods - Right Column */}
             <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-              <div>
-                <CardTitle>Payment Methods</CardTitle>
-                <CardDescription>Manage your payment methods and billing information</CardDescription>
-              </div>
-              <Button 
-                onClick={() => setShowAddCard(true)}
-                size="sm"
-                data-testid="button-add-payment-method"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Card
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Payment Methods List */}
-              {paymentMethods && paymentMethods.length > 0 ? (
-                <div className="space-y-4">
-                  {paymentMethods.map((method) => {
-                    if (!method.brand) return null;
-                    return (
-                      <div 
-                        key={method.id} 
-                        className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
-                        data-testid={`payment-method-${method.id}`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <CardBrandLogo brand={method.brand} />
-                          <div>
-                            <p className="font-medium">
-                              {method.brand.charAt(0).toUpperCase() + method.brand.slice(1)} •••• {method.last4}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Expires {method.expMonth.toString().padStart(2, '0')}/{method.expYear}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {method.isDefault ? (
-                            <Badge variant="secondary" data-testid="badge-default">
-                              Default
-                            </Badge>
-                          ) : (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => setDefaultPaymentMutation.mutate(method.id)}
-                              disabled={pendingSetDefaultId === method.id}
-                              data-testid={`button-set-default-${method.id}`}
-                            >
-                              {pendingSetDefaultId === method.id ? "Setting..." : "Set Default"}
-                            </Button>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => removePaymentMutation.mutate(method.id)}
-                            disabled={pendingRemoveId === method.id || method.isDefault}
-                            data-testid={`button-remove-${method.id}`}
-                          >
-                            {pendingRemoveId === method.id ? "Removing..." : "Remove"}
-                          </Button>
-                        </div>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Wallet className="h-5 w-5" />
+                  Wallet & Payments
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Wallet Balance Section */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
+                      <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
-                    );
-                  })}
+                    <div>
+                      <p className="text-xs text-muted-foreground">Available Balance</p>
+                      <p className="text-xl font-bold">${walletBalance.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setShowAddFundsDialog(true)}
+                    data-testid="button-add-funds"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Funds
+                  </Button>
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Payment Methods</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Add a payment method to manage your subscription
-                  </p>
+
+                {/* Separator */}
+                <Separator />
+
+                {/* Payment Methods Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-muted-foreground">Payment Methods</p>
+                    <Button 
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAddCard(true)}
+                      className="h-7 text-xs"
+                      data-testid="button-add-payment-method"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Card
+                    </Button>
+                  </div>
+                  
+                  {paymentMethods && paymentMethods.length > 0 ? (
+                    <div className="space-y-2">
+                      {paymentMethods.map((method) => {
+                        if (!method.brand) return null;
+                        return (
+                          <div 
+                            key={method.id} 
+                            className="flex items-center justify-between p-2 rounded-lg border bg-card"
+                            data-testid={`payment-method-${method.id}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <CardBrandLogo brand={method.brand} />
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {method.brand.charAt(0).toUpperCase() + method.brand.slice(1)} •••• {method.last4}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Exp {method.expMonth.toString().padStart(2, '0')}/{method.expYear}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {method.isDefault ? (
+                                <Badge variant="secondary" className="text-xs h-5" data-testid="badge-default">
+                                  Default
+                                </Badge>
+                              ) : (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-6 text-xs px-2"
+                                  onClick={() => setDefaultPaymentMutation.mutate(method.id)}
+                                  disabled={pendingSetDefaultId === method.id}
+                                  data-testid={`button-set-default-${method.id}`}
+                                >
+                                  {pendingSetDefaultId === method.id ? "..." : "Set Default"}
+                                </Button>
+                              )}
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                onClick={() => removePaymentMutation.mutate(method.id)}
+                                disabled={pendingRemoveId === method.id || method.isDefault}
+                                data-testid={`button-remove-${method.id}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <CreditCard className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">No payment methods</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
+              </CardContent>
             </Card>
 
           </div>
@@ -1841,6 +1897,84 @@ export default function Billing() {
         onOpenChange={setShowManageCards}
         paymentMethods={paymentMethods || []}
       />
+
+      {/* Add Funds Dialog */}
+      <Dialog open={showAddFundsDialog} onOpenChange={setShowAddFundsDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              Add Funds to Wallet
+            </DialogTitle>
+            <DialogDescription>
+              Choose an amount to add to your wallet balance
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              {["25", "50", "100"].map((amount) => (
+                <Button
+                  key={amount}
+                  variant={topUpAmount === amount ? "default" : "outline"}
+                  onClick={() => setTopUpAmount(amount)}
+                  className="text-base font-medium"
+                  data-testid={`button-amount-${amount}`}
+                >
+                  ${amount}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {["150", "200", "250"].map((amount) => (
+                <Button
+                  key={amount}
+                  variant={topUpAmount === amount ? "default" : "outline"}
+                  onClick={() => setTopUpAmount(amount)}
+                  className="text-base font-medium"
+                  data-testid={`button-amount-${amount}`}
+                >
+                  ${amount}
+                </Button>
+              ))}
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input
+                type="number"
+                min="10"
+                max="500"
+                value={topUpAmount}
+                onChange={(e) => setTopUpAmount(e.target.value)}
+                className="pl-7"
+                placeholder="Custom amount"
+                data-testid="input-custom-amount"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Min $10 - Max $500
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddFundsDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const amount = parseFloat(topUpAmount);
+                if (isNaN(amount) || amount < 10 || amount > 500) {
+                  toast({ title: "Invalid Amount", description: "Please enter between $10 and $500", variant: "destructive" });
+                  return;
+                }
+                topUpMutation.mutate(amount);
+              }}
+              disabled={topUpMutation.isPending}
+              data-testid="button-confirm-topup"
+            >
+              {topUpMutation.isPending ? "Processing..." : `Add $${topUpAmount}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Skip Trial Confirmation Dialog */}
       <AlertDialog open={showSkipTrialDialog} onOpenChange={setShowSkipTrialDialog}>
@@ -2777,6 +2911,84 @@ export default function Billing() {
         onOpenChange={setShowManageCards}
         paymentMethods={paymentMethods || []}
       />
+
+      {/* Add Funds Dialog */}
+      <Dialog open={showAddFundsDialog} onOpenChange={setShowAddFundsDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              Add Funds to Wallet
+            </DialogTitle>
+            <DialogDescription>
+              Choose an amount to add to your wallet balance
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              {["25", "50", "100"].map((amount) => (
+                <Button
+                  key={amount}
+                  variant={topUpAmount === amount ? "default" : "outline"}
+                  onClick={() => setTopUpAmount(amount)}
+                  className="text-base font-medium"
+                  data-testid={`button-amount-${amount}`}
+                >
+                  ${amount}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {["150", "200", "250"].map((amount) => (
+                <Button
+                  key={amount}
+                  variant={topUpAmount === amount ? "default" : "outline"}
+                  onClick={() => setTopUpAmount(amount)}
+                  className="text-base font-medium"
+                  data-testid={`button-amount-${amount}`}
+                >
+                  ${amount}
+                </Button>
+              ))}
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input
+                type="number"
+                min="10"
+                max="500"
+                value={topUpAmount}
+                onChange={(e) => setTopUpAmount(e.target.value)}
+                className="pl-7"
+                placeholder="Custom amount"
+                data-testid="input-custom-amount"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Min $10 - Max $500
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddFundsDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const amount = parseFloat(topUpAmount);
+                if (isNaN(amount) || amount < 10 || amount > 500) {
+                  toast({ title: "Invalid Amount", description: "Please enter between $10 and $500", variant: "destructive" });
+                  return;
+                }
+                topUpMutation.mutate(amount);
+              }}
+              disabled={topUpMutation.isPending}
+              data-testid="button-confirm-topup"
+            >
+              {topUpMutation.isPending ? "Processing..." : `Add $${topUpAmount}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Skip Trial Confirmation Dialog */}
       <AlertDialog open={showSkipTrialDialog} onOpenChange={setShowSkipTrialDialog}>
