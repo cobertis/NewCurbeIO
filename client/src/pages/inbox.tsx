@@ -3222,7 +3222,7 @@ export default function InboxPage() {
                             });
                           }}
                         >
-                          <SelectTrigger className="w-[160px] h-7 text-xs" data-testid="select-assignee">
+                          <SelectTrigger className="w-[220px] h-7 text-xs" data-testid="select-assignee">
                             <SelectValue>
                               {selectedConversation.assignedTo ? (
                                 <div className="flex items-center gap-2">
@@ -3241,7 +3241,7 @@ export default function InboxPage() {
                               )}
                             </SelectValue>
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="min-w-[220px]">
                             <SelectItem value="unassigned">
                               <span className="text-muted-foreground">Unassigned</span>
                             </SelectItem>
