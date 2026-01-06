@@ -1781,6 +1781,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversation = await storage.getImessageConversation(id);
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
       if (conversation.companyId !== user.companyId) {
         return res.status(403).json({ message: "Forbidden" });
@@ -2140,6 +2153,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversation = await storage.getImessageConversation(id);
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
       await storage.markConversationAsRead(id);
       // Send read receipt via BlueBubbles if configured
@@ -24563,6 +24589,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const conversation = await storage.getImessageConversation(conversationId, user.companyId);
         if (!conversation) {
           return res.status(404).json({ message: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
         }
         targetChatGuid = conversation.chatGuid;
       }
@@ -25512,6 +25551,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
       // Verify the conversation belongs to users company
       const instance = await db.query.whatsappInstances.findFirst({
@@ -28286,6 +28338,19 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
 
       // SECURITY: Verify conversation belongs to the authenticated user's company
@@ -29084,6 +29149,19 @@ CRITICAL REMINDERS:
 
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
 
       if (conversation.companyId !== user.companyId) {
@@ -29552,6 +29630,19 @@ CRITICAL REMINDERS:
 
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
 
       // SECURITY: Verify conversation belongs to the authenticated user's company
@@ -31347,6 +31438,19 @@ CRITICAL REMINDERS:
       
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
       
       // Send via Telegram API using user's bot token
@@ -41605,6 +41709,19 @@ CRITICAL REMINDERS:
       }
       
       return res.status(404).json({ message: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
     } catch (error: any) {
       console.error("[Inbox] Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -42045,6 +42162,19 @@ CRITICAL REMINDERS:
         
         if (!conversation) {
           return res.status(404).json({ message: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
         }
         
         // === IMESSAGE CHANNEL ROUTING ===
@@ -42908,6 +43038,19 @@ CRITICAL REMINDERS:
       
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
       
       const updateData: any = { 
@@ -42963,6 +43106,19 @@ CRITICAL REMINDERS:
       
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
       
       if (conversation.status !== "waiting") {
@@ -43028,6 +43184,19 @@ CRITICAL REMINDERS:
       
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
+        
+        // Auto-assign conversation to the user who responds if not already assigned
+        if (!isImessageConversation && conversation && !conversation.assignedTo) {
+          await db.update(telnyxConversations)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(telnyxConversations.id, id));
+          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
+        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
+          await db.update(imessageConversationsTable)
+            .set({ assignedTo: userId, updatedAt: new Date() })
+            .where(eq(imessageConversationsTable.id, id));
+          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
+        }
       }
       
       if (conversation.channel !== "whatsapp") {
