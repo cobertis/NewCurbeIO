@@ -47,7 +47,7 @@ export function MessengerLayout({
   const isViewActive = (id: MessengerView) => activeView === id;
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] bg-white dark:bg-gray-900 rounded-lg border overflow-hidden" data-testid="messenger-layout">
+    <div className="flex h-full bg-white dark:bg-gray-900 overflow-hidden" data-testid="messenger-layout">
       {sidebarHidden ? (
         <div className="w-10 border-r flex flex-col items-center py-2 bg-gray-50/50 dark:bg-gray-900/50 shrink-0">
           <Tooltip>
