@@ -31,7 +31,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock, Megaphone, MessageCircle, Users as UsersIcon, Gift, Layout, Wallet, Inbox } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock, Megaphone, MessageCircle, Users as UsersIcon, Gift, Layout, Wallet, Inbox, CalendarDays, ListTodo, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -630,12 +630,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   // Build navigation items - Phone System only visible to owner (checked via hasPhoneSystemAccess)
+  // Note: Calendar, Customers, Leads, Tasks are now in the sidebar
   const baseAdminItems = [
     { title: "Dashboard", url: "/dashboard" },
-    { title: "Calendar", url: "/calendar" },
-    { title: "Customers", url: "/customers" },
-    { title: "Leads", url: "/leads" },
-    { title: "Tasks", url: "/tasks" },
   ];
   
   const navigationItems = user?.role === 'superadmin' 
@@ -671,6 +668,59 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               data-testid="sidebar-logo"
             />
           </Link>
+
+          {/* Core Navigation Icons */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/calendar")}
+                data-testid="sidebar-button-calendar"
+                className={circularButtonClass}
+              >
+                <CalendarDays className="h-[18px] w-[18px] text-violet-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Calendar</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/customers")}
+                data-testid="sidebar-button-customers"
+                className={circularButtonClass}
+              >
+                <UsersIcon className="h-[18px] w-[18px] text-emerald-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Customers</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/leads")}
+                data-testid="sidebar-button-leads"
+                className={circularButtonClass}
+              >
+                <Target className="h-[18px] w-[18px] text-orange-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Leads</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/tasks")}
+                data-testid="sidebar-button-tasks"
+                className={circularButtonClass}
+              >
+                <ListTodo className="h-[18px] w-[18px] text-cyan-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Tasks</TooltipContent>
+          </Tooltip>
 
           {/* Communications Icons */}
           <Tooltip>
