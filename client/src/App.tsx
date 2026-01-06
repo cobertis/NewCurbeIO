@@ -658,7 +658,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* CSS Grid Layout: Col 1 = Sidebar (full height), Col 2 = Header + Content */}
       <div className="grid grid-cols-[4rem,1fr] h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         {/* Sidebar - Column 1 - Full height from top to bottom */}
-        <div className="row-span-full pl-4 flex flex-col items-center py-4 space-y-3">
+        <div className="row-span-full pl-4 flex flex-col items-center py-4 space-y-3 bg-white dark:bg-gray-900">
           {/* Curbe Logo - Full width */}
           <Link href="/dashboard" className="w-full flex justify-center mb-2">
             <img 
