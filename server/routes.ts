@@ -44605,3 +44605,54 @@ CRITICAL REMINDERS:
 
   return httpServer;
 }
+
+  // PATCH /api/inbox/conversations/:id/inbox - Assign conversation to a custom inbox
+  app.patch("/api/inbox/conversations/:id/inbox", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { id } = req.params;
+      const { customInboxId } = req.body;
+
+      // Verify conversation exists and belongs to company
+      const [conversation] = await db.select().from(telnyxConversations).where(
+        and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId))
+      );
+
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      // If assigning to an inbox, verify the inbox exists and is accessible
+      if (customInboxId) {
+        const [inbox] = await db.select().from(customInboxes).where(
+          and(
+            eq(customInboxes.id, customInboxId),
+            eq(customInboxes.companyId, companyId),
+            or(
+              eq(customInboxes.type, "team"),
+              and(eq(customInboxes.type, "custom"), eq(customInboxes.createdByUserId, user.id))
+            )
+          )
+        );
+
+        if (!inbox) {
+          return res.status(403).json({ message: "Inbox not found or not accessible" });
+        }
+      }
+
+      // Update conversation
+      const [updated] = await db.update(telnyxConversations)
+        .set({ 
+          customInboxId: customInboxId || null,
+          updatedAt: new Date()
+        })
+        .where(eq(telnyxConversations.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Inbox Assignment] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to assign inbox" });
+    }
+  });

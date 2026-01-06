@@ -4033,6 +4033,7 @@ export const imessageConversations = pgTable("imessage_conversations", {
   
   // Lifecycle stage for CRM funnel
   lifecycleStage: text("lifecycle_stage").default("new_lead"), // new_lead, hot_lead, payment, customer
+  customInboxId: varchar("custom_inbox_id").references(() => customInboxes.id, { onDelete: "set null" }), // Custom inbox assignment
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -6747,6 +6748,7 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   
   // Lifecycle stage for CRM funnel
   lifecycleStage: text("lifecycle_stage").default("new_lead"), // new_lead, hot_lead, payment, customer
+  customInboxId: varchar("custom_inbox_id").references(() => customInboxes.id, { onDelete: "set null" }), // Custom inbox assignment
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
