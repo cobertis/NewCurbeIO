@@ -133,7 +133,7 @@ export default function ActivateAccount() {
             Thank you for setting up your password. Your account is now active and ready to use.
           </p>
           <Button
-            onClick={() => setLocation("/auth")}
+            onClick={() => setLocation("/login")}
             className="w-full h-11 text-[13px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150"
             data-testid="button-go-to-login"
           >
@@ -153,7 +153,7 @@ export default function ActivateAccount() {
           <div className="text-center text-[13px] text-gray-500">
             <button
               type="button"
-              onClick={() => setLocation("/auth")}
+              onClick={() => setLocation("/login")}
               className="text-gray-900 hover:text-gray-700 font-medium transition-colors inline-flex items-center gap-1.5"
               data-testid="link-back-to-login"
             >
@@ -174,7 +174,7 @@ export default function ActivateAccount() {
             Please contact your administrator for a new invitation.
           </p>
           <Button
-            onClick={() => setLocation("/auth")}
+            onClick={() => setLocation("/login")}
             variant="outline"
             className="w-full h-11 text-[13px] font-medium rounded-lg border-gray-200 hover:bg-gray-50"
             data-testid="button-back-to-login"
@@ -196,7 +196,7 @@ export default function ActivateAccount() {
           Already have an account?{" "}
           <button
             type="button"
-            onClick={() => setLocation("/auth")}
+            onClick={() => setLocation("/login")}
             className="text-gray-900 hover:text-gray-700 font-medium transition-colors"
             data-testid="link-sign-in"
           >
