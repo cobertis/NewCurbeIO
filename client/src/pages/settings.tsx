@@ -462,6 +462,9 @@ export default function Settings({ view = 'all' }: SettingsProps) {
   const [closeAccountConfirmMessages, setCloseAccountConfirmMessages] = useState(false);
   const [isClosingAccount, setIsClosingAccount] = useState(false);
   
+  // Wallet top-up dialog state
+  const [walletTopupOpen, setWalletTopupOpen] = useState(false);
+  
   // Address autocomplete state
   const [addressValue, setAddressValue] = useState("");
   const [companyPhoneValue, setCompanyPhoneValue] = useState("");
@@ -515,7 +518,6 @@ export default function Settings({ view = 'all' }: SettingsProps) {
   const planName = subscriptionData?.subscription?.plan?.name || userLimitsData?.planName || null;
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-  
 
   // OPTIMIZATION: Only fetch custom domain status when on overview tab (admin only)
   const { data: customDomainData, isLoading: isLoadingCustomDomain, refetch: refetchCustomDomain } = useQuery<{
@@ -633,6 +635,13 @@ export default function Settings({ view = 'all' }: SettingsProps) {
   }, [isAdmin]);
 
   const [activeTab, setActiveTab] = useTabsState(availableTabs, currentTab);
+
+  // Wallet balance query for billing tab
+  const { data: walletBalanceData } = useQuery<{ balance: string; currency: string }>({
+    queryKey: ['/api/wallet/balance'],
+    enabled: !!user?.companyId && activeTab === "billing",
+  });
+  const walletBalance = walletBalanceData?.balance ? parseFloat(walletBalanceData.balance) : 0;
 
   // Sync activeTab with URL-driven currentTab when location changes
   useEffect(() => {
@@ -1415,15 +1424,41 @@ export default function Settings({ view = 'all' }: SettingsProps) {
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">{getBreadcrumbTitle()}</span>
         </div>
-        {(currentView === 'profile' || currentView === 'company') && (
-          <Button
-            onClick={currentView === 'profile' ? handleSaveProfile : handleSaveCompany}
-            disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}
-            data-testid={`button-save-${currentView}`}
-          >
-            {(updateProfileInfoMutation.isPending || updateCompanyMutation.isPending) ? "Saving..." : "Save Changes"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Wallet Balance & Buy Credits - Billing tab only */}
+          {activeTab === 'billing' && (
+            <div className="flex items-center gap-2">
+              <div 
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800"
+                data-testid="display-wallet-balance"
+              >
+                <Wallet className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-wallet-balance">
+                  ${walletBalance.toFixed(2)}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setWalletTopupOpen(true)}
+                className="h-8 text-xs font-medium"
+                data-testid="button-buy-credits-billing"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Buy Credits
+              </Button>
+            </div>
+          )}
+          {(currentView === 'profile' || currentView === 'company') && (
+            <Button
+              onClick={currentView === 'profile' ? handleSaveProfile : handleSaveCompany}
+              disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}
+              data-testid={`button-save-${currentView}`}
+            >
+              {(updateProfileInfoMutation.isPending || updateCompanyMutation.isPending) ? "Saving..." : "Save Changes"}
+            </Button>
+          )}
+        </div>
       </div>
       
       <div>
@@ -2322,6 +2357,12 @@ export default function Settings({ view = 'all' }: SettingsProps) {
         </div>
       </div>
     </div>
+
+      {/* Wallet Top-up Dialog */}
+      <WalletTopupDialog
+        open={walletTopupOpen}
+        onOpenChange={setWalletTopupOpen}
+      />
     </SettingsLayout>
   );
 }
