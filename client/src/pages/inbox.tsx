@@ -70,7 +70,7 @@ import { Link } from "wouter";
 import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp, SiImessage, SiGooglemessages, SiApple, SiMessenger } from "react-icons/si";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -421,6 +421,12 @@ export default function InboxPage() {
     const foundUser = companyUsers.find(u => String(u.id) === userId);
     if (!foundUser) return "?";
     return foundUser.firstName?.charAt(0) || foundUser.lastName?.charAt(0) || foundUser.email?.charAt(0) || "?";
+  };
+
+  const getUserAvatar = (userId: string | null | undefined): string | null => {
+    if (!userId) return null;
+    const foundUser = companyUsers.find(u => String(u.id) === userId);
+    return foundUser?.avatar || null;
   };
 
   const updateAiSettingsMutation = useMutation({
@@ -3246,6 +3252,9 @@ export default function InboxPage() {
                               {selectedConversation.assignedTo ? (
                                 <div className="flex items-center gap-2">
                                   <Avatar className="h-5 w-5">
+                                    {getUserAvatar(selectedConversation.assignedTo) && (
+                                      <AvatarImage src={getUserAvatar(selectedConversation.assignedTo) || undefined} />
+                                    )}
                                     <AvatarFallback className="text-[10px] bg-primary/10">
                                       {getUserInitial(selectedConversation.assignedTo)}
                                     </AvatarFallback>
@@ -3268,6 +3277,7 @@ export default function InboxPage() {
                               <SelectItem key={u.id} value={String(u.id)}>
                                 <div className="flex items-center gap-2">
                                   <Avatar className="h-5 w-5">
+                                    {u.avatar && <AvatarImage src={u.avatar} />}
                                     <AvatarFallback className="text-[10px] bg-primary/10">
                                       {u.firstName?.charAt(0) || u.email?.charAt(0) || "?"}
                                     </AvatarFallback>
