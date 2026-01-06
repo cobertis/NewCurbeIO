@@ -5329,6 +5329,99 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
+
+  // Create new user (admin can add team members)
+  app.post("/api/users", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user!;
+      
+      // Only admins and superadmins can create users
+      if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+        return res.status(403).json({ message: "Only admins can add team members" });
+      }
+      
+      const { email, firstName, lastName, phone, companyId } = req.body;
+      
+      // Validate required fields
+      if (!email || !firstName || !lastName) {
+        return res.status(400).json({ message: "Email, first name, and last name are required" });
+      }
+      
+      // Use the current user's company if not provided (for regular admins)
+      const targetCompanyId = currentUser.role === "superadmin" && companyId 
+        ? companyId 
+        : currentUser.companyId;
+      
+      if (!targetCompanyId) {
+        return res.status(400).json({ message: "Company ID is required" });
+      }
+      
+      // Check seat limits
+      const seatCheck = await storage.canCompanyAddUsers(targetCompanyId, 1);
+      if (!seatCheck.allowed) {
+        return res.status(400).json({ 
+          message: `Cannot add user. ${seatCheck.message}. Current: ${seatCheck.currentCount}/${seatCheck.limit} seats used.`
+        });
+      }
+      
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "A user with this email already exists" });
+      }
+      
+      // Create the user with pending_activation status
+      const newUser = await storage.createUser({
+        email: email.toLowerCase().trim(),
+        firstName,
+        lastName,
+        phone: phone || null,
+        role: "agent", // All team members are agents by default
+        companyId: targetCompanyId,
+        status: "pending_activation",
+        password: null, // Will be set when user activates
+      });
+      
+      // Send activation email
+      try {
+        const crypto = await import('crypto');
+        const activationToken = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        
+        await storage.createActivationToken({
+          userId: newUser.id,
+          token: activationToken,
+          expiresAt,
+          used: false,
+        });
+        
+        const activationLink = `${req.protocol}://${req.get('host')}/activate-account?token=${activationToken}`;
+        const company = await storage.getCompany(targetCompanyId);
+        
+        const template = await storage.getEmailTemplateBySlug("account-activation");
+        if (template) {
+          let htmlContent = template.htmlContent
+            .replace(/\{\{firstName\}\}/g, newUser.firstName || 'there')
+            .replace(/\{\{company_name\}\}/g, company?.name || 'Curbe')
+            .replace(/\{\{activation_link\}\}/g, activationLink);
+          
+          await emailService.sendEmail({
+            to: newUser.email,
+            subject: template.subject.replace(/\{\{company_name\}\}/g, company?.name || 'Curbe'),
+            html: htmlContent,
+            text: `Please activate your account by clicking this link: ${activationLink}`,
+          });
+        }
+      } catch (emailError) {
+        console.error("[CREATE USER] Failed to send activation email:", emailError);
+      }
+      
+      res.status(201).json({ user: newUser, message: "Team member added successfully" });
+    } catch (error: any) {
+      console.error("[CREATE USER] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to add team member" });
+    }
+  });
   // Get user seat limits for current company
   app.get("/api/users/limits", requireAuth, async (req: Request, res: Response) => {
     try {
