@@ -4007,6 +4007,11 @@ export const imessageConversations = pgTable("imessage_conversations", {
   contactPhone: text("contact_phone"),
   contactEmail: text("contact_email"),
   
+  // Additional contact fields (same as Telnyx conversations for consistency)
+  email: text("email"),
+  jobTitle: text("job_title"),
+  organization: text("organization"),
+  
   // Status
   status: text("status").notNull().default("active"), // active, archived, closed
   isPinned: boolean("is_pinned").notNull().default(false),

@@ -42891,9 +42891,13 @@ CRITICAL REMINDERS:
           eq(imessageConversationsTable.companyId, companyId)
         ));
       
+      
       if (imessageConv) {
         const updateData: any = { updatedAt: new Date() };
         if (displayName !== undefined) updateData.displayName = displayName || null;
+        if (email !== undefined) updateData.email = email || null;
+        if (jobTitle !== undefined) updateData.jobTitle = jobTitle || null;
+        if (organization !== undefined) updateData.organization = organization || null;
         if (status !== undefined) updateData.status = status;
         if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
         if (assignedTo !== undefined) updateData.assignedTo = assignedTo || null;
@@ -42908,7 +42912,6 @@ CRITICAL REMINDERS:
         return res.json({ success: true });
       }
       
-      return res.status(404).json({ message: "Conversation not found" });
     } catch (error: any) {
       console.error("[Inbox] Error updating conversation:", error);
       res.status(500).json({ message: "Failed to update conversation" });
