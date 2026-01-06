@@ -804,20 +804,39 @@ export default function InboxPage() {
     mutationFn: async ({ conversationId, userId }: { conversationId: string; userId: string | null }) => {
       return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { assignedTo: userId });
     },
+    onMutate: async ({ conversationId, userId }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/inbox/conversations"] });
+      const previousConversations = queryClient.getQueryData(["/api/inbox/conversations"]);
+      queryClient.setQueryData(["/api/inbox/conversations"], (old: any) => {
+        if (!old?.conversations) return old;
+        return {
+          ...old,
+          conversations: old.conversations.map((c: any) =>
+            c.id === conversationId ? { ...c, assignedTo: userId } : c
+          ),
+        };
+      });
+      return { previousConversations };
+    },
     onSuccess: async (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       const assigneeName = variables.userId ? getUserDisplayName(variables.userId) : "Unassigned";
       toast({
         title: "Assignee updated",
         description: variables.userId ? `Conversation assigned to ${assigneeName}.` : "Conversation is now unassigned.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, _, context) => {
+      if (context?.previousConversations) {
+        queryClient.setQueryData(["/api/inbox/conversations"], context.previousConversations);
+      }
       toast({
         title: "Failed to assign",
         description: error.message || "Please try again",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
     },
   });
 
@@ -3226,8 +3245,8 @@ export default function InboxPage() {
                             <SelectValue>
                               {selectedConversation.assignedTo ? (
                                 <div className="flex items-center gap-2">
-                                  <Avatar className="h-4 w-4">
-                                    <AvatarFallback className="text-[8px] bg-primary/10">
+                                  <Avatar className="h-5 w-5">
+                                    <AvatarFallback className="text-[10px] bg-primary/10">
                                       {getUserInitial(selectedConversation.assignedTo)}
                                     </AvatarFallback>
                                   </Avatar>
@@ -3248,8 +3267,8 @@ export default function InboxPage() {
                             {companyUsers.map((u) => (
                               <SelectItem key={u.id} value={String(u.id)}>
                                 <div className="flex items-center gap-2">
-                                  <Avatar className="h-4 w-4">
-                                    <AvatarFallback className="text-[8px] bg-primary/10">
+                                  <Avatar className="h-5 w-5">
+                                    <AvatarFallback className="text-[10px] bg-primary/10">
                                       {u.firstName?.charAt(0) || u.email?.charAt(0) || "?"}
                                     </AvatarFallback>
                                   </Avatar>
@@ -3685,7 +3704,7 @@ export default function InboxPage() {
                       {/* Contact Owner */}
                       <div className="flex items-center gap-3">
                         <Avatar className="h-5 w-5">
-                          <AvatarFallback className="text-[8px] bg-gray-200">?</AvatarFallback>
+                          <AvatarFallback className="text-[10px] bg-gray-200">?</AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="text-xs text-muted-foreground">Contact owner</p>
