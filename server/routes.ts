@@ -42840,7 +42840,7 @@ CRITICAL REMINDERS:
       return res.status(401).json({ message: "Unauthorized" });
     }
     const { id } = req.params;
-    const { displayName, email, jobTitle, organization, status, unreadCount } = req.body;
+    const { displayName, email, jobTitle, organization, status, unreadCount, assignedTo } = req.body;
     const companyId = (req.user as any).companyId;
     
     try {
@@ -42860,6 +42860,7 @@ CRITICAL REMINDERS:
         if (organization !== undefined) updateData.organization = organization || null;
         if (status !== undefined) updateData.status = status;
         if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
+        if (assignedTo !== undefined) updateData.assignedTo = assignedTo || null;
         
         await db.update(telnyxConversations)
           .set(updateData)
@@ -42884,6 +42885,7 @@ CRITICAL REMINDERS:
         if (displayName !== undefined) updateData.displayName = displayName || null;
         if (status !== undefined) updateData.status = status;
         if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
+        if (assignedTo !== undefined) updateData.assignedTo = assignedTo || null;
         
         await db.update(imessageConversationsTable)
           .set(updateData)
