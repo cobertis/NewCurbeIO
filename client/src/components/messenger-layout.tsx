@@ -48,7 +48,7 @@ export function MessengerLayout({
     <div className="flex h-[calc(100vh-8rem)] bg-white dark:bg-gray-900 rounded-lg border overflow-hidden" data-testid="messenger-layout">
       <div className="w-56 border-r flex flex-col bg-gray-50/50 dark:bg-gray-900/50 shrink-0">
         <div className="h-[49px] px-4 border-b flex items-center justify-between">
-          <h2 className="font-semibold text-base">Messenger</h2>
+          <h2 className="font-semibold text-base">Inbox</h2>
           <Button
             variant="ghost"
             size="icon"
@@ -84,7 +84,6 @@ export function MessengerLayout({
           </nav>
         </div>
       </div>
-
       <div className="flex-1 flex min-w-0">
         {children}
       </div>
