@@ -122,7 +122,14 @@ export function MessengerLayout({
                   <item.icon className="h-4 w-4" />
                   <span className="flex-1 text-left">{item.label}</span>
                   {counts[item.id as keyof typeof counts] !== undefined && counts[item.id as keyof typeof counts]! > 0 && (
-                    <span className="text-xs text-muted-foreground">{counts[item.id as keyof typeof counts]}</span>
+                    <span className={cn(
+                      "text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
+                      isViewActive(item.id) 
+                        ? "bg-primary/20 text-primary" 
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    )}>
+                      {counts[item.id as keyof typeof counts]}
+                    </span>
                   )}
                 </button>
               ))}
