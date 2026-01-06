@@ -2113,9 +2113,14 @@ export default function InboxPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium truncate">
-                          {conversation.displayName || (conversation.channel === "live_chat" ? "Website Visitor" : formatForDisplay(conversation.phoneNumber))}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-medium truncate">
+                            {conversation.displayName || (conversation.channel === "live_chat" ? "Website Visitor" : formatForDisplay(conversation.phoneNumber))}
+                          </span>
+                          <span className="shrink-0 text-xs" title={lifecycleOptions.find(l => l.id === ((conversation as any).lifecycleStage || "new_lead"))?.label}>
+                            {lifecycleOptions.find(l => l.id === ((conversation as any).lifecycleStage || "new_lead"))?.emoji}
+                          </span>
+                        </div>
                         <span className="text-xs text-muted-foreground shrink-0">
                           {conversation.lastMessageAt && formatMessageTime(conversation.lastMessageAt)}
                         </span>
