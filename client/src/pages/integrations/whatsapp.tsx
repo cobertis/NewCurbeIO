@@ -503,12 +503,6 @@ export default function WhatsAppPage() {
   return (
     <SettingsLayout activeSection="whatsapp">
       <div className="space-y-6" data-testid="page-whatsapp">
-        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-whatsapp">
-          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">WhatsApp</span>
-        </div>
-
         <div className="flex items-center justify-between gap-4">
           <Button 
             variant="outline" 
