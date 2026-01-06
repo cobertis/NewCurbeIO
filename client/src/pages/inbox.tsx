@@ -1353,11 +1353,12 @@ export default function InboxPage() {
     // Helper to check if a conversation is solved/archived
     const isSolvedOrArchived = (c: any) => c.status === "solved" || c.status === "archived";
     
-    // If a lifecycle filter is active, show ALL conversations with that lifecycle (ignore activeView)
+    // If a lifecycle filter is active, show open conversations with that lifecycle (exclude solved/archived)
     if (activeLifecycle) {
       filtered = conversations.filter(c => {
         const stage = (c as any).lifecycleStage || "new_lead";
-        return stage === activeLifecycle;
+        const isSolved = c.status === "solved" || c.status === "archived";
+        return stage === activeLifecycle && !isSolved;
       });
     } else {
       // Apply activeView filter only when no lifecycle is selected
@@ -1961,10 +1962,10 @@ export default function InboxPage() {
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
       }}
       lifecycleCounts={{
-        new_lead: conversations.filter(c => (c as any).lifecycleStage === "new_lead" || !(c as any).lifecycleStage).length,
-        hot_lead: conversations.filter(c => (c as any).lifecycleStage === "hot_lead").length,
-        payment: conversations.filter(c => (c as any).lifecycleStage === "payment").length,
-        customer: conversations.filter(c => (c as any).lifecycleStage === "customer").length,
+        new_lead: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && ((c as any).lifecycleStage === "new_lead" || !(c as any).lifecycleStage)).length,
+        hot_lead: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && (c as any).lifecycleStage === "hot_lead").length,
+        payment: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && (c as any).lifecycleStage === "payment").length,
+        customer: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && (c as any).lifecycleStage === "customer").length,
       }}
       activeLifecycle={activeLifecycle}
       onLifecycleChange={setActiveLifecycle}
