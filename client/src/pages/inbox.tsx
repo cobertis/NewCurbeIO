@@ -781,7 +781,7 @@ export default function InboxPage() {
           title: "Status updated",
           description: `Conversation marked as ${variables.status === "solved" ? "Solved" : "Open"}.`,
         });
-        if (variables.status === "solved" && statusFilter === "all") {
+        if (variables.status === "solved" && activeView !== "solved") {
           setSelectedConversationId(null);
         }
       } else {
