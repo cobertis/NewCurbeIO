@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { 
   User,
   UserMinus,
   CheckCircle2,
   Inbox,
-  Settings,
   PanelLeftClose,
   PanelLeft
 } from "lucide-react";
@@ -44,7 +42,6 @@ export function MessengerLayout({
   onViewChange,
   counts = {}
 }: MessengerLayoutProps) {
-  const [, setLocation] = useLocation();
   const [sidebarHidden, setSidebarHidden] = useState(false);
 
   const isViewActive = (id: MessengerView) => activeView === id;
@@ -87,15 +84,6 @@ export function MessengerLayout({
                 </TooltipTrigger>
                 <TooltipContent>Hide sidebar</TooltipContent>
               </Tooltip>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setLocation("/settings/channels")}
-                data-testid="btn-messenger-settings"
-              >
-                <Settings className="h-4 w-4 text-muted-foreground" />
-              </Button>
             </div>
           </div>
 
