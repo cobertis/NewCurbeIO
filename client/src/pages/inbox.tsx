@@ -1353,49 +1353,58 @@ export default function InboxPage() {
     // Helper to check if a conversation is solved/archived
     const isSolvedOrArchived = (c: any) => c.status === "solved" || c.status === "archived";
     
-    switch (activeView) {
-      case "open":
-        // All view: show all conversations except waiting and solved/archived
-        filtered = conversations.filter(c => (c as any).status !== "waiting" && !isSolvedOrArchived(c));
-        break;
-      case "unread":
-        filtered = conversations.filter(c => c.unreadCount > 0 && (c as any).status !== "waiting" && !isSolvedOrArchived(c));
-        break;
-      case "assigned":
-        filtered = conversations.filter(c => c.assignedTo === user?.id && !isSolvedOrArchived(c));
-        break;
-      case "waiting":
-        // Show all live chats with status "waiting" - visitors waiting for an agent to accept
-        filtered = conversations.filter(c => {
-          if (c.channel !== "live_chat" || (c as any).status !== "waiting") return false;
-          // Show all waiting chats that have pending messages (visitor sent a message)
-          return (c as any).hasPendingMessage;
-        });
-        break;
-      case "solved":
-        filtered = conversations.filter(c => isSolvedOrArchived(c));
-        break;
-      case "all":
-        // Exclude solved/archived from "All chats" - they should only show in Solved view
-        filtered = conversations.filter(c => !isSolvedOrArchived(c));
-        break;
-      case "sms":
-        filtered = conversations.filter(c => (c.channel === "sms" || !c.channel) && !isSolvedOrArchived(c));
-        break;
-      case "live-chat":
-        filtered = conversations.filter(c => (c.channel === "live_chat" || c.channel === "live-chat") && !isSolvedOrArchived(c));
-        break;
-      case "whatsapp":
-        filtered = conversations.filter(c => c.channel === "whatsapp" && !isSolvedOrArchived(c));
-        break;
-      case "facebook":
-        filtered = conversations.filter(c => c.channel === "facebook" && !isSolvedOrArchived(c));
-        break;
-      case "instagram":
-        filtered = conversations.filter(c => c.channel === "instagram" && !isSolvedOrArchived(c));
-        break;
-      default:
-        filtered = conversations.filter(c => !isSolvedOrArchived(c));
+    // If a lifecycle filter is active, show ALL conversations with that lifecycle (ignore activeView)
+    if (activeLifecycle) {
+      filtered = conversations.filter(c => {
+        const stage = (c as any).lifecycleStage || "new_lead";
+        return stage === activeLifecycle;
+      });
+    } else {
+      // Apply activeView filter only when no lifecycle is selected
+      switch (activeView) {
+        case "open":
+          // All view: show all conversations except waiting and solved/archived
+          filtered = conversations.filter(c => (c as any).status !== "waiting" && !isSolvedOrArchived(c));
+          break;
+        case "unread":
+          filtered = conversations.filter(c => c.unreadCount > 0 && (c as any).status !== "waiting" && !isSolvedOrArchived(c));
+          break;
+        case "assigned":
+          filtered = conversations.filter(c => c.assignedTo === user?.id && !isSolvedOrArchived(c));
+          break;
+        case "waiting":
+          // Show all live chats with status "waiting" - visitors waiting for an agent to accept
+          filtered = conversations.filter(c => {
+            if (c.channel !== "live_chat" || (c as any).status !== "waiting") return false;
+            // Show all waiting chats that have pending messages (visitor sent a message)
+            return (c as any).hasPendingMessage;
+          });
+          break;
+        case "solved":
+          filtered = conversations.filter(c => isSolvedOrArchived(c));
+          break;
+        case "all":
+          // Exclude solved/archived from "All chats" - they should only show in Solved view
+          filtered = conversations.filter(c => !isSolvedOrArchived(c));
+          break;
+        case "sms":
+          filtered = conversations.filter(c => (c.channel === "sms" || !c.channel) && !isSolvedOrArchived(c));
+          break;
+        case "live-chat":
+          filtered = conversations.filter(c => (c.channel === "live_chat" || c.channel === "live-chat") && !isSolvedOrArchived(c));
+          break;
+        case "whatsapp":
+          filtered = conversations.filter(c => c.channel === "whatsapp" && !isSolvedOrArchived(c));
+          break;
+        case "facebook":
+          filtered = conversations.filter(c => c.channel === "facebook" && !isSolvedOrArchived(c));
+          break;
+        case "instagram":
+          filtered = conversations.filter(c => c.channel === "instagram" && !isSolvedOrArchived(c));
+          break;
+        default:
+          filtered = conversations.filter(c => !isSolvedOrArchived(c));
+      }
     }
     
     // Apply sidebar filter: Show (all, open, closed, snoozed)
@@ -1415,11 +1424,6 @@ export default function InboxPage() {
         // We check if it has unread messages or if lastMessageDirection is inbound
         return c.unreadCount > 0 || (c as any).lastMessageDirection === "inbound";
       });
-    }
-    
-    // Apply lifecycle filter
-    if (activeLifecycle) {
-      filtered = filtered.filter(c => (c as any).lifecycleStage === activeLifecycle);
     }
     
     // Apply search filter
