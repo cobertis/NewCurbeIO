@@ -1213,8 +1213,8 @@ export default function InboxPage() {
     
     switch (activeView) {
       case "open":
-        // Exclude waiting live chats and solved chats from Open view
-        filtered = conversations.filter(c => (c.status === "open" || c.status === "pending" || !c.status) && (c as any).status !== "waiting" && !isSolvedOrArchived(c));
+        // All view: show all conversations except waiting and solved/archived
+        filtered = conversations.filter(c => (c as any).status !== "waiting" && !isSolvedOrArchived(c));
         break;
       case "unread":
         filtered = conversations.filter(c => c.unreadCount > 0 && (c as any).status !== "waiting" && !isSolvedOrArchived(c));
@@ -1270,7 +1270,7 @@ export default function InboxPage() {
 
   const viewLabel = useMemo(() => {
     switch (activeView) {
-      case "open": return "Open";
+      case "open": return "All";
       case "unread": return "Unread";
       case "assigned": return "Assigned to me";
       case "unassigned": return "Unassigned";
