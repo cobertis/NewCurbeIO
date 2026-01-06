@@ -248,6 +248,7 @@ export default function InboxPage() {
   const [newConversationChannel, setNewConversationChannel] = useState<"sms" | "whatsapp">("sms");
   const [selectedWaConnection, setSelectedWaConnection] = useState<string>("");
   const [isInternalNote, setIsInternalNote] = useState(false);
+  const [chatInfoOpen, setChatInfoOpen] = useState(true);
   const [contactInfoOpen, setContactInfoOpen] = useState(true);
   const [insightsOpen, setInsightsOpen] = useState(true);
   const [pulseAiSettingsOpen, setPulseAiSettingsOpen] = useState(true);
@@ -3135,78 +3136,90 @@ export default function InboxPage() {
             {rightPanelTab === "details" && (
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-6">
-                {/* Live Chat Info - Only for live_chat channel */}
-                {selectedConversation.channel === "live_chat" && (
-                  <div className="space-y-4">
-                    <button 
-                      onClick={() => setContactInfoOpen(!contactInfoOpen)}
-                      className="flex items-center justify-between w-full text-left"
-                      data-testid="btn-toggle-live-chat-info"
-                    >
-                      <h4 className="text-sm font-medium text-muted-foreground">Live chat</h4>
-                      {contactInfoOpen ? (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </button>
-                    {contactInfoOpen && (
-                      <div className="space-y-3" data-testid="section-live-chat-info">
-                        <div className="flex justify-between">
-                          <span className="text-xs text-muted-foreground">Status</span>
-                          <Badge 
-                            variant="secondary" 
-                            className={cn(
-                              "text-xs",
-                              selectedConversation.status === "waiting" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-                              selectedConversation.status === "open" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-                              selectedConversation.status === "solved" && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                            )}
-                          >
-                            {selectedConversation.status === "waiting" ? "Waiting" : 
-                             selectedConversation.status === "open" ? "Open" : 
-                             selectedConversation.status?.charAt(0).toUpperCase() + selectedConversation.status?.slice(1)}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">Assignee</span>
-                          {selectedConversation.assignedTo ? (
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-5 w-5">
-                                <AvatarFallback className="text-[10px] bg-primary/10">
-                                  {getUserInitial(selectedConversation.assignedTo)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm font-medium">
-                                {getUserDisplayName(selectedConversation.assignedTo)}
-                                {String(user?.id) === selectedConversation.assignedTo && <span className="text-muted-foreground ml-1">(You)</span>}
-                              </span>
-                            </div>
+                {/* Chat Info - Collapsible - For all channels */}
+                <div className="space-y-4">
+                  <button 
+                    onClick={() => setChatInfoOpen(!chatInfoOpen)}
+                    className="flex items-center justify-between w-full text-left"
+                    data-testid="btn-toggle-chat-info"
+                  >
+                    <h4 className="text-sm font-medium text-muted-foreground">Chat info</h4>
+                    {chatInfoOpen ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  {chatInfoOpen && (
+                    <div className="space-y-3" data-testid="section-chat-info">
+                      <div className="flex justify-between">
+                        <span className="text-xs text-muted-foreground">Status</span>
+                        <Badge 
+                          variant="secondary" 
+                          className={cn(
+                            "text-xs",
+                            selectedConversation.status === "waiting" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                            selectedConversation.status === "open" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                            selectedConversation.status === "solved" && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                          )}
+                        >
+                          {selectedConversation.status === "waiting" ? "Waiting" : 
+                           selectedConversation.status === "open" ? "Open" : 
+                           selectedConversation.status?.charAt(0).toUpperCase() + selectedConversation.status?.slice(1)}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-muted-foreground">Assignee</span>
+                        {selectedConversation.assignedTo ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-5 w-5">
+                              <AvatarFallback className="text-[10px] bg-primary/10">
+                                {getUserInitial(selectedConversation.assignedTo)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">
+                              {getUserDisplayName(selectedConversation.assignedTo)}
+                              {String(user?.id) === selectedConversation.assignedTo && <span className="text-muted-foreground ml-1">(You)</span>}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Unassigned</span>
+                        )}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-muted-foreground">Channel</span>
+                        <div className="flex items-center gap-2">
+                          {selectedConversation.channel === "live_chat" ? (
+                            <>
+                              <Globe className="h-3.5 w-3.5 text-orange-500" />
+                              <span className="text-sm font-medium">Live Chat</span>
+                            </>
                           ) : (
-                            <span className="text-sm text-muted-foreground">Unassigned</span>
+                            <>
+                              <span>🇺🇸</span>
+                              <span className="text-sm font-medium">
+                                {formatForDisplay(selectedConversation.phoneNumber)}
+                              </span>
+                              <span className="text-xs text-blue-600">(United States)</span>
+                            </>
                           )}
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">Channel</span>
-                          <div className="flex items-center gap-2">
-                            <Globe className="h-3.5 w-3.5 text-orange-500" />
-                            <span className="text-sm font-medium">Live Chat</span>
-                          </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-muted-foreground">Tags</span>
+                        <div className="flex items-center gap-1 flex-wrap justify-end max-w-[180px]">
+                          {selectedConversation.tags && selectedConversation.tags.length > 0 ? (
+                            selectedConversation.tags.map((tag, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs py-0 px-1.5">
+                                {tag}
+                              </Badge>
+                            ))
+                          ) : (
+                            <button className="text-xs text-blue-600 hover:underline">Add Tags</button>
+                          )}
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">Tags</span>
-                          <div className="flex items-center gap-1 flex-wrap justify-end max-w-[180px]">
-                            {selectedConversation.tags && selectedConversation.tags.length > 0 ? (
-                              selectedConversation.tags.map((tag, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs py-0 px-1.5">
-                                  {tag}
-                                </Badge>
-                              ))
-                            ) : (
-                              <button className="text-xs text-blue-600 hover:underline">Add Tags</button>
-                            )}
-                          </div>
-                        </div>
+                      </div>
+                      {selectedConversation.channel === "live_chat" && selectedConversation.visitorCity && (
                         <div className="flex justify-between">
                           <span className="text-xs text-muted-foreground">Location</span>
                           <span className="text-sm font-medium flex items-center gap-1">
@@ -3215,75 +3228,35 @@ export default function InboxPage() {
                              selectedConversation.visitorCountry === "Canada" ? "🇨🇦 " :
                              selectedConversation.visitorCountry === "Spain" ? "🇪🇸 " :
                              selectedConversation.visitorCountry === "United Kingdom" ? "🇬🇧 " : ""}
-                            {selectedConversation.visitorCity || selectedConversation.visitorState || selectedConversation.visitorCountry ? (
-                              <>
-                                {selectedConversation.visitorCity && `${selectedConversation.visitorCity}`}
-                                {selectedConversation.visitorCity && selectedConversation.visitorState && ", "}
-                                {selectedConversation.visitorState || ""}
-                              </>
-                            ) : (
-                              "Unknown"
-                            )}
+                            {selectedConversation.visitorCity}
+                            {selectedConversation.visitorCity && selectedConversation.visitorState && ", "}
+                            {selectedConversation.visitorState || ""}
                           </span>
                         </div>
-                        {selectedConversation.visitorIpAddress && (
-                          <div className="flex justify-between">
-                            <span className="text-xs text-muted-foreground">IP address</span>
-                            <span className="text-sm font-medium font-mono text-xs">
-                              {selectedConversation.visitorIpAddress}
-                            </span>
-                          </div>
-                        )}
-                        {selectedConversation.visitorCurrentUrl && (
-                          <div className="flex justify-between">
-                            <span className="text-xs text-muted-foreground">URL</span>
-                            <a 
-                              href={selectedConversation.visitorCurrentUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:underline truncate max-w-[200px]"
-                              title={selectedConversation.visitorCurrentUrl}
-                            >
-                              {selectedConversation.visitorCurrentUrl.replace(/^https?:\/\//, '').substring(0, 30)}...
-                            </a>
-                          </div>
-                        )}
-                        {selectedConversation.visitorBrowser && (
-                          <div className="flex justify-between">
-                            <span className="text-xs text-muted-foreground">Browser</span>
-                            <span className="text-sm font-medium">{selectedConversation.visitorBrowser}</span>
-                          </div>
-                        )}
-                        {selectedConversation.visitorOs && (
-                          <div className="flex justify-between">
-                            <span className="text-xs text-muted-foreground">OS</span>
-                            <span className="text-sm font-medium">{selectedConversation.visitorOs}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-xs text-muted-foreground">Chat ID</span>
-                          <span className="text-sm font-medium font-mono">{selectedConversation.id.substring(0, 8)}</span>
-                        </div>
-                        {selectedConversation.createdAt && (
-                          <div className="flex justify-between">
-                            <span className="text-xs text-muted-foreground">Created</span>
-                            <span className="text-sm font-medium">
-                              {format(new Date(selectedConversation.createdAt), "MMM d, yyyy h:mm a")}
-                            </span>
-                          </div>
-                        )}
-                        {selectedConversation.updatedAt && (
-                          <div className="flex justify-between">
-                            <span className="text-xs text-muted-foreground">Last updated</span>
-                            <span className="text-sm font-medium">
-                              {format(new Date(selectedConversation.updatedAt), "MMM d, yyyy h:mm a")}
-                            </span>
-                          </div>
-                        )}
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-xs text-muted-foreground">Chat ID</span>
+                        <span className="text-sm font-medium font-mono">{selectedConversation.id.substring(0, 8)}</span>
                       </div>
-                    )}
-                  </div>
-                )}
+                      {selectedConversation.createdAt && (
+                        <div className="flex justify-between">
+                          <span className="text-xs text-muted-foreground">Created</span>
+                          <span className="text-sm font-medium">
+                            {format(new Date(selectedConversation.createdAt), "d MMM yyyy, h:mm a")}
+                          </span>
+                        </div>
+                      )}
+                      {selectedConversation.updatedAt && (
+                        <div className="flex justify-between">
+                          <span className="text-xs text-muted-foreground">Last updated</span>
+                          <span className="text-sm font-medium">
+                            {format(new Date(selectedConversation.updatedAt), "d MMM yyyy, h:mm a")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Pulse AI Controls - For live_chat and SMS/MMS channels */}
                 {(selectedConversation.channel === "live_chat" || selectedConversation.channel === "sms" || selectedConversation.channel === "mms") && (
