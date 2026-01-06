@@ -5428,6 +5428,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[CREATE USER] Error:", error);
       res.status(500).json({ message: error.message || "Failed to add team member" });
+    }
+  });
 
   // Delete a user (admin can remove team members)
   app.delete("/api/users/:id", requireAuth, async (req: Request, res: Response) => {
@@ -5466,8 +5468,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[DELETE USER] Error:", error);
       res.status(500).json({ message: error.message || "Failed to delete user" });
-    }
-  });
     }
   });
   // Get user seat limits for current company
