@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, createContext, useContext } from "react";
 import { cn } from "@/lib/utils";
 import { 
   User,
@@ -10,6 +10,17 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+interface MessengerSidebarContextType {
+  sidebarHidden: boolean;
+  setSidebarHidden: (hidden: boolean) => void;
+}
+
+const MessengerSidebarContext = createContext<MessengerSidebarContextType | null>(null);
+
+export function useMessengerSidebar() {
+  return useContext(MessengerSidebarContext);
+}
 
 export type MessengerView = 
   | "open" 
@@ -47,23 +58,9 @@ export function MessengerLayout({
   const isViewActive = (id: MessengerView) => activeView === id;
 
   return (
-    <div className="flex h-full bg-white dark:bg-gray-900 overflow-hidden relative" data-testid="messenger-layout">
-      {sidebarHidden ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 left-2 z-10 h-8 w-8 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm"
-              onClick={() => setSidebarHidden(false)}
-              data-testid="btn-show-sidebar"
-            >
-              <PanelLeft className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">Show sidebar</TooltipContent>
-        </Tooltip>
-      ) : (
+    <MessengerSidebarContext.Provider value={{ sidebarHidden, setSidebarHidden }}>
+      <div className="flex h-full bg-white dark:bg-gray-900 overflow-hidden" data-testid="messenger-layout">
+        {!sidebarHidden && (
         <div className="w-56 border-r flex flex-col bg-gray-50/50 dark:bg-gray-900/50 shrink-0">
           <div className="h-[49px] px-4 border-b flex items-center justify-between">
             <h2 className="font-semibold text-base">Inbox</h2>
@@ -109,10 +106,11 @@ export function MessengerLayout({
             </nav>
           </div>
         </div>
-      )}
-      <div className="flex-1 flex min-w-0">
-        {children}
+        )}
+        <div className="flex-1 flex min-w-0">
+          {children}
+        </div>
       </div>
-    </div>
+    </MessengerSidebarContext.Provider>
   );
 }

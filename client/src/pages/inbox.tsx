@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatForDisplay } from "@shared/phone";
-import { MessengerLayout, type MessengerView } from "@/components/messenger-layout";
-import { Filter } from "lucide-react";
+import { MessengerLayout, type MessengerView, useMessengerSidebar } from "@/components/messenger-layout";
+import { Filter, PanelLeft } from "lucide-react";
 import { 
   Search, 
   Phone,
@@ -113,6 +113,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+function ExpandSidebarButton() {
+  const sidebarContext = useMessengerSidebar();
+  if (!sidebarContext || !sidebarContext.sidebarHidden) return null;
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => sidebarContext.setSidebarHidden(false)}
+            data-testid="btn-show-sidebar"
+          >
+            <PanelLeft className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Show sidebar</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 interface TelnyxConversation {
   id: string;
@@ -1749,6 +1773,7 @@ export default function InboxPage() {
         {/* Header */}
         <div className="h-[49px] px-4 border-b flex items-center justify-between">
           <div className="flex items-center gap-2">
+            <ExpandSidebarButton />
             <h2 className="font-semibold">{viewLabel}</h2>
           </div>
           <div className="flex items-center gap-1">
