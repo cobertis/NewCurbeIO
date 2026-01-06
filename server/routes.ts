@@ -1781,27 +1781,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversation = await storage.getImessageConversation(id);
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          conversation.assignedTo = userId;
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
       if (conversation.companyId !== user.companyId) {
         return res.status(403).json({ message: "Forbidden" });
@@ -1892,7 +1871,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         conversation = await storage.getImessageConversation(conversationId);
         if (!conversation || conversation.companyId !== user.companyId) {
           return res.status(404).json({ message: "Conversation not found" });
-        }
         }
       } else {
         // Normalize phone number to E.164 for BlueBubbles compatibility
@@ -2162,27 +2140,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversation = await storage.getImessageConversation(id);
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
       await storage.markConversationAsRead(id);
       // Send read receipt via BlueBubbles if configured
@@ -2210,7 +2167,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversation = await storage.getImessageConversation(id);
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
       }
       // Update conversation to set isPinned to true
       const updated = await storage.updateImessageConversation(id, user.companyId, { isPinned: true });
@@ -2232,7 +2188,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversation = await storage.getImessageConversation(id);
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
       }
       // Update conversation to set isPinned to false
       const updated = await storage.updateImessageConversation(id, user.companyId, { isPinned: false });
@@ -2254,13 +2209,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversation = await storage.getImessageConversation(id);
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
       }
       // Delete the conversation (this will cascade delete all messages)
       const deleted = await storage.deleteImessageConversation(id);
       if (!deleted) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
       }
       res.json({ success: true });
     } catch (error: any) {
@@ -2283,7 +2236,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversation = await storage.getImessageConversation(conversationId);
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
       }
       // Send typing indicator via BlueBubbles
       const companySettings = await storage.getCompanySettings(user.companyId);
@@ -24612,24 +24564,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (!conversation) {
           return res.status(404).json({ message: "Conversation not found" });
         }
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          broadcastConversationUpdate(companyId);
-        }
         targetChatGuid = conversation.chatGuid;
       }
       // Send message via BlueBubbles
@@ -25578,25 +25512,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
       // Verify the conversation belongs to users company
       const instance = await db.query.whatsappInstances.findFirst({
@@ -28371,24 +28286,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
 
       // SECURITY: Verify conversation belongs to the authenticated user's company
@@ -29187,24 +29084,6 @@ CRITICAL REMINDERS:
 
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
 
       if (conversation.companyId !== user.companyId) {
@@ -29673,24 +29552,6 @@ CRITICAL REMINDERS:
 
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
 
       // SECURITY: Verify conversation belongs to the authenticated user's company
@@ -31486,24 +31347,6 @@ CRITICAL REMINDERS:
       
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
       
       // Send via Telegram API using user's bot token
@@ -41762,25 +41605,6 @@ CRITICAL REMINDERS:
       }
       
       return res.status(404).json({ message: "Conversation not found" });
-        }
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
     } catch (error: any) {
       console.error("[Inbox] Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -43016,7 +42840,7 @@ CRITICAL REMINDERS:
       return res.status(401).json({ message: "Unauthorized" });
     }
     const { id } = req.params;
-    const { displayName, email, jobTitle, organization, status, unreadCount, assignedTo } = req.body;
+    const { displayName, email, jobTitle, organization, status, unreadCount } = req.body;
     const companyId = (req.user as any).companyId;
     
     try {
@@ -43036,7 +42860,6 @@ CRITICAL REMINDERS:
         if (organization !== undefined) updateData.organization = organization || null;
         if (status !== undefined) updateData.status = status;
         if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
-        if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
         
         await db.update(telnyxConversations)
           .set(updateData)
@@ -43061,7 +42884,6 @@ CRITICAL REMINDERS:
         if (displayName !== undefined) updateData.displayName = displayName || null;
         if (status !== undefined) updateData.status = status;
         if (unreadCount !== undefined) updateData.unreadCount = unreadCount;
-        if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
         
         await db.update(imessageConversationsTable)
           .set(updateData)
@@ -43074,7 +42896,6 @@ CRITICAL REMINDERS:
       }
       
       return res.status(404).json({ message: "Conversation not found" });
-        }
     } catch (error: any) {
       console.error("[Inbox] Error updating conversation:", error);
       res.status(500).json({ message: "Failed to update conversation" });
@@ -43103,25 +42924,6 @@ CRITICAL REMINDERS:
       
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
       
       const updateData: any = { 
@@ -43177,25 +42979,6 @@ CRITICAL REMINDERS:
       
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
       
       if (conversation.status !== "waiting") {
@@ -43261,25 +43044,6 @@ CRITICAL REMINDERS:
       
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
-        }
-        
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        }
       }
       
       if (conversation.channel !== "whatsapp") {
@@ -43423,7 +43187,6 @@ CRITICAL REMINDERS:
           console.log(`[Inbox] Deleted iMessage conversation ${id} for company ${companyId}`);
         } else {
           return res.status(404).json({ message: "Conversation not found" });
-        }
         }
       }
       
