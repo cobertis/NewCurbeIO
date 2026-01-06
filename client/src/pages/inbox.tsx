@@ -76,6 +76,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -302,6 +303,12 @@ export default function InboxPage() {
   
   // Emoji picker state
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  
+  // Filter state for sidebar
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
+  const [filterShow, setFilterShow] = useState<"all" | "open" | "closed" | "snoozed">("open");
+  const [filterSortBy, setFilterSortBy] = useState<"newest" | "oldest" | "longest_open" | "shortest_open">("newest");
+  const [filterUnreplied, setFilterUnreplied] = useState(false);
   
   // WhatsApp Template Picker state
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
@@ -1341,14 +1348,60 @@ export default function InboxPage() {
         filtered = conversations.filter(c => !isSolvedOrArchived(c));
     }
     
-    if (!searchQuery) return filtered;
-    const query = searchQuery.toLowerCase();
-    return filtered.filter(c => 
-      c.displayName?.toLowerCase().includes(query) ||
-      c.phoneNumber.includes(query) ||
-      c.lastMessage?.toLowerCase().includes(query)
-    );
-  }, [conversations, searchQuery, activeView]);
+    // Apply sidebar filter: Show (all, open, closed, snoozed)
+    if (filterShow === "open") {
+      filtered = filtered.filter(c => (c as any).status !== "solved" && (c as any).status !== "archived" && (c as any).status !== "snoozed");
+    } else if (filterShow === "closed") {
+      filtered = filtered.filter(c => (c as any).status === "solved" || (c as any).status === "archived");
+    } else if (filterShow === "snoozed") {
+      filtered = filtered.filter(c => (c as any).status === "snoozed");
+    }
+    // "all" shows everything already filtered by activeView
+    
+    // Apply unreplied filter
+    if (filterUnreplied) {
+      filtered = filtered.filter(c => {
+        // A conversation is "unreplied" if the last message was inbound (from customer)
+        // We check if it has unread messages or if lastMessageDirection is inbound
+        return c.unreadCount > 0 || (c as any).lastMessageDirection === "inbound";
+      });
+    }
+    
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(c => 
+        c.displayName?.toLowerCase().includes(query) ||
+        c.phoneNumber.includes(query) ||
+        c.lastMessage?.toLowerCase().includes(query)
+      );
+    }
+    
+    // Apply sort
+    filtered = [...filtered].sort((a, b) => {
+      const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      const aCreated = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : aTime;
+      const bCreated = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : bTime;
+      
+      switch (filterSortBy) {
+        case "newest":
+          return bTime - aTime;
+        case "oldest":
+          return aTime - bTime;
+        case "longest_open":
+          // Oldest created first (longest open)
+          return aCreated - bCreated;
+        case "shortest_open":
+          // Newest created first (shortest open)
+          return bCreated - aCreated;
+        default:
+          return bTime - aTime;
+      }
+    });
+    
+    return filtered;
+  }, [conversations, searchQuery, activeView, filterShow, filterSortBy, filterUnreplied]);
 
   const viewLabel = useMemo(() => {
     switch (activeView) {
@@ -1893,10 +1946,85 @@ export default function InboxPage() {
                 data-testid="input-search-conversations"
               />
             </div>
-            <Button variant="outline" size="sm" className="h-8 gap-1 shrink-0">
-              <Filter className="h-3.5 w-3.5" />
-              <span className="text-xs">Filter</span>
-            </Button>
+            <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 gap-1 shrink-0"
+                  data-testid="btn-filter-popover"
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  <span className="text-xs">
+                    {filterShow === "all" ? "All" : filterShow === "open" ? "Open" : filterShow === "closed" ? "Closed" : "Snoozed"}, {filterSortBy === "newest" ? "Newest" : filterSortBy === "oldest" ? "Oldest" : filterSortBy === "longest_open" ? "Longest Open" : "Shortest Open"}
+                  </span>
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0" align="end">
+                <div className="p-3 border-b">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">
+                      {filterShow === "all" ? "All" : filterShow === "open" ? "Open" : filterShow === "closed" ? "Closed" : "Snoozed"}, {filterSortBy === "newest" ? "Newest" : filterSortBy === "oldest" ? "Oldest" : filterSortBy === "longest_open" ? "Longest" : "Shortest"}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="unreplied"
+                        checked={filterUnreplied}
+                        onCheckedChange={setFilterUnreplied}
+                        className="scale-75"
+                        data-testid="switch-unreplied"
+                      />
+                      <Label htmlFor="unreplied" className="text-xs text-muted-foreground cursor-pointer">Unreplied</Label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-3 border-b">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Show</p>
+                  <RadioGroup value={filterShow} onValueChange={(v) => setFilterShow(v as any)} className="space-y-1.5">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="all" id="show-all" data-testid="radio-show-all" />
+                      <Label htmlFor="show-all" className="text-sm cursor-pointer">All conversations</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="open" id="show-open" data-testid="radio-show-open" />
+                      <Label htmlFor="show-open" className="text-sm cursor-pointer">Open conversations</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="closed" id="show-closed" data-testid="radio-show-closed" />
+                      <Label htmlFor="show-closed" className="text-sm cursor-pointer">Closed conversations</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="snoozed" id="show-snoozed" data-testid="radio-show-snoozed" />
+                      <Label htmlFor="show-snoozed" className="text-sm cursor-pointer">Snoozed conversations</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                
+                <div className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Sort by</p>
+                  <RadioGroup value={filterSortBy} onValueChange={(v) => setFilterSortBy(v as any)} className="space-y-1.5">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="newest" id="sort-newest" data-testid="radio-sort-newest" />
+                      <Label htmlFor="sort-newest" className="text-sm cursor-pointer">Newest</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="oldest" id="sort-oldest" data-testid="radio-sort-oldest" />
+                      <Label htmlFor="sort-oldest" className="text-sm cursor-pointer">Oldest</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="longest_open" id="sort-longest" data-testid="radio-sort-longest" />
+                      <Label htmlFor="sort-longest" className="text-sm cursor-pointer">Longest Open</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="shortest_open" id="sort-shortest" data-testid="radio-sort-shortest" />
+                      <Label htmlFor="sort-shortest" className="text-sm cursor-pointer">Shortest Open</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
