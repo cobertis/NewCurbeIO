@@ -2309,8 +2309,12 @@ export default function InboxPage() {
                       <ChevronRight className="h-3 w-3 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-48 p-1" align="start">
+                  <PopoverContent className="w-56 p-1" align="start">
                     <div className="space-y-0.5">
+                      {/* Lifecycle Options */}
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Lifecycle Stage
+                      </div>
                       {lifecycleOptions.map((option) => (
                         <button
                           key={option.id}
@@ -2334,36 +2338,11 @@ export default function InboxPage() {
                           )}
                         </button>
                       ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                
-                {/* Custom Inbox Assignment Popover */}
-                <Popover open={inboxPopoverOpen} onOpenChange={setInboxPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "h-7 gap-1.5 text-xs font-medium border",
-                        selectedConversation.customInboxId 
-                          ? "bg-indigo-100 text-indigo-700 border-indigo-200"
-                          : "bg-gray-100 text-gray-700 border-gray-200"
-                      )}
-                      data-testid="btn-inbox-assignment"
-                    >
-                      <Folder className="h-3 w-3" />
-                      <span>
-                        {getCurrentInboxName(selectedConversation.customInboxId) || "📥 Move to Inbox"}
-                      </span>
-                      <ChevronRight className="h-3 w-3 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-56 p-1" align="start">
-                    <div className="space-y-1">
+                      
                       {/* Team Inboxes */}
                       {customInboxes.filter(i => i.type === "team").length > 0 && (
                         <>
+                          <div className="border-t my-1.5" />
                           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                             Team Inboxes
                           </div>
@@ -2396,6 +2375,7 @@ export default function InboxPage() {
                       {/* Custom Inboxes */}
                       {customInboxes.filter(i => i.type === "custom").length > 0 && (
                         <>
+                          <div className="border-t my-1.5" />
                           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                             Custom Inboxes
                           </div>
