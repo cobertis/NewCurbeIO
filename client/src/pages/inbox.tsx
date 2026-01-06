@@ -65,7 +65,8 @@ import {
   Mic,
   Square,
   Trash2 as TrashIcon,
-  MoreVertical
+  MoreVertical,
+  Folder
 } from "lucide-react";
 import { Link } from "wouter";
 import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp, SiImessage, SiGooglemessages, SiApple, SiMessenger } from "react-icons/si";
@@ -177,6 +178,7 @@ interface TelnyxConversation {
   visitorBrowser?: string | null;
   visitorOs?: string | null;
   conversationExpiresAt?: string | null;
+  customInboxId?: string | null;
 }
 
 const getChannelIcon = (channel?: string) => {
@@ -316,6 +318,9 @@ export default function InboxPage() {
   // Lifecycle popover state
   const [lifecyclePopoverOpen, setLifecyclePopoverOpen] = useState(false);
   
+  // Inbox popover state
+  const [inboxPopoverOpen, setInboxPopoverOpen] = useState(false);
+  
   // Filter state for sidebar
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [filterShow, setFilterShow] = useState<"all" | "open" | "closed" | "snoozed">("open");
@@ -389,6 +394,19 @@ export default function InboxPage() {
     enabled: isAuthenticated,
   });
   const waConnections = waConnectionsData?.connections || [];
+
+  // Query for custom inboxes
+  const { data: customInboxesData } = useQuery<Array<{
+    id: string;
+    name: string;
+    type: "team" | "custom";
+    description?: string;
+  }>>({
+    queryKey: ['/api/inbox/custom-inboxes'],
+    enabled: isAuthenticated,
+  });
+  const customInboxes = customInboxesData || [];
+
   const { data: conversationsData, isLoading: loadingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
     enabled: isAuthenticated,
@@ -482,6 +500,41 @@ export default function InboxPage() {
       });
     },
   });
+
+  // Mutation to update inbox assignment
+  const updateInboxAssignmentMutation = useMutation({
+    mutationFn: async ({ conversationId, customInboxId }: { 
+      conversationId: string; 
+      customInboxId: string | null;
+    }) => {
+      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}/inbox`, {
+        customInboxId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/inbox/custom-inboxes'] });
+      setInboxPopoverOpen(false);
+      toast({
+        title: "Inbox Updated",
+        description: "Conversation has been moved successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update inbox assignment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Helper to get current inbox name
+  const getCurrentInboxName = (customInboxId: string | null | undefined): string | null => {
+    if (!customInboxId) return null;
+    const inbox = customInboxes.find(i => i.id === customInboxId);
+    return inbox?.name || null;
+  };
 
   const matchedContact = useMemo(() => {
     if (!selectedConversation) return null;
@@ -2281,6 +2334,124 @@ export default function InboxPage() {
                           )}
                         </button>
                       ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                
+                {/* Custom Inbox Assignment Popover */}
+                <Popover open={inboxPopoverOpen} onOpenChange={setInboxPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-7 gap-1.5 text-xs font-medium border",
+                        selectedConversation.customInboxId 
+                          ? "bg-indigo-100 text-indigo-700 border-indigo-200"
+                          : "bg-gray-100 text-gray-700 border-gray-200"
+                      )}
+                      data-testid="btn-inbox-assignment"
+                    >
+                      <Folder className="h-3 w-3" />
+                      <span>
+                        {getCurrentInboxName(selectedConversation.customInboxId) || "📥 Move to Inbox"}
+                      </span>
+                      <ChevronRight className="h-3 w-3 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-1" align="start">
+                    <div className="space-y-1">
+                      {/* Team Inboxes */}
+                      {customInboxes.filter(i => i.type === "team").length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Team Inboxes
+                          </div>
+                          {customInboxes.filter(i => i.type === "team").map((inbox) => (
+                            <button
+                              key={inbox.id}
+                              onClick={() => {
+                                updateInboxAssignmentMutation.mutate({
+                                  conversationId: selectedConversation.id,
+                                  customInboxId: inbox.id
+                                });
+                              }}
+                              disabled={updateInboxAssignmentMutation.isPending}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
+                                selectedConversation.customInboxId === inbox.id && "bg-gray-100 dark:bg-gray-800"
+                              )}
+                              data-testid={`inbox-option-${inbox.id}`}
+                            >
+                              <Folder className="h-4 w-4 text-blue-500" />
+                              <span>{inbox.name}</span>
+                              {selectedConversation.customInboxId === inbox.id && (
+                                <Check className="h-4 w-4 ml-auto text-blue-600" />
+                              )}
+                            </button>
+                          ))}
+                        </>
+                      )}
+                      
+                      {/* Custom Inboxes */}
+                      {customInboxes.filter(i => i.type === "custom").length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Custom Inboxes
+                          </div>
+                          {customInboxes.filter(i => i.type === "custom").map((inbox) => (
+                            <button
+                              key={inbox.id}
+                              onClick={() => {
+                                updateInboxAssignmentMutation.mutate({
+                                  conversationId: selectedConversation.id,
+                                  customInboxId: inbox.id
+                                });
+                              }}
+                              disabled={updateInboxAssignmentMutation.isPending}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
+                                selectedConversation.customInboxId === inbox.id && "bg-gray-100 dark:bg-gray-800"
+                              )}
+                              data-testid={`inbox-option-${inbox.id}`}
+                            >
+                              <Folder className="h-4 w-4 text-indigo-500" />
+                              <span>{inbox.name}</span>
+                              {selectedConversation.customInboxId === inbox.id && (
+                                <Check className="h-4 w-4 ml-auto text-blue-600" />
+                              )}
+                            </button>
+                          ))}
+                        </>
+                      )}
+                      
+                      {/* Remove from Inbox option */}
+                      {selectedConversation.customInboxId && (
+                        <>
+                          <div className="border-t my-1" />
+                          <button
+                            onClick={() => {
+                              updateInboxAssignmentMutation.mutate({
+                                conversationId: selectedConversation.id,
+                                customInboxId: null
+                              });
+                            }}
+                            disabled={updateInboxAssignmentMutation.isPending}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600"
+                            data-testid="inbox-remove"
+                          >
+                            <X className="h-4 w-4" />
+                            <span>Remove from Inbox</span>
+                          </button>
+                        </>
+                      )}
+                      
+                      {/* Empty state */}
+                      {customInboxes.length === 0 && (
+                        <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                          No inboxes available
+                        </div>
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>

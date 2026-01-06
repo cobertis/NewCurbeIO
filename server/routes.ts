@@ -44534,6 +44534,33 @@ CRITICAL REMINDERS:
     }
   });
 
+  // GET /api/inbox/custom-inboxes - Alias for custom-inboxes (for inbox assignment feature)
+  app.get("/api/inbox/custom-inboxes", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const userId = user.id;
+
+      const inboxes = await db.select()
+        .from(customInboxes)
+        .where(
+          and(
+            eq(customInboxes.companyId, companyId),
+            or(
+              eq(customInboxes.type, "team"),
+              and(eq(customInboxes.type, "custom"), eq(customInboxes.createdByUserId, userId))
+            )
+          )
+        )
+        .orderBy(customInboxes.createdAt);
+
+      res.json(inboxes);
+    } catch (error: any) {
+      console.error("[Inbox Custom Inboxes] Error fetching:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch inboxes" });
+    }
+  });
+
   // POST /api/custom-inboxes - Create a new inbox
   app.post("/api/custom-inboxes", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -44603,8 +44630,6 @@ CRITICAL REMINDERS:
     }
   });
 
-  return httpServer;
-}
 
   // PATCH /api/inbox/conversations/:id/inbox - Assign conversation to a custom inbox
   app.patch("/api/inbox/conversations/:id/inbox", requireActiveCompany, async (req: Request, res: Response) => {
@@ -44656,3 +44681,6 @@ CRITICAL REMINDERS:
       res.status(500).json({ message: error.message || "Failed to assign inbox" });
     }
   });
+
+  return httpServer;
+}
