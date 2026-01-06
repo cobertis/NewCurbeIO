@@ -42049,27 +42049,32 @@ CRITICAL REMINDERS:
           }
         }
         
+        
         if (!conversation) {
           return res.status(404).json({ message: "Conversation not found" });
         }
         
-        // Auto-assign conversation to the user who responds if not already assigned
-        if (!isImessageConversation && conversation && !conversation.assignedTo) {
-          await db.update(telnyxConversations)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(telnyxConversations.id, id));
-          console.log(`[Inbox] Auto-assigned conversation ${id} to user ${userId}`);
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
-        } else if (isImessageConversation && imessageConv && !imessageConv.assignedTo) {
-          await db.update(imessageConversationsTable)
-            .set({ assignedTo: userId, updatedAt: new Date() })
-            .where(eq(imessageConversationsTable.id, id));
-          console.log(`[Inbox] Auto-assigned iMessage conversation ${id} to user ${userId}`);
-          imessageConv.assignedTo = userId;
-          conversation.assignedTo = userId;
-          broadcastConversationUpdate(companyId);
+        // Always assign conversation to the user who sends a message (regardless of previous assignment)
+        const currentAssignee = isImessageConversation ? imessageConv?.assignedTo : conversation?.assignedTo;
+        if (String(currentAssignee) !== String(userId)) {
+          if (!isImessageConversation) {
+            await db.update(telnyxConversations)
+              .set({ assignedTo: String(userId), updatedAt: new Date() })
+              .where(eq(telnyxConversations.id, id));
+            console.log(`[Inbox] Reassigned conversation ${id} to user ${userId} (was: ${currentAssignee || 'unassigned'})`);
+            conversation.assignedTo = String(userId);
+            broadcastConversationUpdate(companyId);
+          } else if (isImessageConversation && imessageConv) {
+            await db.update(imessageConversationsTable)
+              .set({ assignedTo: String(userId), updatedAt: new Date() })
+              .where(eq(imessageConversationsTable.id, id));
+            console.log(`[Inbox] Reassigned iMessage conversation ${id} to user ${userId} (was: ${currentAssignee || 'unassigned'})`);
+            imessageConv.assignedTo = String(userId);
+            conversation.assignedTo = String(userId);
+            broadcastConversationUpdate(companyId);
+          }
         }
+        
         
         // === IMESSAGE CHANNEL ROUTING ===
         if (isImessageConversation && imessageConv) {
