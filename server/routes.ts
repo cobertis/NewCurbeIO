@@ -5428,6 +5428,46 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[CREATE USER] Error:", error);
       res.status(500).json({ message: error.message || "Failed to add team member" });
+
+  // Delete a user (admin can remove team members)
+  app.delete("/api/users/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user!;
+      const userId = req.params.id;
+      
+      // Only admins and superadmins can delete users
+      if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+        return res.status(403).json({ message: "Only admins can delete team members" });
+      }
+      
+      // Prevent self-deletion
+      if (userId === currentUser.id) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+      
+      const userToDelete = await storage.getUser(userId);
+      if (!userToDelete) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Regular admins can only delete users in their own company
+      if (currentUser.role === "admin" && userToDelete.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You can only delete users in your company" });
+      }
+      
+      // Prevent deleting other admins (only superadmin can do that)
+      if (userToDelete.role === "admin" && currentUser.role !== "superadmin") {
+        return res.status(403).json({ message: "Only super admins can delete other admins" });
+      }
+      
+      await storage.deleteUser(userId);
+      
+      res.json({ message: "User deleted successfully" });
+    } catch (error: any) {
+      console.error("[DELETE USER] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to delete user" });
+    }
+  });
     }
   });
   // Get user seat limits for current company
