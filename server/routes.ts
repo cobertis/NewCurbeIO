@@ -44510,7 +44510,7 @@ CRITICAL REMINDERS:
   app.get("/api/custom-inboxes", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
-      const companyId = user.activeCompanyId;
+      const companyId = user.companyId;
       const userId = user.id;
 
       // Fetch team inboxes (visible to all) and custom inboxes (only user's own)
@@ -44538,7 +44538,7 @@ CRITICAL REMINDERS:
   app.post("/api/custom-inboxes", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
-      const companyId = user.activeCompanyId;
+      const companyId = user.companyId;
       const userId = user.id;
       const { name, emoji, type, description } = req.body;
 
@@ -44570,7 +44570,7 @@ CRITICAL REMINDERS:
   app.delete("/api/custom-inboxes/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
-      const companyId = user.activeCompanyId;
+      const companyId = user.companyId;
       const userId = user.id;
       const { id } = req.params;
 
