@@ -491,7 +491,18 @@ export default function InboxPage() {
           queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
         });
       }
-    } else if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update' || msg.type === 'imessage_message') {
+    } else if (
+      msg.type === 'telnyx_message' || 
+      msg.type === 'new_message' || 
+      msg.type === 'conversation_update' || 
+      msg.type === 'imessage_message' ||
+      msg.type === 'imessage_update' ||
+      msg.type === 'whatsapp_message' ||
+      msg.type === 'whatsapp_chat_update' ||
+      msg.type === 'whatsapp_event' ||
+      msg.type === 'inbox_message' ||
+      msg.type === 'email_received'
+    ) {
       // Force immediate refetch for real-time updates
       queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });
       // Always refresh messages for the selected conversation on any update
