@@ -1190,10 +1190,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.log(`[BlueBubbles Webhook] Message is from us (isFromMe=true) - skipping new message broadcast`);
             }
           } else {
-            // CRITICAL: Check if message is from us BEFORE creating to prevent duplicate broadcasts
+            // CRITICAL: If message is from us (isFromMe) but we couldn't find an existing message,
+            // we should NOT create a new one. This prevents duplicates when BlueBubbles sends
+            // multiple webhooks for the same sent message (first without tempGuid, second with it).
+            // Our message was already created when the user clicked Send - just skip this webhook.
             if (messageData.isFromMe) {
-              shouldBroadcastAsNew = false;
-              console.log(`[BlueBubbles Webhook] New message is from us (isFromMe=true) - will not broadcast as incoming`);
+              console.log(`[BlueBubbles Webhook] Skipping isFromMe message - no matching pending message found. Webhook ignored to prevent duplicates.`);
+              // Broadcast a status update in case we need to sync delivery status
+              if (messageData.dateDelivered || messageData.dateRead) {
+                console.log(`[BlueBubbles Webhook] Broadcasting status update for our own message`);
+                broadcastImessageUpdate(company.id, {
+                  type: 'message-status',
+                  conversationId: conversation.id,
+                  messageGuid: messageGuid,
+                  status: messageData.dateRead ? 'read' : 'delivered',
+                });
+              }
+              return res.json({ success: true, message: 'Self-sent message ignored (no pending match)' });
             }
             // Store the message - wrap in try-catch to handle race conditions with duplicate messages
             try {
