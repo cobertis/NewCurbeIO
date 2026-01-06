@@ -22,6 +22,7 @@ import {
   Send, 
   Paperclip, 
   Trash2,
+  Target,
   MessageSquare,
   User,
   Mail,
@@ -66,7 +67,7 @@ import {
   Trash2 as TrashIcon
 } from "lucide-react";
 import { Link } from "wouter";
-import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp, SiImessage, SiGooglemessages } from "react-icons/si";
+import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp, SiImessage, SiGooglemessages, SiApple, SiMessenger } from "react-icons/si";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -3494,6 +3495,47 @@ export default function InboxPage() {
                   </button>
                   {insightsOpen && (
                     <div className="space-y-3" data-testid="section-insights">
+                      {/* Communication Channel */}
+                      <div className="flex items-center gap-3">
+                        {selectedConversation.channel === "whatsapp" && <SiWhatsapp className="h-4 w-4 text-green-500" />}
+                        {selectedConversation.channel === "sms" && <MessageSquare className="h-4 w-4 text-blue-500" />}
+                        {selectedConversation.channel === "mms" && <MessageSquare className="h-4 w-4 text-blue-600" />}
+                        {selectedConversation.channel === "imessage" && <SiApple className="h-4 w-4 text-gray-800 dark:text-gray-200" />}
+                        {selectedConversation.channel === "messenger" && <SiMessenger className="h-4 w-4 text-blue-500" />}
+                        {selectedConversation.channel === "telegram" && <SiTelegram className="h-4 w-4 text-sky-500" />}
+                        {selectedConversation.channel === "instagram" && <SiInstagram className="h-4 w-4 text-pink-500" />}
+                        {selectedConversation.channel === "live_chat" && <Globe className="h-4 w-4 text-orange-500" />}
+                        {selectedConversation.channel === "email" && <Mail className="h-4 w-4 text-red-500" />}
+                        {!["whatsapp", "sms", "mms", "imessage", "messenger", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && <MessageSquare className="h-4 w-4 text-gray-500" />}
+                        <div>
+                          <p className="text-xs text-muted-foreground">Channel</p>
+                          <p className="text-sm font-medium" data-testid="text-channel">
+                            {selectedConversation.channel === "whatsapp" && "WhatsApp"}
+                            {selectedConversation.channel === "sms" && "SMS"}
+                            {selectedConversation.channel === "mms" && "MMS"}
+                            {selectedConversation.channel === "imessage" && "iMessage"}
+                            {selectedConversation.channel === "messenger" && "Messenger"}
+                            {selectedConversation.channel === "telegram" && "Telegram"}
+                            {selectedConversation.channel === "instagram" && "Instagram"}
+                            {selectedConversation.channel === "live_chat" && "Live Chat"}
+                            {selectedConversation.channel === "email" && "Email"}
+                            {!["whatsapp", "sms", "mms", "imessage", "messenger", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && (selectedConversation.channel?.charAt(0).toUpperCase() + selectedConversation.channel?.slice(1) || "Unknown")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Lead Status */}
+                      <div className="flex items-center gap-3">
+                        <Target className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Lead?</p>
+                          <p className="text-sm font-medium" data-testid="text-is-lead">
+                            {matchedContact?.origin?.includes("policy") ? "Customer" : 
+                             matchedContact?.origin?.includes("quote") ? "Prospect" : "Yes"}
+                          </p>
+                        </div>
+                      </div>
+
                       {/* Contact Origins/Types */}
                       <div className="space-y-2">
                         <span className="text-xs text-muted-foreground">Source</span>
