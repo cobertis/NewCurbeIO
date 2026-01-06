@@ -3165,7 +3165,7 @@ export default function InboxPage() {
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-muted-foreground">Status</span>
                         <Select
-                          value={selectedConversation.status || "open"}
+                          value={selectedConversation.status === "solved" ? "solved" : "open"}
                           onValueChange={(value) => {
                             updateConversationMutation.mutate({
                               conversationId: selectedConversation.id,
@@ -3178,7 +3178,7 @@ export default function InboxPage() {
                           }}
                         >
                           <SelectTrigger className="w-[100px] h-7 text-xs" data-testid="select-status">
-                            <SelectValue />
+                            <SelectValue placeholder="Open" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="open">
