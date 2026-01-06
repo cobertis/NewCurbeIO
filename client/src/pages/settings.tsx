@@ -1417,50 +1417,6 @@ export default function Settings({ view = 'all' }: SettingsProps) {
   return (
     <SettingsLayout activeSection={getActiveSection()}>
     <div className="flex flex-col gap-4 sm:gap-6">
-      {/* Breadcrumb with Save Button */}
-      <div className="flex items-center justify-between" data-testid="breadcrumb-settings">
-        <div className="flex items-center gap-2 text-sm">
-          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{getBreadcrumbTitle()}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Wallet Balance & Buy Credits - Billing tab only */}
-          {activeTab === 'billing' && (
-            <div className="flex items-center gap-2">
-              <div 
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800"
-                data-testid="display-wallet-balance"
-              >
-                <Wallet className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-wallet-balance">
-                  ${walletBalance.toFixed(2)}
-                </span>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setWalletTopupOpen(true)}
-                className="h-8 text-xs font-medium"
-                data-testid="button-buy-credits-billing"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Buy Credits
-              </Button>
-            </div>
-          )}
-          {(currentView === 'profile' || currentView === 'company') && (
-            <Button
-              onClick={currentView === 'profile' ? handleSaveProfile : handleSaveCompany}
-              disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}
-              data-testid={`button-save-${currentView}`}
-            >
-              {(updateProfileInfoMutation.isPending || updateCompanyMutation.isPending) ? "Saving..." : "Save Changes"}
-            </Button>
-          )}
-        </div>
-      </div>
-      
       <div>
         {/* Settings Content */}
         <div>
@@ -1710,6 +1666,19 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                 </Card>
               )}
               </div>
+
+              {/* Save Changes Button - Below cards */}
+              {currentView === 'profile' && (
+                <div className="flex justify-end mt-4">
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={updateProfileInfoMutation.isPending}
+                    data-testid="button-save-profile"
+                  >
+                    {updateProfileInfoMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              )}
 
               {/* Closing Your Account - Profile View Only */}
               {currentView === 'profile' && (
@@ -2159,6 +2128,19 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                     </div>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Save Changes Button - Below Company card */}
+              {isAdmin && currentView === 'company' && (
+                <div className="flex justify-end mt-4">
+                  <Button
+                    onClick={handleSaveCompany}
+                    disabled={updateCompanyMutation.isPending}
+                    data-testid="button-save-company"
+                  >
+                    {updateCompanyMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
               )}
 
           </TabsContent>
