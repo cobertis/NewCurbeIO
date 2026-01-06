@@ -3604,25 +3604,6 @@ export default function InboxPage() {
                     </div>
                   </div>
                 )}
-
-                {/* Conversation Stats */}
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium text-muted-foreground">Conversation</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-md bg-background border text-center">
-                      <p className="text-lg font-semibold" data-testid="text-message-count">
-                        {messagesData?.messages?.length || 0}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Messages</p>
-                    </div>
-                    <div className="p-3 rounded-md bg-background border text-center">
-                      <p className="text-lg font-semibold" data-testid="text-unread-count">
-                        {selectedConversation.unreadCount || 0}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Unread</p>
-                    </div>
-                  </div>
-                </div>
               </div>
             </ScrollArea>
             )}
