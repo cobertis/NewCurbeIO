@@ -24,6 +24,21 @@ function setCache<T>(key: string, value: T): void {
   cache.set(key, { value, expires: Date.now() + CACHE_TTL });
 }
 
+export function clearCredentialCache(provider?: string): void {
+  if (provider) {
+    // Clear specific provider cache
+    const keys = Array.from(cache.keys());
+    for (const key of keys) {
+      if (key.startsWith(provider)) {
+        cache.delete(key);
+      }
+    }
+  } else {
+    // Clear all cache
+    cache.clear();
+  }
+}
+
 export const credentialProvider = {
   async getStripe(): Promise<{ secretKey: string; webhookSecret: string; publishableKey: string }> {
     const cacheKey = getCacheKey('stripe');
