@@ -43204,12 +43204,12 @@ CRITICAL REMINDERS:
                 eq(channelConnections.status, "active")
               ));
 
-            if (!fbConnection || !fbConnection.accessToken) {
+            if (!fbConnection || !fbConnection.fbPageAccessToken) {
               console.error("[Inbox Facebook] No Facebook page connection found");
               return res.status(400).json({ message: "Facebook page not connected. Please set up Facebook in the Integrations page." });
             }
 
-            const pageAccessToken = decryptToken(fbConnection.accessToken);
+            const pageAccessToken = decryptToken(fbConnection.fbPageAccessToken);
             const recipientPsid = conversation.phoneNumber; // PSID stored in phoneNumber field
 
             // Send message via Facebook Graph API
