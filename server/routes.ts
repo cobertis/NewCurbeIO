@@ -41480,6 +41480,7 @@ CRITICAL REMINDERS:
         tags: conv.tags || [],
         createdAt: conv.createdAt,
         updatedAt: conv.updatedAt,
+        customInboxId: conv.customInboxId || null,
         metadata: { chatGuid: conv.chatGuid, isGroup: conv.isGroup },
       }));
       
