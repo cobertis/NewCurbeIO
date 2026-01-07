@@ -301,7 +301,7 @@ export default function FacebookFlowPage() {
                         Connect Facebook account
                       </h3>
                       <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Facebook account: {connection?.displayName || "Connected"}
+                        Facebook page: {connection?.fbPageName || "Connected"}
                       </p>
                     </div>
                   )}
@@ -330,16 +330,21 @@ export default function FacebookFlowPage() {
                         </p>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
-                              <SiFacebook className="h-5 w-5 text-[#1877F2]" />
-                            </div>
+                            <img 
+                              src={`https://graph.facebook.com/${connection?.fbPageId}/picture?type=small`}
+                              alt="Page"
+                              className="w-10 h-10 rounded-lg object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
                             <a 
-                              href={`https://facebook.com/${connection?.pageId || ""}`}
+                              href={`https://facebook.com/${connection?.fbPageId || ""}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-base font-medium text-slate-900 dark:text-slate-100 hover:text-blue-600 flex items-center gap-1"
                             >
-                              {connection?.displayName || "Facebook Page"}
+                              {connection?.fbPageName || "Facebook Page"}
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           </div>
@@ -360,7 +365,7 @@ export default function FacebookFlowPage() {
                                 </p>
                                 <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
                                   <code className="text-sm break-all">
-                                    https://m.me/{connection?.pageId || ""}
+                                    https://m.me/{connection?.fbPageId || ""}
                                   </code>
                                 </div>
                               </div>
