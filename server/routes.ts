@@ -27425,19 +27425,21 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const challenge = req.query["hub.challenge"] as string;
 
       // Get verify token from env or credential provider
-      const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN || 
-                          await credentialProvider.get("meta", "webhook_verify_token");
+      const { webhookVerifyToken: verifyToken } = await credentialProvider.getMeta();
+      // Fallback to env if not in credentials
+      const finalVerifyToken = verifyToken || process.env.META_WEBHOOK_VERIFY_TOKEN || 
+                          "";
 
-      if (!verifyToken) {
+      if (!finalVerifyToken) {
         console.error("[Meta Webhook] META_WEBHOOK_VERIFY_TOKEN not configured");
         return res.status(500).send("Webhook verify token not configured");
       }
 
-      if (mode === "subscribe" && token === verifyToken) {
+      if (mode === "subscribe" && token === finalVerifyToken) {
         console.log("[Meta Webhook] Verification successful");
         return res.status(200).send(challenge);
       } else {
-        console.error("[Meta Webhook] Verification failed - mode:", mode, "token match:", token === verifyToken);
+        console.error("[Meta Webhook] Verification failed - mode:", mode, "token match:", token === finalVerifyToken);
         return res.status(403).send("Forbidden");
       }
     } catch (error) {

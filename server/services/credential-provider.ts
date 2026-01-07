@@ -220,17 +220,19 @@ export const credentialProvider = {
     return result;
   },
 
-  async getMeta(): Promise<{ appId: string; appSecret: string }> {
+  async getMeta(): Promise<{ appId: string; appSecret: string; webhookVerifyToken: string }> {
     const cacheKey = getCacheKey('meta');
-    const cached = getFromCache<{ appId: string; appSecret: string }>(cacheKey);
+    const cached = getFromCache<{ appId: string; appSecret: string; webhookVerifyToken: string }>(cacheKey);
     if (cached) return cached;
 
     const appId = await secretsService.getCredential("meta" as ApiProvider, "app_id") || 
                   process.env.META_APP_ID || '';
     const appSecret = await secretsService.getCredential("meta" as ApiProvider, "app_secret") || 
                       process.env.META_APP_SECRET || '';
+    const webhookVerifyToken = await secretsService.getCredential("meta" as ApiProvider, "webhook_verify_token") || 
+                               process.env.META_WEBHOOK_VERIFY_TOKEN || '';
     
-    const result = { appId, appSecret };
+    const result = { appId, appSecret, webhookVerifyToken };
     setCache(cacheKey, result);
     return result;
   },
