@@ -27602,7 +27602,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   app.get("/api/integrations/whatsapp/connections", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user as any;
     if (!user.companyId) return res.json({ connections: [] });
-    await db.query.channelConnections.findMany({
+    const connections = await db.query.channelConnections.findMany({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp"),
@@ -41877,11 +41877,11 @@ CRITICAL REMINDERS:
       
       if (telnyxConv) {
         // Mark as read
-      await db
+      await db.update(telnyxConversations)
           .set({ unreadCount: 0, updatedAt: new Date() })
           .where(eq(telnyxConversations.id, id));
         // Fetch messages
-      await db
+      const messages = await db
           .select()
           .from(telnyxMessages)
           .where(eq(telnyxMessages.conversationId, id))
