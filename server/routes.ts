@@ -30241,6 +30241,7 @@ CRITICAL REMINDERS:
             status: "active",
             fbPageId: pageId,
             fbPageName: pageName,
+            displayName: fbUserName,
             fbPageAccessToken: pageAccessToken,
             accessTokenEnc: userAccessToken,
             scopes: META_FACEBOOK_SCOPES.split(","),
@@ -30257,6 +30258,7 @@ CRITICAL REMINDERS:
           status: "active",
           fbPageId: pageId,
           fbPageName: pageName,
+            displayName: fbUserName,
           fbPageAccessToken: pageAccessToken,
           accessTokenEnc: userAccessToken,
           scopes: META_FACEBOOK_SCOPES.split(","),
@@ -30317,8 +30319,14 @@ CRITICAL REMINDERS:
         userAccessToken = tokenData.access_token;
       }
       
-      // Get users Facebook pages
       
+      // Get Facebook user name (the person who connected)
+      const userUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me?access_token=${userAccessToken}&fields=name`;
+      const userResponse = await fetch(userUrl);
+      const userData = await userResponse.json() as any;
+      const fbUserName = userData.name || "Connected Account";
+      
+      // Get users Facebook pages
       // Get users Facebook pages
       const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?access_token=${userAccessToken}\&fields=id,name,access_token`;
       const pagesResponse = await fetch(pagesUrl);
@@ -30354,6 +30362,7 @@ CRITICAL REMINDERS:
             status: "active",
             fbPageId: pageId,
             fbPageName: pageName,
+            displayName: fbUserName,
             fbPageAccessToken: pageAccessToken,
             accessTokenEnc: userAccessToken,
             scopes: META_FACEBOOK_SCOPES.split(","),
@@ -30370,6 +30379,7 @@ CRITICAL REMINDERS:
           status: "active",
           fbPageId: pageId,
           fbPageName: pageName,
+            displayName: fbUserName,
           fbPageAccessToken: pageAccessToken,
           accessTokenEnc: userAccessToken,
           scopes: META_FACEBOOK_SCOPES.split(","),
