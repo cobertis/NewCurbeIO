@@ -30080,7 +30080,7 @@ CRITICAL REMINDERS:
             pageId: pageId,
             pageName: pageName,
             displayName: igAccount.name || igAccount.username,
-            accessTokenEnc: pageAccessToken,
+            accessTokenEnc: encryptToken(pageAccessToken),
             scopes: META_INSTAGRAM_SCOPES.split(","),
             connectedAt: new Date(),
             disconnectedAt: null,
@@ -30099,7 +30099,7 @@ CRITICAL REMINDERS:
           pageId: pageId,
           pageName: pageName,
           displayName: igAccount.name || igAccount.username,
-          accessTokenEnc: pageAccessToken,
+          accessTokenEnc: encryptToken(pageAccessToken),
           scopes: META_INSTAGRAM_SCOPES.split(","),
           connectedAt: new Date(),
         });

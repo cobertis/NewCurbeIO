@@ -1,0 +1,33 @@
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 6:51:12 PM [express] GET /api/telnyx/voice-settings/249f0311-ea45-4007-b0d8-465ec454fbae 304 in 166m…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 6:51:12 PM [express] GET /api/ai/conversations 304 in 2ms
+0|curbe-admin  | 6:51:12 PM [express] GET /api/inbox/conversations/65f1b406-935f-4399-bed4-db8e3dc7f5b4/messages 200 …
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | Token decryption error: Error: Unsupported state or unable to authenticate data
+0|curbe-admin  |     at Decipheriv.final (node:internal/crypto/cipher:193:29)
+0|curbe-admin  |     at decryptToken (file:///var/www/curbe/dist/index.js:15393:16)
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:74549:37
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | [Inbox Instagram] Send error: Error: Failed to decrypt token
+0|curbe-admin  |     at decryptToken (file:///var/www/curbe/dist/index.js:15398:11)
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:74549:37
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 6:51:15 PM [express] POST /api/inbox/conversations/65f1b406-935f-4399-bed4-db8e3dc7f5b4/messages 500…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | 6:51:22 PM [express] GET /api/ai/autopilot/pending 304 in 39ms :: {"pending":[]}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
