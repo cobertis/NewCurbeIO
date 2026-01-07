@@ -2340,29 +2340,38 @@ export default function InboxPage() {
                       <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         Lifecycle Stage
                       </div>
-                      {lifecycleOptions.map((option) => (
-                        <button
-                          key={option.id}
-                          onClick={() => {
-                            updateLifecycleMutation.mutate({
-                              conversationId: selectedConversation.id,
-                              lifecycleStage: option.id
-                            });
-                          }}
-                          disabled={updateLifecycleMutation.isPending}
-                          className={cn(
-                            "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
-                            (selectedConversation as any).lifecycleStage === option.id && "bg-gray-100 dark:bg-gray-800"
-                          )}
-                          data-testid={`lifecycle-option-${option.id}`}
-                        >
-                          <span>{option.emoji}</span>
-                          <span>{option.label}</span>
-                          {(selectedConversation as any).lifecycleStage === option.id && (
-                            <Check className="h-4 w-4 ml-auto text-blue-600" />
-                          )}
-                        </button>
-                      ))}
+                      {lifecycleOptions.map((option) => {
+                        const isSelected = !selectedConversation.customInboxId && (selectedConversation as any).lifecycleStage === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            onClick={() => {
+                              updateLifecycleMutation.mutate({
+                                conversationId: selectedConversation.id,
+                                lifecycleStage: option.id
+                              });
+                              if (selectedConversation.customInboxId) {
+                                updateInboxAssignmentMutation.mutate({
+                                  conversationId: selectedConversation.id,
+                                  customInboxId: null
+                                });
+                              }
+                            }}
+                            disabled={updateLifecycleMutation.isPending}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
+                              isSelected && "bg-gray-100 dark:bg-gray-800"
+                            )}
+                            data-testid={`lifecycle-option-${option.id}`}
+                          >
+                            <span>{option.emoji}</span>
+                            <span>{option.label}</span>
+                            {isSelected && (
+                              <Check className="h-4 w-4 ml-auto text-blue-600" />
+                            )}
+                          </button>
+                        );
+                      })}
                       
                       {/* Team Inboxes */}
                       {customInboxes.filter(i => i.type === "team").length > 0 && (
@@ -2430,26 +2439,6 @@ export default function InboxPage() {
                         </>
                       )}
                       
-                      {/* Remove from Inbox option */}
-                      {selectedConversation.customInboxId && (
-                        <>
-                          <div className="border-t my-1" />
-                          <button
-                            onClick={() => {
-                              updateInboxAssignmentMutation.mutate({
-                                conversationId: selectedConversation.id,
-                                customInboxId: null
-                              });
-                            }}
-                            disabled={updateInboxAssignmentMutation.isPending}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600"
-                            data-testid="inbox-remove"
-                          >
-                            <X className="h-4 w-4" />
-                            <span>Remove from Inbox</span>
-                          </button>
-                        </>
-                      )}
                       
                       {/* Empty state */}
                       {customInboxes.length === 0 && (
