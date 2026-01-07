@@ -43538,7 +43538,7 @@ CRITICAL REMINDERS:
           telnyxMessageId = telnyxData?.data?.id || null;
         }
         // Create message record
-      await db
+        const [message] = await db
           .insert(telnyxMessages)
           .values({
             conversationId: id,
