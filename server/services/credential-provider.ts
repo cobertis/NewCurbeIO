@@ -220,9 +220,9 @@ export const credentialProvider = {
     return result;
   },
 
-  async getMeta(): Promise<{ appId: string; appSecret: string; webhookVerifyToken: string }> {
+  async getMeta(): Promise<{ appId: string; appSecret: string; webhookVerifyToken: string; facebookConfigId: string }> {
     const cacheKey = getCacheKey('meta');
-    const cached = getFromCache<{ appId: string; appSecret: string; webhookVerifyToken: string }>(cacheKey);
+    const cached = getFromCache<{ appId: string; appSecret: string; webhookVerifyToken: string; facebookConfigId: string }>(cacheKey);
     if (cached) return cached;
 
     const appId = await secretsService.getCredential("meta" as ApiProvider, "app_id") || 
@@ -231,8 +231,10 @@ export const credentialProvider = {
                       process.env.META_APP_SECRET || '';
     const webhookVerifyToken = await secretsService.getCredential("meta" as ApiProvider, "webhook_verify_token") || 
                                process.env.META_WEBHOOK_VERIFY_TOKEN || '';
+    const facebookConfigId = await secretsService.getCredential("meta" as ApiProvider, "facebook_config_id") || 
+                             process.env.META_FACEBOOK_CONFIG_ID || '';
     
-    const result = { appId, appSecret, webhookVerifyToken };
+    const result = { appId, appSecret, webhookVerifyToken, facebookConfigId };
     setCache(cacheKey, result);
     return result;
   },

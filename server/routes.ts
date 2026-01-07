@@ -29711,7 +29711,7 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
-      const { appId: metaAppId } = await credentialProvider.getMeta();
+      const { appId: metaAppId, facebookConfigId } = await credentialProvider.getMeta();
       if (!metaAppId) {
         return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
       }
@@ -29951,7 +29951,7 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
-      const { appId: metaAppId } = await credentialProvider.getMeta();
+      const { appId: metaAppId, facebookConfigId } = await credentialProvider.getMeta();
       if (!metaAppId) {
         return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
       }
@@ -29976,7 +29976,15 @@ CRITICAL REMINDERS:
       const redirectUri = process.env.META_FACEBOOK_REDIRECT_URI || `${baseUrl}/api/integrations/meta/facebook/callback`;
       authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", META_FACEBOOK_SCOPES);
+      // Use config_id for Facebook Login for Business if available
+      if (facebookConfigId) {
+        authUrl.searchParams.set("config_id", facebookConfigId);
+        console.log("[Facebook OAuth] Using config_id:", facebookConfigId);
+      } else {
+        authUrl.searchParams.set("scope", META_FACEBOOK_SCOPES);
+        authUrl.searchParams.set("auth_type", "rerequest");
+        console.log("[Facebook OAuth] Using standard scopes (no config_id)");
+      }
       authUrl.searchParams.set("state", nonce);
       
       return res.json({ authUrl: authUrl.toString(), state: nonce });
