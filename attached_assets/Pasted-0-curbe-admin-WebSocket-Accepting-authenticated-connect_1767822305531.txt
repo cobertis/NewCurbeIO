@@ -1,0 +1,86 @@
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 unregistered from company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WhatsApp Call WS] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | 9:44:20 PM [express] GET /api/session 304 in 40ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d2…
+0|curbe-admin  | 9:44:20 PM [express] GET /api/session 304 in 39ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d2…
+0|curbe-admin  | [Facebook] Status error: ReferenceError: connection is not defined
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:64415:37
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 9:44:20 PM [express] GET /api/integrations/facebook/status 500 in 34ms :: {"error":"Failed to get Fa…
+0|curbe-admin  | 9:44:20 PM [express] GET /api/integrations/meta/config 304 in 13ms :: {"appId":"775292408902612","co…
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WhatsApp Call] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 registered for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 9:44:20 PM [express] GET /api/telnyx/user-phone-status 304 in 87ms :: {"hasAssignedNumber":true,"can…
+0|curbe-admin  | 9:44:20 PM [express] GET /api/inbox/conversations 304 in 57ms :: {"conversations":[{"id":"be2bfacc-5…
+0|curbe-admin  | 9:44:20 PM [express] GET /api/voicemails 304 in 131ms :: {"voicemails":[],"unreadCount":0}
+0|curbe-admin  | 9:44:20 PM [express] GET /api/users/availability-status 304 in 69ms :: {"status":"online"}
+0|curbe-admin  | 9:44:20 PM [express] GET /api/imessage/access 304 in 129ms :: {"hasAccess":true}
+0|curbe-admin  | 9:44:20 PM [express] GET /api/companies/078dac90-b0ca-44f1-9739-f78221dc0f53 304 in 122ms :: {"compa…
+0|curbe-admin  | 9:44:20 PM [express] GET /api/telnyx/phone-system-access 304 in 139ms :: {"hasAccess":true,"isOwner"…
+0|curbe-admin  | 9:44:20 PM [express] GET /api/notifications 304 in 169ms :: {"notifications":[{"id":"02b5b34a-350e-4…
+0|curbe-admin  | 9:44:21 PM [express] GET /api/call-logs 304 in 240ms :: {"logs":[{"id":"27444230-4247-4b55-bff4-67bf…
+0|curbe-admin  | [Telnyx Sync] Synced 0 new numbers for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 9:44:21 PM [express] GET /api/voicemails 304 in 157ms :: {"voicemails":[],"unreadCount":0}
+0|curbe-admin  | 9:44:21 PM [express] GET /api/wallet/balance 304 in 270ms :: {"balance":"44.1175","currency":"USD","…
+0|curbe-admin  | 9:44:21 PM [express] GET /api/session 304 in 288ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d…
+0|curbe-admin  | [Instagram] Status error: ReferenceError: connection is not defined
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:64104:37
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 9:44:21 PM [express] GET /api/telnyx/my-numbers 304 in 435ms :: {"numbers":[{"id":"249f0311-ea45-400…
+0|curbe-admin  | 9:44:21 PM [express] GET /api/integrations/instagram/status 500 in 234ms :: {"error":"Failed to get …
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+0|curbe-admin  | 9:44:21 PM [express] GET /api/session 304 in 42ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d2…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [TURN Credentials] Using extension credentials for: ext1017errgwc5
+0|curbe-admin  | 9:44:21 PM [express] GET /api/telnyx/turn-credentials 304 in 20ms :: {"username":"ext1017errgwc5","c…
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 9:44:21 PM [express] GET /api/pbx/special-extensions 304 in 29ms :: {"ivrExtension":null,"queues":[]}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+0|curbe-admin  | 9:44:21 PM [express] GET /api/webrtc/extension-credentials 304 in 22ms :: {"extensionId":"7c0585a4-2…
+0|curbe-admin  | 9:44:21 PM [express] GET /api/telnyx/voice-settings/249f0311-ea45-4007-b0d8-465ec454fbae 304 in 156m…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [Instagram] Status error: ReferenceError: connection is not defined
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:64104:37
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 9:44:22 PM [express] GET /api/integrations/instagram/status 500 in 24ms :: {"error":"Failed to get I…
+0|curbe-admin  | 9:44:22 PM [express] GET /api/session 304 in 41ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d2…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [Instagram SDK] Processing auth for company: 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [Instagram SDK] Received access token directly
+0|curbe-admin  | [Instagram SDK] No page with Instagram Business Account found
+0|curbe-admin  | 9:44:27 PM [express] POST /api/integrations/meta/instagram/exchange-code 400 in 737ms :: {"error":"N…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [Instagram SDK] Processing auth for company: 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [Instagram SDK] Received access token directly
+0|curbe-admin  | [Instagram SDK] Exchange error: ReferenceError: existingConnection is not defined
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:64050:7
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 9:44:53 PM [express] POST /api/integrations/meta/instagram/exchange-code 500 in 621ms :: {"error":"F…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
