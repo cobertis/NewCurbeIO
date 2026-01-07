@@ -5527,7 +5527,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/users/availability-status", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session!.userId!;
-      await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
+      const [user] = await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
       res.json({ status: user?.agentAvailabilityStatus || "offline" });
     } catch (error) {
       console.error("Error getting availability status:", error);
@@ -31885,7 +31885,7 @@ CRITICAL REMINDERS:
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         whereConditions.push(sql`REPLACE(${voicemails.toNumber}, '+', '') LIKE ${'%' + normalizedPhone}`);
       }
-      await db
+      const userVoicemails = await db
         .select({
           id: voicemails.id,
           fromNumber: voicemails.fromNumber,
@@ -31915,7 +31915,7 @@ CRITICAL REMINDERS:
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         unreadConditions.push(sql`REPLACE(${voicemails.toNumber}, '+', '') LIKE ${'%' + normalizedPhone}`);
       }
-      await db
+      const [unreadCount] = await db
         .select({ count: count() })
         .from(voicemails)
         .where(and(...unreadConditions));
@@ -34438,7 +34438,7 @@ CRITICAL REMINDERS:
       }
       
       // Get the telephony settings for user's company
-      await db.query.telephonySettings.findFirst({
+      const settings = await db.query.telephonySettings.findFirst({
         where: eq(telephonySettings.companyId, currentUser.companyId || ''),
       });
       
@@ -36024,7 +36024,7 @@ CRITICAL REMINDERS:
       }
       
       // Check if user has a PBX extension assigned
-      await db.query.pbxExtensions.findFirst({
+      const userExtension = await db.query.pbxExtensions.findFirst({
         where: and(
           eq(pbxExtensions.companyId, currentUser.companyId),
           eq(pbxExtensions.userId, currentUser.id)
@@ -36032,7 +36032,7 @@ CRITICAL REMINDERS:
       });
       
       // Check if user has a phone number assigned to them
-      await db.query.telnyxPhoneNumbers.findFirst({
+      const assignedNumber = await db.query.telnyxPhoneNumbers.findFirst({
         where: and(
           eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
           eq(telnyxPhoneNumbers.ownerUserId, currentUser.id),
@@ -36043,7 +36043,7 @@ CRITICAL REMINDERS:
       // Only the Phone System owner (activating admin) can use any company number
       if (!assignedNumber) {
         // Check if user is the phone system owner
-      await db.query.telephonySettings.findFirst({
+      const settings = await db.query.telephonySettings.findFirst({
           where: eq(telephonySettings.companyId, currentUser.companyId),
         });
         
@@ -36051,7 +36051,7 @@ CRITICAL REMINDERS:
         const isSuperadmin = currentUser.role === 'superadmin';
         
         if (isPhoneSystemOwner || isSuperadmin) {
-        await db.query.telnyxPhoneNumbers.findFirst({
+        const assignedNumber = await db.query.telnyxPhoneNumbers.findFirst({
             where: and(
               eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
               eq(telnyxPhoneNumbers.status, 'active')
@@ -38016,7 +38016,7 @@ CRITICAL REMINDERS:
       }
       
       // First try: Get SIP credentials from user's PBX extension (preferred - user-specific)
-      await db
+      const [extension] = await db
         .select({ 
           sipUsername: pbxExtensions.sipUsername,
           sipPassword: pbxExtensions.sipPassword
@@ -39104,7 +39104,7 @@ CRITICAL REMINDERS:
       let logs;
       // Superadmin can see all call logs for a company
       if (user.role === "superadmin") {
-      await db
+      logs = await db
           .select()
           .from(callLogs)
           .where(eq(callLogs.companyId, user.companyId))
@@ -39112,7 +39112,7 @@ CRITICAL REMINDERS:
           .limit(parsedLimit);
       } else {
         // Regular users only see their own call logs (user-scoped)
-      await db
+      logs = await db
           .select()
           .from(callLogs)
           .where(and(
@@ -40705,7 +40705,7 @@ CRITICAL REMINDERS:
       const user = req.user as User;
       
       // Get the user's extension
-      await db
+      const [extension] = await db
         .select({
           id: pbxExtensions.id,
           extension: pbxExtensions.extension,
@@ -40766,7 +40766,7 @@ CRITICAL REMINDERS:
       }
       
       // Get company SIP domain from telephonySettings (must match what Call Control uses for dialing)
-      await db
+      const [settings] = await db
         .select({ sipDomain: telephonySettings.sipDomain })
         .from(telephonySettings)
         .where(eq(telephonySettings.companyId, user.companyId));
@@ -41207,7 +41207,7 @@ CRITICAL REMINDERS:
       const ivrExtension = settings?.ivrEnabled ? settings.ivrExtension : null;
       
       // Get all active queues with extensions
-      await db
+      const allQueues = await db
         .select({ id: pbxQueues.id, extension: pbxQueues.extension, name: pbxQueues.name })
         .from(pbxQueues)
         .where(and(
@@ -41785,14 +41785,14 @@ CRITICAL REMINDERS:
     }
     try {
       // Include all conversations including waiting live chats
-      await db
+      const rawConversations = await db
         .select()
         .from(telnyxConversations)
         .where(eq(telnyxConversations.companyId, companyId))
         .orderBy(desc(telnyxConversations.lastMessageAt));
       
       // Also include iMessage conversations
-      await db
+      const imessageConversations = await db
         .select()
         .from(imessageConversationsTable)
         .where(eq(imessageConversationsTable.companyId, companyId))
