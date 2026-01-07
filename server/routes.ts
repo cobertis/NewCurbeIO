@@ -43201,7 +43201,7 @@ CRITICAL REMINDERS:
               .where(and(
                 eq(channelConnections.companyId, companyId),
                 eq(channelConnections.channel, "facebook"),
-                eq(channelConnections.status, "connected")
+                eq(channelConnections.status, "active")
               ));
 
             if (!fbConnection || !fbConnection.accessToken) {
