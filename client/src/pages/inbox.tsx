@@ -288,6 +288,13 @@ export default function InboxPage() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const selectedConversationIdRef = useRef<string | null>(null);
+  
+  // Keep ref in sync with state for WebSocket handlers (avoids stale closures)
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
+  
   const [copilotDraft, setCopilotDraft] = useState<string | null>(null);
   const [copilotSource, setCopilotSource] = useState<"knowledge_base" | "general" | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"details" | "pulse-ai">("details");
@@ -573,9 +580,10 @@ export default function InboxPage() {
       }
     } else if (msg.type === 'contact_updated') {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
-      if (selectedConversationId) {
+      const currentConvId = selectedConversationIdRef.current;
+      if (currentConvId) {
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
+          queryKey: [`/api/inbox/conversations/${currentConvId}/messages`] 
         });
       }
     } else if (
@@ -591,11 +599,12 @@ export default function InboxPage() {
       msg.type === 'email_received' ||
       msg.type === 'facebook_message'
     ) {
-      console.log('[Inbox WebSocket] Triggering refetch for message type:', msg.type);
+      const currentConvId = selectedConversationIdRef.current;
+      console.log('[Inbox WebSocket] Triggering refetch for message type:', msg.type, 'currentConvId:', currentConvId);
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
-      if (selectedConversationId) {
+      if (currentConvId) {
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
+          queryKey: [`/api/inbox/conversations/${currentConvId}/messages`] 
         });
       }
     }
