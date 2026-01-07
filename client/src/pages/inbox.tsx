@@ -557,13 +557,13 @@ export default function InboxPage() {
 
   useWebSocket((message) => {
     const msg = message as any;
+    console.log('[Inbox WebSocket] Received message:', msg.type, msg);
+    
     if (msg.type === 'imessage_typing') {
-      // Handle typing indicator from contact
       const conversationId = msg.conversationId;
       const isTyping = msg.type === 'imessage_typing' && msg.isTyping !== false;
       if (conversationId) {
         setContactTyping({ conversationId, isTyping });
-        // Auto-clear typing after 5 seconds
         if (contactTypingTimeoutRef.current) {
           clearTimeout(contactTypingTimeoutRef.current);
         }
@@ -572,10 +572,9 @@ export default function InboxPage() {
         }, 5000);
       }
     } else if (msg.type === 'contact_updated') {
-      // Refresh conversations to get updated contact info
-      queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       if (selectedConversationId) {
-        queryClient.refetchQueries({ 
+        queryClient.invalidateQueries({ 
           queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
         });
       }
@@ -589,13 +588,13 @@ export default function InboxPage() {
       msg.type === 'whatsapp_chat_update' ||
       msg.type === 'whatsapp_event' ||
       msg.type === 'inbox_message' ||
-      msg.type === 'email_received'
+      msg.type === 'email_received' ||
+      msg.type === 'facebook_message'
     ) {
-      // Force immediate refetch for real-time updates
-      queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });
-      // Always refresh messages for the selected conversation on any update
+      console.log('[Inbox WebSocket] Triggering refetch for message type:', msg.type);
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       if (selectedConversationId) {
-        queryClient.refetchQueries({ 
+        queryClient.invalidateQueries({ 
           queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
         });
       }
