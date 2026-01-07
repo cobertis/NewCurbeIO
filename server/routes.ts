@@ -43191,6 +43191,136 @@ CRITICAL REMINDERS:
           }
         }
         // === END LIVE CHAT CHANNEL ROUTING ===
+        // === FACEBOOK MESSENGER CHANNEL ROUTING ===
+        if (conversation.channel === "facebook") {
+          try {
+            // Get Facebook page connection for this company
+            const [fbConnection] = await db
+              .select()
+              .from(channelConnections)
+              .where(and(
+                eq(channelConnections.companyId, companyId),
+                eq(channelConnections.channel, "facebook"),
+                eq(channelConnections.status, "connected")
+              ));
+
+            if (!fbConnection || !fbConnection.accessToken) {
+              console.error("[Inbox Facebook] No Facebook page connection found");
+              return res.status(400).json({ message: "Facebook page not connected. Please set up Facebook in the Integrations page." });
+            }
+
+            const pageAccessToken = decryptToken(fbConnection.accessToken);
+            const recipientPsid = conversation.phoneNumber; // PSID stored in phoneNumber field
+
+            // Send message via Facebook Graph API
+            const META_GRAPH_VERSION = "v21.0";
+            const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages`;
+            
+            const messagePayload: any = {
+              recipient: { id: recipientPsid },
+              messaging_type: "RESPONSE",
+              message: {}
+            };
+
+            // Handle text message
+            if (text && text.trim()) {
+              messagePayload.message.text = text;
+            }
+
+            // Handle media attachments
+            if (mediaUrls.length > 0 && files && files.length > 0) {
+              // Facebook Messenger can only send one attachment at a time
+              // For multiple files, send the first one with text, then others separately
+              const firstFile = files[0];
+              const attachmentType = firstFile.mimetype.startsWith("image/") ? "image" 
+                : firstFile.mimetype.startsWith("video/") ? "video"
+                : firstFile.mimetype.startsWith("audio/") ? "audio"
+                : "file";
+
+              messagePayload.message = {
+                attachment: {
+                  type: attachmentType,
+                  payload: {
+                    url: mediaUrls[0],
+                    is_reusable: true
+                  }
+                }
+              };
+
+              // If we also have text, send it as a separate message first
+              if (text && text.trim()) {
+                const textResponse = await fetch(`${sendUrl}?access_token=${pageAccessToken}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    recipient: { id: recipientPsid },
+                    messaging_type: "RESPONSE",
+                    message: { text }
+                  })
+                });
+                const textData = await textResponse.json();
+                if (!textResponse.ok) {
+                  console.error("[Inbox Facebook] Failed to send text:", textData);
+                }
+              }
+            }
+
+            // Send the message
+            const fbResponse = await fetch(`${sendUrl}?access_token=${pageAccessToken}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(messagePayload)
+            });
+            
+            const fbData: any = await fbResponse.json();
+
+            if (!fbResponse.ok) {
+              console.error("[Inbox Facebook] Send error:", fbData);
+              return res.status(500).json({ message: fbData.error?.message || "Failed to send Facebook message" });
+            }
+
+            console.log("[Inbox Facebook] Message sent successfully:", fbData.message_id);
+
+            // Save message to database
+            const [message] = await db
+              .insert(telnyxMessages)
+              .values({
+                conversationId: id,
+                direction: "outbound",
+                messageType: "outgoing",
+                channel: "facebook",
+                text: text || "(attachment)",
+                contentType: mediaUrls.length > 0 ? "media" : "text",
+                status: "sent",
+                telnyxMessageId: fbData.message_id || null,
+                sentBy: userId,
+                sentAt: new Date(),
+                errorMessage: null,
+                mediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
+              })
+              .returning();
+
+            // Update conversation
+            await db
+              .update(telnyxConversations)
+              .set({ 
+                lastMessage: (text || "(attachment)").substring(0, 100), 
+                lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null, 
+                lastMessageAt: new Date(), 
+                updatedAt: new Date() 
+              })
+              .where(eq(telnyxConversations.id, id));
+
+            // Broadcast for real-time update
+            broadcastInboxMessage(companyId, id);
+
+            return res.status(201).json(message);
+          } catch (fbError: any) {
+            console.error("[Inbox Facebook] Send error:", fbError);
+            return res.status(500).json({ message: fbError.message || "Failed to send Facebook message" });
+          }
+        }
+        // === END FACEBOOK MESSENGER CHANNEL ROUTING ===
         // Send message via Telnyx API using managed account
         const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
         const sendResult = await sendTelnyxMessage({
