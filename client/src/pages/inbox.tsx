@@ -1411,12 +1411,13 @@ export default function InboxPage() {
     if (activeCustomInbox) {
       filtered = conversations.filter(c => (c as any).customInboxId === activeCustomInbox);
     }
-    // If a lifecycle filter is active, show open conversations with that lifecycle (exclude solved/archived)
+    // If a lifecycle filter is active, show open conversations with that lifecycle (exclude solved/archived and those in custom inboxes)
     else if (activeLifecycle) {
       filtered = conversations.filter(c => {
         const stage = (c as any).lifecycleStage || "new_lead";
         const isSolved = c.status === "solved" || c.status === "archived";
-        return stage === activeLifecycle && !isSolved;
+        const hasCustomInbox = !!(c as any).customInboxId;
+        return stage === activeLifecycle && !isSolved && !hasCustomInbox;
       });
     } else {
       // Apply activeView filter only when no lifecycle is selected
@@ -2042,10 +2043,10 @@ export default function InboxPage() {
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
       }}
       lifecycleCounts={{
-        new_lead: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && ((c as any).lifecycleStage === "new_lead" || !(c as any).lifecycleStage)).length,
-        hot_lead: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && (c as any).lifecycleStage === "hot_lead").length,
-        payment: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && (c as any).lifecycleStage === "payment").length,
-        customer: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && (c as any).lifecycleStage === "customer").length,
+        new_lead: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && !(c as any).customInboxId && ((c as any).lifecycleStage === "new_lead" || !(c as any).lifecycleStage)).length,
+        hot_lead: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && !(c as any).customInboxId && (c as any).lifecycleStage === "hot_lead").length,
+        payment: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && !(c as any).customInboxId && (c as any).lifecycleStage === "payment").length,
+        customer: conversations.filter(c => c.status !== "solved" && c.status !== "archived" && !(c as any).customInboxId && (c as any).lifecycleStage === "customer").length,
       }}
       activeLifecycle={activeLifecycle}
       onLifecycleChange={setActiveLifecycle}
