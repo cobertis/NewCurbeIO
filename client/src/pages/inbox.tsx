@@ -250,6 +250,7 @@ export default function InboxPage() {
   const { toast } = useToast();
   const [activeView, setActiveView] = useState<MessengerView>("open");
   const [activeLifecycle, setActiveLifecycle] = useState<LifecycleStage | null>(null);
+  const [activeCustomInbox, setActiveCustomInbox] = useState<string | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>("threads");
   const [searchQuery, setSearchQuery] = useState("");
@@ -1406,8 +1407,12 @@ export default function InboxPage() {
     // Helper to check if a conversation is solved/archived
     const isSolvedOrArchived = (c: any) => c.status === "solved" || c.status === "archived";
     
+    // If a custom inbox filter is active, filter by customInboxId
+    if (activeCustomInbox) {
+      filtered = conversations.filter(c => (c as any).customInboxId === activeCustomInbox);
+    }
     // If a lifecycle filter is active, show open conversations with that lifecycle (exclude solved/archived)
-    if (activeLifecycle) {
+    else if (activeLifecycle) {
       filtered = conversations.filter(c => {
         const stage = (c as any).lifecycleStage || "new_lead";
         const isSolved = c.status === "solved" || c.status === "archived";
@@ -1517,7 +1522,7 @@ export default function InboxPage() {
     });
     
     return filtered;
-  }, [conversations, searchQuery, activeView, activeLifecycle, filterShow, filterSortBy, filterUnreplied]);
+  }, [conversations, searchQuery, activeView, activeLifecycle, activeCustomInbox, filterShow, filterSortBy, filterUnreplied]);
 
   const viewLabel = useMemo(() => {
     // If a lifecycle filter is active, show that label
@@ -2036,6 +2041,8 @@ export default function InboxPage() {
       }}
       activeLifecycle={activeLifecycle}
       onLifecycleChange={setActiveLifecycle}
+      activeCustomInbox={activeCustomInbox}
+      onCustomInboxChange={setActiveCustomInbox}
     >
       {/* Conversation List Panel */}
       <div className={cn(

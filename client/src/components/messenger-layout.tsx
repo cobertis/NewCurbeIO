@@ -65,6 +65,8 @@ interface MessengerLayoutProps {
   };
   activeLifecycle?: LifecycleStage | null;
   onLifecycleChange?: (lifecycle: LifecycleStage | null) => void;
+  activeCustomInbox?: string | null;
+  onCustomInboxChange?: (inboxId: string | null) => void;
 }
 
 const viewItems = [
@@ -89,7 +91,9 @@ export function MessengerLayout({
   counts = {},
   lifecycleCounts = {},
   activeLifecycle = null,
-  onLifecycleChange
+  onLifecycleChange,
+  activeCustomInbox = null,
+  onCustomInboxChange
 }: MessengerLayoutProps) {
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [teamInboxOpen, setTeamInboxOpen] = useState(true);
@@ -303,14 +307,26 @@ export function MessengerLayout({
                       </div>
                     ) : (
                       teamInboxes.map((inbox) => (
-                        <div
+                        <button
                           key={inbox.id}
-                          className="group w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          onClick={() => {
+                            if (activeCustomInbox === inbox.id) {
+                              onCustomInboxChange?.(null);
+                            } else {
+                              onCustomInboxChange?.(inbox.id);
+                            }
+                          }}
+                          className={cn(
+                            "group w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                            activeCustomInbox === inbox.id
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          )}
                           data-testid={`inbox-${inbox.id}`}
                         >
                           <span className="text-base">{inbox.emoji}</span>
                           <span className="flex-1 text-left truncate">{inbox.name}</span>
-                          <button
+                          <span
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteInboxMutation.mutate(inbox.id);
@@ -319,8 +335,8 @@ export function MessengerLayout({
                             data-testid={`delete-inbox-${inbox.id}`}
                           >
                             <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                          </button>
-                        </div>
+                          </span>
+                        </button>
                       ))
                     )}
                   </nav>
@@ -358,14 +374,26 @@ export function MessengerLayout({
                       </div>
                     ) : (
                       userInboxes.map((inbox) => (
-                        <div
+                        <button
                           key={inbox.id}
-                          className="group w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          onClick={() => {
+                            if (activeCustomInbox === inbox.id) {
+                              onCustomInboxChange?.(null);
+                            } else {
+                              onCustomInboxChange?.(inbox.id);
+                            }
+                          }}
+                          className={cn(
+                            "group w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                            activeCustomInbox === inbox.id
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          )}
                           data-testid={`inbox-${inbox.id}`}
                         >
                           <span className="text-base">{inbox.emoji}</span>
                           <span className="flex-1 text-left truncate">{inbox.name}</span>
-                          <button
+                          <span
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteInboxMutation.mutate(inbox.id);
@@ -374,8 +402,8 @@ export function MessengerLayout({
                             data-testid={`delete-inbox-${inbox.id}`}
                           >
                             <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                          </button>
-                        </div>
+                          </span>
+                        </button>
                       ))
                     )}
                   </nav>
