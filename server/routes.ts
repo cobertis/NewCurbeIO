@@ -3764,7 +3764,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const hasSipEnabled = !!(user.sipEnabled);
         
         // Check for active compliance application with selected phone number
-        const activeApp = await db
+        const activeApp = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(complianceApplications)
           .where(and(
@@ -3863,7 +3872,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Update user record
-      await db.update(users)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(users)
         .set({ 
           skippedOnboardingSteps: newSkipped,
           updatedAt: new Date()
@@ -3899,7 +3917,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[BrowserCalling] Starting auto-provision for user ${user.id}, company ${user.companyId}`);
 
       // Step 1: Check if user already has an extension
-      const existingExtension = await db
+      const existingExtension = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(pbxExtensions)
         .where(and(
@@ -3934,7 +3961,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Just enable SIP on user if not already
         if (!user.sipEnabled) {
-          await db
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .update(users)
             .set({ sipEnabled: true })
             .where(eq(users.id, user.id));
@@ -3967,7 +4003,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Step 5: Persist SIP credentials to the extension record
       console.log(`[BrowserCalling] Persisting SIP credentials to extension ${extension.id}...`);
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(pbxExtensions)
         .set({
           telnyxCredentialConnectionId: sipResult.credentialConnectionId,
@@ -3978,7 +4023,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(eq(pbxExtensions.id, extension.id));
 
       // Step 6: Enable SIP on user
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(users)
         .set({ sipEnabled: true })
         .where(eq(users.id, user.id));
@@ -3986,7 +4040,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Step 7: Assign company's phone numbers to the credential connection
       console.log(`[BrowserCalling] Assigning phone numbers to credential connection...`);
       try {
-        const companyPhones = await db
+        const companyPhones = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(telnyxPhoneNumbers)
           .where(eq(telnyxPhoneNumbers.companyId, user.companyId));
@@ -4016,7 +4079,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   );
 
                   if (updateResponse.ok) {
-                    await db
+                    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
                       .update(telnyxPhoneNumbers)
                       .set({ 
                         connectionId: sipResult.credentialConnectionId,
@@ -5528,7 +5600,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/users/availability-status", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session!.userId!;
-      const [user] = await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
+      const [user] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
       res.json({ status: user?.agentAvailabilityStatus || "offline" });
     } catch (error) {
       console.error("Error getting availability status:", error);
@@ -5546,7 +5627,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ error: "Invalid status. Must be: online, offline, or busy" });
       }
       
-      await db.update(users).set({ agentAvailabilityStatus: status }).where(eq(users.id, userId));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(users).set({ agentAvailabilityStatus: status }).where(eq(users.id, userId));
       
       
       console.log(`[Agent Availability] User ${userId} set status to: ${status}`);
@@ -5834,7 +5924,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         try {
           // Get today's date in yyyy-MM-dd format
           const todayStr = new Date().toISOString().split('T')[0];
-          const tasks = await db.select()
+          const tasks = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
             .from(tasksTable)
             .where(and(
               eq(tasksTable.companyId, companyId),
@@ -5888,7 +5987,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Count quote member birthdays (with deduplication)
       if (companyId) {
         try {
-          const quoteMembers = await db.select()
+          const quoteMembers = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
             .from(quoteMembersTable)
             .where(eq(quoteMembersTable.companyId, companyId));
           for (const member of quoteMembers) {
@@ -5907,7 +6015,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         // Count manual contact birthdays (with deduplication)
         try {
-          const manualContacts = await db.select()
+          const manualContacts = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
             .from(manualContactsTable)
             .where(eq(manualContactsTable.companyId, companyId));
           for (const contact of manualContacts) {
@@ -5924,7 +6041,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         // Count manual birthdays from calendar (with deduplication)
         try {
-          const calendarBirthdays = await db.select()
+          const calendarBirthdays = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
             .from(manualBirthdays)
             .where(eq(manualBirthdays.companyId, companyId));
           for (const birthday of calendarBirthdays) {
@@ -6009,7 +6135,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         // Count policy member birthdays (household members) - with deduplication
         try {
-          const policyMembers = await db.select()
+          const policyMembers = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
             .from(policyMembersTable)
             .where(eq(policyMembersTable.companyId, companyId));
           for (const member of policyMembers) {
@@ -6053,7 +6188,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         try {
           const sevenDaysAgo = new Date();
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          const leads = await db.select()
+          const leads = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
             .from(leadsTable)
             .where(and(
               eq(leadsTable.companyId, companyId),
@@ -7912,7 +8056,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
       
       // Get ALL call logs for the company (not filtered by user)
-      const logs = await db
+      const logs = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(callLogs)
         .where(eq(callLogs.companyId, user.companyId))
@@ -7934,7 +8087,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { id } = req.params;
       
       // Get call log
-      const [callLog] = await db
+      const [callLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(callLogs)
         .where(eq(callLogs.id, id));
@@ -8041,7 +8203,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 
                 // Save the recording_id for future use
                 if (recording.id && !callLog.recordingId) {
-                  await db
+                  // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
                     .update(callLogs)
                     .set({ recordingId: recording.id })
                     .where(eq(callLogs.id, callLog.id));
@@ -8089,7 +8260,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               
               // Save the recording_id for future use
               if (recording.id && !callLog.recordingId) {
-                await db
+                // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
                   .update(callLogs)
                   .set({ recordingId: recording.id })
                   .where(eq(callLogs.id, callLog.id));
@@ -8148,7 +8328,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 const downloadUrl = rec.media_url || rec.download_urls?.mp3 || rec.download_urls?.wav;
                 
                 if (rec.id && !callLog.recordingId) {
-                  await db.update(callLogs).set({ recordingId: rec.id }).where(eq(callLogs.id, callLog.id));
+                  // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(callLogs).set({ recordingId: rec.id }).where(eq(callLogs.id, callLog.id));
                   console.log("[Recording Proxy] Saved recordingId:", rec.id);
                 }
                 
@@ -12607,7 +12796,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Insert quote directly into database with our custom ID
       const { db } = await import("./db");
       const { quotes } = await import("@shared/schema");
-      const [newQuote] = await db.insert(quotes).values(newQuoteData as any).returning();
+      const [newQuote] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(quotes).values(newQuoteData as any).returning();
       console.log(`[DUPLICATE QUOTE] Created new quote ${newQuoteId}`);
       // 4. Copy all members (includes applicant, spouses, and dependents)
       if (quoteDetail.members && quoteDetail.members.length > 0) {
@@ -14285,7 +14483,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       // Get the note to check permissions
-      const [existingNote] = await db
+      const [existingNote] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(quoteNotes)
         .where(and(
@@ -14311,7 +14518,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No fields to update" });
       }
       // Update the note
-      await db.update(quoteNotes)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(quoteNotes)
         .set({ ...updateData, updatedAt: new Date() })
         .where(and(
           eq(quoteNotes.id, noteId),
@@ -14351,7 +14567,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       // Get the note to check permissions
-      const [existingNote] = await db
+      const [existingNote] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(quoteNotes)
         .where(and(
@@ -16667,6 +16892,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           try {
             await twilioService.sendSMS(policy.clientPhone, smsMessage, currentUser.companyId);
             // Update consent status to sent
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.update(policies).set({ consentStatus: 'sent' }).where(eq(policies.id, policy.id));
             // Create consent event
             await storage.createPolicyConsentEvent(consent.id, 'sent', { channel: 'sms', target: policy.clientPhone }, currentUser.id);
@@ -16674,6 +16908,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.log(`[POLICY CREATION] Consent SMS sent to ${policy.clientPhone} for policy ${policy.id}`);
           } catch (smsError: any) {
             console.error(`[POLICY CREATION] Failed to send consent SMS:`, smsError);
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.update(policies).set({ consentStatus: 'failed' }).where(eq(policies.id, policy.id));
             await storage.createPolicyConsentEvent(consent.id, 'failed', { channel: 'sms', target: policy.clientPhone, error: smsError.message }, currentUser.id);
           }
@@ -17303,7 +17546,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Insert policy directly into database with our custom ID
       const { db } = await import("./db");
       const { policies } = await import("@shared/schema");
-      const [newPolicy] = await db.insert(policies).values(newPolicyData as any).returning();
+      const [newPolicy] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(policies).values(newPolicyData as any).returning();
       console.log(`[DUPLICATE POLICY] Created new policy ${newPolicyId}`);
       // 4. Copy all members (includes applicant, spouses, and dependents)
       if (policyDetail.members && policyDetail.members.length > 0) {
@@ -17819,6 +18071,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               createdAt: new Date(),
               updatedAt: new Date(),
             };
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.insert(policyDocuments).values(newPolicyDocData as any);
           }
           if (policyDocs.length > 0) {
@@ -17876,6 +18137,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               createdAt: new Date(),
               updatedAt: new Date(),
             };
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.insert(policyNotes).values(newNoteData as any);
           }
           if (notes.length > 0) {
@@ -17938,6 +18208,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             };
             delete (newConsentData as any).id;
             delete (newConsentData as any).token;
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.insert(policyConsentDocuments).values(newConsentData as any);
           }
           if (consents.length > 0) {
@@ -19577,7 +19856,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get ALL policies for this client (notes are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get the note to check permissions
-      const [existingNote] = await db
+      const [existingNote] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(policyNotes)
         .where(and(
@@ -19606,7 +19894,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No fields to update" });
       }
       // Update the note
-      await db.update(policyNotes)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(policyNotes)
         .set({ ...updateData, updatedAt: new Date() })
         .where(and(
           eq(policyNotes.id, noteId),
@@ -19647,7 +19944,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get ALL policies for this client (notes are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get the note to check permissions
-      const [existingNote] = await db
+      const [existingNote] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(policyNotes)
         .where(and(
@@ -21551,7 +21857,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Increment click count
       await storage.incrementBlockClick(blockId);
       // Create analytics event (need to get landing page ID from block)
-      const blocks = await db.select().from(landingBlocks).where(eq(landingBlocks.id, blockId));
+      const blocks = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(landingBlocks).where(eq(landingBlocks.id, blockId));
       const block = blocks[0];
       if (block) {
         await storage.createLandingAnalytics({
@@ -24702,7 +25017,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const user = req.user!;
       const { id } = req.params;
       const parsed = insertCampaignTemplateCategorySchema.partial().parse(req.body);
-      const existingCategory = await db.query.campaignTemplateCategories.findFirst({
+      const existingCategory = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.campaignTemplateCategories.findFirst({
         where: (categories, { eq }) => eq(categories.id, id),
       });
       if (!existingCategory) {
@@ -24728,7 +25052,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const user = req.user!;
       const { id } = req.params;
-      const existingCategory = await db.query.campaignTemplateCategories.findFirst({
+      const existingCategory = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.campaignTemplateCategories.findFirst({
         where: (categories, { eq }) => eq(categories.id, id),
       });
       if (!existingCategory) {
@@ -24740,7 +25073,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (existingCategory.companyId !== user.companyId) {
         return res.status(403).json({ message: "Not authorized to delete this category" });
       }
-      const templatesInCategory = await db.query.campaignTemplates.findFirst({
+      const templatesInCategory = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.campaignTemplates.findFirst({
         where: (templates, { eq }) => eq(templates.categoryId, id),
       });
       if (templatesInCategory) {
@@ -24904,7 +25246,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const user = req.user!;
       const { id } = req.params;
       const parsed = insertCampaignPlaceholderSchema.partial().parse(req.body);
-      const existingPlaceholder = await db.query.campaignPlaceholders.findFirst({
+      const existingPlaceholder = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.campaignPlaceholders.findFirst({
         where: (placeholders, { eq }) => eq(placeholders.id, id),
       });
       if (!existingPlaceholder) {
@@ -24935,7 +25286,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const user = req.user!;
       const { id } = req.params;
-      const existingPlaceholder = await db.query.campaignPlaceholders.findFirst({
+      const existingPlaceholder = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.campaignPlaceholders.findFirst({
         where: (placeholders, { eq }) => eq(placeholders.id, id),
       });
       if (!existingPlaceholder) {
@@ -24971,7 +25331,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
@@ -24988,6 +25357,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const profilePicUrl = evolutionInstance.profilePicUrl || null;
           // Update DB with latest info
           if (instance.status !== connectionStatus || instance.profileName !== profileName) {
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.update(whatsappInstances)
               .set({ 
                 status: connectionStatus, 
@@ -25036,7 +25414,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               const qrResult = await evolutionApi.fetchQrCode(instance.instanceName);
               if (qrResult.base64) {
                 qrCode = qrResult.base64;
-                await db.update(whatsappInstances)
+                // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappInstances)
                   .set({ qrCode: qrResult.base64, status: "connecting", updatedAt: new Date() })
                   .where(eq(whatsappInstances.id, instance.id));
               }
@@ -25057,7 +25444,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         // Instance not found in Evolution API - clear stale QR code
         console.log("[WhatsApp] Instance not found in Evolution API, clearing stale data");
-        await db.update(whatsappInstances)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappInstances)
           .set({ qrCode: null, status: "disconnected", updatedAt: new Date() })
           .where(eq(whatsappInstances.id, instance.id));
         return res.json({ 
@@ -25068,7 +25464,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.log("[WhatsApp] Error fetching instance info:", error.message);
         // Clear stale QR code on error (likely 404)
-        await db.update(whatsappInstances)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappInstances)
           .set({ qrCode: null, status: "disconnected", updatedAt: new Date() })
           .where(eq(whatsappInstances.id, instance.id));
         return res.json({ 
@@ -25096,11 +25501,29 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const instanceName = `curbe_${company.slug}`;
       const webhookUrl = `https://${REPLIT_DOMAIN}/api/whatsapp/webhook/${company.slug}`;
       // Get or create DB instance
-      let instance = await db.query.whatsappInstances.findFirst({
+      let instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
-        const [newInstance] = await db.insert(whatsappInstances).values({
+        const [newInstance] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappInstances).values({
           companyId: user.companyId,
           instanceName,
           status: "disconnected",
@@ -25124,7 +25547,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Step 2: If connected, just return success
       if (evolutionState === "open") {
-        await db.update(whatsappInstances)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappInstances)
           .set({ status: "waiting", qrCode: null, lastConnectedAt: new Date(), updatedAt: new Date() })
           .where(eq(whatsappInstances.id, instance.id));
         console.log(`[WhatsApp] Instance ${instanceName} is already connected`);
@@ -25141,7 +25573,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         try {
           const qrResult = await evolutionApi.fetchQrCode(instanceName);
           const qrCode = qrResult.base64;
-          await db.update(whatsappInstances)
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappInstances)
             .set({ status: "connecting", qrCode, webhookUrl, updatedAt: new Date() })
             .where(eq(whatsappInstances.id, instance.id));
           console.log(`[WhatsApp] Got QR for existing instance ${instanceName}`);
@@ -25160,9 +25601,36 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[WhatsApp] Creating new instance: ${instanceName}`);
       // CRITICAL: Clean up all old data from previous connections to prevent data leakage
       console.log(`[WhatsApp] Cleaning up old data for instance ${instance.id}...`);
-      await db.delete(whatsappMessages).where(eq(whatsappMessages.instanceId, instance.id));
-      await db.delete(whatsappConversations).where(eq(whatsappConversations.instanceId, instance.id));
-      await db.delete(whatsappContacts).where(eq(whatsappContacts.instanceId, instance.id));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(whatsappMessages).where(eq(whatsappMessages.instanceId, instance.id));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(whatsappConversations).where(eq(whatsappConversations.instanceId, instance.id));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(whatsappContacts).where(eq(whatsappContacts.instanceId, instance.id));
       console.log(`[WhatsApp] Old data cleaned successfully`);
       try {
         await evolutionApi.deleteInstance(instanceName);
@@ -25179,7 +25647,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[WhatsApp] Step 3/3: Configuring webhooks...`);
       await evolutionApi.setWebhook(instanceName, webhookUrl);
       const qrCode = result.qrcode?.base64 || null;
-      await db.update(whatsappInstances)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappInstances)
         .set({ webhookUrl, status: "connecting", qrCode, updatedAt: new Date() })
         .where(eq(whatsappInstances.id, instance.id));
       
@@ -25201,14 +25678,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
         return res.status(404).json({ message: "No instance found" });
       }
       await evolutionApi.logoutInstance(instance.instanceName);
-      await db.update(whatsappInstances)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappInstances)
         .set({ status: "disconnected", qrCode: null, updatedAt: new Date() })
         .where(eq(whatsappInstances.id, instance.id));
       res.json({ success: true });
@@ -25224,14 +25719,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
         return res.status(404).json({ message: "No WhatsApp instance" });
       }
       // Get conversations from DB
-      const conversations = await db.query.whatsappConversations.findMany({
+      const conversations = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findMany({
         where: eq(whatsappConversations.instanceId, instance.id),
         orderBy: [desc(whatsappConversations.lastMessageAt)],
       });
@@ -25239,7 +25752,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const contactIds = conversations.map(c => c.contactId).filter(Boolean) as string[];
       let contactMap = new Map<string, any>();
       if (contactIds.length > 0) {
-        const contacts = await db.query.whatsappContacts.findMany({
+        const contacts = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappContacts.findMany({
           where: and(eq(whatsappContacts.instanceId, instance.id), inArray(whatsappContacts.id, contactIds)),
         });
         contactMap = new Map(contacts.map(c => [c.id, c]));
@@ -25249,7 +25771,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .filter(c => !c.contactId)
         .map(c => c.remoteJid);
       if (remoteJidsWithoutContact.length > 0) {
-        const contactsByJid = await db.query.whatsappContacts.findMany({
+        const contactsByJid = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappContacts.findMany({
           where: and(
             eq(whatsappContacts.instanceId, instance.id),
             inArray(whatsappContacts.remoteJid, remoteJidsWithoutContact)
@@ -25279,13 +25810,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
         return res.json({ total: 0 });
       }
-      const result = await db
+      const result = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ total: sql<number>`COUNT(*) FILTER (WHERE ${whatsappConversations.unreadCount} > 0)` })
         .from(whatsappConversations)
         .where(
@@ -25313,7 +25862,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!remoteJid) {
         return res.status(400).json({ message: "remoteJid required" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
@@ -25323,7 +25881,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const result = await evolutionApi.fetchProfilePicture(instance.instanceName, remoteJid);
       const profilePicUrl = (result as any).profilePictureUrl || null;
       // Update or create contact with profile picture
-      const existingContact = await db.query.whatsappContacts.findFirst({
+      const existingContact = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappContacts.findFirst({
         where: and(
           eq(whatsappContacts.instanceId, instance.id),
           eq(whatsappContacts.remoteJid, remoteJid)
@@ -25331,12 +25898,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       let contactId: string;
       if (existingContact) {
-        await db.update(whatsappContacts)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappContacts)
           .set({ profilePicUrl, updatedAt: new Date() })
           .where(eq(whatsappContacts.id, existingContact.id));
         contactId = existingContact.id;
       } else {
-        const [newContact] = await db.insert(whatsappContacts).values({
+        const [newContact] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappContacts).values({
           instanceId: instance.id,
           companyId: user.companyId,
           remoteJid,
@@ -25346,7 +25931,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         contactId = newContact.id;
       }
       // Link contact to conversation
-      await db.update(whatsappConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
         .set({ contactId, updatedAt: new Date() })
         .where(and(
           eq(whatsappConversations.instanceId, instance.id),
@@ -25369,7 +25963,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!remoteJid) {
         return res.status(400).json({ message: "remoteJid required" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
@@ -25377,7 +25980,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const profile = await evolutionApi.getBusinessProfile(instance.instanceName, remoteJid);
       console.log(`[WhatsApp] Refresh contact ${remoteJid}:`, profile);
-      const existingContact = await db.query.whatsappContacts.findFirst({
+      const existingContact = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappContacts.findFirst({
         where: and(
           eq(whatsappContacts.instanceId, instance.id),
           eq(whatsappContacts.remoteJid, remoteJid)
@@ -25389,12 +26001,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (profile.businessName) updateData.businessName = profile.businessName;
       let contactId: string;
       if (existingContact) {
-        await db.update(whatsappContacts)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappContacts)
           .set(updateData)
           .where(eq(whatsappContacts.id, existingContact.id));
         contactId = existingContact.id;
       } else {
-        const [newContact] = await db.insert(whatsappContacts).values({
+        const [newContact] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappContacts).values({
           instanceId: instance.id,
           companyId: user.companyId,
           remoteJid,
@@ -25406,7 +26036,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }).returning();
         contactId = newContact.id;
       }
-      await db.update(whatsappConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
         .set({ contactId, updatedAt: new Date() })
         .where(and(
           eq(whatsappConversations.instanceId, instance.id),
@@ -25431,14 +26070,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
         return res.status(404).json({ message: "No WhatsApp instance" });
       }
       // Get conversation
-      const conversation = await db.query.whatsappConversations.findFirst({
+      const conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findFirst({
         where: and(
           eq(whatsappConversations.instanceId, instance.id),
           eq(whatsappConversations.remoteJid, decodeURIComponent(remoteJid))
@@ -25448,7 +26105,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json([]);
       }
       // Get messages from DB
-      let messages = await db.query.whatsappMessages.findMany({
+      let messages = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findMany({
         where: eq(whatsappMessages.conversationId, conversation.id),
         orderBy: [desc(whatsappMessages.timestamp)],
         limit: 100,
@@ -25468,14 +26134,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 ? new Date(msg.messageTimestamp * 1000) 
                 : new Date();
               // Check if message already exists
-              const existing = await db.query.whatsappMessages.findFirst({
+              const existing = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findFirst({
                 where: and(
                   eq(whatsappMessages.instanceId, instance.id),
                   eq(whatsappMessages.messageId, key.id)
                 ),
               });
               if (!existing) {
-                await db.insert(whatsappMessages).values({
+                // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappMessages).values({
                   conversationId: conversation.id,
                   instanceId: instance.id,
                   companyId: user.companyId!,
@@ -25491,7 +26175,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
             }
             // Refetch from DB after insert
-            messages = await db.query.whatsappMessages.findMany({
+            messages = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findMany({
               where: eq(whatsappMessages.conversationId, conversation.id),
               orderBy: [desc(whatsappMessages.timestamp)],
               limit: 100,
@@ -25502,7 +26195,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Mark conversation as read
       // Mark conversation as read
-      await db.update(whatsappConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
         .set({ unreadCount: 0, updatedAt: new Date() })
         .where(eq(whatsappConversations.id, conversation.id));
       res.json(messages.reverse());
@@ -25520,23 +26222,59 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated" });
       }
       // Get the conversation
-      const conversation = await db.query.whatsappConversations.findFirst({
+      const conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findFirst({
         where: eq(whatsappConversations.id, id),
       });
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
       }
       // Verify the conversation belongs to users company
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.id, conversation.instanceId),
       });
       if (!instance || instance.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
       // Delete messages first
-      await db.delete(whatsappMessages).where(eq(whatsappMessages.conversationId, id));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(whatsappMessages).where(eq(whatsappMessages.conversationId, id));
       // Delete conversation
-      await db.delete(whatsappConversations).where(eq(whatsappConversations.id, id));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(whatsappConversations).where(eq(whatsappConversations.id, id));
       console.log(`[WhatsApp] Deleted conversation ${id} and its messages`);
       res.json({ success: true, message: "Conversation deleted" });
     } catch (error: any) {
@@ -25555,7 +26293,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!number || !text) {
         return res.status(400).json({ message: "Number and text required" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
@@ -25568,14 +26315,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const result = await evolutionApi.sendTextMessage(instance.instanceName, number, text);
       // Create/update conversation and message in DB
       const remoteJid = number.includes("@") ? number : `${number.replace(/\D/g, "")}@s.whatsapp.net`;
-      let conversation = await db.query.whatsappConversations.findFirst({
+      let conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findFirst({
         where: and(
           eq(whatsappConversations.instanceId, instance.id),
           eq(whatsappConversations.remoteJid, remoteJid)
         ),
       });
       if (!conversation) {
-        const [newConvo] = await db.insert(whatsappConversations).values({
+        const [newConvo] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappConversations).values({
           instanceId: instance.id,
           companyId: user.companyId,
           remoteJid,
@@ -25585,7 +26350,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }).returning();
         conversation = newConvo;
       } else {
-        await db.update(whatsappConversations)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
           .set({ 
             lastMessageAt: new Date(),
             lastMessagePreview: text.substring(0, 100),
@@ -25595,7 +26369,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .where(eq(whatsappConversations.id, conversation.id));
       }
       // Save message to DB
-      const [message] = await db.insert(whatsappMessages).values({
+      const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappMessages).values({
         conversationId: conversation.id,
         instanceId: instance.id,
         companyId: user.companyId,
@@ -25631,7 +26414,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!validMediaTypes.includes(type)) {
         return res.status(400).json({ message: "Invalid media type" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
@@ -25654,7 +26446,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       );
       // Create/update conversation and message in DB
       const remoteJid = number.includes("@") ? number : `${number.replace(/\D/g, "")}@s.whatsapp.net`;
-      let conversation = await db.query.whatsappConversations.findFirst({
+      let conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findFirst({
         where: and(
           eq(whatsappConversations.instanceId, instance.id),
           eq(whatsappConversations.remoteJid, remoteJid)
@@ -25662,7 +26463,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       const preview = type === 'document' ? `📄 ${fileName || 'Document'}` : (caption || `[${type}]`);
       if (!conversation) {
-        const [newConvo] = await db.insert(whatsappConversations).values({
+        const [newConvo] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappConversations).values({
           instanceId: instance.id,
           companyId: user.companyId,
           remoteJid,
@@ -25672,7 +26482,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }).returning();
         conversation = newConvo;
       } else {
-        await db.update(whatsappConversations)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
           .set({ 
             lastMessageAt: new Date(),
             lastMessagePreview: preview.substring(0, 100),
@@ -25682,7 +26501,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .where(eq(whatsappConversations.id, conversation.id));
       }
       // Save message to DB
-      const [message] = await db.insert(whatsappMessages).values({
+      const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappMessages).values({
         conversationId: conversation.id,
         instanceId: instance.id,
         companyId: user.companyId,
@@ -25714,7 +26542,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!number || !base64) {
         return res.status(400).json({ message: "Number and base64 required" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
@@ -25729,7 +26566,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const mediaUrl = `data:audio/webm;base64,${base64}`;
       
       const remoteJid = number.includes("@") ? number : `${number.replace(/\\D/g, "")}@s.whatsapp.net`;
-      let conversation = await db.query.whatsappConversations.findFirst({
+      let conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findFirst({
         where: and(
           eq(whatsappConversations.instanceId, instance.id),
           eq(whatsappConversations.remoteJid, remoteJid)
@@ -25737,7 +26583,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       
       if (!conversation) {
-        const [newConvo] = await db.insert(whatsappConversations).values({
+        const [newConvo] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappConversations).values({
           instanceId: instance.id,
           companyId: user.companyId,
           remoteJid,
@@ -25747,7 +26602,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }).returning();
         conversation = newConvo;
       } else {
-        await db.update(whatsappConversations)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
           .set({ 
             lastMessageAt: new Date(),
             lastMessagePreview: "[audio]",
@@ -25757,7 +26621,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .where(eq(whatsappConversations.id, conversation.id));
       }
       
-      const [message] = await db.insert(whatsappMessages).values({
+      const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappMessages).values({
         conversationId: conversation.id,
         instanceId: instance.id,
         companyId: user.companyId,
@@ -25792,7 +26665,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "remoteJid is required" });
       }
       
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       
@@ -25803,7 +26685,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // For @lid contacts, resolve to phone-based JID first
       if (remoteJid.endsWith('@lid')) {
         // Check if this LID is stored in a contact's lid column
-        const contactWithLid = await db.query.whatsappContacts.findFirst({
+        const contactWithLid = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappContacts.findFirst({
           where: and(
             eq(whatsappContacts.instanceId, instance.id),
             eq(whatsappContacts.lid, remoteJid)
@@ -25815,7 +26706,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           remoteJid = contactWithLid.remoteJid;
         } else {
           // Check if this @lid is stored as a remoteJid with businessPhone
-          const contactByRemoteJid = await db.query.whatsappContacts.findFirst({
+          const contactByRemoteJid = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappContacts.findFirst({
             where: and(
               eq(whatsappContacts.instanceId, instance.id),
               eq(whatsappContacts.remoteJid, remoteJid)
@@ -25852,7 +26752,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "presence must be 'available' or 'unavailable'" });
       }
       
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       
@@ -25876,7 +26785,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated" });
       }
       // Find the message
-      const message = await db.query.whatsappMessages.findFirst({
+      const message = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findFirst({
         where: and(
           eq(whatsappMessages.id, messageId),
           eq(whatsappMessages.companyId, user.companyId)
@@ -25890,7 +26808,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ mediaUrl: message.mediaUrl });
       }
       // Get instance
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.id, message.instanceId),
       });
       if (!instance) {
@@ -25908,7 +26835,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Create Data URI directly (no Object Storage needed)
       const mediaUrl = `data:${mediaData.mimetype};base64,${mediaData.base64}`;
       // Update message with media URL
-      await db.update(whatsappMessages)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappMessages)
         .set({ mediaUrl })
         .where(eq(whatsappMessages.id, messageId));
       res.json({ mediaUrl });
@@ -25930,7 +26866,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(200).send("OK"); // Return 200 to prevent retries
       }
       // Get instance
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, company.id),
       });
       if (!instance) {
@@ -25942,7 +26887,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (event === "QRCODE_UPDATED") {
         const qrCode = payload.data?.qrcode?.base64;
         if (qrCode) {
-          await db.update(whatsappInstances)
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappInstances)
             .set({ qrCode, status: "connecting", updatedAt: new Date() })
             .where(eq(whatsappInstances.id, instance.id));
           broadcastWhatsAppQrCode(company.id, qrCode);
@@ -25951,7 +26905,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else if (event === "CONNECTION_UPDATE") {
         const state = payload.data?.state;
         if (state) {
-          await db.update(whatsappInstances)
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappInstances)
             .set({ 
               status: state,
               qrCode: state === "open" ? null : instance.qrCode,
@@ -26000,14 +26963,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   }
                 }
                 const lastMessageFromMe = chat.lastMessage?.key?.fromMe || false;
-                const existing = await db.query.whatsappConversations.findFirst({
+                const existing = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findFirst({
                   where: and(
                     eq(whatsappConversations.instanceId, instance.id),
                     eq(whatsappConversations.remoteJid, remoteJid)
                   ),
                 });
                 if (!existing) {
-                  await db.insert(whatsappConversations).values({
+                  // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappConversations).values({
                     instanceId: instance.id,
                     remoteJid,
                     unreadCount: chat.unreadCount || 0,
@@ -26020,7 +27001,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   synced++;
                 } else {
                   // Update existing conversation with latest message info
-                  await db.update(whatsappConversations)
+                  // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
                     .set({
                       unreadCount: chat.unreadCount || 0,
                       lastMessageAt: lastMessageAt || existing.lastMessageAt,
@@ -26066,7 +27056,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const reactionData = evolutionApi.extractReactionData(msg);
             if (reactionData && reactionData.targetMessageId) {
               // Find the original message by messageId
-              const targetMessage = await db.query.whatsappMessages.findFirst({
+              const targetMessage = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findFirst({
                 where: and(
                   eq(whatsappMessages.instanceId, instance.id),
                   eq(whatsappMessages.messageId, reactionData.targetMessageId)
@@ -26075,7 +27074,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               if (targetMessage) {
                 // Update the reaction on the original message (empty emoji = remove reaction)
                 const newReaction = reactionData.emoji || null;
-                await db.update(whatsappMessages)
+                // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappMessages)
                   .set({ reaction: newReaction })
                   .where(eq(whatsappMessages.id, targetMessage.id));
                 console.log(`[WhatsApp Webhook] Reaction ${newReaction || 'removed'} on message ${reactionData.targetMessageId}`);
@@ -26095,7 +27103,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
           
           // Skip if already exists
-          const existing = await db.query.whatsappMessages.findFirst({
+          const existing = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findFirst({
             where: and(
               eq(whatsappMessages.instanceId, instance.id),
               eq(whatsappMessages.messageId, messageId)
@@ -26103,7 +27120,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
           if (existing) continue;
           // Get or create contact
-          let contact = await db.query.whatsappContacts.findFirst({
+          let contact = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappContacts.findFirst({
             where: and(
               eq(whatsappContacts.instanceId, instance.id),
               eq(whatsappContacts.remoteJid, remoteJid)
@@ -26140,7 +27166,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
               console.log(`[WhatsApp Webhook] Final business info: phone=${businessPhone}, name=${businessName}`);
             }
-            const [newContact] = await db.insert(whatsappContacts).values({
+            const [newContact] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappContacts).values({
               instanceId: instance.id,
               companyId: company.id,
               remoteJid,
@@ -26177,14 +27212,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 if (profile.businessName && !contact.businessName) {
                   updateData.businessName = profile.businessName;
                 }
-                await db.update(whatsappContacts)
+                // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappContacts)
                   .set(updateData)
                   .where(eq(whatsappContacts.id, contact.id));
                 console.log(`[WhatsApp Webhook] Updated from API for ${remoteJid}: phone=${profile.businessPhone}, name=${profile.businessName}`);
               }
             } else {
               // Update with senderPn phone immediately
-              await db.update(whatsappContacts)
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappContacts)
                 .set({
                   businessPhone,
                   profileFetchedAt: new Date(),
@@ -26195,14 +27248,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
           }
           // Get or create conversation
-          let conversation = await db.query.whatsappConversations.findFirst({
+          let conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findFirst({
             where: and(
               eq(whatsappConversations.instanceId, instance.id),
               eq(whatsappConversations.remoteJid, remoteJid)
             ),
           });
           if (!conversation) {
-            const [newConvo] = await db.insert(whatsappConversations).values({
+            const [newConvo] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappConversations).values({
               instanceId: instance.id,
               companyId: company.id,
               contactId: contact?.id,
@@ -26216,7 +27287,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           } else {
             // Only update conversation if this message is newer
             if (!conversation.lastMessageAt || timestamp > new Date(conversation.lastMessageAt)) {
-              await db.update(whatsappConversations)
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
                 .set({
                   lastMessageAt: timestamp,
                   lastMessagePreview: messageText.substring(0, 100) || messageType,
@@ -26227,7 +27307,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 .where(eq(whatsappConversations.id, conversation.id));
             } else if (!fromMe) {
               // Still increment unread count even if not the newest message
-              await db.update(whatsappConversations)
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
                 .set({
                   unreadCount: (conversation.unreadCount || 0) + 1,
                   updatedAt: new Date(),
@@ -26259,7 +27348,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
           }
           // Insert message
-          await db.insert(whatsappMessages).values({
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappMessages).values({
             conversationId: conversation.id,
             instanceId: instance.id,
             companyId: company.id,
@@ -26302,7 +27400,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           if (newStatus) {
             // Update message status in database
-            const result = await db.update(whatsappMessages)
+            const result = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappMessages)
               .set({ status: newStatus })
               .where(and(
                 eq(whatsappMessages.instanceId, instance.id),
@@ -26330,7 +27437,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // If it's a @lid JID, look up the mapping in our contacts table via lid column
           if (remoteJid.endsWith('@lid')) {
             // Find contact with this LID stored in the lid column
-            const contactWithLid = await db.query.whatsappContacts.findFirst({
+            const contactWithLid = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappContacts.findFirst({
               where: and(
                 eq(whatsappContacts.instanceId, instance.id),
                 eq(whatsappContacts.lid, remoteJid)
@@ -26365,7 +27481,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                     const lidValue = results[0].lid;
                     
                     // Update the contact with the LID mapping
-                    await db.update(whatsappContacts)
+                    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappContacts)
                       .set({ lid: lidValue, updatedAt: new Date() })
                       .where(and(
                         eq(whatsappContacts.instanceId, instance.id),
@@ -26399,7 +27524,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance || instance.status !== "open") {
@@ -26444,14 +27578,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         const lastMessageFromMe = chat.lastMessage?.key?.fromMe || false;
         // Check if conversation exists
-        const existing = await db.query.whatsappConversations.findFirst({
+        const existing = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findFirst({
           where: and(
             eq(whatsappConversations.instanceId, instance.id),
             eq(whatsappConversations.remoteJid, remoteJid)
           ),
         });
         if (!existing) {
-          await db.insert(whatsappConversations).values({
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappConversations).values({
             instanceId: instance.id,
             companyId: user.companyId,
             remoteJid,
@@ -26463,7 +27615,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           synced++;
         } else {
           // Update existing conversation with latest message info
-          await db.update(whatsappConversations)
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
             .set({
               unreadCount: chat.unreadCount || 0,
               lastMessageAt: lastMessageAt || existing.lastMessageAt,
@@ -26488,7 +27649,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance || instance.status !== "open") {
@@ -26501,7 +27671,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const messageId = msg.key?.id;
         if (!messageId) continue;
         // Check if message already exists
-        const existing = await db.query.whatsappMessages.findFirst({
+        const existing = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findFirst({
           where: and(
             eq(whatsappMessages.instanceId, instance.id),
             eq(whatsappMessages.messageId, messageId)
@@ -26509,7 +27688,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         if (!existing) {
           // Get or check conversation exists
-          const conversation = await db.query.whatsappConversations.findFirst({
+          const conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findFirst({
             where: and(
               eq(whatsappConversations.instanceId, instance.id),
               eq(whatsappConversations.remoteJid, remoteJid)
@@ -26522,7 +27710,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const fromMe = msg.key?.fromMe || false;
           const timestamp = new Date(msg.messageTimestamp * 1000);
           // Insert new message
-          await db.insert(whatsappMessages).values({
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappMessages).values({
             conversationId: conversation.id,
             instanceId: instance.id,
             companyId: user.companyId,
@@ -26537,6 +27734,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Update conversation if this is the newest message
           const conversationLastMessageAt = conversation.lastMessageAt ? new Date(conversation.lastMessageAt) : null;
           if (!conversationLastMessageAt || timestamp > conversationLastMessageAt) {
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.update(whatsappConversations)
               .set({
                 lastMessagePreview: messageText?.substring(0, 100) || messageType,
@@ -26563,14 +27769,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance || instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
       // Get active conversations (limit to most recent 10 for efficiency)
-      const conversations = await db.query.whatsappConversations.findMany({
+      const conversations = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappConversations.findMany({
         where: eq(whatsappConversations.instanceId, instance.id),
         orderBy: [desc(whatsappConversations.lastMessageAt)],
         limit: 10,
@@ -26586,7 +27810,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const messageId = msg.key?.id;
             if (!messageId) continue;
             // Check if message already exists
-            const existing = await db.query.whatsappMessages.findFirst({
+            const existing = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findFirst({
               where: and(
                 eq(whatsappMessages.instanceId, instance.id),
                 eq(whatsappMessages.messageId, messageId)
@@ -26599,7 +27832,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               const fromMe = msg.key?.fromMe || false;
               const timestamp = new Date(msg.messageTimestamp * 1000);
               // Insert new message
-              await db.insert(whatsappMessages).values({
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(whatsappMessages).values({
                 conversationId: conversation.id,
                 instanceId: instance.id,
                 companyId: user.companyId,
@@ -26614,7 +27856,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               // Update conversation if this is the newest message
               const conversationLastMessageAt = conversation.lastMessageAt ? new Date(conversation.lastMessageAt) : null;
               if (!conversationLastMessageAt || timestamp > conversationLastMessageAt) {
-                await db.update(whatsappConversations)
+                // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
                   .set({
                     lastMessagePreview: messageText?.substring(0, 100) || messageType,
                     lastMessageFromMe: fromMe,
@@ -26652,13 +27903,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!remoteJid) {
         return res.status(400).json({ message: "remoteJid is required" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance || instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-      const unreadMessages = await db.query.whatsappMessages.findMany({
+      const unreadMessages = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findMany({
         where: and(
           eq(whatsappMessages.instanceId, instance.id),
           eq(whatsappMessages.remoteJid, remoteJid),
@@ -26672,7 +27941,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // For @lid contacts, resolve to phone-based JID for Evolution API
       let evolutionJid = remoteJid;
       if (remoteJid.endsWith('@lid')) {
-        const contact = await db.query.whatsappContacts.findFirst({
+        const contact = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappContacts.findFirst({
           where: and(
             eq(whatsappContacts.instanceId, instance.id),
             eq(whatsappContacts.remoteJid, remoteJid)
@@ -26690,14 +27968,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         id: msg.messageId,
       }));
       await evolutionApi.markMessagesAsRead(instance.instanceName, readMessages);
-      await db.update(whatsappMessages)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappMessages)
         .set({ status: "read" })
         .where(and(
           eq(whatsappMessages.instanceId, instance.id),
           eq(whatsappMessages.remoteJid, remoteJid),
           eq(whatsappMessages.fromMe, false)
         ));
-      await db.update(whatsappConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappConversations)
         .set({ unreadCount: 0 })
         .where(and(
           eq(whatsappConversations.instanceId, instance.id),
@@ -26721,7 +28017,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!remoteJid || !messageId || emoji === undefined || fromMe === undefined) {
         return res.status(400).json({ message: "remoteJid, messageId, emoji, and fromMe are required" });
       }
-      const instance = await db.query.whatsappInstances.findFirst({
+      const instance = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance || instance.status !== "open") {
@@ -26730,7 +28035,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await evolutionApi.sendReaction(instance.instanceName, remoteJid, messageId, emoji, fromMe);
       
       // Update the reaction in the database
-      const targetMessage = await db.query.whatsappMessages.findFirst({
+      const targetMessage = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.whatsappMessages.findFirst({
         where: and(
           eq(whatsappMessages.instanceId, instance.id),
           eq(whatsappMessages.messageId, messageId)
@@ -26738,7 +28052,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       if (targetMessage) {
         const newReaction = emoji || null;
-        await db.update(whatsappMessages)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(whatsappMessages)
           .set({ reaction: newReaction })
           .where(eq(whatsappMessages.id, targetMessage.id));
         console.log(`[WhatsApp] Reaction ${newReaction || 'removed'} saved for message ${messageId}`);
@@ -26835,7 +28158,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Store in oauth_states with 10 min expiry
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
       
-      await db.insert(oauthStates).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(oauthStates).values({
         companyId: user.companyId,
         provider: "meta_whatsapp",
         nonce,
@@ -27053,7 +28385,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const encryptedToken = encryptToken(accessToken);
       
       // Check existing connection
-      const existingConnection = await db.select().from(channelConnections)
+      const existingConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(channelConnections)
         .where(and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp")
@@ -27061,7 +28402,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .limit(1);
       
       if (existingConnection.length > 0) {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set({
             businessId,
             wabaId,
@@ -27075,7 +28425,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           })
           .where(eq(channelConnections.id, existingConnection[0].id));
       } else {
-        await db.insert(channelConnections).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(channelConnections).values({
           companyId: user.companyId,
           channel: "whatsapp",
           businessId,
@@ -27149,7 +28508,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       // Validate state/nonce
-      const oauthState = await db.query.oauthStates.findFirst({
+      const oauthState = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.oauthStates.findFirst({
         where: and(
           eq(oauthStates.nonce, state as string),
           eq(oauthStates.provider, "meta_whatsapp")
@@ -27174,7 +28542,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       // Mark state as used
-      await db.update(oauthStates)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(oauthStates)
         .set({ usedAt: new Date() })
         .where(eq(oauthStates.id, oauthState.id));
       
@@ -27296,7 +28673,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       // Check if this phone number is already connected to another tenant
-      const existingConnection = await db.query.channelConnections.findFirst({
+      const existingConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.phoneNumberId, phoneNumberId),
           ne(channelConnections.companyId, oauthState.companyId)
@@ -27312,7 +28698,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const encryptedToken = encryptToken(accessToken);
       
       // UPSERT connection
-      const existing = await db.query.channelConnections.findFirst({
+      const existing = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, oauthState.companyId),
           eq(channelConnections.channel, "whatsapp")
@@ -27325,7 +28720,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         : null;
       
       if (existing) {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set({
             businessId,
             wabaId,
@@ -27342,7 +28746,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           })
           .where(eq(channelConnections.id, existing.id));
       } else {
-        await db.insert(channelConnections).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(channelConnections).values({
           businessId,
           companyId: oauthState.companyId,
           channel: "whatsapp",
@@ -27492,7 +28905,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       // Insert into waWebhookEvents queue for async processing
       const payload = JSON.parse(rawBody.toString());
-      await db.insert(waWebhookEvents).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waWebhookEvents).values({
         payload: payload,
         status: "pending",
         attempt: 0,
@@ -27577,7 +28999,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(200).send("EVENT_RECEIVED");
       }
 
-      await db.insert(fbWebhookEvents).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(fbWebhookEvents).values({
         payload: payload,
         status: "pending",
         attempt: 0,
@@ -27596,7 +29027,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const user = req.user as any;
     if (!user.companyId) return res.json({ connected: false, connection: null });
     
-    const connection = await db.query.channelConnections.findFirst({
+    const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp")
@@ -27627,7 +29067,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const user = req.user as any;
     if (!user.companyId) return res.json({ connections: [] });
     
-    const connections = await db.query.channelConnections.findMany({
+    const connections = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findMany({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp"),
@@ -27654,7 +29103,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!user.companyId) return res.status(400).json({ error: "No company" });
 
     try {
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp")
@@ -27721,7 +29179,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
 
     try {
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp")
@@ -27758,7 +29225,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       if (!registerResponse.ok) {
         console.error("[WhatsApp Register] Meta API error:", registerData);
-        await db.insert(waWebhookLogs).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waWebhookLogs).values({
           companyId: user.companyId,
           eventType: "register_error",
           payload: { error: registerData.error, phoneNumberId },
@@ -27771,7 +29247,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         });
       }
 
-      await db.insert(waWebhookLogs).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waWebhookLogs).values({
         companyId: user.companyId,
         eventType: "register_success",
         payload: { success: true, phoneNumberId },
@@ -27789,7 +29274,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const statusData = await statusResponse.json() as any;
 
       if (statusResponse.ok && statusData.status === "CONNECTED") {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set({ status: "active", updatedAt: new Date() })
           .where(eq(channelConnections.id, connection.id));
       }
@@ -27813,7 +29307,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const { pin } = req.body;
 
     try {
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp")
@@ -27843,7 +29346,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       if (!statusResponse.ok) {
         console.error("[WhatsApp Retry Activation] Meta API error:", statusData);
-        await db.insert(waWebhookLogs).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waWebhookLogs).values({
           companyId: user.companyId,
           eventType: "retry_activation_status_error",
           payload: { error: statusData.error, phoneNumberId },
@@ -27857,11 +29369,29 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       if (statusData.status === "CONNECTED" && statusData.code_verification_status === "VERIFIED") {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set({ status: "active", updatedAt: new Date() })
           .where(eq(channelConnections.id, connection.id));
 
-        await db.insert(waWebhookLogs).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waWebhookLogs).values({
           companyId: user.companyId,
           eventType: "retry_activation_already_active",
           payload: { status: statusData.status, codeVerificationStatus: statusData.code_verification_status, phoneNumberId },
@@ -27878,7 +29408,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       if (!pin) {
-        await db.insert(waWebhookLogs).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waWebhookLogs).values({
           companyId: user.companyId,
           eventType: "retry_activation_pin_required",
           payload: { status: statusData.status, codeVerificationStatus: statusData.code_verification_status, phoneNumberId },
@@ -27917,7 +29456,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       if (!registerResponse.ok) {
         console.error("[WhatsApp Retry Activation] Registration error:", registerData);
-        await db.insert(waWebhookLogs).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waWebhookLogs).values({
           companyId: user.companyId,
           eventType: "retry_activation_register_error",
           payload: { error: registerData.error, phoneNumberId },
@@ -27941,12 +29489,30 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const finalStatusData = await finalStatusResponse.json() as any;
 
       if (finalStatusResponse.ok && finalStatusData.status === "CONNECTED") {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set({ status: "active", updatedAt: new Date() })
           .where(eq(channelConnections.id, connection.id));
       }
 
-      await db.insert(waWebhookLogs).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waWebhookLogs).values({
         companyId: user.companyId,
         eventType: "retry_activation_registered",
         payload: { status: finalStatusData.status, codeVerificationStatus: finalStatusData.code_verification_status, phoneNumberId },
@@ -27985,7 +29551,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     
     // Check if phone number is already connected elsewhere
-    const existingOther = await db.query.channelConnections.findFirst({
+    const existingOther = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.phoneNumberId, phoneNumberId),
         ne(channelConnections.companyId, user.companyId)
@@ -28000,7 +29575,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const encryptedToken = encryptToken(accessToken);
     
     // Check if already connected
-    const existing = await db.query.channelConnections.findFirst({
+    const existing = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp")
@@ -28008,7 +29592,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     });
     
     if (existing) {
-      await db.update(channelConnections)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
         .set({
           wabaId,
           phoneNumberId,
@@ -28022,7 +29615,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         })
         .where(eq(channelConnections.id, existing.id));
     } else {
-      await db.insert(channelConnections).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(channelConnections).values({
         companyId: user.companyId,
         channel: "whatsapp",
         status: "active",
@@ -28044,7 +29646,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
-    const connection = await db.query.channelConnections.findFirst({
+    const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp")
@@ -28056,7 +29667,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     
     // Mark as revoked instead of deleting (preserves audit trail)
-    await db.update(channelConnections)
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
       .set({
         status: "revoked",
         accessTokenEnc: null, // Clear the token
@@ -28074,7 +29694,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
-    const connection = await db.query.channelConnections.findFirst({
+    const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp")
@@ -28085,7 +29714,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       return res.status(404).json({ error: "No WhatsApp connection found" });
     }
     
-    await db.update(channelConnections)
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
       .set({
         status: "revoked",
         accessTokenEnc: null,
@@ -28104,7 +29742,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
 
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28160,7 +29807,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
 
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28271,7 +29927,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(400).json({ error: "Profile photo must be JPEG or PNG" });
       }
 
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28382,7 +30047,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28399,7 +30073,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       // Get conversation to find recipient
-      const conversation = await db.query.waConversations.findFirst({
+      const conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.waConversations.findFirst({
         where: eq(waConversations.id, conversationId)
       });
 
@@ -28421,7 +30104,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const accessToken = decryptToken(connection.accessTokenEnc);
 
       // Check 24-hour window by finding last INBOUND message from this contact
-      const lastInboundMessage = await db.query.waMessages.findFirst({
+      const lastInboundMessage = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.waMessages.findFirst({
         where: and(
           eq(waMessages.conversationId, conversationId),
           eq(waMessages.direction, "inbound")
@@ -28533,7 +30225,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const providerMessageId = responseData.messages?.[0]?.id;
 
       // Insert message into database
-      const [insertedMessage] = await db.insert(waMessages).values({
+      const [insertedMessage] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waMessages).values({
         companyId: user.companyId,
         connectionId: connection.id,
         conversationId: conversationId,
@@ -28550,7 +30251,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }).returning();
 
       // Update conversation
-      await db.update(waConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(waConversations)
         .set({
           lastMessageAt: new Date(),
           lastMessagePreview: messageText?.substring(0, 100) || null,
@@ -28593,7 +30303,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const queryWabaId = req.query.wabaId as string | undefined;
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28667,7 +30386,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28935,7 +30663,16 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29024,7 +30761,16 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29118,7 +30864,16 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29197,7 +30952,16 @@ CRITICAL REMINDERS:
       }
 
       // Get conversation by ID and verify it belongs to the company
-      const conversation = await db.query.telnyxConversations.findFirst({
+      const conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telnyxConversations.findFirst({
         where: eq(telnyxConversations.id, conversationId)
       });
 
@@ -29216,7 +30980,16 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection for the company
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29293,7 +31066,16 @@ CRITICAL REMINDERS:
       const messageText = renderedText || `[Template: ${templateName}]`;
 
       // Save the sent message to telnyxMessages
-      const [insertedMessage] = await db.insert(telnyxMessages).values({
+      const [insertedMessage] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telnyxMessages).values({
         conversationId: conversationId,
         direction: "outbound",
         text: messageText,
@@ -29304,7 +31086,16 @@ CRITICAL REMINDERS:
       }).returning();
 
       // Update conversation lastMessage and lastMessageAt
-      await db.update(telnyxConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
         .set({
           lastMessage: messageText,
           lastMessageAt: new Date(),
@@ -29362,7 +31153,16 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29479,7 +31279,16 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29553,7 +31362,16 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29648,7 +31466,16 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29665,7 +31492,16 @@ CRITICAL REMINDERS:
       }
 
       // Get conversation to find recipient
-      const conversation = await db.query.waConversations.findFirst({
+      const conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.waConversations.findFirst({
         where: eq(waConversations.id, conversationId)
       });
 
@@ -29689,7 +31525,16 @@ CRITICAL REMINDERS:
       const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
 
       // Check 24-hour window by finding last INBOUND message from this contact
-      const lastInboundMessage = await db.query.waMessages.findFirst({
+      const lastInboundMessage = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.waMessages.findFirst({
         where: and(
           eq(waMessages.conversationId, conversationId),
           eq(waMessages.direction, "inbound")
@@ -29759,7 +31604,16 @@ CRITICAL REMINDERS:
       console.log(`[WhatsApp Media] Successfully sent media message. WAMID: ${messageId}`);
 
       // Save message to database
-      const savedMessage = await db.insert(waMessages).values({
+      const savedMessage = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(waMessages).values({
         conversationId,
         companyId: user.companyId,
         wamid: messageId,
@@ -29773,7 +31627,16 @@ CRITICAL REMINDERS:
       }).returning();
 
       // Update conversation with last message
-      await db.update(waConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(waConversations)
         .set({ 
           lastMessageAt: now,
           lastMessagePreview: caption ? caption.substring(0, 100) : `[${mediaType}]`,
@@ -29823,7 +31686,16 @@ CRITICAL REMINDERS:
       const nonce = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       
-      await db.insert(oauthStates).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(oauthStates).values({
         companyId: user.companyId,
         provider: "meta_instagram",
         nonce,
@@ -29864,7 +31736,16 @@ CRITICAL REMINDERS:
         return errorRedirect("connection_cancelled");
       }
       
-      const oauthState = await db.query.oauthStates.findFirst({
+      const oauthState = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.oauthStates.findFirst({
         where: and(
           eq(oauthStates.nonce, state as string),
           eq(oauthStates.provider, "meta_instagram")
@@ -29886,7 +31767,16 @@ CRITICAL REMINDERS:
         return errorRedirect("connection_failed");
       }
       
-      await db.update(oauthStates)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(oauthStates)
         .set({ usedAt: new Date() })
         .where(eq(oauthStates.id, oauthState.id));
       
@@ -29940,7 +31830,16 @@ CRITICAL REMINDERS:
         : null;
       
       // UPSERT connection
-      const existing = await db.query.channelConnections.findFirst({
+      const existing = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, oauthState.companyId),
           eq(channelConnections.channel, "instagram")
@@ -29964,11 +31863,29 @@ CRITICAL REMINDERS:
       };
       
       if (existing) {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set(connectionData)
           .where(eq(channelConnections.id, existing.id));
       } else {
-        await db.insert(channelConnections).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(channelConnections).values({
           companyId: oauthState.companyId,
           channel: "instagram",
           ...connectionData,
@@ -30064,7 +31981,16 @@ CRITICAL REMINDERS:
       }
       
       // Check for existing connection
-      const existingConnection = await db.query.channelConnections.findFirst({
+      const existingConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "instagram")
@@ -30072,7 +31998,16 @@ CRITICAL REMINDERS:
       });
       
       if (existingConnection) {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set({
             status: "active",
             igUserId: igAccountId,
@@ -30090,7 +32025,16 @@ CRITICAL REMINDERS:
           })
           .where(eq(channelConnections.id, existingConnection.id));
       } else {
-        await db.insert(channelConnections).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(channelConnections).values({
           companyId: user.companyId,
           channel: "instagram",
           status: "active",
@@ -30124,7 +32068,16 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "instagram")
@@ -30144,7 +32097,16 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "instagram")
@@ -30155,7 +32117,16 @@ CRITICAL REMINDERS:
         return res.status(404).json({ error: "No Instagram connection found" });
       }
       
-      await db.update(channelConnections)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
         .set({
           status: "revoked",
           accessTokenEnc: null,
@@ -30198,7 +32169,16 @@ CRITICAL REMINDERS:
       const nonce = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       
-      await db.insert(oauthStates).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(oauthStates).values({
         companyId: user.companyId,
         provider: "meta_facebook",
         nonce,
@@ -30247,7 +32227,16 @@ CRITICAL REMINDERS:
         return errorRedirect("connection_cancelled");
       }
       
-      const oauthState = await db.query.oauthStates.findFirst({
+      const oauthState = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.oauthStates.findFirst({
         where: and(
           eq(oauthStates.nonce, state as string),
           eq(oauthStates.provider, "meta_facebook")
@@ -30269,7 +32258,16 @@ CRITICAL REMINDERS:
         return errorRedirect("connection_failed");
       }
       
-      await db.update(oauthStates)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(oauthStates)
         .set({ usedAt: new Date() })
         .where(eq(oauthStates.id, oauthState.id));
       
@@ -30337,7 +32335,16 @@ CRITICAL REMINDERS:
       const pageAccessToken = page.access_token;
       
       // Check for existing connection
-      const existingConnection = await db.query.channelConnections.findFirst({
+      const existingConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, oauthState.companyId),
           eq(channelConnections.channel, "facebook")
@@ -30345,7 +32352,16 @@ CRITICAL REMINDERS:
       });
       
       if (existingConnection) {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set({
             status: "active",
             fbPageId: pageId,
@@ -30361,7 +32377,16 @@ CRITICAL REMINDERS:
           })
           .where(eq(channelConnections.id, existingConnection.id));
       } else {
-        await db.insert(channelConnections).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(channelConnections).values({
           companyId: oauthState.companyId,
           channel: "facebook",
           status: "active",
@@ -30465,7 +32490,16 @@ CRITICAL REMINDERS:
       const pageAccessToken = page.access_token;
       
       // Check for existing connection
-      const existingConnection = await db.query.channelConnections.findFirst({
+      const existingConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "facebook")
@@ -30473,7 +32507,16 @@ CRITICAL REMINDERS:
       });
       
       if (existingConnection) {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set({
             status: "active",
             fbPageId: pageId,
@@ -30489,7 +32532,16 @@ CRITICAL REMINDERS:
           })
           .where(eq(channelConnections.id, existingConnection.id));
       } else {
-        await db.insert(channelConnections).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(channelConnections).values({
           companyId: user.companyId,
           channel: "facebook",
           status: "active",
@@ -30521,7 +32573,16 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "facebook")
@@ -30541,7 +32602,16 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "facebook")
@@ -30552,7 +32622,16 @@ CRITICAL REMINDERS:
         return res.status(404).json({ error: "No Facebook connection found" });
       }
       
-      await db.update(channelConnections)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
         .set({
           status: "revoked",
           accessTokenEnc: null,
@@ -30595,7 +32674,16 @@ CRITICAL REMINDERS:
       const nonce = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       
-      await db.insert(oauthStates).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(oauthStates).values({
         companyId: user.companyId,
         provider: "tiktok",
         nonce,
@@ -30641,7 +32729,16 @@ CRITICAL REMINDERS:
         return errorRedirect("connection_cancelled");
       }
       
-      const oauthState = await db.query.oauthStates.findFirst({
+      const oauthState = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.oauthStates.findFirst({
         where: and(
           eq(oauthStates.nonce, state as string),
           eq(oauthStates.provider, "tiktok")
@@ -30663,7 +32760,16 @@ CRITICAL REMINDERS:
         return errorRedirect("connection_failed");
       }
       
-      await db.update(oauthStates)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(oauthStates)
         .set({ usedAt: new Date() })
         .where(eq(oauthStates.id, oauthState.id));
       
@@ -30736,7 +32842,16 @@ CRITICAL REMINDERS:
       const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
       
       // Check for existing connection
-      const existingConnection = await db.query.channelConnections.findFirst({
+      const existingConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, oauthState.companyId),
           eq(channelConnections.channel, "tiktok")
@@ -30744,7 +32859,16 @@ CRITICAL REMINDERS:
       });
       
       if (existingConnection) {
-        await db.update(channelConnections)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(channelConnections)
           .set({
             status: "active",
             tiktokOpenId: openId,
@@ -30764,7 +32888,16 @@ CRITICAL REMINDERS:
         
         console.log(`[TikTok OAuth] Updated existing connection for company ${oauthState.companyId}`);
       } else {
-        await db.insert(channelConnections).values({
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(channelConnections).values({
           companyId: oauthState.companyId,
           channel: "tiktok",
           status: "active",
@@ -30796,7 +32929,16 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "tiktok")
@@ -30816,7 +32958,16 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
-      const connection = await db.query.channelConnections.findFirst({
+      const connection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "tiktok")
@@ -30857,7 +33008,16 @@ CRITICAL REMINDERS:
         }
       }
       
-      await db.delete(channelConnections)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(channelConnections)
         .where(eq(channelConnections.id, connection.id));
       
       console.log(`[TikTok] Disconnected for company ${user.companyId}`);
@@ -30890,7 +33050,16 @@ CRITICAL REMINDERS:
   // Helper: Handle Telegram connect code
   async function handleTelegramConnect(chatId: string, chatType: string, title: string | undefined, code: string, fromUser: any) {
     // Validate connect code
-    const connectCode = await db.query.telegramConnectCodes.findFirst({
+    const connectCode = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telegramConnectCodes.findFirst({
       where: and(
         eq(telegramConnectCodes.code, code),
         isNull(telegramConnectCodes.usedAt)
@@ -30898,7 +33067,16 @@ CRITICAL REMINDERS:
     });
     
     // Look up the user's bot token for sending messages
-    const userBot = connectCode ? await db.query.userTelegramBots.findFirst({
+    const userBot = connectCode ? // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.userTelegramBots.findFirst({
       where: eq(userTelegramBots.userId, connectCode.createdByUserId)
     }) : null;
     
@@ -30920,12 +33098,30 @@ CRITICAL REMINDERS:
     }
     
     // Get company name
-    const company = await db.query.companies.findFirst({
+    const company = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.companies.findFirst({
       where: eq(companies.id, connectCode.companyId)
     });
     
     // Create or update chat link
-    await db.insert(telegramChatLinks).values({
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramChatLinks).values({
       chatId,
       companyId: connectCode.companyId,
       userId: connectCode.createdByUserId,
@@ -30945,7 +33141,16 @@ CRITICAL REMINDERS:
     });
     
     // Mark code as used
-    await db.update(telegramConnectCodes)
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telegramConnectCodes)
       .set({ usedAt: new Date(), usedByChatId: chatId })
       .where(eq(telegramConnectCodes.id, connectCode.id));
     
@@ -30965,7 +33170,16 @@ CRITICAL REMINDERS:
     // Find tenant - first try by chat_id link, then fallback to any connected company
     let companyId: string;
     let userId: string | undefined;
-    const chatLink = await db.query.telegramChatLinks.findFirst({
+    const chatLink = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telegramChatLinks.findFirst({
       where: and(
         eq(telegramChatLinks.chatId, chatId),
         eq(telegramChatLinks.status, "active")
@@ -30977,7 +33191,16 @@ CRITICAL REMINDERS:
       userId = chatLink.userId;
     } else {
       // Fallback: route to any company with active Telegram connection
-      const anyActiveLink = await db.query.telegramChatLinks.findFirst({
+      const anyActiveLink = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telegramChatLinks.findFirst({
         where: eq(telegramChatLinks.status, "active")
       });
       
@@ -30990,7 +33213,16 @@ CRITICAL REMINDERS:
       userId = anyActiveLink.userId;
       
       // Auto-create link for this new chat (use the same user who set up the original link)
-      await db.insert(telegramChatLinks).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramChatLinks).values({
         companyId,
         userId: anyActiveLink.userId,
         chatId,
@@ -31007,7 +33239,16 @@ CRITICAL REMINDERS:
     const telegramUserId = String(fromUser.id);
     
     // Upsert contact
-    let contact = await db.query.contacts.findFirst({
+    let contact = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.contacts.findFirst({
       where: and(
         eq(contacts.companyId, companyId),
         eq(contacts.telegramUserId, telegramUserId)
@@ -31015,7 +33256,16 @@ CRITICAL REMINDERS:
     });
     
     if (!contact) {
-      const [newContact] = await db.insert(contacts).values({
+      const [newContact] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(contacts).values({
         companyId,
         firstName: fromUser.first_name || null,
         lastName: fromUser.last_name || null,
@@ -31027,7 +33277,16 @@ CRITICAL REMINDERS:
     }
     
     // Upsert conversation
-    let conversation = await db.query.telegramConversations.findFirst({
+    let conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telegramConversations.findFirst({
       where: and(
         eq(telegramConversations.userId, userId),
         eq(telegramConversations.chatId, chatId)
@@ -31039,7 +33298,16 @@ CRITICAL REMINDERS:
       : `Group: ${message.chat.title || "Unnamed Group"}`;
     
     if (!conversation) {
-      const [newConv] = await db.insert(telegramConversations).values({
+      const [newConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramConversations).values({
         companyId,
         userId,
         chatId,
@@ -31052,7 +33320,16 @@ CRITICAL REMINDERS:
       }).returning();
       conversation = newConv;
     } else {
-      await db.update(telegramConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telegramConversations)
         .set({
           lastMessage: message.text?.substring(0, 100),
           lastMessageAt: new Date(),
@@ -31076,7 +33353,16 @@ CRITICAL REMINDERS:
     // Insert message
     const providerMessageId = `${chatId}:${message.message_id}`;
     
-    await db.insert(telegramMessages).values({
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramMessages).values({
       conversationId: conversation.id,
       providerMessageId,
       direction: "inbound",
@@ -31095,7 +33381,16 @@ CRITICAL REMINDERS:
       : message.chat.title || "Telegram Group";
     
     // Upsert inbox conversation
-    let inboxConversation = await db.query.telnyxConversations.findFirst({
+    let inboxConversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telnyxConversations.findFirst({
       where: and(
         eq(telnyxConversations.companyId, companyId),
         eq(telnyxConversations.phoneNumber, telegramPhoneId),
@@ -31104,7 +33399,16 @@ CRITICAL REMINDERS:
     });
     
     if (!inboxConversation) {
-      const [newInboxConv] = await db.insert(telnyxConversations).values({
+      const [newInboxConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telnyxConversations).values({
         companyId,
         phoneNumber: telegramPhoneId,
         displayName: displayNameForInbox,
@@ -31117,7 +33421,16 @@ CRITICAL REMINDERS:
       }).returning();
       inboxConversation = newInboxConv;
     } else {
-      await db.update(telnyxConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
         .set({
           displayName: displayNameForInbox,
           lastMessage: (message.text || message.caption || `[${messageType}]`).substring(0, 100),
@@ -31129,7 +33442,16 @@ CRITICAL REMINDERS:
     }
     
     // Insert into inbox messages
-    await db.insert(telnyxMessages).values({
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telnyxMessages).values({
       conversationId: inboxConversation.id,
       direction: "inbound",
       messageType: "incoming",
@@ -31149,7 +33471,16 @@ CRITICAL REMINDERS:
     
     // For groups, upsert participant
     if (chatType !== "private") {
-      await db.insert(telegramParticipants).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramParticipants).values({
         companyId,
         chatId,
         telegramUserId,
@@ -31205,7 +33536,16 @@ CRITICAL REMINDERS:
     const user = req.user as any;
     
     // Check if user has their own bot configured
-    const userBot = await db.query.userTelegramBots.findFirst({
+    const userBot = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.userTelegramBots.findFirst({
       where: and(
         eq(userTelegramBots.userId, user.id),
         eq(userTelegramBots.isActive, true)
@@ -31230,7 +33570,16 @@ CRITICAL REMINDERS:
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     
     try {
-      await db.insert(telegramConnectCodes).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramConnectCodes).values({
         code,
         companyId: user.companyId,
         createdByUserId: user.id,
@@ -31250,7 +33599,16 @@ CRITICAL REMINDERS:
     const user = req.user as any;
     
     try {
-      const chats = await db.query.telegramChatLinks.findMany({
+      const chats = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telegramChatLinks.findMany({
         where: and(
           eq(telegramChatLinks.userId, user.id),
           eq(telegramChatLinks.status, "active")
@@ -31273,7 +33631,16 @@ CRITICAL REMINDERS:
     if (!chatId) return res.status(400).json({ error: "chatId required" });
     
     try {
-      await db.update(telegramChatLinks)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telegramChatLinks)
         .set({ status: "revoked", updatedAt: new Date() })
         .where(and(
           eq(telegramChatLinks.userId, user.id),
@@ -31327,7 +33694,16 @@ CRITICAL REMINDERS:
       }
       
       // Store in database (upsert - one bot per user)
-      await db.insert(userTelegramBots).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(userTelegramBots).values({
         userId: user.id,
         companyId: user.companyId,
         botToken,
@@ -31361,7 +33737,16 @@ CRITICAL REMINDERS:
     
     try {
       // Find user's bot
-      const userBot = await db.query.userTelegramBots.findFirst({
+      const userBot = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.userTelegramBots.findFirst({
         where: eq(userTelegramBots.userId, user.id)
       });
       
@@ -31379,7 +33764,16 @@ CRITICAL REMINDERS:
       }
       
       // Delete record from database
-      await db.delete(userTelegramBots).where(eq(userTelegramBots.userId, user.id));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(userTelegramBots).where(eq(userTelegramBots.userId, user.id));
       
       console.log(`[Telegram] User ${user.id} removed bot @${userBot.botUsername}`);
       return res.json({ success: true });
@@ -31394,7 +33788,16 @@ CRITICAL REMINDERS:
     const user = req.user as any;
     
     try {
-      const userBot = await db.query.userTelegramBots.findFirst({
+      const userBot = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.userTelegramBots.findFirst({
         where: eq(userTelegramBots.userId, user.id)
       });
       
@@ -31420,7 +33823,16 @@ CRITICAL REMINDERS:
     const { webhookSecret } = req.params;
     
     // Look up the user bot by webhookSecret
-    const userBot = await db.query.userTelegramBots.findFirst({
+    const userBot = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.userTelegramBots.findFirst({
       where: and(
         eq(userTelegramBots.webhookSecret, webhookSecret),
         eq(userTelegramBots.isActive, true)
@@ -31480,7 +33892,16 @@ CRITICAL REMINDERS:
   // Helper: Handle connect code for user bot
   async function handleUserBotTelegramConnect(chatId: string, chatType: string, title: string | undefined, code: string, fromUser: any, userBot: any) {
     // Validate connect code
-    const connectCode = await db.query.telegramConnectCodes.findFirst({
+    const connectCode = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telegramConnectCodes.findFirst({
       where: and(
         eq(telegramConnectCodes.code, code),
         isNull(telegramConnectCodes.usedAt)
@@ -31498,12 +33919,30 @@ CRITICAL REMINDERS:
     }
     
     // Get company name
-    const company = await db.query.companies.findFirst({
+    const company = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.companies.findFirst({
       where: eq(companies.id, userBot.companyId)
     });
     
     // Create or update chat link using the bot owner's userId
-    await db.insert(telegramChatLinks).values({
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramChatLinks).values({
       chatId,
       companyId: userBot.companyId,
       userId: userBot.userId,
@@ -31523,7 +33962,16 @@ CRITICAL REMINDERS:
     });
     
     // Mark code as used
-    await db.update(telegramConnectCodes)
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telegramConnectCodes)
       .set({ usedAt: new Date(), usedByChatId: chatId })
       .where(eq(telegramConnectCodes.id, connectCode.id));
     
@@ -31543,7 +33991,16 @@ CRITICAL REMINDERS:
     
     // Find or create contact
     const telegramUserId = String(fromUser.id);
-    let contact = await db.query.contacts.findFirst({
+    let contact = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.contacts.findFirst({
       where: and(
         eq(contacts.companyId, companyId),
         eq(contacts.telegramId, telegramUserId)
@@ -31551,7 +34008,16 @@ CRITICAL REMINDERS:
     });
     
     if (!contact) {
-      const [newContact] = await db.insert(contacts).values({
+      const [newContact] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(contacts).values({
         companyId,
         firstName: fromUser.first_name || null,
         lastName: fromUser.last_name || null,
@@ -31564,7 +34030,16 @@ CRITICAL REMINDERS:
     }
     
     // Get or create chat link
-    let chatLink = await db.query.telegramChatLinks.findFirst({
+    let chatLink = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telegramChatLinks.findFirst({
       where: and(
         eq(telegramChatLinks.chatId, chatId),
         eq(telegramChatLinks.status, "active")
@@ -31572,7 +34047,16 @@ CRITICAL REMINDERS:
     });
     
     if (!chatLink) {
-      const [newLink] = await db.insert(telegramChatLinks).values({
+      const [newLink] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramChatLinks).values({
         companyId,
         userId,
         chatId,
@@ -31590,7 +34074,16 @@ CRITICAL REMINDERS:
       ? `${fromUser.first_name || ""} ${fromUser.last_name || ""}`.trim() || fromUser.username || "Telegram Chat"
       : message.chat.title || "Telegram Group";
     
-    let conversation = await db.query.telegramConversations.findFirst({
+    let conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telegramConversations.findFirst({
       where: and(
         eq(telegramConversations.companyId, companyId),
         eq(telegramConversations.chatId, chatId)
@@ -31598,7 +34091,16 @@ CRITICAL REMINDERS:
     });
     
     if (!conversation) {
-      const [newConv] = await db.insert(telegramConversations).values({
+      const [newConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramConversations).values({
         companyId,
         userId,
         chatId,
@@ -31611,7 +34113,16 @@ CRITICAL REMINDERS:
       }).returning();
       conversation = newConv;
     } else {
-      await db.update(telegramConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telegramConversations)
         .set({
           lastMessage: message.text?.substring(0, 100),
           lastMessageAt: new Date(),
@@ -31635,7 +34146,16 @@ CRITICAL REMINDERS:
     // Insert message
     const providerMessageId = `${chatId}:${message.message_id}`;
     
-    await db.insert(telegramMessages).values({
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramMessages).values({
       conversationId: conversation.id,
       providerMessageId,
       direction: "inbound",
@@ -31654,7 +34174,16 @@ CRITICAL REMINDERS:
       : message.chat.title || "Telegram Group";
     
     // Upsert inbox conversation
-    let inboxConversation = await db.query.telnyxConversations.findFirst({
+    let inboxConversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telnyxConversations.findFirst({
       where: and(
         eq(telnyxConversations.companyId, companyId),
         eq(telnyxConversations.phoneNumber, telegramPhoneId),
@@ -31663,7 +34192,16 @@ CRITICAL REMINDERS:
     });
     
     if (!inboxConversation) {
-      const [newInboxConv] = await db.insert(telnyxConversations).values({
+      const [newInboxConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telnyxConversations).values({
         companyId,
         phoneNumber: telegramPhoneId,
         displayName: displayNameForInbox,
@@ -31676,7 +34214,16 @@ CRITICAL REMINDERS:
       }).returning();
       inboxConversation = newInboxConv;
     } else {
-      await db.update(telnyxConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
         .set({
           displayName: displayNameForInbox,
           lastMessage: (message.text || message.caption || `[${messageType}]`).substring(0, 100),
@@ -31688,7 +34235,16 @@ CRITICAL REMINDERS:
     }
     
     // Insert into inbox messages
-    await db.insert(telnyxMessages).values({
+    // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telnyxMessages).values({
       conversationId: inboxConversation.id,
       direction: "inbound",
       messageType: "incoming",
@@ -31761,7 +34317,16 @@ CRITICAL REMINDERS:
     
     try {
       // Look up user's Telegram bot
-      const userBot = await db.query.userTelegramBots.findFirst({
+      const userBot = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.userTelegramBots.findFirst({
         where: eq(userTelegramBots.userId, user.id)
       });
       
@@ -31771,7 +34336,16 @@ CRITICAL REMINDERS:
       
       const botToken = decryptToken(userBot.botToken);
       
-      const conversation = await db.query.telegramConversations.findFirst({
+      const conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telegramConversations.findFirst({
         where: and(
           eq(telegramConversations.id, conversationId),
           eq(telegramConversations.companyId, user.companyId)
@@ -31792,7 +34366,16 @@ CRITICAL REMINDERS:
       // Save outbound message
       const providerMessageId = `${conversation.chatId}:${result.result.message_id}`;
       
-      const [message] = await db.insert(telegramMessages).values({
+      const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telegramMessages).values({
         conversationId: conversation.id,
         providerMessageId,
         direction: "outbound",
@@ -31804,7 +34387,16 @@ CRITICAL REMINDERS:
       }).returning();
       
       // Update conversation
-      await db.update(telegramConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telegramConversations)
         .set({
           lastMessage: text.substring(0, 100),
           lastMessageAt: new Date(),
@@ -31837,7 +34429,16 @@ CRITICAL REMINDERS:
         console.log("[Telnyx Voicemail] New voicemail from", fromNumber, "to", toNumber);
         
         // Find the phone number and its owner
-        const [phoneNumber] = await db
+        const [phoneNumber] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(telnyxPhoneNumbers)
           .where(eq(telnyxPhoneNumbers.phoneNumber, toNumber));
@@ -31847,7 +34448,16 @@ CRITICAL REMINDERS:
           let contactId: string | null = null;
           let callerName: string | null = null;
           
-          const [contact] = await db
+          const [contact] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .select()
             .from(contacts)
             .where(and(
@@ -31868,7 +34478,16 @@ CRITICAL REMINDERS:
           const voicemailId = crypto.randomUUID();
           
           // Store voicemail in database
-          await db.insert(voicemails).values({
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(voicemails).values({
             id: voicemailId,
             companyId: phoneNumber.companyId,
             userId: phoneNumber.ownerUserId,
@@ -31944,7 +34563,16 @@ CRITICAL REMINDERS:
         whereConditions.push(sql`REPLACE(${voicemails.toNumber}, '+', '') LIKE ${'%' + normalizedPhone}`);
       }
       
-      const userVoicemails = await db
+      const userVoicemails = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({
           id: voicemails.id,
           fromNumber: voicemails.fromNumber,
@@ -31974,7 +34602,16 @@ CRITICAL REMINDERS:
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         unreadConditions.push(sql`REPLACE(${voicemails.toNumber}, '+', '') LIKE ${'%' + normalizedPhone}`);
       }
-      const [unreadCount] = await db
+      const [unreadCount] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ count: count() })
         .from(voicemails)
         .where(and(...unreadConditions));
@@ -31996,7 +34633,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "No company associated with user" });
       }
       
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(voicemails)
         .set({ 
           status: 'read',
@@ -32025,7 +34671,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "No company associated with user" });
       }
       
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(voicemails)
         .set({ 
           status: 'deleted',
@@ -32053,7 +34708,16 @@ CRITICAL REMINDERS:
       }
       
       // Get voicemail
-      const [voicemail] = await db
+      const [voicemail] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(voicemails)
         .where(eq(voicemails.id, id));
@@ -32164,7 +34828,16 @@ CRITICAL REMINDERS:
   app.get("/api/mms-file/:id", async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
-      const [cached] = await db.select().from(mmsMediaCache).where(eq(mmsMediaCache.id, id)).limit(1);
+      const [cached] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(mmsMediaCache).where(eq(mmsMediaCache.id, id)).limit(1);
       if (!cached) {
         return res.status(404).send("File not found or expired");
       }
@@ -32332,7 +35005,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "Amount must be between $5 and $500" });
       }
       // Get company's Stripe customer info
-      const company = await db.query.companies.findFirst({
+      const company = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.companies.findFirst({
         where: eq(companies.id, user.companyId),
       });
       if (!company?.stripeCustomerId) {
@@ -32431,7 +35113,16 @@ CRITICAL REMINDERS:
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
       
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(wallets)
         .set({
           autoRecharge: enabled,
@@ -32681,7 +35372,16 @@ CRITICAL REMINDERS:
           const toE164 = to?.replace(/\D/g, '') || '';
           
           if (fromE164 && toE164) {
-            const [recentCall] = await db
+            const [recentCall] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .select()
               .from(callLogs)
               .where(eq(callLogs.direction, 'outbound'))
@@ -32694,7 +35394,16 @@ CRITICAL REMINDERS:
               
               if ((callFrom.includes(fromE164) || fromE164.includes(callFrom)) &&
                   (callTo.includes(toE164) || toE164.includes(callTo))) {
-                await db
+                // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
                   .update(callLogs)
                   .set({ telnyxCallId: call_control_id })
                   .where(eq(callLogs.id, recentCall.id));
@@ -32727,13 +35436,31 @@ CRITICAL REMINDERS:
           
           if (recordingId || recordingUrl) {
             // Update call log with recording URL and duration (cost will be charged when call ends)
-            const [callLog] = await db
+            const [callLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .select()
               .from(callLogs)
               .where(eq(callLogs.telnyxCallId, call_control_id));
             
             if (callLog) {
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
               await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
                 .update(callLogs)
                 .set({ 
                   recordingId: recordingId,
@@ -32745,7 +35472,16 @@ CRITICAL REMINDERS:
               console.log(`[Telnyx Voice Status] Updated call log ${callLog.id} with recording URL and duration: ${recordingDurationSeconds}s`);
             } else {
               // No call log found, try updating by telnyxCallId
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
               await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
                 .update(callLogs)
                 .set({ 
                   recordingId: recordingId, 
@@ -32774,7 +35510,16 @@ CRITICAL REMINDERS:
           
           if (toNumber) {
             // Find the phone number and its owner
-            const [phoneNumber] = await db
+            const [phoneNumber] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .select()
               .from(telnyxPhoneNumbers)
               .where(eq(telnyxPhoneNumbers.phoneNumber, toNumber));
@@ -32784,7 +35529,16 @@ CRITICAL REMINDERS:
               const voicemailId = crypto.randomUUID();
               
               // Save voicemail to database
-              await db.insert(voicemails).values({
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(voicemails).values({
                 id: voicemailId,
                 companyId: phoneNumber.companyId,
                 userId: phoneNumber.assignedUserId || null,
@@ -32812,7 +35566,16 @@ CRITICAL REMINDERS:
               
               // Create notification for the user
               if (phoneNumber.assignedUserId) {
-                await db.insert(notifications).values({
+                // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(notifications).values({
                   id: crypto.randomUUID(),
                   userId: phoneNumber.assignedUserId,
                   companyId: phoneNumber.companyId,
@@ -32883,7 +35646,16 @@ CRITICAL REMINDERS:
       // Outbound calls don't go through this webhook - they're initiated by WebRTC client directly
       
       // Look up the SIP username for this company's WebRTC client
-      const [credential] = await db
+      const [credential] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ sipUsername: telephonyCredentials.sipUsername })
         .from(telephonyCredentials)
         .where(
@@ -33033,7 +35805,16 @@ CRITICAL REMINDERS:
       
       console.log(`[Telnyx SMS Webhook] Received: from=${from}, to=${to}, text=${(text || "").substring(0, 50)}, media=${incomingMedia.length}`);
       
-      const phoneNumber = await db.query.telnyxPhoneNumbers.findFirst({
+      const phoneNumber = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telnyxPhoneNumbers.findFirst({
         where: eq(telnyxPhoneNumbers.phoneNumber, to),
       });
       
@@ -33044,7 +35825,16 @@ CRITICAL REMINDERS:
       
       const companyId = phoneNumber.companyId;
       
-      let conversation = await db.query.telnyxConversations.findFirst({
+      let conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telnyxConversations.findFirst({
         where: and(
           eq(telnyxConversations.companyId, companyId),
           eq(telnyxConversations.phoneNumber, from),
@@ -33053,14 +35843,32 @@ CRITICAL REMINDERS:
       });
       
       if (!conversation) {
-        const contact = await db.query.contacts.findFirst({
+        const contact = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.contacts.findFirst({
           where: and(
             eq(contacts.companyId, companyId),
             eq(contacts.phoneNormalized, from)
           ),
         });
         
-        const [newConversation] = await db.insert(telnyxConversations).values({
+        const [newConversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telnyxConversations).values({
           companyId,
           phoneNumber: from,
           companyPhoneNumber: to,
@@ -33073,7 +35881,16 @@ CRITICAL REMINDERS:
         conversation = newConversation;
         console.log("[Telnyx SMS Webhook] Created new conversation:", conversation.id);
       } else {
-        await db.update(telnyxConversations)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
           .set({
             lastMessage: text,
             lastMessageAt: new Date(),
@@ -33145,7 +35962,16 @@ CRITICAL REMINDERS:
       const hasMedia = uploadedMediaUrls.length > 0;
       const messageText = text || (hasMedia ? "(MMS attachment)" : "");
       
-      await db.insert(telnyxMessages).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telnyxMessages).values({
         conversationId: conversation.id,
         direction: "inbound",
         text: messageText,
@@ -33160,7 +35986,16 @@ CRITICAL REMINDERS:
       
       // Update conversation with lastMediaUrls if there are media files
       if (uploadedMediaUrls.length > 0) {
-        await db.update(telnyxConversations)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
           .set({
             lastMessage: text || "(MMS attachment)",
             lastMediaUrls: uploadedMediaUrls,
@@ -33200,7 +36035,16 @@ CRITICAL REMINDERS:
             
             if (sendResult.success) {
               // Save AI response as outbound message
-              await db.insert(telnyxMessages).values({
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telnyxMessages).values({
                 conversationId: conversation.id,
                 direction: "outbound",
                 messageType: "outgoing",
@@ -33214,7 +36058,16 @@ CRITICAL REMINDERS:
               });
               
               // Update conversation with AI response
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
               await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
                 .update(telnyxConversations)
                 .set({
                   lastMessage: autopilotResult.response.substring(0, 200),
@@ -33614,12 +36467,30 @@ CRITICAL REMINDERS:
     
     const logRevealAttempt = async (success: boolean, reason?: string) => {
       try {
-        const credential = await db.query.systemApiCredentials.findFirst({
+        const credential = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.systemApiCredentials.findFirst({
           where: eq(systemApiCredentials.id, id),
         });
         
         if (credential) {
-          await db.insert(systemApiCredentialsAudit).values({
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(systemApiCredentialsAudit).values({
             credentialId: id,
             provider: credential.provider,
             keyName: credential.keyName,
@@ -33655,7 +36526,16 @@ CRITICAL REMINDERS:
         await logRevealAttempt(false, "invalid_password");
         return res.status(401).json({ message: "Invalid password" });
       }
-      const credential = await db.query.systemApiCredentials.findFirst({
+      const credential = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.systemApiCredentials.findFirst({
         where: eq(systemApiCredentials.id, id),
       });
       if (!credential) {
@@ -33729,7 +36609,16 @@ CRITICAL REMINDERS:
       const { db } = await import("./db");
       const { systemApiCredentials } = await import("@shared/schema");
       const { eq } = await import("drizzle-orm");
-      const credential = await db.query.systemApiCredentials.findFirst({
+      const credential = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.systemApiCredentials.findFirst({
         where: eq(systemApiCredentials.id, id),
       });
       if (!credential) {
@@ -33738,7 +36627,16 @@ CRITICAL REMINDERS:
       const updates: any = { updatedAt: new Date(), updatedBy: user.id };
       if (description !== undefined) updates.description = description;
       if (isActive !== undefined) updates.isActive = isActive;
-      const [updated] = await db
+      const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(systemApiCredentials)
         .set(updates)
         .where(eq(systemApiCredentials.id, id))
@@ -33762,7 +36660,16 @@ CRITICAL REMINDERS:
       const { db } = await import("./db");
       const { systemApiCredentials } = await import("@shared/schema");
       const { eq } = await import("drizzle-orm");
-      const credential = await db.query.systemApiCredentials.findFirst({
+      const credential = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.systemApiCredentials.findFirst({
         where: eq(systemApiCredentials.id, id),
       });
       if (!credential) {
@@ -33793,7 +36700,16 @@ CRITICAL REMINDERS:
       const whereConditions = environment 
         ? and(eq(systemApiCredentials.provider, provider), eq(systemApiCredentials.environment, environment as string))
         : eq(systemApiCredentials.provider, provider);
-      const credentialsToDelete = await db.query.systemApiCredentials.findMany({
+      const credentialsToDelete = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.systemApiCredentials.findMany({
         where: whereConditions,
       });
       if (credentialsToDelete.length === 0) {
@@ -33828,7 +36744,16 @@ CRITICAL REMINDERS:
     const logRotateAttempt = async (success: boolean, credentialInfo?: { provider: string; keyName: string }, reason?: string) => {
       try {
         if (credentialInfo) {
-          await db.insert(systemApiCredentialsAudit).values({
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(systemApiCredentialsAudit).values({
             credentialId: id,
             provider: credentialInfo.provider,
             keyName: credentialInfo.keyName,
@@ -33839,10 +36764,28 @@ CRITICAL REMINDERS:
             metadata: success ? null : { reason },
           });
         } else {
-          const credential = await db.query.systemApiCredentials.findFirst({
+          const credential = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.systemApiCredentials.findFirst({
             where: eq(systemApiCredentials.id, id),
           });
           if (credential) {
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.insert(systemApiCredentialsAudit).values({
               credentialId: id,
               provider: credential.provider,
@@ -33880,7 +36823,16 @@ CRITICAL REMINDERS:
         await logRotateAttempt(false, undefined, "invalid_password");
         return res.status(401).json({ message: "Invalid password" });
       }
-      const credential = await db.query.systemApiCredentials.findFirst({
+      const credential = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.systemApiCredentials.findFirst({
         where: eq(systemApiCredentials.id, id),
       });
       if (!credential) {
@@ -34058,7 +37010,16 @@ CRITICAL REMINDERS:
       };
       
       // Get company name for fallback
-      const company = await db.query.companies.findFirst({
+      const company = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.companies.findFirst({
         where: eq(companies.id, companyId),
         columns: { name: true },
       });
@@ -34069,7 +37030,16 @@ CRITICAL REMINDERS:
       await syncAllE911StatusForCompany(companyId);
 
       // Get all phone numbers for the company (simple query without join)
-      const phoneNumbersRaw = await db
+      const phoneNumbersRaw = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxPhoneNumbers)
         .where(eq(telnyxPhoneNumbers.companyId, companyId));
@@ -34079,7 +37049,16 @@ CRITICAL REMINDERS:
         let ownerFirstName = null;
         let ownerLastName = null;
         if (num.ownerUserId) {
-          const [owner] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+          const [owner] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select({ firstName: users.firstName, lastName: users.lastName })
             .from(users)
             .where(eq(users.id, num.ownerUserId))
             .limit(1);
@@ -34114,7 +37093,16 @@ CRITICAL REMINDERS:
       // Get compliance applications for these numbers
       const phoneNumberList = phoneNumbers.map(p => p.phoneNumber);
       const complianceApps = phoneNumberList.length > 0 
-        ? await db
+        ? // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .select({
               id: complianceApplications.id,
               selectedPhoneNumber: complianceApplications.selectedPhoneNumber,
@@ -34178,7 +37166,16 @@ CRITICAL REMINDERS:
       }
       
       // Verify the phone number belongs to this company
-      const phoneNumber = await db
+      const phoneNumber = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxPhoneNumbers)
         .where(and(
@@ -34192,7 +37189,16 @@ CRITICAL REMINDERS:
       }
       
       // Update the display name
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(telnyxPhoneNumbers)
         .set({ displayName: displayName.trim() || null })
         .where(eq(telnyxPhoneNumbers.id, id));
@@ -34216,7 +37222,16 @@ CRITICAL REMINDERS:
       }
       
       // Verify the phone number belongs to this company and get Telnyx ID
-      const [phoneNumber] = await db
+      const [phoneNumber] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxPhoneNumbers)
         .where(and(
@@ -34271,7 +37286,16 @@ CRITICAL REMINDERS:
       }
       
       // Verify the phone number belongs to this company
-      const phoneNumberRecord = await db
+      const phoneNumberRecord = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxPhoneNumbers)
         .where(and(
@@ -34510,7 +37534,16 @@ CRITICAL REMINDERS:
       }
       
       // Get the telephony settings for user's company
-      const settings = await db.query.telephonySettings.findFirst({
+      const settings = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telephonySettings.findFirst({
         where: eq(telephonySettings.companyId, currentUser.companyId || ''),
       });
       
@@ -34564,7 +37597,16 @@ CRITICAL REMINDERS:
       
       if (!telnyxApiKey) {
         // Fall back to local database if Telnyx not configured
-        const brands = await db
+        const brands = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(telnyxBrands)
           .where(eq(telnyxBrands.companyId, companyId!))
@@ -34581,7 +37623,16 @@ CRITICAL REMINDERS:
       if (!response.ok) {
         console.error("[10DLC] Error fetching brands from Telnyx:", await response.text());
         // Fall back to local database
-        const brands = await db
+        const brands = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(telnyxBrands)
           .where(eq(telnyxBrands.companyId, companyId!))
@@ -34691,7 +37742,16 @@ CRITICAL REMINDERS:
         return res.status(response.status).json({ message: errorMsg, details: result });
       }
       // Save to database
-      const [newBrand] = await db
+      const [newBrand] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .insert(telnyxBrands)
         .values({
           companyId: companyId!,
@@ -34750,7 +37810,16 @@ CRITICAL REMINDERS:
       const companyId = req.session.user?.companyId;
       const brandId = parseInt(req.params.id);
       
-      const [brand] = await db
+      const [brand] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxBrands)
         .where(and(
@@ -34776,7 +37845,16 @@ CRITICAL REMINDERS:
       const companyId = req.session.user?.companyId;
       
       // Get wallet with messaging profile ID
-      const [wallet] = await db
+      const [wallet] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(wallets)
         .where(and(eq(wallets.companyId, companyId!), isNotNull(wallets.telnyxAccountId)));
@@ -34805,6 +37883,15 @@ CRITICAL REMINDERS:
             console.log(`[Messaging Profile] Found existing profile ${profile.id}, syncing to wallet ${wallet.id}`);
             
             // Save to wallet
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db
               .update(wallets)
               .set({ telnyxMessagingProfileId: profile.id, updatedAt: new Date() })
@@ -34849,7 +37936,16 @@ CRITICAL REMINDERS:
       const { webhookUrl } = req.body;
       
       // Get company for display name
-      const [company] = await db
+      const [company] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(companies)
         .where(eq(companies.id, companyId!));
@@ -34873,7 +37969,16 @@ CRITICAL REMINDERS:
       }
       
       // Check if profile already exists
-      const [wallet] = await db
+      const [wallet] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(wallets)
         .where(and(eq(wallets.companyId, companyId!), isNotNull(wallets.telnyxAccountId)));
@@ -34916,7 +38021,16 @@ CRITICAL REMINDERS:
       
       // Save to wallet
       if (wallet) {
-        await db
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .update(wallets)
           .set({ telnyxMessagingProfileId: profileId, updatedAt: new Date() })
           .where(eq(wallets.id, wallet.id));
@@ -34935,7 +38049,16 @@ CRITICAL REMINDERS:
     try {
       const companyId = req.session.user?.companyId;
       
-      const [wallet] = await db
+      const [wallet] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(wallets)
         .where(and(eq(wallets.companyId, companyId!), isNotNull(wallets.telnyxAccountId)));
@@ -34966,7 +38089,16 @@ CRITICAL REMINDERS:
       }
       
       // Clear from wallet
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(wallets)
         .set({ telnyxMessagingProfileId: null, updatedAt: new Date() })
         .where(eq(wallets.id, wallet.id));
@@ -36098,7 +39230,16 @@ CRITICAL REMINDERS:
       }
       
       // Check if user has a PBX extension assigned
-      const userExtension = await db.query.pbxExtensions.findFirst({
+      const userExtension = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.pbxExtensions.findFirst({
         where: and(
           eq(pbxExtensions.companyId, currentUser.companyId),
           eq(pbxExtensions.userId, currentUser.id)
@@ -36106,7 +39247,16 @@ CRITICAL REMINDERS:
       });
       
       // Check if user has a phone number assigned to them
-      const assignedNumber = await db.query.telnyxPhoneNumbers.findFirst({
+      const assignedNumber = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telnyxPhoneNumbers.findFirst({
         where: and(
           eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
           eq(telnyxPhoneNumbers.ownerUserId, currentUser.id),
@@ -36117,7 +39267,16 @@ CRITICAL REMINDERS:
       // Only the Phone System owner (activating admin) can use any company number
       if (!assignedNumber) {
         // Check if user is the phone system owner
-        const settings = await db.query.telephonySettings.findFirst({
+        const settings = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telephonySettings.findFirst({
           where: eq(telephonySettings.companyId, currentUser.companyId),
         });
         
@@ -36125,7 +39284,16 @@ CRITICAL REMINDERS:
         const isSuperadmin = currentUser.role === 'superadmin';
         
         if (isPhoneSystemOwner || isSuperadmin) {
-          const anyCompanyNumber = await db.query.telnyxPhoneNumbers.findFirst({
+          const anyCompanyNumber = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telnyxPhoneNumbers.findFirst({
             where: and(
               eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
               eq(telnyxPhoneNumbers.status, 'active')
@@ -36555,7 +39723,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "No company associated with user" });
       }
       // Find the phone number
-      const [phoneNumber] = await db
+      const [phoneNumber] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxPhoneNumbers)
         .where(and(
@@ -36568,7 +39745,16 @@ CRITICAL REMINDERS:
       // If userId is provided, verify the user exists and belongs to the same company
       let targetConnectionId: string | null = null;
       if (userId) {
-        const [targetUser] = await db
+        const [targetUser] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(users)
           .where(and(
@@ -36579,7 +39765,16 @@ CRITICAL REMINDERS:
           return res.status(404).json({ message: "Target user not found or not in the same company" });
         }
         // Get the user's extension to find their SIP connection
-        const [userExtension] = await db
+        const [userExtension] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select({ connectionId: pbxExtensions.telnyxCredentialConnectionId })
           .from(pbxExtensions)
           .where(and(
@@ -36591,7 +39786,16 @@ CRITICAL REMINDERS:
         }
       } else {
         // User is being unassigned - use the company's main credential connection
-        const [settings] = await db
+        const [settings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
           .from(telephonySettings)
           .where(eq(telephonySettings.companyId, user.companyId));
@@ -36624,7 +39828,16 @@ CRITICAL REMINDERS:
               console.log(`[Telnyx Assign] Successfully updated connection in Telnyx to ${targetConnectionId}`);
               
               // Update local database with new connection ID
+              // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
               await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
                 .update(telnyxPhoneNumbers)
                 .set({ connectionId: targetConnectionId })
                 .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
@@ -36638,7 +39851,16 @@ CRITICAL REMINDERS:
       // Capture previous owner before update for unassignment notification
       const previousOwnerId = phoneNumber.ownerUserId;
       // Update the phone number's ownerUserId
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(telnyxPhoneNumbers)
         .set({ 
           ownerUserId: userId || null,
@@ -37026,7 +40248,16 @@ CRITICAL REMINDERS:
         new (await import("./services/secrets-service")).SecretsService(), "telnyx", "api_key"
       );
       
-      const [wallet] = await db
+      const [wallet] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(wallets)
         .where(eq(wallets.companyId, user.companyId));
@@ -37163,7 +40394,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "No company associated with user" });
       }
       
-      const [settings] = await db
+      const [settings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({
           noiseSuppressionEnabled: telephonySettings.noiseSuppressionEnabled,
           noiseSuppressionDirection: telephonySettings.noiseSuppressionDirection,
@@ -37211,7 +40451,16 @@ CRITICAL REMINDERS:
       }
       
       // Get credential connection ID from telephony settings
-      const [settings] = await db
+      const [settings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({
           credentialConnectionId: telephonySettings.credentialConnectionId,
         })
@@ -37263,7 +40512,16 @@ CRITICAL REMINDERS:
       console.log(`[Noise Suppression] Updated credential connection ${settings.credentialConnectionId} - config: ${noiseSuppressionLevel}`);
       
       // Save settings to database
-      await db.update(telephonySettings)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telephonySettings)
         .set({
           noiseSuppressionEnabled: enabled,
           noiseSuppressionDirection: direction || 'outbound',
@@ -37291,7 +40549,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "No company associated with user" });
       }
       
-      const [settings] = await db
+      const [settings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({
           recordingEnabled: telephonySettings.recordingEnabled,
           cnamEnabled: telephonySettings.cnamEnabled,
@@ -37336,7 +40603,16 @@ CRITICAL REMINDERS:
       }
       
       // Check if settings exist, if not create them (upsert)
-      const [existingSettings] = await db
+      const [existingSettings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telephonySettings)
         .where(eq(telephonySettings.companyId, user.companyId));
@@ -37344,13 +40620,31 @@ CRITICAL REMINDERS:
       let updatedSettings;
       if (existingSettings) {
         // Update existing settings
-        [updatedSettings] = await db.update(telephonySettings)
+        [updatedSettings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telephonySettings)
           .set(updateData)
           .where(eq(telephonySettings.companyId, user.companyId))
           .returning();
       } else {
         // Insert new settings with billing features
-        [updatedSettings] = await db.insert(telephonySettings)
+        [updatedSettings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telephonySettings)
           .values({
             companyId: user.companyId,
             recordingEnabled: typeof recordingEnabled === 'boolean' ? recordingEnabled : false,
@@ -37552,7 +40846,16 @@ CRITICAL REMINDERS:
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Super Admin access required" });
       }
-      const [pricing] = await db.select().from(telnyxGlobalPricing).limit(1);
+      const [pricing] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(telnyxGlobalPricing).limit(1);
       
       if (!pricing) {
         // Return default pricing with flat field names
@@ -37676,7 +40979,16 @@ CRITICAL REMINDERS:
       const data = req.body;
       console.log("[Global Pricing] Received data:", JSON.stringify(data, null, 2));
       // Get existing pricing or create new
-      const [existing] = await db.select().from(telnyxGlobalPricing).limit(1);
+      const [existing] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(telnyxGlobalPricing).limit(1);
       // Accept flat field names directly from frontend
       const pricingData = {
         // Voice Cost (what Telnyx charges us)
@@ -37728,11 +41040,29 @@ CRITICAL REMINDERS:
         updatedBy: user.id,
       };
       if (existing) {
-        await db.update(telnyxGlobalPricing)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxGlobalPricing)
           .set(pricingData)
           .where(eq(telnyxGlobalPricing.id, existing.id));
       } else {
-        await db.insert(telnyxGlobalPricing).values(pricingData);
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(telnyxGlobalPricing).values(pricingData);
       }
       // Invalidate pricing cache
       const { invalidatePricingCache } = await import('./services/pricing-config');
@@ -38093,7 +41423,16 @@ CRITICAL REMINDERS:
       }
       
       // First try: Get SIP credentials from user's PBX extension (preferred - user-specific)
-      const [extension] = await db
+      const [extension] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ 
           sipUsername: pbxExtensions.sipUsername,
           sipPassword: pbxExtensions.sipPassword
@@ -38134,7 +41473,16 @@ CRITICAL REMINDERS:
       }
       
       // Fallback: Get any active company-level telephony credentials
-      const [credential] = await db
+      const [credential] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ 
           sipUsername: telephonyCredentials.sipUsername,
           sipPassword: telephonyCredentials.sipPassword
@@ -38229,7 +41577,16 @@ CRITICAL REMINDERS:
       }
       apiKey = apiKey.trim().replace(/[\r\n\t]/g, "");
       // Get the company's managed account ID from wallet
-      const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, user.companyId)).limit(1);
+      const [wallet] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(wallets).where(eq(wallets.companyId, user.companyId)).limit(1);
       const managedAccountId = wallet?.telnyxAccountId;
       
       console.log(`[Telnyx Sync] Fetching recordings for company ${user.companyId}, managed account: ${managedAccountId || "none"}`);
@@ -38270,7 +41627,16 @@ CRITICAL REMINDERS:
         const searchStart = new Date(recordingDate.getTime() - 2 * 60 * 60 * 1000);
         const searchEnd = new Date(recordingDate.getTime() + 5 * 60 * 1000);
         // Find matching call log without recording
-        const matchingCalls = await db
+        const matchingCalls = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(callLogs)
           .where(
@@ -38287,7 +41653,16 @@ CRITICAL REMINDERS:
           )
           .limit(1);
         if (matchingCalls.length > 0) {
-          await db
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .update(callLogs)
             .set({ recordingUrl: mp3Url })
             .where(eq(callLogs.id, matchingCalls[0].id));
@@ -38329,7 +41704,16 @@ CRITICAL REMINDERS:
       // Get managed account ID if company specified
       let managedAccountId: string | undefined;
       if (companyId) {
-        const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, String(companyId))).limit(1);
+        const [wallet] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(wallets).where(eq(wallets.companyId, String(companyId))).limit(1);
         managedAccountId = wallet?.telnyxAccountId || undefined;
       }
       const headers: Record<string, string> = {
@@ -38403,7 +41787,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ error: "companyId is required" });
       }
       // 1. Get call logs from our database (client billing)
-      const dbCalls = await db.select()
+      const dbCalls = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
         .from(callLogs)
         .where(eq(callLogs.companyId, String(companyId)))
         .orderBy(desc(callLogs.startedAt))
@@ -38419,7 +41812,16 @@ CRITICAL REMINDERS:
         apiKey = apiKey.trim().replace(/[\r\n\t]/g, "");
         
         // Get managed account ID
-        const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, String(companyId))).limit(1);
+        const [wallet] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(wallets).where(eq(wallets.companyId, String(companyId))).limit(1);
         const managedAccountId = wallet?.telnyxAccountId;
         
         if (managedAccountId) {
@@ -38739,7 +42141,16 @@ CRITICAL REMINDERS:
       const { telnyxLegId } = req.body;
       // First, try to get the stored PSTN call_control_id from activeCallsMap
       // This is set by the Call Control webhook when calls come through the Call Control App
-      const [credential] = await db
+      const [credential] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ sipUsername: telephonyCredentials.sipUsername })
         .from(telephonyCredentials)
         .where(
@@ -38853,7 +42264,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ success: false, message: "No company associated" });
       }
       // Get the sipUsername for this company
-      const [credential] = await db
+      const [credential] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ sipUsername: telephonyCredentials.sipUsername })
         .from(telephonyCredentials)
         .where(
@@ -38950,7 +42370,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "Missing required fields" });
       }
       // Check if call already exists (update) or create new
-      const existingLog = callId ? await db.query.callLogs.findFirst({
+      const existingLog = callId ? // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.callLogs.findFirst({
         where: and(
           eq(callLogs.telnyxCallId, callId),
           eq(callLogs.companyId, user.companyId)
@@ -38958,7 +42387,16 @@ CRITICAL REMINDERS:
       }) : null;
       if (existingLog) {
         // Update existing call log
-        await db.update(callLogs)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(callLogs)
           .set({
             status,
             duration: duration || 0,
@@ -38978,7 +42416,16 @@ CRITICAL REMINDERS:
       
       let matchedContact: any = null;
       try {
-        matchedContact = await db.query.contacts.findFirst({
+        matchedContact = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.contacts.findFirst({
           where: and(
             eq(contacts.companyId, user.companyId),
             isNotNull(contacts.phone),
@@ -39014,7 +42461,16 @@ CRITICAL REMINDERS:
           insertValues.callerName = callerName;
         }
       }
-      const [newLog] = await db.insert(callLogs).values(insertValues).returning();
+      const [newLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(callLogs).values(insertValues).returning();
       console.log("[WebRTC] Created call log:", newLog.id, "direction:", direction, "to:", toNumber);
       res.json({ success: true, id: newLog.id, created: true });
     } catch (error: any) {
@@ -39069,7 +42525,16 @@ CRITICAL REMINDERS:
       // Wrap each lookup in try/catch to prevent any single failure from crashing
       try {
         // Search in quotes first (most common source for client data)
-        const matchedQuote = await db
+        const matchedQuote = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select({
             clientFirstName: quotes.clientFirstName,
             clientLastName: quotes.clientLastName,
@@ -39100,7 +42565,16 @@ CRITICAL REMINDERS:
       
       try {
         // Search in policies
-        const matchedPolicy = await db
+        const matchedPolicy = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select({
             clientFirstName: policies.clientFirstName,
             clientLastName: policies.clientLastName,
@@ -39131,7 +42605,16 @@ CRITICAL REMINDERS:
       
       try {
         // Search in contacts table
-        const matchedContact = await db
+        const matchedContact = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select({
             firstName: contacts.firstName,
             lastName: contacts.lastName,
@@ -39181,7 +42664,16 @@ CRITICAL REMINDERS:
       let logs;
       // Superadmin can see all call logs for a company
       if (user.role === "superadmin") {
-        logs = await db
+        logs = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(callLogs)
           .where(eq(callLogs.companyId, user.companyId))
@@ -39189,7 +42681,16 @@ CRITICAL REMINDERS:
           .limit(parsedLimit);
       } else {
         // Regular users only see their own call logs (user-scoped)
-        logs = await db
+        logs = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(callLogs)
           .where(and(
@@ -39212,7 +42713,16 @@ CRITICAL REMINDERS:
         
         try {
           // First, look up in contacts table (unified customer directory)
-          const [matchingContact] = await db
+          const [matchingContact] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .select({
               id: contacts.id,
               firstName: contacts.firstName,
@@ -39241,7 +42751,16 @@ CRITICAL REMINDERS:
           }
           
           // Fallback: look up policy by client phone number
-          const [matchingPolicy] = await db
+          const [matchingPolicy] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .select({
               id: policies.id,
               clientFirstName: policies.clientFirstName,
@@ -39307,7 +42826,16 @@ CRITICAL REMINDERS:
       if (!fromNumber || !toNumber || !direction || !status) {
         return res.status(400).json({ message: "Missing required fields" });
       }
-      const [log] = await db
+      const [log] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .insert(callLogs)
         .values({
           companyId: user.companyId,
@@ -39344,7 +42872,16 @@ CRITICAL REMINDERS:
       }
       const { status, duration, answeredAt, endedAt, hangupCause, recordingUrl, fromNumber, toNumber, direction, sipCallId, startedAt, contactId, callerName } = req.body;
       // First, get the existing call log to check current state
-      const [existingLog] = await db
+      const [existingLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(callLogs)
         .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)));
@@ -39380,7 +42917,16 @@ CRITICAL REMINDERS:
       if (isCallEnding && hasDuration && callNotBilled) {
         // Atomically try to claim billing rights by setting a marker cost value
         // Only one request will succeed in updating where cost IS NULL or < 0.01
-        const [claimedLog] = await db
+        const [claimedLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .update(callLogs)
           .set({ cost: "-1" }) // Temporary marker indicating billing in progress
           .where(and(
@@ -39393,7 +42939,16 @@ CRITICAL REMINDERS:
         if (!claimedLog) {
           console.log(`[Call Logs] Billing already claimed by another request, skipping duplicate charge for: ${id}`);
           // Another request already claimed billing, just update the call log
-          const [updated] = await db
+          const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .update(callLogs)
             .set(updateData)
             .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)))
@@ -39436,7 +42991,16 @@ CRITICAL REMINDERS:
           updateData.cost = "0.0000";
         }
       }
-      const [updated] = await db
+      const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(callLogs)
         .set(updateData)
         .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)))
@@ -39461,7 +43025,16 @@ CRITICAL REMINDERS:
       }
       
       // Verify the call log belongs to this company
-      const [callLog] = await db
+      const [callLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(callLogs)
         .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)));
@@ -39494,7 +43067,16 @@ CRITICAL REMINDERS:
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .delete(callLogs)
         .where(and(
           eq(callLogs.id, id),
@@ -39516,12 +43098,30 @@ CRITICAL REMINDERS:
       }
       // Superadmin can clear all company call logs
       if (user.role === "superadmin") {
-        await db
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .delete(callLogs)
           .where(eq(callLogs.companyId, user.companyId));
       } else {
         // Regular users can only clear their own call logs (user-scoped)
-        await db
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .delete(callLogs)
           .where(and(
             eq(callLogs.companyId, user.companyId),
@@ -39561,7 +43161,16 @@ CRITICAL REMINDERS:
       let callLog;
       
       // Try to find by primary key ID (UUID format)
-      [callLog] = await db
+      [callLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(callLogs)
         .where(and(
@@ -39571,7 +43180,16 @@ CRITICAL REMINDERS:
       
       if (!callLog) {
         // Fallback: search by Telnyx identifiers
-        [callLog] = await db
+        [callLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(callLogs)
           .where(and(
@@ -39605,7 +43223,16 @@ CRITICAL REMINDERS:
       }
       
       // Query the database for the active media with type='start' and the selected language
-      const [startMedia] = await db
+      const [startMedia] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(recordingAnnouncementMedia)
         .where(and(
@@ -39671,7 +43298,16 @@ CRITICAL REMINDERS:
       if (recordResponse.ok) {
         console.log(`[Call Recording] Recording active with announcement for call ${telnyxCallControlId}`);
         // Save the recording language to the database
-        await db.update(callLogs).set({ recordingLanguage: language }).where(eq(callLogs.id, callLog.id));
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(callLogs).set({ recordingLanguage: language }).where(eq(callLogs.id, callLog.id));
         return res.json({ success: true });
       } else {
         const errorText = await recordResponse.text();
@@ -39700,7 +43336,16 @@ CRITICAL REMINDERS:
       let callLog;
       
       // Try to find by primary key ID (UUID format)
-      [callLog] = await db
+      [callLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(callLogs)
         .where(and(
@@ -39710,7 +43355,16 @@ CRITICAL REMINDERS:
       
       if (!callLog) {
         // Fallback: search by Telnyx identifiers
-        [callLog] = await db
+        [callLog] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(callLogs)
           .where(and(
@@ -39746,7 +43400,16 @@ CRITICAL REMINDERS:
       const recordingLanguage = callLog.recordingLanguage || 'en';
       
       // Query the database for the active stop media with the recorded language
-      const [stopMedia] = await db
+      const [stopMedia] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(recordingAnnouncementMedia)
         .where(and(
@@ -39786,7 +43449,16 @@ CRITICAL REMINDERS:
       }
       
       // Step 2: Stop the recording and clear recording language
-      await db.update(callLogs).set({ recordingLanguage: null }).where(eq(callLogs.id, callLog.id));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(callLogs).set({ recordingLanguage: null }).where(eq(callLogs.id, callLog.id));
       
       const response = await fetch(`https://api.telnyx.com/v2/calls/${telnyxCallControlId}/actions/record_stop`, {
         method: 'POST',
@@ -39824,7 +43496,16 @@ CRITICAL REMINDERS:
       }
       const { status, limit = "50" } = req.query;
       const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
-      const messages = await db
+      const messages = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(voicemails)
         .where(
@@ -39835,7 +43516,16 @@ CRITICAL REMINDERS:
         .orderBy(desc(voicemails.receivedAt))
         .limit(parsedLimit);
       // Get unread count
-      const [unreadCount] = await db
+      const [unreadCount] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ count: count() })
         .from(voicemails)
         .where(and(
@@ -39869,7 +43559,16 @@ CRITICAL REMINDERS:
           updateData.readAt = new Date();
         }
       }
-      const [updated] = await db
+      const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(voicemails)
         .set(updateData)
         .where(and(
@@ -39892,7 +43591,16 @@ CRITICAL REMINDERS:
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .delete(voicemails)
         .where(and(
           eq(voicemails.id, id),
@@ -39916,13 +43624,31 @@ CRITICAL REMINDERS:
     const appendLog = async (message: string) => {
       logs += message + "\n";
       console.log(`[DEPLOY] ${message}`);
-      await db.update(deploymentJobs)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(deploymentJobs)
         .set({ logs })
         .where(eq(deploymentJobs.id, jobId));
     };
     
     try {
-      await db.update(deploymentJobs)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(deploymentJobs)
         .set({ status: "in_progress", logs: "" })
         .where(eq(deploymentJobs.id, jobId));
       
@@ -39933,7 +43659,16 @@ CRITICAL REMINDERS:
         await appendLog("Running in development mode - simulating deployment");
         await appendLog("In production, this will execute: git pull, npm ci, npm run build, pm2 restart");
         
-        await db.update(deploymentJobs)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(deploymentJobs)
           .set({ 
             status: "completed",
             completedAt: new Date(),
@@ -40009,7 +43744,16 @@ CRITICAL REMINDERS:
       await runCommand("pm2", ["restart", "curbe-admin", "--update-env"], appDir);
       await appendLog("Application restarted successfully");
       
-      await db.update(deploymentJobs)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(deploymentJobs)
         .set({ 
           status: "completed",
           completedAt: new Date(),
@@ -40020,7 +43764,16 @@ CRITICAL REMINDERS:
       console.log(`[DEPLOY] Job ${jobId} completed successfully`);
     } catch (error: any) {
       console.error(`[DEPLOY] Job ${jobId} failed:`, error);
-      await db.update(deploymentJobs)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(deploymentJobs)
         .set({ 
           status: "failed",
           completedAt: new Date(),
@@ -40036,7 +43789,16 @@ CRITICAL REMINDERS:
     try {
       console.log("[DEPLOY] GitHub webhook triggered");
       
-      const [existingJob] = await db
+      const [existingJob] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(deploymentJobs)
         .where(eq(deploymentJobs.status, "in_progress"))
@@ -40049,7 +43811,16 @@ CRITICAL REMINDERS:
         });
       }
       
-      const [job] = await db
+      const [job] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .insert(deploymentJobs)
         .values({
           triggeredBy: "github_webhook",
@@ -40083,7 +43854,16 @@ CRITICAL REMINDERS:
       
       console.log("[DEPLOY] Manual deployment triggered by:", user.email);
       
-      const [existingJob] = await db
+      const [existingJob] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(deploymentJobs)
         .where(eq(deploymentJobs.status, "in_progress"))
@@ -40097,7 +43877,16 @@ CRITICAL REMINDERS:
         });
       }
       
-      const [job] = await db
+      const [job] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .insert(deploymentJobs)
         .values({
           triggeredBy: user.email || "superadmin",
@@ -40130,7 +43919,16 @@ CRITICAL REMINDERS:
         return res.status(403).json({ message: "Only super admin can view deployment status" });
       }
       
-      const jobs = await db
+      const jobs = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(deploymentJobs)
         .orderBy(desc(deploymentJobs.startedAt))
@@ -40607,7 +44405,16 @@ CRITICAL REMINDERS:
       console.log(`[PBX Auto-Reject] Agent ${user.id} auto-rejecting call from ${callerNumber} (reason: ${reason}, callLegId: ${callLegId})`);
       
       // Log the missed call since the SDK already hung up
-      await db.insert(callLogs).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(callLogs).values({
         id: crypto.randomUUID(),
         companyId: user.companyId,
         userId: user.id,
@@ -40622,7 +44429,16 @@ CRITICAL REMINDERS:
       });
       
       // Create missed call notification
-      await db.insert(notifications).values({
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(notifications).values({
         id: crypto.randomUUID(),
         userId: user.id,
         companyId: user.companyId,
@@ -40712,7 +44528,16 @@ CRITICAL REMINDERS:
       const user = req.user as User;
       
       // Get the extension details
-      const [extension] = await db
+      const [extension] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(pbxExtensions)
         .where(eq(pbxExtensions.id, req.params.extensionId));
@@ -40789,7 +44614,16 @@ CRITICAL REMINDERS:
       const user = req.user as User;
       
       // Get the user's extension
-      const [extension] = await db
+      const [extension] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({
           id: pbxExtensions.id,
           extension: pbxExtensions.extension,
@@ -40830,7 +44664,16 @@ CRITICAL REMINDERS:
         console.log(`[WebRTC] Auto-provisioned SIP credentials for extension ${extension.id}`);
         
         // Return the newly provisioned credentials
-        const [settings] = await db
+        const [settings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select({ sipDomain: telephonySettings.sipDomain })
           .from(telephonySettings)
           .where(eq(telephonySettings.companyId, user.companyId));
@@ -40850,7 +44693,16 @@ CRITICAL REMINDERS:
       }
       
       // Get company SIP domain from telephonySettings (must match what Call Control uses for dialing)
-      const [settings] = await db
+      const [settings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ sipDomain: telephonySettings.sipDomain })
         .from(telephonySettings)
         .where(eq(telephonySettings.companyId, user.companyId));
@@ -40879,7 +44731,16 @@ CRITICAL REMINDERS:
       const user = req.user as User;
       
       // Get current extension to check if user is being assigned
-      const [currentExtension] = await db
+      const [currentExtension] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ userId: pbxExtensions.userId })
         .from(pbxExtensions)
         .where(eq(pbxExtensions.id, req.params.extensionId));
@@ -41247,7 +45108,16 @@ CRITICAL REMINDERS:
       }
       
       // Check if it's a queue extension
-      const [queue] = await db
+      const [queue] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ id: pbxQueues.id, name: pbxQueues.name, extension: pbxQueues.extension })
         .from(pbxQueues)
         .where(and(
@@ -41261,7 +45131,16 @@ CRITICAL REMINDERS:
       }
       
       // Check if it's a user extension
-      const [userExt] = await db
+      const [userExt] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(pbxExtensions)
         .where(and(
@@ -41291,7 +45170,16 @@ CRITICAL REMINDERS:
       const ivrExtension = settings?.ivrEnabled ? settings.ivrExtension : null;
       
       // Get all active queues with extensions
-      const allQueues = await db
+      const allQueues = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ id: pbxQueues.id, extension: pbxQueues.extension, name: pbxQueues.name })
         .from(pbxQueues)
         .where(and(
@@ -41318,7 +45206,16 @@ CRITICAL REMINDERS:
       const { targetType, queueId } = req.body; // targetType: 'ivr' | 'queue'
       
       // Get user's SIP credentials
-      const [credential] = await db
+      const [credential] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telephonyCredentials)
         .where(and(
@@ -41331,7 +45228,16 @@ CRITICAL REMINDERS:
       }
       
       // Get company's main phone number for outbound caller ID
-      const [phoneNumber] = await db
+      const [phoneNumber] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxPhoneNumbers)
         .where(eq(telnyxPhoneNumbers.companyId, user.companyId));
@@ -41341,7 +45247,16 @@ CRITICAL REMINDERS:
       }
       
       // Get Call Control App ID from telephony settings
-      const [settings] = await db
+      const [settings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ callControlAppId: telephonySettings.callControlAppId })
         .from(telephonySettings)
         .where(eq(telephonySettings.companyId, user.companyId));
@@ -41414,7 +45329,16 @@ CRITICAL REMINDERS:
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-      const audioFiles = await db
+      const audioFiles = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(pbxAudioFiles)
         .where(eq(pbxAudioFiles.companyId, user.companyId))
@@ -41424,7 +45348,16 @@ CRITICAL REMINDERS:
         const usage: { type: string; name: string; id: string }[] = [];
         
         // Check IVRs using this audio as greeting
-        const ivrsUsingAsGreeting = await db
+        const ivrsUsingAsGreeting = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select({ id: pbxIvrs.id, name: pbxIvrs.name })
           .from(pbxIvrs)
           .where(and(
@@ -41437,7 +45370,16 @@ CRITICAL REMINDERS:
         });
         
         // Check Queues using this audio as hold music
-        const queuesUsingAsHoldMusic = await db
+        const queuesUsingAsHoldMusic = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select({ id: pbxQueues.id, name: pbxQueues.name })
           .from(pbxQueues)
           .where(and(
@@ -41449,7 +45391,16 @@ CRITICAL REMINDERS:
           usage.push({ type: 'queue_hold_music', name: queue.name, id: queue.id });
         });
         // Check Queue Ads (announcements) using this audio
-        const queueAdsUsingAudio = await db
+        const queueAdsUsingAudio = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select({ 
             adId: pbxQueueAds.id,
             queueId: pbxQueueAds.queueId,
@@ -41523,7 +45474,16 @@ CRITICAL REMINDERS:
           return res.status(500).json({ message: uploadResult.error || "Failed to upload audio file to Telnyx" });
         }
         // Save to database
-        const [audioFile] = await db
+        const [audioFile] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .insert(pbxAudioFiles)
           .values({
             companyId: user.companyId,
@@ -41555,7 +45515,16 @@ CRITICAL REMINDERS:
       const { audioId } = req.params;
       const { name, description, notes, audioType } = req.body;
       // Verify audio belongs to company
-      const [existing] = await db
+      const [existing] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(pbxAudioFiles)
         .where(and(
@@ -41572,7 +45541,16 @@ CRITICAL REMINDERS:
       if (audioType !== undefined && ['greeting', 'hold_music', 'announcement', 'voicemail_greeting'].includes(audioType)) {
         updateData.audioType = audioType;
       }
-      const [updated] = await db
+      const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(pbxAudioFiles)
         .set(updateData)
         .where(eq(pbxAudioFiles.id, audioId))
@@ -41592,7 +45570,16 @@ CRITICAL REMINDERS:
       }
       const { audioId } = req.params;
       // Verify audio belongs to company
-      const [existing] = await db
+      const [existing] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(pbxAudioFiles)
         .where(and(
@@ -41603,14 +45590,32 @@ CRITICAL REMINDERS:
         return res.status(404).json({ message: "Audio file not found" });
       }
       // Check if audio is in use
-      const ivrsUsingAsGreeting = await db
+      const ivrsUsingAsGreeting = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ id: pbxIvrs.id })
         .from(pbxIvrs)
         .where(and(
           eq(pbxIvrs.companyId, user.companyId),
           eq(pbxIvrs.greetingAudioUrl, existing.fileUrl)
         ));
-      const queuesUsingAsHoldMusic = await db
+      const queuesUsingAsHoldMusic = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({ id: pbxQueues.id })
         .from(pbxQueues)
         .where(and(
@@ -41632,7 +45637,16 @@ CRITICAL REMINDERS:
         // Force delete: clear references in IVRs
         if (ivrsUsingAsGreeting.length > 0) {
           console.log(`[PBX Audio] Force delete: clearing ${ivrsUsingAsGreeting.length} IVR references`);
-          await db
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .update(pbxIvrs)
             .set({ greetingAudioUrl: null, telnyxMediaName: null, updatedAt: new Date() })
             .where(and(
@@ -41643,7 +45657,16 @@ CRITICAL REMINDERS:
         // Force delete: clear references in Queues
         if (queuesUsingAsHoldMusic.length > 0) {
           console.log(`[PBX Audio] Force delete: clearing ${queuesUsingAsHoldMusic.length} Queue references`);
-          await db
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .update(pbxQueues)
             .set({ holdMusicUrl: null, holdMusicTelnyxMediaName: null, updatedAt: new Date() })
             .where(and(
@@ -41671,7 +45694,16 @@ CRITICAL REMINDERS:
         }
       }
       // Delete from database
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .delete(pbxAudioFiles)
         .where(eq(pbxAudioFiles.id, audioId));
       return res.json({ success: true });
@@ -41869,14 +45901,32 @@ CRITICAL REMINDERS:
     }
     try {
       // Include all conversations including waiting live chats
-      const rawConversations = await db
+      const rawConversations = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxConversations)
         .where(eq(telnyxConversations.companyId, companyId))
         .orderBy(desc(telnyxConversations.lastMessageAt));
       
       // Also include iMessage conversations
-      const imessageConversations = await db
+      const imessageConversations = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(imessageConversationsTable)
         .where(eq(imessageConversationsTable.companyId, companyId))
@@ -41954,19 +46004,46 @@ CRITICAL REMINDERS:
     const { id } = req.params;
     try {
       // First try Telnyx conversation
-      const [telnyxConv] = await db
+      const [telnyxConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxConversations)
         .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
       
       if (telnyxConv) {
         // Mark as read
-        await db
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .update(telnyxConversations)
           .set({ unreadCount: 0, updatedAt: new Date() })
           .where(eq(telnyxConversations.id, id));
         // Fetch messages
-        const messages = await db
+        const messages = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(telnyxMessages)
           .where(eq(telnyxMessages.conversationId, id))
@@ -41984,19 +46061,46 @@ CRITICAL REMINDERS:
       }
       
       // Try iMessage conversation
-      const [imessageConv] = await db
+      const [imessageConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(imessageConversationsTable)
         .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)));
       
       if (imessageConv) {
         // Mark as read
-        await db
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .update(imessageConversationsTable)
           .set({ unreadCount: 0, updatedAt: new Date() })
           .where(eq(imessageConversationsTable.id, id));
         // Fetch messages
-        const messages = await db
+        const messages = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(imessageMessagesTable)
           .where(eq(imessageMessagesTable.conversationId, id))
@@ -42069,7 +46173,16 @@ CRITICAL REMINDERS:
     }
     try {
       // Check if conversation already exists
-      let [conversation] = await db
+      let [conversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxConversations)
         .where(and(
@@ -42079,7 +46192,16 @@ CRITICAL REMINDERS:
         ));
       if (!conversation) {
         // Create new conversation
-        const [newConversation] = await db
+        const [newConversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .insert(telnyxConversations)
           .values({
             companyId,
@@ -42094,7 +46216,16 @@ CRITICAL REMINDERS:
         conversation = newConversation;
       } else {
         // Update existing conversation
-        await db
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .update(telnyxConversations)
           .set({ lastMessage: text.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
           .where(eq(telnyxConversations.id, conversation.id));
@@ -42124,7 +46255,16 @@ CRITICAL REMINDERS:
         telnyxMessageId = telnyxData?.data?.id || null;
       }
       // Create message record
-      const [message] = await db
+      const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .insert(telnyxMessages)
         .values({
           conversationId: conversation.id,
@@ -42162,7 +46302,16 @@ CRITICAL REMINDERS:
 
     try {
       // Get WhatsApp connection for this company
-      const waConnection = await db.query.channelConnections.findFirst({
+      const waConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -42186,7 +46335,16 @@ CRITICAL REMINDERS:
       // For Meta API, send without the + prefix
       const recipientPhoneMeta = digitsOnly;
       // Check if conversation already exists
-      let [conversation] = await db
+      let [conversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxConversations)
         .where(and(
@@ -42199,7 +46357,16 @@ CRITICAL REMINDERS:
 
       if (!conversation) {
         // Create new conversation with WhatsApp channel
-        const [newConversation] = await db
+        const [newConversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .insert(telnyxConversations)
           .values({
             companyId,
@@ -42215,7 +46382,16 @@ CRITICAL REMINDERS:
         conversation = newConversation;
       } else {
         // Update existing conversation
-        await db
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .update(telnyxConversations)
           .set({ lastMessage: displayText.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
           .where(eq(telnyxConversations.id, conversation.id));
@@ -42267,7 +46443,16 @@ CRITICAL REMINDERS:
       }
 
       // Save message to database
-      const [message] = await db
+      const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .insert(telnyxMessages)
         .values({
           conversationId: conversation.id,
@@ -42312,7 +46497,16 @@ CRITICAL REMINDERS:
 
     try {
       // Get WhatsApp connection for this company
-      const waConnection = await db.query.channelConnections.findFirst({
+      const waConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -42336,7 +46530,16 @@ CRITICAL REMINDERS:
       const recipientPhoneMeta = digitsOnly;
 
       // Check if conversation already exists
-      let [conversation] = await db
+      let [conversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxConversations)
         .where(and(
@@ -42347,7 +46550,16 @@ CRITICAL REMINDERS:
 
       if (!conversation) {
         // Create new conversation with WhatsApp channel
-        const [newConversation] = await db
+        const [newConversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .insert(telnyxConversations)
           .values({
             companyId,
@@ -42363,7 +46575,16 @@ CRITICAL REMINDERS:
         conversation = newConversation;
       } else {
         // Update existing conversation
-        await db
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .update(telnyxConversations)
           .set({ lastMessage: text.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
           .where(eq(telnyxConversations.id, conversation.id));
@@ -42403,7 +46624,16 @@ CRITICAL REMINDERS:
       }
 
       // Create message record
-      const [message] = await db
+      const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .insert(telnyxMessages)
         .values({
           conversationId: conversation.id,
@@ -42460,7 +46690,16 @@ CRITICAL REMINDERS:
       
       try {
         // First try Telnyx conversation
-        let [conversation] = await db
+        let [conversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(telnyxConversations)
           .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
@@ -42470,7 +46709,16 @@ CRITICAL REMINDERS:
         
         if (!conversation) {
           // Try iMessage conversation
-          [imessageConv] = await db
+          [imessageConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .select()
             .from(imessageConversationsTable)
             .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)));
@@ -42495,6 +46743,15 @@ CRITICAL REMINDERS:
         const currentAssignee = isImessageConversation ? imessageConv?.assignedTo : conversation?.assignedTo;
         if (String(currentAssignee) !== String(userId)) {
           if (!isImessageConversation) {
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.update(telnyxConversations)
               .set({ assignedTo: String(userId), updatedAt: new Date() })
               .where(eq(telnyxConversations.id, id));
@@ -42502,6 +46759,15 @@ CRITICAL REMINDERS:
             conversation.assignedTo = String(userId);
             broadcastConversationUpdate(companyId);
           } else if (isImessageConversation && imessageConv) {
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db.update(imessageConversationsTable)
               .set({ assignedTo: String(userId), updatedAt: new Date() })
               .where(eq(imessageConversationsTable.id, id));
@@ -42616,7 +46882,16 @@ CRITICAL REMINDERS:
             
             // Save message to database with tempGuid for webhook reconciliation
             const messageText = text || (sentAttachments.length > 0 ? `(${sentAttachments.length} attachment${sentAttachments.length > 1 ? 's' : ''})` : '');
-            const [message] = await db
+            const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .insert(imessageMessagesTable)
               .values({
                 conversationId: id,
@@ -42635,6 +46910,15 @@ CRITICAL REMINDERS:
               .returning();
             
             // Update conversation
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db
               .update(imessageConversationsTable)
               .set({
@@ -42698,7 +46982,16 @@ CRITICAL REMINDERS:
                 // Fallback: Save to database for persistence across restarts
                 console.log("[Inbox] Object storage failed, using database fallback:", (storageError as Error).message);
                 const fileId = randomUUID();
-                await db.insert(mmsMediaCache).values({
+                // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(mmsMediaCache).values({
                   id: fileId,
                   data: file.buffer.toString('base64'),
                   contentType: file.mimetype,
@@ -42714,7 +47007,16 @@ CRITICAL REMINDERS:
         }
         // If internal note, just save to database (no Telnyx send)
         if (isInternalNote === 'true' || isInternalNote === true) {
-          const [message] = await db
+          const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .insert(telnyxMessages)
             .values({
               conversationId: id,
@@ -42738,7 +47040,16 @@ CRITICAL REMINDERS:
           const telegramChatId = conversation.phoneNumber.replace("telegram:", "");
           
           // Look up user's Telegram bot
-          const userBot = await db.query.userTelegramBots.findFirst({
+          const userBot = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.userTelegramBots.findFirst({
             where: eq(userTelegramBots.userId, userId)
           });
           
@@ -42837,7 +47148,16 @@ CRITICAL REMINDERS:
             const contentType = hasMedia ? "media" : "text";
             
             // Create message record
-            const [message] = await db
+            const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .insert(telnyxMessages)
               .values({
                 conversationId: id,
@@ -42857,6 +47177,15 @@ CRITICAL REMINDERS:
             
             // Update conversation
             const lastMsgPreview = text ? text.substring(0, 100) : (hasMedia ? "[Media]" : "");
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db
               .update(telnyxConversations)
               .set({ lastMessage: lastMsgPreview, lastMessageAt: new Date(), updatedAt: new Date() })
@@ -42877,7 +47206,16 @@ CRITICAL REMINDERS:
         if (conversation.channel === "whatsapp") {
           try {
             // 1. Get connection, decrypt token
-            const waConnection = await db.query.channelConnections.findFirst({
+            const waConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
               where: and(
                 eq(channelConnections.companyId, companyId),
                 eq(channelConnections.channel, "whatsapp"),
@@ -42901,7 +47239,16 @@ CRITICAL REMINDERS:
             const recipientWaId = conversation.phoneNumber.replace(/^\+/, "");
             
             // 2. Check 24-hour window by finding last INBOUND message
-            const lastInboundMessage = await db.query.telnyxMessages.findFirst({
+            const lastInboundMessage = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telnyxMessages.findFirst({
               where: and(
                 eq(telnyxMessages.conversationId, id),
                 eq(telnyxMessages.direction, "inbound")
@@ -43145,7 +47492,16 @@ CRITICAL REMINDERS:
             // 5. Save message to database
             const telnyxMessageId = waMsgId;
             console.log("[Inbox WhatsApp] Message sent, saving to DB:", telnyxMessageId);
-            const [message] = await db
+            const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .insert(telnyxMessages)
               .values({
                 conversationId: id,
@@ -43164,6 +47520,15 @@ CRITICAL REMINDERS:
               .returning();
             
             // Update conversation
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db
               .update(telnyxConversations)
               .set({
@@ -43187,7 +47552,16 @@ CRITICAL REMINDERS:
         if (conversation.channel === "live_chat") {
           try {
             // For live chat, just save the message to database - no external API needed
-            const [message] = await db
+            const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .insert(telnyxMessages)
               .values({
                 conversationId: id,
@@ -43206,6 +47580,15 @@ CRITICAL REMINDERS:
               .returning();
             
             // Update conversation
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db
               .update(telnyxConversations)
               .set({ 
@@ -43231,7 +47614,16 @@ CRITICAL REMINDERS:
         if (conversation.channel === "facebook") {
           try {
             // Get Facebook page connection for this company
-            const [fbConnection] = await db
+            const [fbConnection] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .select()
               .from(channelConnections)
               .where(and(
@@ -43318,7 +47710,16 @@ CRITICAL REMINDERS:
             console.log("[Inbox Facebook] Message sent successfully:", fbData.message_id);
 
             // Save message to database
-            const [message] = await db
+            const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .insert(telnyxMessages)
               .values({
                 conversationId: id,
@@ -43337,6 +47738,15 @@ CRITICAL REMINDERS:
               .returning();
 
             // Update conversation
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db
               .update(telnyxConversations)
               .set({ 
@@ -43361,7 +47771,16 @@ CRITICAL REMINDERS:
         if (conversation.channel === "instagram") {
           try {
             // Get Instagram connection for this company
-            const [igConnection] = await db
+            const [igConnection] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .select()
               .from(channelConnections)
               .where(and(
@@ -43490,7 +47909,16 @@ CRITICAL REMINDERS:
             console.log("[Inbox Instagram] Message sent successfully:", igData.message_id);
 
             // Save message to database
-            const [message] = await db
+            const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
               .insert(telnyxMessages)
               .values({
                 conversationId: id,
@@ -43509,6 +47937,15 @@ CRITICAL REMINDERS:
               .returning();
 
             // Update conversation
+            // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
             await db
               .update(telnyxConversations)
               .set({ 
@@ -43555,7 +47992,16 @@ CRITICAL REMINDERS:
           telnyxMessageId = telnyxData?.data?.id || null;
         }
         // Create message record
-        const [message] = await db
+        const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .insert(telnyxMessages)
           .values({
             conversationId: id,
@@ -43573,7 +48019,16 @@ CRITICAL REMINDERS:
           })
           .returning();
         // Update conversation
-        await db
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .update(telnyxConversations)
           .set({ lastMessage: (text || "(attachment)").substring(0, 100), lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null, lastMessageAt: new Date(), updatedAt: new Date() })
           .where(eq(telnyxConversations.id, id));
@@ -43595,7 +48050,16 @@ CRITICAL REMINDERS:
     
     try {
       // First try Telnyx conversation
-      const [telnyxConv] = await db.select()
+      const [telnyxConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.id, id),
@@ -43613,7 +48077,16 @@ CRITICAL REMINDERS:
         if (assignedTo !== undefined) updateData.assignedTo = assignedTo || null;
         if (lifecycleStage !== undefined) updateData.lifecycleStage = lifecycleStage;
         
-        await db.update(telnyxConversations)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
           .set(updateData)
           .where(and(
             eq(telnyxConversations.id, id),
@@ -43624,7 +48097,16 @@ CRITICAL REMINDERS:
       }
       
       // Try iMessage conversation
-      const [imessageConv] = await db.select()
+      const [imessageConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
         .from(imessageConversationsTable)
         .where(and(
           eq(imessageConversationsTable.id, id),
@@ -43643,7 +48125,16 @@ CRITICAL REMINDERS:
         if (assignedTo !== undefined) updateData.assignedTo = assignedTo || null;
         if (lifecycleStage !== undefined) updateData.lifecycleStage = lifecycleStage;
         
-        await db.update(imessageConversationsTable)
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(imessageConversationsTable)
           .set(updateData)
           .where(and(
             eq(imessageConversationsTable.id, id),
@@ -43677,7 +48168,16 @@ CRITICAL REMINDERS:
       }
 
       // Verify conversation exists and belongs to company
-      const [conversation] = await db.select()
+      const [conversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.id, id),
@@ -43700,7 +48200,16 @@ CRITICAL REMINDERS:
         updatedBy: userId 
       };
       
-      const [updated] = await db.update(telnyxConversations)
+      const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
         .set(updateData)
         .where(and(
           eq(telnyxConversations.id, id),
@@ -43733,7 +48242,16 @@ CRITICAL REMINDERS:
     
     try {
       // Verify conversation belongs to company
-      const [conversation] = await db.select()
+      const [conversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.id, id),
@@ -43756,7 +48274,16 @@ CRITICAL REMINDERS:
         updateData.copilotEnabled = copilotEnabled;
       }
       
-      const [updated] = await db.update(telnyxConversations)
+      const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
         .set(updateData)
         .where(and(
           eq(telnyxConversations.id, id),
@@ -43786,7 +48313,16 @@ CRITICAL REMINDERS:
     console.log("[LiveChat] Accept request for chat:", id, "by user:", userId);
     
     try {
-      const [conversation] = await db
+      const [conversation] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxConversations)
         .where(and(
@@ -43804,7 +48340,16 @@ CRITICAL REMINDERS:
       }
       
       // Get agent info for the response and WebSocket broadcast
-      const [agent] = await db
+      const [agent] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({
           id: users.id,
           firstName: users.firstName,
@@ -43817,7 +48362,16 @@ CRITICAL REMINDERS:
       
       const agentName = agent ? `${agent.firstName || ""} ${agent.lastName || ""}`.trim() || "Agent" : "Agent";
       
-      await db.update(telnyxConversations)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
         .set({
           status: "open",
           assignedTo: userId,
@@ -43853,7 +48407,16 @@ CRITICAL REMINDERS:
     const companyId = (req.user as any).companyId;
     
     try {
-      const conversation = await db.query.telnyxConversations.findFirst({
+      const conversation = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.telnyxConversations.findFirst({
         where: and(
           eq(telnyxConversations.id, id),
           eq(telnyxConversations.companyId, companyId)
@@ -43868,7 +48431,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "Voice call buttons are only available for WhatsApp conversations" });
       }
       
-      const waConnection = await db.query.channelConnections.findFirst({
+      const waConnection = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -43928,7 +48500,16 @@ CRITICAL REMINDERS:
       
       const wamid = metaData.messages?.[0]?.id;
       
-      const [message] = await db
+      const [message] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .insert(telnyxMessages)
         .values({
           conversationId: id,
@@ -43944,7 +48525,16 @@ CRITICAL REMINDERS:
         })
         .returning();
       
-      await db
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(telnyxConversations)
         .set({ 
           lastMessage: `📞 Call button sent`, 
@@ -43981,27 +48571,81 @@ CRITICAL REMINDERS:
     
     try {
       // Try to find conversation in Telnyx (SMS) table first
-      const [telnyxConv] = await db
+      const [telnyxConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(telnyxConversations)
         .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
       
       if (telnyxConv) {
         // Delete Telnyx conversation
-        await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
-        await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+        // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
         console.log(`[Inbox] Deleted Telnyx conversation ${id} for company ${companyId}`);
       } else {
         // Try iMessage conversation
-        const [imessageConv] = await db
+        const [imessageConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(imessageConversationsTable)
           .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)));
         
         if (imessageConv) {
           // Delete iMessage conversation
-          await db.delete(imessageMessagesTable).where(eq(imessageMessagesTable.conversationId, id));
-          await db.delete(imessageConversationsTable).where(eq(imessageConversationsTable.id, id));
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(imessageMessagesTable).where(eq(imessageMessagesTable.conversationId, id));
+          // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(imessageConversationsTable).where(eq(imessageConversationsTable.id, id));
           console.log(`[Inbox] Deleted iMessage conversation ${id} for company ${companyId}`);
         } else {
           return res.status(404).json({ message: "Conversation not found" });
@@ -44086,7 +48730,16 @@ CRITICAL REMINDERS:
       }
       
       // Create the compliance application with Telnyx integration data
-      const [application] = await db.insert(complianceApplications).values({
+      const [application] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(complianceApplications).values({
         ...validation.data,
         telnyxManagedAccountId,
         telnyxPhoneNumberId,
@@ -44109,7 +48762,16 @@ CRITICAL REMINDERS:
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const [application] = await db
+      const [application] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(complianceApplications)
         .where(
@@ -44136,7 +48798,16 @@ CRITICAL REMINDERS:
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const applications = await db
+      const applications = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select({
           id: complianceApplications.id,
           selectedPhoneNumber: complianceApplications.selectedPhoneNumber,
@@ -44161,7 +48832,16 @@ CRITICAL REMINDERS:
       }
       
       // First try to find a submitted/pending/approved application
-      let [application] = await db
+      let [application] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(complianceApplications)
         .where(
@@ -44175,7 +48855,16 @@ CRITICAL REMINDERS:
       
       // If no submitted application, check for draft with selected phone number
       if (!application) {
-        [application] = await db
+        [application] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
           .select()
           .from(complianceApplications)
           .where(
@@ -44212,7 +48901,16 @@ CRITICAL REMINDERS:
       }
       
       // Verify the application belongs to this company
-      const [application] = await db
+      const [application] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(complianceApplications)
         .where(eq(complianceApplications.id, id))
@@ -44223,7 +48921,16 @@ CRITICAL REMINDERS:
       }
       
       // Get company info for context
-      const [company] = await db
+      const [company] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(companies)
         .where(eq(companies.id, user.companyId))
@@ -44261,7 +48968,16 @@ CRITICAL REMINDERS:
       
       const { id } = req.params;
       
-      const [application] = await db
+      const [application] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(complianceApplications)
         .where(
@@ -44292,7 +49008,16 @@ CRITICAL REMINDERS:
       
       const { id } = req.params;
       
-      const [existing] = await db
+      const [existing] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .select()
         .from(complianceApplications)
         .where(
@@ -44718,7 +49443,16 @@ CRITICAL REMINDERS:
               }
               
               // Update application to mark as submitted with the verification ID
-              const [updated] = await db
+              const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
                 .update(complianceApplications)
                 .set({
                   ...req.body,
@@ -44748,7 +49482,16 @@ CRITICAL REMINDERS:
           console.log("[Toll-Free Compliance] Verification submitted successfully:", telnyxResult.data?.id);
           
           // Update application with Telnyx verification ID and status
-          const [updated] = await db
+          const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
             .update(complianceApplications)
             .set({
               ...req.body,
@@ -44769,7 +49512,16 @@ CRITICAL REMINDERS:
       }
       
       // Regular update (not submission)
-      const [updated] = await db
+      const [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db
         .update(complianceApplications)
         .set({
           ...req.body,
@@ -45038,7 +49790,16 @@ CRITICAL REMINDERS:
       }
 
       // Get all active media entries
-      const mediaEntries = await db.select().from(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.isActive, true));
+      const mediaEntries = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.isActive, true));
 
       // Organize into slots format
       const slots: Record<string, any> = {
@@ -45147,7 +49908,16 @@ CRITICAL REMINDERS:
       const audioUrl = protocol + '://' + domain + '/public/recording-announcements/' + filename;
 
       // Deactivate any existing active media for this slot
-      await db.update(recordingAnnouncementMedia)
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(recordingAnnouncementMedia)
         .set({ isActive: false })
         .where(
           and(
@@ -45158,7 +49928,16 @@ CRITICAL REMINDERS:
         );
 
       // Insert new media entry with public URL
-      const [newMedia] = await db.insert(recordingAnnouncementMedia)
+      const [newMedia] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(recordingAnnouncementMedia)
         .values({
           type,
           language,
@@ -45200,7 +49979,16 @@ CRITICAL REMINDERS:
       const { id } = req.params;
 
       // Get the media entry
-      const [mediaEntry] = await db.select().from(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.id, id));
+      const [mediaEntry] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.id, id));
 
       if (!mediaEntry) {
         return res.status(404).json({ message: "Media entry not found" });
@@ -45216,7 +50004,16 @@ CRITICAL REMINDERS:
       }
 
       // Delete from database
-      await db.delete(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.id, id));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(recordingAnnouncementMedia).where(eq(recordingAnnouncementMedia.id, id));
 
       console.log(`[RecordingMedia] Deleted ${mediaEntry.type}_${mediaEntry.language}: ${mediaEntry.objectPath || mediaEntry.mediaName}`);
 
@@ -45243,13 +50040,40 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "phoneNumberId required" });
       }
       
-      const [phoneNumber] = await db.select().from(telnyxPhoneNumbers).where(eq(telnyxPhoneNumbers.id, phoneNumberId));
+      const [phoneNumber] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(telnyxPhoneNumbers).where(eq(telnyxPhoneNumbers.id, phoneNumberId));
       if (!phoneNumber) {
         return res.status(404).json({ message: "Phone number not found" });
       }
       
-      const [telSettings] = await db.select().from(telephonySettings).where(eq(telephonySettings.companyId, phoneNumber.companyId));
-      const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, phoneNumber.companyId));
+      const [telSettings] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(telephonySettings).where(eq(telephonySettings.companyId, phoneNumber.companyId));
+      const [wallet] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(wallets).where(eq(wallets.companyId, phoneNumber.companyId));
       
       if (!telSettings?.callControlAppId) {
         return res.status(400).json({ message: "No Call Control App configured for this company" });
@@ -45300,7 +50124,16 @@ CRITICAL REMINDERS:
       const userId = user.id;
 
       // Fetch team inboxes (visible to all) and custom inboxes (only user's own)
-      const inboxes = await db.select()
+      const inboxes = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
         .from(customInboxes)
         .where(
           and(
@@ -45327,7 +50160,16 @@ CRITICAL REMINDERS:
       const companyId = user.companyId;
       const userId = user.id;
 
-      const inboxes = await db.select()
+      const inboxes = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select()
         .from(customInboxes)
         .where(
           and(
@@ -45363,7 +50205,16 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "Type must be 'team' or 'custom'" });
       }
 
-      const [inbox] = await db.insert(customInboxes).values({
+      const [inbox] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.insert(customInboxes).values({
         companyId,
         name,
         emoji: emoji || "📥",
@@ -45387,7 +50238,16 @@ CRITICAL REMINDERS:
       const userId = user.id;
       const { id } = req.params;
 
-      const [existing] = await db.select().from(customInboxes).where(
+      const [existing] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(customInboxes).where(
         and(eq(customInboxes.id, id), eq(customInboxes.companyId, companyId))
       );
 
@@ -45407,7 +50267,16 @@ CRITICAL REMINDERS:
         return res.status(403).json({ message: "Only the creator or an admin can delete team inboxes" });
       }
 
-      await db.delete(customInboxes).where(eq(customInboxes.id, id));
+      // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.delete(customInboxes).where(eq(customInboxes.id, id));
 
       res.json({ success: true });
     } catch (error: any) {
@@ -45426,12 +50295,30 @@ CRITICAL REMINDERS:
       const { customInboxId } = req.body;
 
       // Try to find in Telnyx conversations first
-      let [telnyxConv] = await db.select().from(telnyxConversations).where(
+      let [telnyxConv] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(telnyxConversations).where(
         and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId))
       );
 
       // If not found, try iMessage conversations
-      let [imessageConv] = !telnyxConv ? await db.select().from(imessageConversationsTable).where(
+      let [imessageConv] = !telnyxConv ? // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(imessageConversationsTable).where(
         and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId))
       ) : [null];
 
@@ -45441,7 +50328,16 @@ CRITICAL REMINDERS:
 
       // If assigning to an inbox, verify the inbox exists and is accessible
       if (customInboxId) {
-        const [inbox] = await db.select().from(customInboxes).where(
+        const [inbox] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.select().from(customInboxes).where(
           and(
             eq(customInboxes.id, customInboxId),
             eq(customInboxes.companyId, companyId),
@@ -45460,7 +50356,16 @@ CRITICAL REMINDERS:
       // Update the appropriate conversation table
       let updated;
       if (telnyxConv) {
-        [updated] = await db.update(telnyxConversations)
+        [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(telnyxConversations)
           .set({ 
             customInboxId: customInboxId || null,
             updatedAt: new Date()
@@ -45468,7 +50373,16 @@ CRITICAL REMINDERS:
           .where(eq(telnyxConversations.id, id))
           .returning();
       } else {
-        [updated] = await db.update(imessageConversationsTable)
+        [updated] = // Clear igCommentId after first private reply so subsequent messages use regular DM routing
+            if (isFirstReplyToComment) {
+              await db
+                .update(telnyxConversations)
+                .set({ igCommentId: null })
+                .where(eq(telnyxConversations.id, id));
+              console.log(`[Inbox Instagram] Cleared igCommentId for conversation ${id} after private reply`);
+            }
+
+            await db.update(imessageConversationsTable)
           .set({ 
             customInboxId: customInboxId || null,
             updatedAt: new Date()
