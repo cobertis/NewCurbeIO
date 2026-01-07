@@ -1108,6 +1108,46 @@ export default function InboxPage() {
     },
   });
 
+  // Human Agent toggle mutation for Instagram 7-day messaging window
+  const toggleHumanAgentMutation = useMutation({
+    mutationFn: async ({ conversationId, enabled }: { conversationId: string; enabled: boolean }) => {
+      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}/human-agent`, { enabled });
+    },
+    onMutate: async ({ conversationId, enabled }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/inbox/conversations"] });
+      const previousData = queryClient.getQueryData(["/api/inbox/conversations"]);
+      queryClient.setQueryData(["/api/inbox/conversations"], (old: any) => {
+        if (!old?.conversations) return old;
+        return {
+          ...old,
+          conversations: old.conversations.map((conv: any) =>
+            conv.id === conversationId ? { ...conv, humanAgentEnabled: enabled } : conv
+          ),
+        };
+      });
+      return { previousData };
+    },
+    onSuccess: (_data, { enabled }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      toast({
+        title: enabled ? "Human Agent enabled" : "Human Agent disabled",
+        description: enabled 
+          ? "You can now respond within 7 days of the customer's last message." 
+          : "Standard 24-hour messaging window restored.",
+      });
+    },
+    onError: (error: any, _variables, context: any) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["/api/inbox/conversations"], context.previousData);
+      }
+      toast({
+        title: "Failed to update Human Agent setting",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateLifecycleMutation = useMutation({
     mutationFn: async ({ conversationId, lifecycleStage }: { conversationId: string; lifecycleStage: string }) => {
       return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { lifecycleStage });
@@ -3768,6 +3808,35 @@ export default function InboxPage() {
                           )}
                         </div>
                       </div>
+                      {/* Instagram Human Agent Toggle - 7 day messaging window */}
+                      {selectedConversation.channel === "instagram" && (
+                        <div className="flex justify-between items-center py-2 border-t border-b">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium">Human Agent Mode</span>
+                              {(selectedConversation as any).humanAgentEnabled && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                  Active
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Extends messaging window to 7 days. Use only for support, not marketing.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={(selectedConversation as any).humanAgentEnabled ?? false}
+                            onCheckedChange={(checked) => {
+                              toggleHumanAgentMutation.mutate({
+                                conversationId: selectedConversation.id,
+                                enabled: checked,
+                              });
+                            }}
+                            disabled={toggleHumanAgentMutation.isPending}
+                            data-testid="switch-human-agent"
+                          />
+                        </div>
+                      )}
                       {selectedConversation.channel === "live_chat" && selectedConversation.visitorCity && (
                         <div className="flex justify-between">
                           <span className="text-xs text-muted-foreground">Location</span>
