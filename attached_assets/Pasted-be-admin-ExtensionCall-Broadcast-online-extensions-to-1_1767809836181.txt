@@ -1,0 +1,36 @@
+be-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [Meta Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Meta Webhook] Body type: object isBuffer: true length: 394
+0|curbe-admin  | [Meta Webhook] Invalid signature - tried both Facebook and Instagram secrets
+0|curbe-admin  | [Meta Webhook] Debug - Facebook secret prefix: 098285...
+0|curbe-admin  | [Meta Webhook] Debug - Instagram secret prefix: not set
+0|curbe-admin  | [Meta Webhook] Debug - Received sig: sha256=aceff643d496004edf53174...
+0|curbe-admin  | 6:16:29 PM [express] POST /api/webhooks/meta/facebook 403 in 5ms :: {"error":"Forbidden: Invalid sig…
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [Meta Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Meta Webhook] Body type: object isBuffer: true length: 395
+0|curbe-admin  | [Meta Webhook] Invalid signature - tried both Facebook and Instagram secrets
+0|curbe-admin  | [Meta Webhook] Debug - Facebook secret prefix: 098285...
+0|curbe-admin  | [Meta Webhook] Debug - Instagram secret prefix: not set
+0|curbe-admin  | [Meta Webhook] Debug - Received sig: sha256=86a20a3c218ab10b115d083...
+0|curbe-admin  | 6:16:37 PM [express] POST /api/webhooks/meta/facebook 403 in 1ms :: {"error":"Forbidden: Invalid sig…
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WhatsApp Call] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 unregistered from company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WhatsApp Call WS] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WhatsApp Call] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 unregistered from company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WhatsApp Call WS] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 disconnected
+0|curbe-admin  | [Meta Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Meta Webhook] Body type: object isBuffer: true length: 394
+0|curbe-admin  | [Meta Webhook] Invalid signature - tried both Facebook and Instagram secrets
+0|curbe-admin  | [Meta Webhook] Debug - Facebook secret prefix: 098285...
+0|curbe-admin  | [Meta Webhook] Debug - Instagram secret prefix: not set
+0|curbe-admin  | [Meta Webhook] Debug - Received sig: sha256=4b1ac71ad475c082d64470f...
+0|curbe-admin  | 6:16:52 PM [express] POST /api/webhooks/meta/facebook 403 in 1ms :: {"error":"Forbidden: Invalid sig…
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 6:17:01 PM [express] GET /api/voicemails 304 in 112ms :: {"voicemails":[],"unreadCount":0}
+0|curbe-admin  | 6:17:01 PM [express] GET /api/users/availability-status 304 in 67ms :: {"status":"online"}
