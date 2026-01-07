@@ -2314,16 +2314,16 @@ export default function InboxPage() {
                       size="sm"
                       className={cn(
                         "h-7 gap-1.5 text-xs font-medium border",
-                        selectedConversation.customInboxId
+                        (selectedConversation as any).customInboxId
                           ? "bg-blue-50 text-blue-700 border-blue-200"
                           : lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.color || "bg-blue-100 text-blue-700 border-blue-200"
                       )}
                       data-testid="btn-lifecycle"
                     >
-                      {selectedConversation.customInboxId ? (
+                      {(selectedConversation as any).customInboxId ? (
                         <>
-                          <span>{customInboxes.find(i => i.id === selectedConversation.customInboxId)?.emoji || "📁"}</span>
-                          <span>{customInboxes.find(i => i.id === selectedConversation.customInboxId)?.name || "Inbox"}</span>
+                          <span>{customInboxes.find(i => i.id === (selectedConversation as any).customInboxId)?.emoji || "📁"}</span>
+                          <span>{customInboxes.find(i => i.id === (selectedConversation as any).customInboxId)?.name || "Inbox"}</span>
                         </>
                       ) : (
                         <>
@@ -2341,7 +2341,8 @@ export default function InboxPage() {
                         Lifecycle Stage
                       </div>
                       {lifecycleOptions.map((option) => {
-                        const isSelected = !selectedConversation.customInboxId && (selectedConversation as any).lifecycleStage === option.id;
+                        const convInboxId = (selectedConversation as any).customInboxId;
+                        const isSelected = !convInboxId && (selectedConversation as any).lifecycleStage === option.id;
                         return (
                           <button
                             key={option.id}
@@ -2350,7 +2351,7 @@ export default function InboxPage() {
                                 conversationId: selectedConversation.id,
                                 lifecycleStage: option.id
                               });
-                              if (selectedConversation.customInboxId) {
+                              if (convInboxId) {
                                 updateInboxAssignmentMutation.mutate({
                                   conversationId: selectedConversation.id,
                                   customInboxId: null
@@ -2392,13 +2393,13 @@ export default function InboxPage() {
                               disabled={updateInboxAssignmentMutation.isPending}
                               className={cn(
                                 "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
-                                selectedConversation.customInboxId === inbox.id && "bg-gray-100 dark:bg-gray-800"
+                                (selectedConversation as any).customInboxId === inbox.id && "bg-gray-100 dark:bg-gray-800"
                               )}
                               data-testid={`inbox-option-${inbox.id}`}
                             >
                               <Folder className="h-4 w-4 text-blue-500" />
                               <span>{inbox.name}</span>
-                              {selectedConversation.customInboxId === inbox.id && (
+                              {(selectedConversation as any).customInboxId === inbox.id && (
                                 <Check className="h-4 w-4 ml-auto text-blue-600" />
                               )}
                             </button>
@@ -2425,13 +2426,13 @@ export default function InboxPage() {
                               disabled={updateInboxAssignmentMutation.isPending}
                               className={cn(
                                 "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
-                                selectedConversation.customInboxId === inbox.id && "bg-gray-100 dark:bg-gray-800"
+                                (selectedConversation as any).customInboxId === inbox.id && "bg-gray-100 dark:bg-gray-800"
                               )}
                               data-testid={`inbox-option-${inbox.id}`}
                             >
                               <Folder className="h-4 w-4 text-indigo-500" />
                               <span>{inbox.name}</span>
-                              {selectedConversation.customInboxId === inbox.id && (
+                              {(selectedConversation as any).customInboxId === inbox.id && (
                                 <Check className="h-4 w-4 ml-auto text-blue-600" />
                               )}
                             </button>
