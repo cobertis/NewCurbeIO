@@ -30320,11 +30320,18 @@ CRITICAL REMINDERS:
       }
       
       
-      // Get Facebook user name (the person who connected)
-      const userUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me?access_token=${userAccessToken}&fields=name`;
-      const userResponse = await fetch(userUrl);
-      const userData = await userResponse.json() as any;
-      const fbUserName = userData.name || "Connected Account";
+      // Get Facebook user name (the person who connected) - optional, dont fail if this doesnt work
+      let fbUserName = "Connected Account";
+      try {
+        const userUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me?access_token=${userAccessToken}&fields=name`;
+        const userResponse = await fetch(userUrl);
+        const userData = await userResponse.json() as any;
+        if (userData.name) {
+          fbUserName = userData.name;
+        }
+      } catch (err) {
+        console.log("[Facebook SDK] Could not fetch user name, using default");
+      }
       
       // Get users Facebook pages
       // Get users Facebook pages
