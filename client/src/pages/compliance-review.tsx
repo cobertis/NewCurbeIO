@@ -78,7 +78,7 @@ export default function ComplianceReview() {
 
   if (!application) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4">
         <div className="max-w-5xl mx-auto text-center">
           <p className="text-gray-600 dark:text-gray-400">Application not found</p>
         </div>

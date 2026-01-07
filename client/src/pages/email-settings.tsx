@@ -231,7 +231,7 @@ export default function EmailSettingsPage() {
   }
 
   return (
-    <div className="container max-w-3xl py-6 space-y-6">
+    <div className="container max-w-3xl py-4 space-y-4">
       <div className="flex items-center gap-4">
         <Link href="/settings">
           <Button variant="ghost" size="sm" data-testid="button-back-settings">

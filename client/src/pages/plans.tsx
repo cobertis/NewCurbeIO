@@ -944,7 +944,7 @@ export default function PlansPage() {
   const sortedPlanFeatures = [...planFeatures].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
+    <div className="flex flex-col gap-4">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-4">

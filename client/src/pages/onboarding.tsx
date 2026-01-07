@@ -134,7 +134,7 @@ export default function Onboarding() {
 
   return (
     <div 
-      className="min-h-screen w-full flex items-center justify-center p-4 md:p-6"
+      className="min-h-screen w-full flex items-center justify-center p-4"
       style={{
         background: 'linear-gradient(145deg, #070B14 0%, #0B1220 50%, #0A1018 100%)',
       }}

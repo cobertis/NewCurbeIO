@@ -34,7 +34,7 @@ const supportOptions = [
 
 export default function Support() {
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
+    <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {supportOptions.map((option) => (
           <Card key={option.title} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">

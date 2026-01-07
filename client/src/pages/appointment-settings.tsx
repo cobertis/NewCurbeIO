@@ -232,8 +232,8 @@ export default function AppointmentSettings() {
   if (!availability) return null;
 
   return (
-    <div className="flex flex-col gamin-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="space-y-6">
+    <div className="flex flex-col gap-4 min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="space-y-4">
         {/* General Settings */}
         <Card>
           <CardHeader>

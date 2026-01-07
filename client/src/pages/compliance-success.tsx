@@ -9,7 +9,7 @@ export default function ComplianceSuccess() {
   const applicationId = params?.id;
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 py-12">
+    <div className="flex flex-col items-center justify-center p-4 py-12">
       <div className="max-w-2xl w-full text-center">
         <div className="mb-6">
           <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />

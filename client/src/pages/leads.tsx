@@ -286,11 +286,11 @@ export default function Leads() {
 
   return (
     <div className="flex flex-col h-screen w-full bg-background">
-      <div className="flex items-center justify-between px-6 py-4 border-b">
+      <div className="flex items-center justify-between px-4 py-4 border-b">
         <h1 className="text-2xl font-semibold">Leads</h1>
       </div>
 
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-4 overflow-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4" data-testid="tabs-list">
             <TabsTrigger value="leads" data-testid="tab-form-leads">

@@ -377,10 +377,10 @@ export default function MarketplacePlansPage() {
   }).length;
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="p-4">
       {/* 3-column layout: Household Info | Plans | Filters */}
       {quote && (
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-4">
           {/* Left Sidebar: Household Information */}
           <div className="space-y-4">
             {/* Back to Policy/Quote Button - ALWAYS VISIBLE */}

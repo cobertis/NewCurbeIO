@@ -299,8 +299,8 @@ export default function Tasks() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-      <div className="flex flex-col lg:flex-row gap-6">
+    <div className="p-4 space-y-4">
+      <div className="flex flex-col lg:flex-row gap-4">
         {/* Sidebar - Hidden on mobile */}
         <div className="hidden lg:block">
           <TasksSidebar 

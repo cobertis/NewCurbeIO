@@ -518,7 +518,7 @@ export default function WalletAnalyticsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen p-6">
+    <div className="flex flex-col gap-4 bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen p-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">Wallet System</h1>

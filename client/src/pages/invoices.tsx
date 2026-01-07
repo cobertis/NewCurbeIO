@@ -51,7 +51,7 @@ export default function InvoicesPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
+    <div className="flex flex-col gap-4">
       {isLoading ? (
         <Card>
           <CardContent className="py-12">

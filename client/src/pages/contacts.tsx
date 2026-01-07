@@ -686,7 +686,7 @@ export default function Contacts() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+    <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -700,7 +700,7 @@ export default function Contacts() {
         </Badge>
       </div>
 
-      <div className="flex gap-6 flex-col lg:flex-row">
+      <div className="flex gap-4 flex-col lg:flex-row">
         {/* Left Sidebar - Contact Lists */}
         <div className="w-full lg:w-80 flex-shrink-0">
           <Card>

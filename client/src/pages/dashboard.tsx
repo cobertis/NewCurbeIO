@@ -216,9 +216,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-6 min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6">
+    <div className="flex flex-col gap-4 min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
       {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {quickStats.map((stat, index) => (
           <Card 
             key={index} 
@@ -246,7 +246,7 @@ export default function Dashboard() {
       </div>
 
       {/* Monthly Chart & US Map */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Monthly Chart */}
         <Card className="bg-white dark:bg-gray-800/90 backdrop-blur-sm border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] rounded-2xl">
           <CardHeader className="pb-2">
@@ -465,7 +465,7 @@ export default function Dashboard() {
       </div>
 
       {/* Agents & Product Type */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Agents Leaderboard */}
         <Card className="bg-white dark:bg-gray-800/90 backdrop-blur-sm border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] rounded-2xl">
           <CardHeader className="pb-2">
@@ -575,7 +575,7 @@ export default function Dashboard() {
       </div>
 
       {/* Carriers Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Policies per Carrier */}
         <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
           <CardHeader>

@@ -31,8 +31,8 @@ export default function EmailConfiguration() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
+    <div className="p-4 max-w-7xl mx-auto">
+      <div className="mb-4">
         <h1 className="text-3xl font-semibold" data-testid="text-page-title">Email Configuration</h1>
         <p className="text-muted-foreground mt-2" data-testid="text-page-description">
           Manage email templates for automated communications

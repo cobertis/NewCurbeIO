@@ -272,7 +272,7 @@ export default function SuperAdminRecordingMedia() {
   const holdSlots = MEDIA_SLOTS.filter(s => s.category === "hold");
 
   return (
-    <div className="p-6 space-y-6" data-testid="recording-media-page">
+    <div className="p-4 space-y-4" data-testid="recording-media-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground" data-testid="page-title">

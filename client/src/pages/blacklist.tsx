@@ -166,8 +166,8 @@ export default function Blacklist() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">

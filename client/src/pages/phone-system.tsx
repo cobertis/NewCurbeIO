@@ -674,7 +674,7 @@ export default function PhoneSystem() {
 
   if (!hasAccount) {
     return (
-      <div className="flex flex-col galg:p-8">
+      <div className="flex flex-col p-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-foreground">Phone System</h1>
           <p className="text-slate-500 dark:text-muted-foreground mt-1">Professional business phone lines</p>

@@ -271,7 +271,7 @@ export default function ImessageCampaignDetail() {
 
   if (!campaign) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4">
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold">Campaign not found</h3>
@@ -287,7 +287,7 @@ export default function ImessageCampaignDetail() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

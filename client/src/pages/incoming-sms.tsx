@@ -412,8 +412,8 @@ export default function IncomingSms() {
   });
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex gap-3 sm:gap-4 lg:gap-6 h-[calc(100vh-6rem)] sm:h-[calc(100vh-7rem)] lg:h-[calc(100vh-8rem)]">
+    <div className="p-4">
+      <div className="flex gap-4 h-[calc(100vh-6rem)] sm:h-[calc(100vh-7rem)] lg:h-[calc(100vh-8rem)]">
         {/* Conversations List - Hidden on mobile when conversation selected */}
         <Card className={cn(
           "w-full sm:w-80 lg:w-96 flex flex-col",

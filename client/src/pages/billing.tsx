@@ -1104,7 +1104,7 @@ export default function Billing() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* Superadmin Tools */}
       {user?.role === 'superadmin' && (
         <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
