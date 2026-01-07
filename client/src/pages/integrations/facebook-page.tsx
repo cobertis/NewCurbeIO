@@ -326,7 +326,12 @@ export default function FacebookPage() {
                 </TableRow>
               ) : (
                 paginatedPages.map((page) => (
-                  <TableRow key={page.id} data-testid={`row-facebook-page-${page.id}`}>
+                  <TableRow 
+                    key={page.id} 
+                    data-testid={`row-facebook-page-${page.id}`}
+                    className="cursor-pointer"
+                    onClick={() => setLocation(`/settings/facebook/details/${page.id}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <img 
@@ -348,7 +353,7 @@ export default function FacebookPage() {
                     <TableCell className="text-slate-500">
                       {format(new Date(page.dateConnected), "MMM d, h:mm a")}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-menu-${page.id}`}>

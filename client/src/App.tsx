@@ -121,6 +121,7 @@ import SmsVoiceCpaas from "@/pages/integrations/sms-voice-cpaas";
 import FacebookIntegration from "@/pages/integrations/facebook";
 import FacebookFlow from "@/pages/integrations/facebook-flow";
 import FacebookPageComponent from "@/pages/integrations/facebook-page";
+import FacebookDetails from "@/pages/integrations/facebook-details";
 import WhatsAppFlow from "@/pages/integrations/whatsapp-flow";
 import WhatsAppPage from "@/pages/integrations/whatsapp";
 import WhatsAppTemplatesPage from "@/pages/integrations/whatsapp-templates";
@@ -1739,6 +1740,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <FacebookFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/facebook/details/:id">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <FacebookDetails />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
