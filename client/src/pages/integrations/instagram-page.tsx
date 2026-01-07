@@ -46,10 +46,10 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SettingsLayout } from "@/components/settings-layout";
 import { SiInstagram } from "react-icons/si";
-import { Plus, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2, User } from "lucide-react";
 import type { ChannelConnection } from "@shared/schema";
 import instagramPreviewImg from "@assets/image_1766560780707.png";
-import { format } from "date-fns";
+import { format, isToday } from "date-fns";
 
 interface InstagramAccount {
   id: string | number;
@@ -328,6 +328,7 @@ export default function InstagramPage() {
                   <TableRow key={account.id} data-testid={`row-instagram-account-${account.id}`}>
                     <TableCell>
                       <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-slate-400" />
                         <span className="font-medium">{account.accountName}</span>
                       </div>
                     </TableCell>
@@ -339,7 +340,9 @@ export default function InstagramPage() {
                     </TableCell>
                     <TableCell>{getStatusBadge(account.status)}</TableCell>
                     <TableCell className="text-slate-500">
-                      {format(new Date(account.dateConnected), "MMM d, h:mm a")}
+                      {isToday(new Date(account.dateConnected)) 
+                        ? `Today, ${format(new Date(account.dateConnected), "h:mm a").toLowerCase()}`
+                        : format(new Date(account.dateConnected), "MMM d, h:mm a")}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
