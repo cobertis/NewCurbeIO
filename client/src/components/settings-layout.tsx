@@ -13,6 +13,7 @@ import {
   Bot
 } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
+import { useAuth } from "@/hooks/use-auth";
 
 interface SettingsLayoutProps {
   children: React.ReactNode;
@@ -22,8 +23,11 @@ interface SettingsLayoutProps {
 
 export function SettingsLayout({ children, activeSection, userRole }: SettingsLayoutProps) {
   const [location, setLocation] = useLocation();
+  const { user } = useAuth();
   
-  const isAdmin = userRole === "admin" || userRole === "superadmin";
+  // Use userRole prop if provided, otherwise get from authenticated user
+  const effectiveRole = userRole || user?.role;
+  const isAdmin = effectiveRole === "admin" || effectiveRole === "superadmin";
   
   const getActiveView = () => {
     if (activeSection) return activeSection;
