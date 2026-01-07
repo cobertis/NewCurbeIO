@@ -29729,7 +29729,8 @@ CRITICAL REMINDERS:
       
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
       authUrl.searchParams.set("client_id", metaAppId);
-      authUrl.searchParams.set("redirect_uri", META_INSTAGRAM_REDIRECT_URI);
+      const instagramRedirectUri = process.env.META_INSTAGRAM_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/instagram/callback`;
+      authUrl.searchParams.set("redirect_uri", instagramRedirectUri);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_INSTAGRAM_SCOPES);
       authUrl.searchParams.set("state", nonce);
@@ -29964,7 +29965,8 @@ CRITICAL REMINDERS:
       
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
       authUrl.searchParams.set("client_id", metaAppId);
-      authUrl.searchParams.set("redirect_uri", META_FACEBOOK_REDIRECT_URI);
+      const redirectUri = process.env.META_FACEBOOK_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/facebook/callback`;
+      authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_FACEBOOK_SCOPES);
       authUrl.searchParams.set("state", nonce);
