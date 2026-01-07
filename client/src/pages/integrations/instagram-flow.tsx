@@ -17,7 +17,7 @@ declare global {
     fbAsyncInit: () => void;
     FB: {
       init: (params: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
-      login: (callback: (response: FBLoginResponse) => void, options: { config_id: string; response_type: string; override_default_response_type: boolean; extras: object }) => void;
+      login: (callback: (response: FBLoginResponse) => void, options?: { scope?: string; return_scopes?: boolean; config_id?: string; response_type?: string; override_default_response_type?: boolean; extras?: object }) => void;
     };
   }
 }
@@ -125,8 +125,6 @@ export default function InstagramFlowPage() {
   });
 
   const handleLoginWithInstagram = useCallback(() => {
-    const configId = metaConfig?.instagramConfigId || metaConfig?.configId;
-    
     if (!fbSdkLoaded || !window.FB) {
       toast({
         variant: "destructive",
@@ -136,11 +134,11 @@ export default function InstagramFlowPage() {
       return;
     }
 
-    if (!configId) {
+    if (!metaConfig?.appId) {
       toast({
         variant: "destructive",
         title: "Configuration missing",
-        description: "Instagram Login configuration is not set up. Please contact support.",
+        description: "Facebook App ID is not configured. Please contact support.",
       });
       return;
     }
@@ -151,15 +149,12 @@ export default function InstagramFlowPage() {
       (response: FBLoginResponse) => {
         console.log("[Instagram Flow] FB.login response:", JSON.stringify(response, null, 2));
         
-        if (response.authResponse?.code) {
-          console.log("[Instagram Flow] Got authorization code, exchanging...");
-          exchangeCodeMutation.mutate({ code: response.authResponse.code });
-        } else if (response.authResponse?.accessToken) {
-          console.log("[Instagram Flow] Got access token directly, exchanging...");
+        if (response.authResponse?.accessToken) {
+          console.log("[Instagram Flow] Got access token, exchanging...");
           exchangeCodeMutation.mutate({ code: response.authResponse.accessToken });
         } else {
           setIsConnecting(false);
-          console.log("[Instagram Flow] No code or token, status:", response.status);
+          console.log("[Instagram Flow] No token, status:", response.status);
           if (response.status === "unknown") {
             toast({
               variant: "destructive",
@@ -176,14 +171,8 @@ export default function InstagramFlowPage() {
         }
       },
       {
-        config_id: configId,
-        response_type: "code",
-        override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: "",
-          version: "v2",
-        },
+        scope: "instagram_basic,instagram_manage_messages,instagram_content_publish,pages_show_list,pages_read_engagement,business_management",
+        return_scopes: true,
       }
     );
   }, [fbSdkLoaded, toast, exchangeCodeMutation, metaConfig]);

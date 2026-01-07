@@ -17,7 +17,7 @@ declare global {
     fbAsyncInit: () => void;
     FB: {
       init: (params: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
-      login: (callback: (response: FBLoginResponse) => void, options: { config_id: string; response_type: string; override_default_response_type: boolean; extras: object }) => void;
+      login: (callback: (response: FBLoginResponse) => void, options?: { scope?: string; return_scopes?: boolean; config_id?: string; response_type?: string; override_default_response_type?: boolean; extras?: object }) => void;
     };
   }
 }
@@ -125,8 +125,6 @@ export default function FacebookFlowPage() {
   });
 
   const handleLoginWithFacebook = useCallback(() => {
-    const configId = metaConfig?.facebookConfigId || metaConfig?.configId;
-    
     if (!fbSdkLoaded || !window.FB) {
       toast({
         variant: "destructive",
@@ -136,11 +134,11 @@ export default function FacebookFlowPage() {
       return;
     }
 
-    if (!configId) {
+    if (!metaConfig?.appId) {
       toast({
         variant: "destructive",
         title: "Configuration missing",
-        description: "Facebook Login configuration is not set up. Please contact support.",
+        description: "Facebook App ID is not configured. Please contact support.",
       });
       return;
     }
@@ -151,15 +149,12 @@ export default function FacebookFlowPage() {
       (response: FBLoginResponse) => {
         console.log("[Facebook Flow] FB.login response:", JSON.stringify(response, null, 2));
         
-        if (response.authResponse?.code) {
-          console.log("[Facebook Flow] Got authorization code, exchanging...");
-          exchangeCodeMutation.mutate({ code: response.authResponse.code });
-        } else if (response.authResponse?.accessToken) {
-          console.log("[Facebook Flow] Got access token directly, exchanging...");
+        if (response.authResponse?.accessToken) {
+          console.log("[Facebook Flow] Got access token, exchanging...");
           exchangeCodeMutation.mutate({ code: response.authResponse.accessToken });
         } else {
           setIsConnecting(false);
-          console.log("[Facebook Flow] No code or token, status:", response.status);
+          console.log("[Facebook Flow] No token, status:", response.status);
           if (response.status === "unknown") {
             toast({
               variant: "destructive",
@@ -176,14 +171,8 @@ export default function FacebookFlowPage() {
         }
       },
       {
-        config_id: configId,
-        response_type: "code",
-        override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: "",
-          version: "v2",
-        },
+        scope: "pages_show_list,pages_messaging,pages_read_engagement,pages_manage_metadata,pages_manage_posts,business_management",
+        return_scopes: true,
       }
     );
   }, [fbSdkLoaded, toast, exchangeCodeMutation, metaConfig]);
