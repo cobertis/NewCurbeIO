@@ -231,13 +231,17 @@ export const credentialProvider = {
                       process.env.META_APP_SECRET || '';
     const webhookVerifyToken = await secretsService.getCredential("meta" as ApiProvider, "webhook_verify_token") || 
                                process.env.META_WEBHOOK_VERIFY_TOKEN || '';
+    
+    // Unified config_id field - same config_id works for Facebook, Instagram, and WhatsApp
+    const unifiedConfigId = await secretsService.getCredential("meta" as ApiProvider, "config_id") || 
+                            process.env.META_BUSINESS_LOGIN_CONFIG_ID || '';
+    
     const facebookConfigId = await secretsService.getCredential("meta" as ApiProvider, "facebook_config_id") || 
-                             process.env.META_FACEBOOK_CONFIG_ID || '';
+                             unifiedConfigId || process.env.META_FACEBOOK_CONFIG_ID || '';
     const instagramConfigId = await secretsService.getCredential("meta" as ApiProvider, "instagram_config_id") || 
-                              process.env.META_INSTAGRAM_CONFIG_ID || '';
+                              unifiedConfigId || process.env.META_INSTAGRAM_CONFIG_ID || '';
     const whatsappConfigId = await secretsService.getCredential("meta" as ApiProvider, "whatsapp_config_id") || 
-                             process.env.META_BUSINESS_LOGIN_CONFIG_ID || 
-                             process.env.META_WHATSAPP_CONFIG_ID || '';
+                             unifiedConfigId || process.env.META_WHATSAPP_CONFIG_ID || '';
     
     const result = { appId, appSecret, webhookVerifyToken, facebookConfigId, instagramConfigId, whatsappConfigId };
     setCache(cacheKey, result);

@@ -33392,6 +33392,7 @@ CRITICAL REMINDERS:
           keys: [
             { keyName: "app_id", label: "App ID", required: true, hint: "Your Meta App ID" },
             { keyName: "app_secret", label: "App Secret", required: true, hint: "Your Meta App Secret" },
+            { keyName: "config_id", label: "Business Login Config ID", required: true, hint: "From Facebook Login for Business > Configurations" },
           ]
         },
         { 
