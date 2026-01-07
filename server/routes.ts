@@ -29708,7 +29708,8 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
-      if (!META_APP_ID) {
+      const { appId: metaAppId } = await credentialProvider.getMeta();
+      if (!metaAppId) {
         return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
       }
       
@@ -29727,7 +29728,7 @@ CRITICAL REMINDERS:
       });
       
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
-      authUrl.searchParams.set("client_id", META_APP_ID);
+      authUrl.searchParams.set("client_id", metaAppId);
       authUrl.searchParams.set("redirect_uri", META_INSTAGRAM_REDIRECT_URI);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_INSTAGRAM_SCOPES);
@@ -29942,7 +29943,8 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
-      if (!META_APP_ID) {
+      const { appId: metaAppId } = await credentialProvider.getMeta();
+      if (!metaAppId) {
         return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
       }
       
@@ -29961,7 +29963,7 @@ CRITICAL REMINDERS:
       });
       
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
-      authUrl.searchParams.set("client_id", META_APP_ID);
+      authUrl.searchParams.set("client_id", metaAppId);
       authUrl.searchParams.set("redirect_uri", META_FACEBOOK_REDIRECT_URI);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_FACEBOOK_SCOPES);
