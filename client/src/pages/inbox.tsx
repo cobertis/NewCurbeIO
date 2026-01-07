@@ -2280,6 +2280,9 @@ export default function InboxPage() {
                           <span className="shrink-0 text-xs" title={lifecycleOptions.find(l => l.id === ((conversation as any).lifecycleStage || "new_lead"))?.label}>
                             {lifecycleOptions.find(l => l.id === ((conversation as any).lifecycleStage || "new_lead"))?.emoji}
                           </span>
+                          {(conversation as any).originType === 'comment' && (
+                            <span className="text-xs text-muted-foreground ml-1">(comment)</span>
+                          )}
                         </div>
                         <span className="text-xs text-muted-foreground shrink-0">
                           {conversation.lastMessageAt && formatMessageTime(conversation.lastMessageAt)}
@@ -3690,6 +3693,31 @@ export default function InboxPage() {
                   </button>
                   {chatInfoOpen && (
                     <div className="space-y-3" data-testid="section-chat-info">
+                      {/* Instagram Comment Origin Banner */}
+                      {(selectedConversation as any)?.originType === 'comment' && (selectedConversation as any)?.originMetadata && (
+                        <div className="p-2 bg-muted rounded-md text-sm mb-2" data-testid="comment-origin-banner">
+                          <div className="font-medium flex items-center gap-1">
+                            <MessageSquare className="h-3 w-3" />
+                            Comment on your post
+                          </div>
+                          {(selectedConversation as any).originMetadata?.originalCommentText && (
+                            <p className="text-muted-foreground text-xs mt-1">
+                              "{(selectedConversation as any).originMetadata.originalCommentText}"
+                            </p>
+                          )}
+                          {(selectedConversation as any).originMetadata?.mediaPermalink && (
+                            <a 
+                              href={(selectedConversation as any).originMetadata.mediaPermalink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline mt-1 inline-block"
+                              data-testid="link-original-post"
+                            >
+                              View original post
+                            </a>
+                          )}
+                        </div>
+                      )}
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-muted-foreground">Status</span>
                         <Select

@@ -43402,11 +43402,21 @@ CRITICAL REMINDERS:
             const META_GRAPH_VERSION = "v21.0";
             const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages`;
             
+            // For comment-based conversations, first message should be a private reply to the comment
+            // Subsequent messages should use the user's IG ID directly
+            const isFirstReplyToComment = conversation.originType === 'comment' && conversation.igCommentId;
+
             const messagePayload: any = {
-              recipient: { id: recipientIgId },
+              recipient: isFirstReplyToComment 
+                ? { comment_id: conversation.igCommentId }  // Private reply to comment
+                : { id: recipientIgId },                     // Regular DM
               messaging_type: "RESPONSE",
               message: {}
             };
+
+            if (isFirstReplyToComment) {
+              console.log(`[Inbox Instagram] Sending private reply to comment ${conversation.igCommentId}`);
+            }
             
             // Add HUMAN_AGENT tag when human agent mode is enabled (extends messaging window to 7 days)
             if (conversation.humanAgentEnabled) {
@@ -43442,7 +43452,9 @@ CRITICAL REMINDERS:
               if (text && text.trim()) {
                 // Build text payload with HUMAN_AGENT tag if enabled
                 const textPayload: any = {
-                  recipient: { id: recipientIgId },
+                  recipient: isFirstReplyToComment 
+                    ? { comment_id: conversation.igCommentId }  // Private reply to comment
+                    : { id: recipientIgId },                     // Regular DM
                   messaging_type: "RESPONSE",
                   message: { text }
                 };
