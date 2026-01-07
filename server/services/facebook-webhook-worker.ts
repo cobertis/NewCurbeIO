@@ -142,12 +142,16 @@ async function processInstagramEvent(payload: any): Promise<void> {
       let customerName: string | null = null;
       let profilePictureUrl: string | null = null;
       if (connection.accessTokenEnc) {
-        const pageToken = decryptToken(connection.accessTokenEnc);
-        const profile = await getInstagramUserProfile(customerIgId, pageToken);
-        customerName = profile.name;
-        profilePictureUrl = profile.profilePictureUrl;
-        if (customerName) {
-          console.log(`[Meta Webhook Worker] Got Instagram user profile: ${customerName} for ID: ${customerIgId}`);
+        try {
+          const pageToken = decryptToken(connection.accessTokenEnc);
+          const profile = await getInstagramUserProfile(customerIgId, pageToken);
+          customerName = profile.name;
+          profilePictureUrl = profile.profilePictureUrl;
+          if (customerName) {
+            console.log(`[Meta Webhook Worker] Got Instagram user profile: ${customerName} for ID: ${customerIgId}`);
+          }
+        } catch (profileErr) {
+          console.log(`[Meta Webhook Worker] Could not fetch Instagram profile (token issue), continuing without profile`);
         }
       }
 
