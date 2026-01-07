@@ -171,7 +171,7 @@ export default function FacebookFlowPage() {
         }
       },
       {
-        scope: "pages_show_list,pages_messaging,pages_read_engagement,pages_manage_metadata,business_management",
+        scope: "public_profile,pages_show_list,pages_messaging,pages_read_engagement,pages_manage_metadata,business_management",
         return_scopes: true,
       }
     );
@@ -301,7 +301,7 @@ export default function FacebookFlowPage() {
                         Connect Facebook account
                       </h3>
                       <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Facebook page: {connection?.fbPageName || "Connected"}
+                        Facebook Account: {connection?.displayName || "Connected"}
                       </p>
                     </div>
                   )}
