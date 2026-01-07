@@ -27274,7 +27274,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       // Check if this phone number is already connected to another tenant
-      await db.query.channelConnections.findFirst({
+      const existingConnection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.phoneNumberId, phoneNumberId),
           ne(channelConnections.companyId, oauthState.companyId)
@@ -27290,7 +27290,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const encryptedToken = encryptToken(accessToken);
       
       // UPSERT connection
-      await db.query.channelConnections.findFirst({
+      const existing = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, oauthState.companyId),
           eq(channelConnections.channel, "whatsapp")
@@ -27629,7 +27629,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!user.companyId) return res.status(400).json({ error: "No company" });
 
     try {
-    await db.query.channelConnections.findFirst({
+    const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp")
@@ -27696,7 +27696,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
 
     try {
-    await db.query.channelConnections.findFirst({
+    const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp")
@@ -27787,7 +27787,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const { pin } = req.body;
 
     try {
-    await db.query.channelConnections.findFirst({
+    const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp")
@@ -27957,7 +27957,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     
     // Check if phone number is already connected elsewhere
-      await db.query.channelConnections.findFirst({
+      const existingOther = await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.phoneNumberId, phoneNumberId),
         ne(channelConnections.companyId, user.companyId)
@@ -27972,7 +27972,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const encryptedToken = encryptToken(accessToken);
     
     // Check if already connected
-      await db.query.channelConnections.findFirst({
+      const existing = await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp")
@@ -28015,7 +28015,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     
     const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
-    await db.query.channelConnections.findFirst({
+    const connection = await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp")
@@ -28044,7 +28044,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
     const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
-    await db.query.channelConnections.findFirst({
+    const connection = await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp")
@@ -28072,7 +28072,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     try {
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28127,7 +28127,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     try {
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28237,7 +28237,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!allowedTypes.includes(file.mimetype)) {
         return res.status(400).json({ error: "Profile photo must be JPEG or PNG" });
       }
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28348,7 +28348,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28559,7 +28559,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const queryWabaId = req.query.wabaId as string | undefined;
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28633,7 +28633,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28901,7 +28901,7 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -28990,7 +28990,7 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29084,7 +29084,7 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29182,7 +29182,7 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection for the company
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29328,7 +29328,7 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29445,7 +29445,7 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29519,7 +29519,7 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29614,7 +29614,7 @@ CRITICAL REMINDERS:
       }
 
       // Get WhatsApp channel connection
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -29903,7 +29903,7 @@ CRITICAL REMINDERS:
         : null;
       
       // UPSERT connection
-      await db.query.channelConnections.findFirst({
+      const existing = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, oauthState.companyId),
           eq(channelConnections.channel, "instagram")
@@ -30027,7 +30027,7 @@ CRITICAL REMINDERS:
       }
       
       // Check for existing connection
-      await db.query.channelConnections.findFirst({
+      const existingConnection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "instagram")
@@ -30086,7 +30086,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "instagram")
@@ -30105,7 +30105,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "instagram")
@@ -30294,7 +30294,7 @@ CRITICAL REMINDERS:
       const pageAccessToken = page.access_token;
       
       // Check for existing connection
-      await db.query.channelConnections.findFirst({
+      const existingConnection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, oauthState.companyId),
           eq(channelConnections.channel, "facebook")
@@ -30422,7 +30422,7 @@ CRITICAL REMINDERS:
       const pageAccessToken = page.access_token;
       
       // Check for existing connection
-      await db.query.channelConnections.findFirst({
+      const existingConnection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "facebook")
@@ -30477,7 +30477,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "facebook")
@@ -30496,7 +30496,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "facebook")
@@ -30687,7 +30687,7 @@ CRITICAL REMINDERS:
       const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
       
       // Check for existing connection
-      await db.query.channelConnections.findFirst({
+      const existingConnection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, oauthState.companyId),
           eq(channelConnections.channel, "tiktok")
@@ -30746,7 +30746,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "tiktok")
@@ -30765,7 +30765,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
-      await db.query.channelConnections.findFirst({
+      const connection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "tiktok")
@@ -42076,7 +42076,7 @@ CRITICAL REMINDERS:
 
     try {
       // Get WhatsApp connection for this company
-      await db.query.channelConnections.findFirst({
+      const waConnection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -42225,7 +42225,7 @@ CRITICAL REMINDERS:
 
     try {
       // Get WhatsApp connection for this company
-      await db.query.channelConnections.findFirst({
+      const waConnection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, companyId),
           eq(channelConnections.channel, "whatsapp"),
@@ -42786,7 +42786,7 @@ CRITICAL REMINDERS:
         if (conversation.channel === "whatsapp") {
           try {
             // 1. Get connection, decrypt token
-      await db.query.channelConnections.findFirst({
+      const waConnection = await db.query.channelConnections.findFirst({
               where: and(
                 eq(channelConnections.companyId, companyId),
                 eq(channelConnections.channel, "whatsapp"),
@@ -43849,7 +43849,7 @@ CRITICAL REMINDERS:
       if (conversation.channel !== "whatsapp") {
         return res.status(400).json({ message: "Voice call buttons are only available for WhatsApp conversations" });
       }
-      await db.query.channelConnections.findFirst({
+      const waConnection = await db.query.channelConnections.findFirst({
         where: and(
           eq(channelConnections.companyId, companyId),
           eq(channelConnections.channel, "whatsapp"),
