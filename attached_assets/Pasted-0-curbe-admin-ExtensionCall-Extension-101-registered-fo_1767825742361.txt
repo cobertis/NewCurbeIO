@@ -1,0 +1,48 @@
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 10:41:14 PM [express] GET /api/ai/conversations 304 in 4ms
+0|curbe-admin  | 10:41:15 PM [express] GET /api/inbox/conversations/b575b169-20c9-4f70-895d-65eaa003a31c/messages 200 …
+0|curbe-admin  | 10:41:15 PM [express] PATCH /api/inbox/conversations/b575b169-20c9-4f70-895d-65eaa003a31c 200 in 23ms…
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 10:41:15 PM [express] GET /api/inbox/conversations 200 in 20ms :: {"conversations":[{"id":"b575b169-2…
+0|curbe-admin  | [Inbox] Reassigned conversation b575b169-20c9-4f70-895d-65eaa003a31c to user 8941c16e-b7a3-4e63-845e-afdf93d260e3 (was: unassigned)
+0|curbe-admin  | [WebSocket] Broadcasting conversation_update to 4 authenticated clients (company: 078dac90-b0ca-44f1-9739-f78221dc0f53)
+0|curbe-admin  | [Inbox Instagram] Sending PUBLIC reply to comment 18046975175686667
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 10:41:21 PM [express] GET /api/notifications 304 in 33ms :: {"notifications":[{"id":"02b5b34a-350e-41…
+0|curbe-admin  | 10:41:21 PM [express] GET /api/inbox/conversations 200 in 36ms :: {"conversations":[{"id":"b575b169-2…
+0|curbe-admin  | 10:41:21 PM [express] GET /api/inbox/conversations/b575b169-20c9-4f70-895d-65eaa003a31c/messages 200 …
+0|curbe-admin  | [Inbox Instagram] Token permissions: {"error":{"message":"(#100) Tried accessing nonexisting field (permissions) on node type (Page)","type":"OAuthException","code":100,"fbtrace_id":"Anzt-TLfSFK9YGsgcepeYPT"}}
+0|curbe-admin  | [Inbox Instagram] Failed to post comment reply: {
+0|curbe-admin  |   error: {
+0|curbe-admin  |     message: '(#100) Missing Permission',
+0|curbe-admin  |     type: 'OAuthException',
+0|curbe-admin  |     code: 100,
+0|curbe-admin  |     fbtrace_id: 'A1nAsnkhDe7jEXzJHnofZ4Q'
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | 10:41:21 PM [express] POST /api/inbox/conversations/b575b169-20c9-4f70-895d-65eaa003a31c/messages 400…
+0|curbe-admin  | 10:41:23 PM [express] GET /api/ai/autopilot/pending 304 in 32ms :: {"pending":[]}
+0|curbe-admin  | [Inbox Instagram] Sending private reply to comment 18046975175686667
+0|curbe-admin  | [Meta Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Meta Webhook] Body type: object isBuffer: true length: 408
+0|curbe-admin  | [Meta Webhook] Signature validated with: Instagram app secret
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 10:41:29 PM [express] POST /api/webhooks/meta/facebook 200 in 4ms
+0|curbe-admin  | [Inbox Instagram] Message sent successfully: aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDc2ODA1MzI5ODcwOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjEwNTU0Njc0ODI1NjAwOTozMjYxMDYyODA1MzY2NzUxNzkxMDI4MTk0ODM4ODkxNzI0OAZDZD
+0|curbe-admin  | [Inbox Instagram] Cleared igCommentId for conversation b575b169-20c9-4f70-895d-65eaa003a31c after private reply
+0|curbe-admin  | [WebSocket] Broadcasting telnyx_message for inbox conversation b575b169-20c9-4f70-895d-65eaa003a31c to 4 clients (company: 078dac90-b0ca-44f1-9739-f78221dc0f53)
+0|curbe-admin  | 10:41:29 PM [express] POST /api/inbox/conversations/b575b169-20c9-4f70-895d-65eaa003a31c/messages 201…
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 10:41:29 PM [express] GET /api/notifications 304 in 39ms :: {"notifications":[{"id":"02b5b34a-350e-41…
+0|curbe-admin  | 10:41:29 PM [express] GET /api/inbox/conversations 200 in 43ms :: {"conversations":[{"id":"b575b169-2…
+0|curbe-admin  | 10:41:29 PM [express] GET /api/inbox/conversations/b575b169-20c9-4f70-895d-65eaa003a31c/messages 200 …
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 10:41:30 PM [express] GET /api/inbox/conversations 200 in 35ms :: {"conversations":[{"id":"b575b169-2…
+0|curbe-admin  | 10:41:30 PM [express] GET /api/inbox/conversations/b575b169-20c9-4f70-895d-65eaa003a31c/messages 200 …
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 10:41:30 PM [express] GET /api/inbox/conversations 200 in 26ms :: {"conversations":[{"id":"b575b169-2…
+0|curbe-admin  | 10:41:33 PM [express] GET /api/ai/autopilot/pending 304 in 33ms :: {"pending":[]}
+0|curbe-admin  | 10:41:44 PM [express] GET /api/ai/autopilot/pending 304 in 37ms :: {"pending":[]}
+0|curbe-admin  | 10:41:54 PM [express] GET /api/ai/autopilot/pending 304 in 39ms :: {"pending":[]}
+0|curbe-admin  | 10:42:04 PM [express] GET /api/ai/autopilot/pending 304 in 33ms :: {"pending":[]}
