@@ -33532,7 +33532,8 @@ CRITICAL REMINDERS:
           helpUrl: "https://developers.facebook.com/apps/",
           keys: [
             { keyName: "app_id", label: "App ID", required: true, hint: "Your Meta App ID" },
-            { keyName: "app_secret", label: "App Secret", required: true, hint: "Your Meta App Secret" },
+            { keyName: "app_secret", label: "App Secret", required: true, hint: "Your Meta App Secret (for Facebook/WhatsApp)" },
+            { keyName: "instagram_app_secret", label: "Instagram App Secret", required: false, hint: "Separate App Secret for Instagram webhooks (if different)" },
             { keyName: "config_id", label: "Business Login Config ID", required: true, hint: "From Facebook Login for Business > Configurations" },
           ]
         },
