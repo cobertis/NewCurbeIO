@@ -42385,7 +42385,7 @@ CRITICAL REMINDERS:
       imessageConv = await db
             .select()
             .from(imessageConversationsTable)
-            .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)));
+            .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)))?.[0];
           
           if (imessageConv) {
             isImessageConversation = true;
