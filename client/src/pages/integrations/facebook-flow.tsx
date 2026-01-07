@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,10 +12,39 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import type { ChannelConnection } from "@shared/schema";
 
+declare global {
+  interface Window {
+    fbAsyncInit: () => void;
+    FB: {
+      init: (params: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
+      login: (callback: (response: FBLoginResponse) => void, options: { config_id: string; response_type: string; override_default_response_type: boolean; extras: object }) => void;
+    };
+  }
+}
+
+interface FBLoginResponse {
+  authResponse?: {
+    code?: string;
+    accessToken?: string;
+    userID?: string;
+    expiresIn?: number;
+    signedRequest?: string;
+    graphDomain?: string;
+    data_access_expiration_time?: number;
+  };
+  status: string;
+}
+
+const FB_APP_ID = import.meta.env.VITE_META_APP_ID || "";
+const FB_FACEBOOK_CONFIG_ID = import.meta.env.VITE_META_FACEBOOK_CONFIG_ID || "";
+const FB_SDK_VERSION = "v24.0";
+
 export default function FacebookFlowPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
+  const [fbSdkLoaded, setFbSdkLoaded] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/facebook/status"],
@@ -31,53 +60,122 @@ export default function FacebookFlowPage() {
   }, [isConnected]);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const facebookStatus = urlParams.get("facebook");
+    if (document.getElementById("facebook-jssdk")) {
+      if (window.FB) {
+        setFbSdkLoaded(true);
+      }
+      return;
+    }
 
-    if (facebookStatus === "connected") {
+    window.fbAsyncInit = function() {
+      window.FB.init({
+        appId: FB_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: FB_SDK_VERSION,
+      });
+      setFbSdkLoaded(true);
+    };
+
+    const script = document.createElement("script");
+    script.id = "facebook-jssdk";
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    return () => {
+      const existingScript = document.getElementById("facebook-jssdk");
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, []);
+
+  const exchangeCodeMutation = useMutation({
+    mutationFn: async (data: { code: string }) => {
+      return apiRequest("POST", "/api/integrations/meta/facebook/exchange-code", data);
+    },
+    onSuccess: () => {
+      setIsConnecting(false);
       toast({
         title: "Facebook Connected",
         description: "Your Facebook page has been connected successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/integrations/facebook/status"] });
       setCurrentStep(2);
-      urlParams.delete("facebook");
-      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
-      window.history.replaceState({}, "", newUrl);
-    } else if (facebookStatus === "error") {
-      toast({
-        variant: "destructive",
-        title: "Connection failed",
-        description: "We couldn't connect your Facebook page. Please try again.",
-      });
-      urlParams.delete("facebook");
-      urlParams.delete("reason");
-      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
-      window.history.replaceState({}, "", newUrl);
-    }
-  }, [toast]);
-
-  const oauthStartMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/integrations/meta/facebook/start");
-    },
-    onSuccess: (data: { authUrl: string; state: string }) => {
-      if (data.authUrl) {
-        window.open(data.authUrl, "_blank");
-      }
     },
     onError: (error: any) => {
+      setIsConnecting(false);
       toast({
         variant: "destructive",
         title: "Connection failed",
-        description: error.message || "We couldn't start the connection process. Please try again.",
+        description: error.message || "We couldn't connect your Facebook page. Please try again.",
       });
     },
   });
 
-  const handleLoginWithFacebook = () => {
-    oauthStartMutation.mutate();
-  };
+  const handleLoginWithFacebook = useCallback(() => {
+    if (!fbSdkLoaded || !window.FB) {
+      toast({
+        variant: "destructive",
+        title: "Loading...",
+        description: "Facebook SDK is still loading. Please try again in a moment.",
+      });
+      return;
+    }
+
+    if (!FB_FACEBOOK_CONFIG_ID) {
+      toast({
+        variant: "destructive",
+        title: "Configuration missing",
+        description: "Facebook Login configuration is not set up. Please contact support.",
+      });
+      return;
+    }
+
+    setIsConnecting(true);
+
+    window.FB.login(
+      (response: FBLoginResponse) => {
+        console.log("[Facebook Flow] FB.login response:", JSON.stringify(response, null, 2));
+        
+        if (response.authResponse?.code) {
+          console.log("[Facebook Flow] Got authorization code, exchanging...");
+          exchangeCodeMutation.mutate({ code: response.authResponse.code });
+        } else if (response.authResponse?.accessToken) {
+          console.log("[Facebook Flow] Got access token directly, exchanging...");
+          exchangeCodeMutation.mutate({ code: response.authResponse.accessToken });
+        } else {
+          setIsConnecting(false);
+          console.log("[Facebook Flow] No code or token, status:", response.status);
+          if (response.status === "unknown") {
+            toast({
+              variant: "destructive",
+              title: "Connection cancelled",
+              description: "You closed the login window without completing the setup.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Connection failed",
+              description: "Could not get authorization from Facebook. Please try again.",
+            });
+          }
+        }
+      },
+      {
+        config_id: FB_FACEBOOK_CONFIG_ID,
+        response_type: "code",
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+          featureType: "",
+          version: "v2",
+        },
+      }
+    );
+  }, [fbSdkLoaded, toast, exchangeCodeMutation]);
 
   const handleDiscard = () => {
     setLocation("/settings/facebook");
@@ -190,11 +288,11 @@ export default function FacebookFlowPage() {
                       <Button 
                         className="bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2"
                         onClick={handleLoginWithFacebook}
-                        disabled={oauthStartMutation.isPending}
+                        disabled={isConnecting || exchangeCodeMutation.isPending}
                         data-testid="button-login-facebook"
                       >
                         <SiFacebook className="h-4 w-4" />
-                        {oauthStartMutation.isPending ? "Connecting..." : "Login with Facebook"}
+                        {isConnecting || exchangeCodeMutation.isPending ? "Connecting..." : "Login with Facebook"}
                       </Button>
                     </>
                   ) : (
@@ -219,7 +317,7 @@ export default function FacebookFlowPage() {
                     <div className="space-y-6">
                       <div>
                         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
-                          Facebook page connected 🎉
+                          Facebook page connected
                         </h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
                           You have successfully connected your Facebook page and can now manage your Messenger conversations in Curbe.

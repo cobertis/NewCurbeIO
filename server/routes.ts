@@ -29879,6 +29879,129 @@ CRITICAL REMINDERS:
     }
   });
 
+
+  // POST /api/integrations/meta/instagram/exchange-code - Exchange code from FB SDK popup
+  app.post("/api/integrations/meta/instagram/exchange-code", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company" });
+      }
+      
+      const { code } = req.body;
+      if (!code) {
+        return res.status(400).json({ error: "Authorization code is required" });
+      }
+      
+      console.log("[Instagram SDK] Exchanging code for company:", user.companyId);
+      
+      const { appId: metaAppId, appSecret: metaAppSecret } = await credentialProvider.getMeta();
+      
+      // Exchange code for access token
+      const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+      const tokenParams = new URLSearchParams({
+        client_id: metaAppId,
+        client_secret: metaAppSecret,
+        code: code,
+        redirect_uri: "",
+      });
+      
+      const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
+      const tokenData = await tokenResponse.json() as any;
+      
+      if (!tokenResponse.ok || tokenData.error) {
+        console.error("[Instagram SDK] Token exchange failed:", JSON.stringify(tokenData));
+        return res.status(400).json({ error: tokenData.error?.message || "Failed to exchange code" });
+      }
+      
+      const userAccessToken = tokenData.access_token;
+      
+      // Get users Facebook pages with Instagram Business Account
+      const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?access_token=${userAccessToken}\&fields=id,name,access_token,instagram_business_account`;
+      const pagesResponse = await fetch(pagesUrl);
+      const pagesData = await pagesResponse.json() as any;
+      
+      if (!pagesResponse.ok || pagesData.error) {
+        console.error("[Instagram SDK] Failed to get pages:", pagesData.error);
+        return res.status(400).json({ error: "Could not retrieve Facebook pages. Make sure you granted the required permissions." });
+      }
+      
+      // Find a page with Instagram Business Account connected
+      const pageWithIg = pagesData.data?.find((p: any) => p.instagram_business_account?.id);
+      
+      if (!pageWithIg) {
+        console.error("[Instagram SDK] No page with Instagram Business Account found");
+        return res.status(400).json({ error: "No Instagram Business Account found. Please link an Instagram Business account to one of your Facebook pages." });
+      }
+      
+      const pageId = pageWithIg.id;
+      const pageName = pageWithIg.name;
+      const pageAccessToken = pageWithIg.access_token;
+      const igAccountId = pageWithIg.instagram_business_account.id;
+      
+      // Get Instagram account details
+      const igUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${igAccountId}?access_token=${pageAccessToken}\&fields=id,username,name,profile_picture_url`;
+      const igResponse = await fetch(igUrl);
+      const igAccount = await igResponse.json() as any;
+      
+      if (!igResponse.ok || igAccount.error) {
+        console.error("[Instagram SDK] Failed to get IG account:", igAccount.error);
+        return res.status(400).json({ error: "Could not retrieve Instagram account details." });
+      }
+      
+      // Check for existing connection
+      const existingConnection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "instagram")
+        )
+      });
+      
+      if (existingConnection) {
+        await db.update(channelConnections)
+          .set({
+            status: "active",
+            igUserId: igAccountId,
+            igUsername: igAccount.username,
+            pageId: pageId,
+            pageName: pageName,
+            displayName: igAccount.name || igAccount.username,
+            accessTokenEnc: pageAccessToken,
+            scopes: META_INSTAGRAM_SCOPES.split(","),
+            connectedAt: new Date(),
+            disconnectedAt: null,
+            lastError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(channelConnections.id, existingConnection.id));
+      } else {
+        await db.insert(channelConnections).values({
+          companyId: user.companyId,
+          channel: "instagram",
+          status: "active",
+          igUserId: igAccountId,
+          igUsername: igAccount.username,
+          pageId: pageId,
+          pageName: pageName,
+          displayName: igAccount.name || igAccount.username,
+          accessTokenEnc: pageAccessToken,
+          scopes: META_INSTAGRAM_SCOPES.split(","),
+          connectedAt: new Date(),
+        });
+      }
+      
+      console.log(`[Instagram SDK] Connected @${igAccount.username} for company ${user.companyId}`);
+      return res.json({ 
+        success: true, 
+        igUserId: igAccountId, 
+        igUsername: igAccount.username,
+        message: "Instagram account connected successfully" 
+      });
+    } catch (error) {
+      console.error("[Instagram SDK] Exchange error:", error);
+      return res.status(500).json({ error: "Failed to connect Instagram account" });
+    }
+  });
   // GET /api/integrations/instagram/status - Get Instagram connection status
   app.get("/api/integrations/instagram/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -29998,7 +30121,7 @@ CRITICAL REMINDERS:
   app.get("/api/integrations/meta/facebook/callback", async (req: Request, res: Response) => {
     const baseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || req.protocol || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
     const frontendUrl = baseUrl;
-    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?facebook=error&reason=${encodeURIComponent(reason)}`);
+    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/settings/facebook/flow?facebook=error&reason=${encodeURIComponent(reason)}`);
     
     try {
       const { code, state } = req.query;
@@ -30114,13 +30237,120 @@ CRITICAL REMINDERS:
       }
       
       console.log(`[Facebook OAuth] Connected page ${pageName} (${pageId}) for company ${oauthState.companyId}`);
-      return res.redirect(`${frontendUrl}/integrations?facebook=connected`);
+      return res.redirect(`${frontendUrl}/settings/facebook/flow?facebook=connected`);
     } catch (error) {
       console.error("[Facebook OAuth] Callback error:", error);
       return errorRedirect("connection_failed");
     }
   });
 
+
+  // POST /api/integrations/meta/facebook/exchange-code - Exchange code from FB SDK popup
+  app.post("/api/integrations/meta/facebook/exchange-code", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company" });
+      }
+      
+      const { code } = req.body;
+      if (!code) {
+        return res.status(400).json({ error: "Authorization code is required" });
+      }
+      
+      console.log("[Facebook SDK] Exchanging code for company:", user.companyId);
+      
+      const { appId: metaAppId, appSecret: metaAppSecret } = await credentialProvider.getMeta();
+      
+      // Exchange code for access token
+      const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+      const tokenParams = new URLSearchParams({
+        client_id: metaAppId,
+        client_secret: metaAppSecret,
+        code: code,
+        redirect_uri: "",
+      });
+      
+      const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
+      const tokenData = await tokenResponse.json() as any;
+      
+      if (!tokenResponse.ok || tokenData.error) {
+        console.error("[Facebook SDK] Token exchange failed:", JSON.stringify(tokenData));
+        return res.status(400).json({ error: tokenData.error?.message || "Failed to exchange code" });
+      }
+      
+      const userAccessToken = tokenData.access_token;
+      
+      // Get users Facebook pages
+      const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?access_token=${userAccessToken}\&fields=id,name,access_token`;
+      const pagesResponse = await fetch(pagesUrl);
+      const pagesData = await pagesResponse.json() as any;
+      
+      if (!pagesResponse.ok || pagesData.error) {
+        console.error("[Facebook SDK] Failed to get pages:", pagesData.error);
+        return res.status(400).json({ error: "Could not retrieve Facebook pages. Make sure you granted pages_manage_metadata permission." });
+      }
+      
+      if (!pagesData.data || pagesData.data.length === 0) {
+        console.error("[Facebook SDK] No pages found");
+        return res.status(400).json({ error: "No Facebook pages found. Please make sure you have at least one Facebook page." });
+      }
+      
+      // Use the first page
+      const page = pagesData.data[0];
+      const pageId = page.id;
+      const pageName = page.name;
+      const pageAccessToken = page.access_token;
+      
+      // Check for existing connection
+      const existingConnection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "facebook")
+        )
+      });
+      
+      if (existingConnection) {
+        await db.update(channelConnections)
+          .set({
+            status: "active",
+            fbPageId: pageId,
+            fbPageName: pageName,
+            fbPageAccessToken: pageAccessToken,
+            accessTokenEnc: userAccessToken,
+            scopes: META_FACEBOOK_SCOPES.split(","),
+            connectedAt: new Date(),
+            disconnectedAt: null,
+            lastError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(channelConnections.id, existingConnection.id));
+      } else {
+        await db.insert(channelConnections).values({
+          companyId: user.companyId,
+          channel: "facebook",
+          status: "active",
+          fbPageId: pageId,
+          fbPageName: pageName,
+          fbPageAccessToken: pageAccessToken,
+          accessTokenEnc: userAccessToken,
+          scopes: META_FACEBOOK_SCOPES.split(","),
+          connectedAt: new Date(),
+        });
+      }
+      
+      console.log(`[Facebook SDK] Connected page ${pageName} (${pageId}) for company ${user.companyId}`);
+      return res.json({ 
+        success: true, 
+        pageId, 
+        pageName,
+        message: "Facebook page connected successfully" 
+      });
+    } catch (error) {
+      console.error("[Facebook SDK] Exchange error:", error);
+      return res.status(500).json({ error: "Failed to connect Facebook page" });
+    }
+  });
   // GET /api/integrations/facebook/status - Get Facebook connection status
   app.get("/api/integrations/facebook/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
