@@ -328,7 +328,13 @@ export default function FacebookPage() {
                 paginatedPages.map((page) => (
                   <TableRow key={page.id} data-testid={`row-facebook-page-${page.id}`}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={`https://graph.facebook.com/${connection?.fbPageId}/picture?type=small`}
+                          alt=""
+                          className="w-8 h-8 rounded-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
                         <span className="font-medium">{page.pageName}</span>
                       </div>
                     </TableCell>
