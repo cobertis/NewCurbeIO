@@ -11,18 +11,18 @@ import { decryptToken } from "../crypto";
 
 const META_GRAPH_VERSION = "v21.0";
 
-interface FacebookUserProfile {
+interface MetaUserProfile {
   name: string | null;
   profilePictureUrl: string | null;
 }
 
-async function getFacebookUserProfile(psid: string, pageAccessToken: string): Promise<FacebookUserProfile> {
-  const result: FacebookUserProfile = { name: null, profilePictureUrl: null };
+async function getFacebookUserProfile(psid: string, pageAccessToken: string): Promise<MetaUserProfile> {
+  const result: MetaUserProfile = { name: null, profilePictureUrl: null };
   try {
     const url = `https://graph.facebook.com/${META_GRAPH_VERSION}/${psid}?fields=name,first_name,last_name,profile_pic&access_token=${pageAccessToken}`;
     const response = await fetch(url);
     if (!response.ok) {
-      console.log(`[Facebook Webhook Worker] Failed to get user profile for ${psid}: ${response.status}`);
+      console.log(`[Meta Webhook Worker] Failed to get user profile for ${psid}: ${response.status}`);
       return result;
     }
     const data = await response.json() as any;
@@ -30,7 +30,26 @@ async function getFacebookUserProfile(psid: string, pageAccessToken: string): Pr
     result.profilePictureUrl = data.profile_pic || null;
     return result;
   } catch (error) {
-    console.error(`[Facebook Webhook Worker] Error fetching user profile for ${psid}:`, error);
+    console.error(`[Meta Webhook Worker] Error fetching user profile for ${psid}:`, error);
+    return result;
+  }
+}
+
+async function getInstagramUserProfile(igScopedId: string, pageAccessToken: string): Promise<MetaUserProfile> {
+  const result: MetaUserProfile = { name: null, profilePictureUrl: null };
+  try {
+    const url = `https://graph.facebook.com/${META_GRAPH_VERSION}/${igScopedId}?fields=name,username,profile_pic&access_token=${pageAccessToken}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log(`[Meta Webhook Worker] Failed to get Instagram user profile for ${igScopedId}: ${response.status}`);
+      return result;
+    }
+    const data = await response.json() as any;
+    result.name = data.name || data.username || null;
+    result.profilePictureUrl = data.profile_pic || null;
+    return result;
+  } catch (error) {
+    console.error(`[Meta Webhook Worker] Error fetching Instagram user profile for ${igScopedId}:`, error);
     return result;
   }
 }
@@ -44,10 +63,170 @@ async function processWebhookEvent(event: typeof fbWebhookEvents.$inferSelect): 
   const payload = event.payload as any;
   
   if (!payload?.entry) {
-    console.log("[Facebook Webhook Worker] No entries in payload");
+    console.log("[Meta Webhook Worker] No entries in payload");
     return;
   }
 
+  const eventType = payload.object;
+  
+  if (eventType === "instagram") {
+    await processInstagramEvent(payload);
+  } else if (eventType === "page") {
+    await processFacebookEvent(payload);
+  } else {
+    console.log(`[Meta Webhook Worker] Unknown event type: ${eventType}`);
+  }
+}
+
+async function processInstagramEvent(payload: any): Promise<void> {
+  for (const entry of payload.entry) {
+    const igAccountId = entry.id;
+    const messaging = entry.messaging || [];
+    
+    for (const msgEvent of messaging) {
+      const senderId = msgEvent.sender?.id;
+      const recipientId = msgEvent.recipient?.id;
+      const message = msgEvent.message;
+      const timestamp = msgEvent.timestamp;
+      
+      if (!message || !senderId || !recipientId) {
+        continue;
+      }
+
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.igUserId, igAccountId),
+          eq(channelConnections.channel, "instagram"),
+          eq(channelConnections.status, "active")
+        ),
+      });
+
+      if (!connection) {
+        console.log(`[Meta Webhook Worker] No Instagram connection found for igAccountId: ${igAccountId}`);
+        continue;
+      }
+
+      const companyId = connection.companyId;
+      const customerIgId = senderId === igAccountId ? recipientId : senderId;
+      const isInbound = senderId !== igAccountId;
+
+      if (!isInbound) {
+        continue;
+      }
+
+      const messageId = message.mid;
+      const messageText = message.text || "";
+      const attachments = message.attachments || [];
+
+      const dedupeKey = `ig_msg:${messageId}`;
+      try {
+        const result = await db.execute(sql`
+          INSERT INTO wa_webhook_dedupe (company_id, dedupe_key, event_type)
+          VALUES (${companyId}, ${dedupeKey}, 'inbound_message')
+          ON CONFLICT (company_id, dedupe_key, event_type) DO NOTHING
+          RETURNING id
+        `);
+        
+        if (!result.rows || result.rows.length === 0) {
+          console.log(`[Meta Webhook Worker] Duplicate Instagram message skipped: ${messageId}`);
+          continue;
+        }
+      } catch (dedupeErr) {
+        console.log(`[Meta Webhook Worker] Dedupe check failed for ${messageId}, processing anyway`);
+      }
+
+      const companyPhone = connection.igUsername || connection.displayName || igAccountId;
+      const lastMessageValue = messageText || (attachments.length > 0 ? `[${attachments[0]?.type || 'attachment'}]` : "[message]");
+      const messageTimestamp = timestamp ? new Date(timestamp) : new Date();
+
+      let customerName: string | null = null;
+      let profilePictureUrl: string | null = null;
+      if (connection.accessTokenEnc) {
+        const pageToken = decryptToken(connection.accessTokenEnc);
+        const profile = await getInstagramUserProfile(customerIgId, pageToken);
+        customerName = profile.name;
+        profilePictureUrl = profile.profilePictureUrl;
+        if (customerName) {
+          console.log(`[Meta Webhook Worker] Got Instagram user profile: ${customerName} for ID: ${customerIgId}`);
+        }
+      }
+
+      const upsertResult = await db.execute<typeof telnyxConversations.$inferSelect>(sql`
+        INSERT INTO telnyx_conversations 
+          (company_id, phone_number, company_phone_number, channel, display_name, profile_picture_url, status, unread_count, last_message, last_message_at)
+        VALUES 
+          (${companyId}, ${customerIgId}, ${companyPhone}, 'instagram', ${customerName}, ${profilePictureUrl}, 'open', 1, ${lastMessageValue}, ${messageTimestamp})
+        ON CONFLICT (company_id, phone_number, company_phone_number, channel) 
+        DO UPDATE SET
+          unread_count = telnyx_conversations.unread_count + 1,
+          last_message = ${lastMessageValue},
+          last_message_at = ${messageTimestamp},
+          display_name = COALESCE(telnyx_conversations.display_name, ${customerName}),
+          profile_picture_url = COALESCE(telnyx_conversations.profile_picture_url, ${profilePictureUrl}),
+          status = CASE 
+            WHEN telnyx_conversations.status IN ('solved', 'archived') THEN 'open'
+            ELSE telnyx_conversations.status
+          END,
+          updated_at = NOW()
+        RETURNING *
+      `);
+      
+      let inboxConversation: typeof telnyxConversations.$inferSelect | undefined = upsertResult.rows?.[0];
+      
+      if (!inboxConversation) {
+        const found = await db.query.telnyxConversations.findFirst({
+          where: and(
+            eq(telnyxConversations.companyId, companyId),
+            eq(telnyxConversations.phoneNumber, customerIgId),
+            eq(telnyxConversations.channel, "instagram")
+          ),
+        });
+        
+        if (!found) {
+          console.error(`[Meta Webhook Worker] Failed to find/create Instagram conversation for ${customerIgId}`);
+          throw new Error(`Failed to upsert Instagram conversation for ${customerIgId}`);
+        }
+        inboxConversation = found;
+      }
+
+      let mediaUrls: string[] | null = null;
+      if (attachments.length > 0) {
+        mediaUrls = attachments.map((att: any) => {
+          if (att.payload?.url) {
+            return att.payload.url;
+          }
+          return `ig_media:${JSON.stringify({
+            type: att.type,
+            payload: att.payload
+          })}`;
+        });
+      }
+
+      await db.insert(telnyxMessages).values({
+        conversationId: inboxConversation.id,
+        direction: "inbound",
+        messageType: "incoming",
+        channel: "instagram",
+        text: messageText || (attachments.length > 0 ? `[${attachments[0]?.type}]` : "[message]"),
+        contentType: attachments.length > 0 ? "media" : "text",
+        mediaUrls: mediaUrls,
+        status: "delivered",
+        telnyxMessageId: messageId,
+        deliveredAt: messageTimestamp,
+      });
+
+      broadcastNewMessage(customerIgId, {
+        conversationId: inboxConversation.id,
+        channel: "instagram",
+        text: messageText,
+      }, companyId);
+
+      console.log(`[Meta Webhook Worker] Saved inbound Instagram message to inbox: ${messageId}`);
+    }
+  }
+}
+
+async function processFacebookEvent(payload: any): Promise<void> {
   for (const entry of payload.entry) {
     const pageId = entry.id;
     const messaging = entry.messaging || [];
@@ -73,7 +252,7 @@ async function processWebhookEvent(event: typeof fbWebhookEvents.$inferSelect): 
       });
 
       if (!connection) {
-        console.log(`[Facebook Webhook Worker] No connection found for pageId: ${fbPageId}`);
+        console.log(`[Meta Webhook Worker] No Facebook connection found for pageId: ${fbPageId}`);
         continue;
       }
 
@@ -99,18 +278,17 @@ async function processWebhookEvent(event: typeof fbWebhookEvents.$inferSelect): 
         `);
         
         if (!result.rows || result.rows.length === 0) {
-          console.log(`[Facebook Webhook Worker] Duplicate message skipped: ${messageId}`);
+          console.log(`[Meta Webhook Worker] Duplicate Facebook message skipped: ${messageId}`);
           continue;
         }
       } catch (dedupeErr) {
-        console.log(`[Facebook Webhook Worker] Dedupe check failed for ${messageId}, processing anyway`);
+        console.log(`[Meta Webhook Worker] Dedupe check failed for ${messageId}, processing anyway`);
       }
 
       const companyPhone = connection.fbPageName || fbPageId;
       const lastMessageValue = messageText || (attachments.length > 0 ? `[${attachments[0]?.type || 'attachment'}]` : "[message]");
       const messageTimestamp = timestamp ? new Date(timestamp) : new Date();
 
-      // Get user's name and profile picture from Facebook Graph API
       let customerName: string | null = null;
       let profilePictureUrl: string | null = null;
       if (connection.fbPageAccessToken) {
@@ -119,7 +297,7 @@ async function processWebhookEvent(event: typeof fbWebhookEvents.$inferSelect): 
         customerName = profile.name;
         profilePictureUrl = profile.profilePictureUrl;
         if (customerName) {
-          console.log(`[Facebook Webhook Worker] Got user profile: ${customerName}, pic: ${profilePictureUrl ? 'yes' : 'no'} for PSID: ${customerPsid}`);
+          console.log(`[Meta Webhook Worker] Got Facebook user profile: ${customerName} for PSID: ${customerPsid}`);
         }
       }
 
@@ -155,8 +333,8 @@ async function processWebhookEvent(event: typeof fbWebhookEvents.$inferSelect): 
         });
         
         if (!found) {
-          console.error(`[Facebook Webhook Worker] Failed to find/create conversation for ${customerPsid}`);
-          throw new Error(`Failed to upsert conversation for ${customerPsid}`);
+          console.error(`[Meta Webhook Worker] Failed to find/create Facebook conversation for ${customerPsid}`);
+          throw new Error(`Failed to upsert Facebook conversation for ${customerPsid}`);
         }
         inboxConversation = found;
       }
@@ -193,7 +371,7 @@ async function processWebhookEvent(event: typeof fbWebhookEvents.$inferSelect): 
         text: messageText,
       }, companyId);
 
-      console.log(`[Facebook Webhook Worker] Saved inbound message to inbox: ${messageId}`);
+      console.log(`[Meta Webhook Worker] Saved inbound Facebook message to inbox: ${messageId}`);
     }
   }
 }
@@ -227,7 +405,7 @@ async function pollWebhookEvents(): Promise<void> {
           WHERE id = ${event.id}
         `);
       } catch (error: any) {
-        console.error(`[Facebook Webhook Worker] Error processing event ${event.id}:`, error);
+        console.error(`[Meta Webhook Worker] Error processing event ${event.id}:`, error);
         
         const newStatus = event.attempt >= MAX_ATTEMPTS ? 'failed' : 'pending';
         await db.execute(sql`
@@ -238,17 +416,17 @@ async function pollWebhookEvents(): Promise<void> {
       }
     }
   } catch (error) {
-    console.error("[Facebook Webhook Worker] Poll error:", error);
+    console.error("[Meta Webhook Worker] Poll error:", error);
   }
 }
 
 export function startFacebookWebhookWorker(): void {
   if (webhookIntervalId) {
-    console.log("[Facebook Webhook Worker] Already running");
+    console.log("[Meta Webhook Worker] Already running");
     return;
   }
 
-  console.log("[Facebook Webhook Worker] Starting...");
+  console.log("[Meta Webhook Worker] Starting (handles Facebook + Instagram)...");
   webhookIntervalId = setInterval(pollWebhookEvents, WEBHOOK_POLL_INTERVAL_MS);
 }
 
@@ -256,6 +434,6 @@ export function stopFacebookWebhookWorker(): void {
   if (webhookIntervalId) {
     clearInterval(webhookIntervalId);
     webhookIntervalId = null;
-    console.log("[Facebook Webhook Worker] Stopped");
+    console.log("[Meta Webhook Worker] Stopped");
   }
 }

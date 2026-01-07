@@ -27561,9 +27561,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       const payload = JSON.parse(rawBody.toString());
       
-      // Only process page-related events (Facebook Messenger)
-      if (payload.object !== "page") {
-        console.log("[Facebook Webhook] Ignoring non-page event:", payload.object);
+      // Process page events (Facebook Messenger) and instagram events (Instagram DM)
+      if (payload.object !== "page" && payload.object !== "instagram") {
+        console.log("[Meta Webhook] Ignoring non-page event:", payload.object);
         return res.status(200).send("EVENT_RECEIVED");
       }
 
@@ -27572,7 +27572,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         status: "pending",
         attempt: 0,
       });
-      console.log("[Facebook Webhook] ACK - queued for async processing");
+      console.log("[Meta Webhook] ACK - queued for async processing");
       return res.status(200).send("EVENT_RECEIVED");
     } catch (error) {
       console.error("[Facebook Webhook] Error processing webhook:", error);
@@ -43342,6 +43342,135 @@ CRITICAL REMINDERS:
           }
         }
         // === END FACEBOOK MESSENGER CHANNEL ROUTING ===
+        // === INSTAGRAM DM CHANNEL ROUTING ===
+        if (conversation.channel === "instagram") {
+          try {
+            // Get Instagram connection for this company
+            const [igConnection] = await db
+              .select()
+              .from(channelConnections)
+              .where(and(
+                eq(channelConnections.companyId, companyId),
+                eq(channelConnections.channel, "instagram"),
+                eq(channelConnections.status, "active")
+              ));
+
+            if (!igConnection || !igConnection.accessTokenEnc) {
+              console.error("[Inbox Instagram] No Instagram connection found");
+              return res.status(400).json({ message: "Instagram not connected. Please set up Instagram in the Integrations page." });
+            }
+
+            const pageAccessToken = decryptToken(igConnection.accessTokenEnc);
+            const recipientIgId = conversation.phoneNumber; // Instagram scoped ID stored in phoneNumber field
+
+            // Send message via Instagram Graph API (same endpoint as Facebook Messenger)
+            const META_GRAPH_VERSION = "v21.0";
+            const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages`;
+            
+            const messagePayload: any = {
+              recipient: { id: recipientIgId },
+              messaging_type: "RESPONSE",
+              message: {}
+            };
+
+            // Handle text message
+            if (text && text.trim()) {
+              messagePayload.message.text = text;
+            }
+
+            // Handle media attachments
+            if (mediaUrls.length > 0 && files && files.length > 0) {
+              // Instagram can only send one attachment at a time
+              const firstFile = files[0];
+              const attachmentType = firstFile.mimetype.startsWith("image/") ? "image" 
+                : firstFile.mimetype.startsWith("video/") ? "video"
+                : firstFile.mimetype.startsWith("audio/") ? "audio"
+                : "file";
+
+              messagePayload.message = {
+                attachment: {
+                  type: attachmentType,
+                  payload: {
+                    url: mediaUrls[0],
+                    is_reusable: true
+                  }
+                }
+              };
+
+              // If we also have text, send it as a separate message first
+              if (text && text.trim()) {
+                const textResponse = await fetch(`${sendUrl}?access_token=${pageAccessToken}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    recipient: { id: recipientIgId },
+                    messaging_type: "RESPONSE",
+                    message: { text }
+                  })
+                });
+                const textData = await textResponse.json();
+                if (!textResponse.ok) {
+                  console.error("[Inbox Instagram] Failed to send text:", textData);
+                }
+              }
+            }
+
+            // Send the message
+            const igResponse = await fetch(`${sendUrl}?access_token=${pageAccessToken}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(messagePayload)
+            });
+            
+            const igData: any = await igResponse.json();
+
+            if (!igResponse.ok) {
+              console.error("[Inbox Instagram] Send error:", igData);
+              return res.status(500).json({ message: igData.error?.message || "Failed to send Instagram message" });
+            }
+
+            console.log("[Inbox Instagram] Message sent successfully:", igData.message_id);
+
+            // Save message to database
+            const [message] = await db
+              .insert(telnyxMessages)
+              .values({
+                conversationId: id,
+                direction: "outbound",
+                messageType: "outgoing",
+                channel: "instagram",
+                text: text || "(attachment)",
+                contentType: mediaUrls.length > 0 ? "media" : "text",
+                status: "sent",
+                telnyxMessageId: igData.message_id || null,
+                sentBy: userId,
+                sentAt: new Date(),
+                errorMessage: null,
+                mediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
+              })
+              .returning();
+
+            // Update conversation
+            await db
+              .update(telnyxConversations)
+              .set({ 
+                lastMessage: (text || "(attachment)").substring(0, 100), 
+                lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null, 
+                lastMessageAt: new Date(), 
+                updatedAt: new Date() 
+              })
+              .where(eq(telnyxConversations.id, id));
+
+            // Broadcast for real-time update
+            broadcastInboxMessage(companyId, id);
+
+            return res.status(201).json(message);
+          } catch (igError: any) {
+            console.error("[Inbox Instagram] Send error:", igError);
+            return res.status(500).json({ message: igError.message || "Failed to send Instagram message" });
+          }
+        }
+        // === END INSTAGRAM DM CHANNEL ROUTING ===
         // Send message via Telnyx API using managed account
         const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
         const sendResult = await sendTelnyxMessage({
