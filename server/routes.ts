@@ -43336,14 +43336,13 @@ CRITICAL REMINDERS:
                 console.log(`[Inbox Instagram] Could not fetch permissions`);
               }
               
-              // Meta requires URL params, NOT JSON body for comment replies
-              const params = new URLSearchParams({
-                message: text,
-                access_token: pageAccessToken
-              });
-              
-              const commentResponse = await fetch(`${commentReplyUrl}?${params.toString()}`, {
-                method: "POST"
+              // Meta requires JSON body with Content-Type header for comment replies (per official docs)
+              const commentResponse = await fetch(`${commentReplyUrl}?access_token=${pageAccessToken}`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ message: text })
               });
               
               const commentData = await commentResponse.json();

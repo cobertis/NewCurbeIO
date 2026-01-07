@@ -1,0 +1,89 @@
+
+
+0|curbe-admin  | 11:04:37 PM [express] GET /api/ai/autopilot/pending 304 in 41ms :: {"pending":[]}
+0|curbe-admin  | [Meta Webhook] POST received - User-Agent: Webhooks/1.0 (https://fb.me/webhooks)
+0|curbe-admin  | [Meta Webhook] Body type: object isBuffer: true length: 316
+0|curbe-admin  | [Meta Webhook] Signature validated with: Instagram app secret
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 11:04:38 PM [express] POST /api/webhooks/meta/facebook 200 in 3ms
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WhatsApp Call] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 unregistered from company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WhatsApp Call WS] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | 11:04:42 PM [express] GET /api/session 304 in 47ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d2…
+0|curbe-admin  | 11:04:42 PM [express] GET /api/session 304 in 45ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d2…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 registered for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 11:04:42 PM [express] GET /api/integrations/whatsapp/status 304 in 41ms :: {"connected":true,"connect…
+0|curbe-admin  | 11:04:42 PM [express] GET /api/integrations/whatsapp/connections 304 in 46ms :: {"connections":[{"id"…
+0|curbe-admin  | 11:04:42 PM [express] GET /api/users/availability-status 304 in 38ms :: {"status":"online"}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 11:04:43 PM [express] GET /api/inbox/custom-inboxes 304 in 109ms :: [{"id":"3269d08c-0bae-4283-b43c-9…
+0|curbe-admin  | [CONTACTS UNIFICADOS] Usuario: javierlazocuba@gmail.com, Rol: admin, UserID: 8941c16e-b7a3-4e63-845e-afdf93d260e3, CompañíaID: 078dac90-b0ca-44f1-9739-f78221dc0f53, Total contactos: 1
+0|curbe-admin  | [CONTACTS UNIFICADOS] Contactos sanitizados y retornando: 1
+0|curbe-admin  | 11:04:43 PM [express] GET /api/contacts/unified 304 in 162ms :: {"contacts":[{"id":"b42e11be-a800-4db…
+0|curbe-admin  | 11:04:43 PM [express] GET /api/companies/078dac90-b0ca-44f1-9739-f78221dc0f53 304 in 129ms :: {"compa…
+0|curbe-admin  | 11:04:43 PM [express] GET /api/call-logs 304 in 187ms :: {"logs":[{"id":"27444230-4247-4b55-bff4-67bf…
+0|curbe-admin  | 11:04:43 PM [express] GET /api/telnyx/user-phone-status 304 in 199ms :: {"hasAssignedNumber":true,"ca…
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 11:04:43 PM [express] GET /api/telnyx/phone-system-access 304 in 249ms :: {"hasAccess":true,"isOwner"…
+0|curbe-admin  | 11:04:43 PM [express] GET /api/voicemails 304 in 260ms :: {"voicemails":[],"unreadCount":0}
+0|curbe-admin  | 11:04:43 PM [express] GET /api/wallet/balance 304 in 202ms :: {"balance":"44.1175","currency":"USD","…
+0|curbe-admin  | 11:04:43 PM [express] GET /api/notifications 304 in 173ms :: {"notifications":[{"id":"02b5b34a-350e-4…
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 11:04:43 PM [express] GET /api/imessage/access 304 in 260ms :: {"hasAccess":true}
+0|curbe-admin  | 11:04:43 PM [express] GET /api/inbox/conversations 200 in 268ms :: {"conversations":[{"id":"7725aad6-…
+0|curbe-admin  | 11:04:43 PM [express] GET /api/session 304 in 242ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d…
+0|curbe-admin  | 11:04:43 PM [express] GET /api/users 304 in 337ms :: {"users":[{"id":"391f3038-1b92-465f-9d6d-19ce62e…
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 11:04:43 PM [express] GET /api/ai/autopilot/pending 304 in 357ms :: {"pending":[]}
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+0|curbe-admin  | 11:04:43 PM [express] GET /api/voicemails 304 in 22ms :: {"voicemails":[],"unreadCount":0}
+0|curbe-admin  | 11:04:43 PM [express] GET /api/custom-inboxes 304 in 19ms :: [{"id":"3269d08c-0bae-4283-b43c-93f8c4f6…
+0|curbe-admin  | [Telnyx Sync] Synced 0 new numbers for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 11:04:43 PM [express] GET /api/telnyx/my-numbers 304 in 520ms :: {"numbers":[{"id":"249f0311-ea45-400…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | [TURN Credentials] Using extension credentials for: ext1017errgwc5
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 11:04:43 PM [express] GET /api/telnyx/turn-credentials 304 in 34ms :: {"username":"ext1017errgwc5","c…
+0|curbe-admin  | 11:04:43 PM [express] GET /api/pbx/special-extensions 304 in 34ms :: {"ivrExtension":null,"queues":[]}
+0|curbe-admin  | 11:04:43 PM [express] GET /api/webrtc/extension-credentials 304 in 17ms :: {"extensionId":"7c0585a4-2…
+0|curbe-admin  | 11:04:43 PM [express] GET /api/telnyx/voice-settings/249f0311-ea45-4007-b0d8-465ec454fbae 304 in 158m…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 11:04:44 PM [express] GET /api/ai/conversations 304 in 7ms
+0|curbe-admin  | 11:04:44 PM [express] PATCH /api/inbox/conversations/7725aad6-aab4-4dcf-9c96-b22cd326ef73 200 in 23ms…
+0|curbe-admin  | 11:04:44 PM [express] GET /api/inbox/conversations/7725aad6-aab4-4dcf-9c96-b22cd326ef73/messages 200 …
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 11:04:44 PM [express] GET /api/inbox/conversations 200 in 18ms :: {"conversations":[{"id":"7725aad6-a…
+0|curbe-admin  | [Inbox] Reassigned conversation 7725aad6-aab4-4dcf-9c96-b22cd326ef73 to user 8941c16e-b7a3-4e63-845e-afdf93d260e3 (was: unassigned)
+0|curbe-admin  | [WebSocket] Broadcasting conversation_update to 4 authenticated clients (company: 078dac90-b0ca-44f1-9739-f78221dc0f53)
+0|curbe-admin  | [Inbox Instagram] Sending PUBLIC reply to comment 18068364725542030
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 11:04:50 PM [express] GET /api/notifications 304 in 31ms :: {"notifications":[{"id":"02b5b34a-350e-41…
+0|curbe-admin  | 11:04:50 PM [express] GET /api/inbox/conversations 200 in 34ms :: {"conversations":[{"id":"7725aad6-a…
+0|curbe-admin  | 11:04:50 PM [express] GET /api/inbox/conversations/7725aad6-aab4-4dcf-9c96-b22cd326ef73/messages 200 …
+0|curbe-admin  | [Inbox Instagram] Token permissions: {"error":{"message":"(#100) Tried accessing nonexisting field (permissions) on node type (Page)","type":"OAuthException","code":100,"fbtrace_id":"AfV9ttPGZcXXwEdQCnJInn8"}}
+0|curbe-admin  | [Inbox Instagram] Failed to post comment reply: {
+0|curbe-admin  |   error: {
+0|curbe-admin  |     message: '(#100) Missing Permission',
+0|curbe-admin  |     type: 'OAuthException',
+0|curbe-admin  |     code: 100,
+0|curbe-admin  |     fbtrace_id: 'AB4oUBRLeSzFwN2QIjnA_nm'
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | 11:04:51 PM [express] POST /api/inbox/conversations/7725aad6-aab4-4dcf-9c96-b22cd326ef73/messages 400…
+0|curbe-admin  | 11:04:53 PM [express] GET /api/ai/autopilot/pending 304 in 34ms :: {"pending":[]}
+
