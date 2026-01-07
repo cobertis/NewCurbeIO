@@ -6722,6 +6722,7 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   phoneNumber: text("phone_number").notNull(), // Customer phone number (E.164)
   displayName: text("display_name"), // Customer display name if known
+  profilePictureUrl: text("profile_picture_url"), // Customer profile picture URL (Facebook, WhatsApp, etc.)
   email: text("email"), // Customer email
   jobTitle: text("job_title"), // Customer job title
   organization: text("organization"), // Customer organization/company

@@ -2212,6 +2212,9 @@ export default function InboxPage() {
                   <div className="flex items-start gap-3">
                     <div className="relative shrink-0">
                       <Avatar className="h-10 w-10">
+                        {(conversation as any).profilePictureUrl && (
+                          <AvatarImage src={(conversation as any).profilePictureUrl} alt={conversation.displayName || "Profile"} />
+                        )}
                         <AvatarFallback className="bg-sky-100 text-sky-700 text-sm">
                           {getInitials(conversation.displayName, conversation.phoneNumber)}
                         </AvatarFallback>
@@ -2296,6 +2299,9 @@ export default function InboxPage() {
                 </Button>
                 <div className="relative shrink-0">
                   <Avatar className="h-10 w-10">
+                    {(selectedConversation as any).profilePictureUrl && (
+                      <AvatarImage src={(selectedConversation as any).profilePictureUrl} alt={selectedConversation.displayName || "Profile"} />
+                    )}
                     <AvatarFallback className="bg-sky-100 text-sky-700">
                       {getInitials(selectedConversation.displayName, selectedConversation.phoneNumber)}
                     </AvatarFallback>
@@ -2311,7 +2317,7 @@ export default function InboxPage() {
                   <p className="text-sm text-muted-foreground">
                     {selectedConversation.channel === "live_chat" 
                       ? ((selectedConversation as any).email || "No email provided")
-                      : formatForDisplay(selectedConversation.phoneNumber)}
+                      : (selectedConversation.channel === "facebook" ? "Facebook Messenger" : formatForDisplay(selectedConversation.phoneNumber))}
                   </p>
                 </div>
                 
