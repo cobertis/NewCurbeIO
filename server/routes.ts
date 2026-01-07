@@ -29729,7 +29729,8 @@ CRITICAL REMINDERS:
       
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
       authUrl.searchParams.set("client_id", metaAppId);
-      const instagramRedirectUri = process.env.META_INSTAGRAM_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/instagram/callback`;
+      const instagramBaseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || req.protocol || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+      const instagramRedirectUri = process.env.META_INSTAGRAM_REDIRECT_URI || `${instagramBaseUrl}/api/integrations/meta/instagram/callback`;
       authUrl.searchParams.set("redirect_uri", instagramRedirectUri);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_INSTAGRAM_SCOPES);
@@ -29965,7 +29966,8 @@ CRITICAL REMINDERS:
       
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
       authUrl.searchParams.set("client_id", metaAppId);
-      const redirectUri = process.env.META_FACEBOOK_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/facebook/callback`;
+      const baseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || req.protocol || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+      const redirectUri = process.env.META_FACEBOOK_REDIRECT_URI || `${baseUrl}/api/integrations/meta/facebook/callback`;
       authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_FACEBOOK_SCOPES);
