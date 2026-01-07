@@ -2314,12 +2314,23 @@ export default function InboxPage() {
                       size="sm"
                       className={cn(
                         "h-7 gap-1.5 text-xs font-medium border",
-                        lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.color || "bg-blue-100 text-blue-700 border-blue-200"
+                        selectedConversation.customInboxId
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.color || "bg-blue-100 text-blue-700 border-blue-200"
                       )}
                       data-testid="btn-lifecycle"
                     >
-                      <span>{lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.emoji || "🆕"}</span>
-                      <span>{lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.label || "New Lead"}</span>
+                      {selectedConversation.customInboxId ? (
+                        <>
+                          <span>{customInboxes.find(i => i.id === selectedConversation.customInboxId)?.emoji || "📁"}</span>
+                          <span>{customInboxes.find(i => i.id === selectedConversation.customInboxId)?.name || "Inbox"}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.emoji || "🆕"}</span>
+                          <span>{lifecycleOptions.find(l => l.id === ((selectedConversation as any).lifecycleStage || "new_lead"))?.label || "New Lead"}</span>
+                        </>
+                      )}
                       <ChevronRight className="h-3 w-3 opacity-50" />
                     </Button>
                   </PopoverTrigger>
