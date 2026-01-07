@@ -30278,10 +30278,31 @@ CRITICAL REMINDERS:
         return errorRedirect("connection_failed");
       }
       
-      const userAccessToken = tokenData.access_token;
+      const shortLivedToken = tokenData.access_token;
       
-      // Get user's Facebook pages
+      // Exchange short-lived token for long-lived token (60 days)
+      const longLivedUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+      const longLivedParams = new URLSearchParams({
+        grant_type: 'fb_exchange_token',
+        client_id: metaAppId,
+        client_secret: metaAppSecret,
+        fb_exchange_token: shortLivedToken,
+      });
+      
+      const longLivedResponse = await fetch(`${longLivedUrl}?${longLivedParams.toString()}`);
+      const longLivedData = await longLivedResponse.json() as any;
+      
+      // Use long-lived token if available, otherwise fallback to short-lived
+      const userAccessToken = longLivedData.access_token || shortLivedToken;
+      if (longLivedData.access_token) {
+        console.log(`[Facebook OAuth] Got long-lived token, expires in ${longLivedData.expires_in || 'never'} seconds`);
+      } else {
+        console.warn("[Facebook OAuth] Could not get long-lived token, using short-lived token");
+      }
+      
+      // Get user's Facebook pages (page tokens inherit user token lifetime)
       const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?access_token=${userAccessToken}&fields=id,name,access_token`;
+      
       const pagesResponse = await fetch(pagesUrl);
       const pagesData = await pagesResponse.json() as any;
       
