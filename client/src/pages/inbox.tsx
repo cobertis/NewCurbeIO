@@ -2043,6 +2043,13 @@ export default function InboxPage() {
       onLifecycleChange={setActiveLifecycle}
       activeCustomInbox={activeCustomInbox}
       onCustomInboxChange={setActiveCustomInbox}
+      inboxCounts={conversations.reduce((acc, c) => {
+        const inboxId = (c as any).customInboxId;
+        if (inboxId && c.status !== "solved" && c.status !== "archived") {
+          acc[inboxId] = (acc[inboxId] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>)}
     >
       {/* Conversation List Panel */}
       <div className={cn(

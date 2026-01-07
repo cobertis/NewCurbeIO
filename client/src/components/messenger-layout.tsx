@@ -67,6 +67,7 @@ interface MessengerLayoutProps {
   onLifecycleChange?: (lifecycle: LifecycleStage | null) => void;
   activeCustomInbox?: string | null;
   onCustomInboxChange?: (inboxId: string | null) => void;
+  inboxCounts?: Record<string, number>;
 }
 
 const viewItems = [
@@ -93,7 +94,8 @@ export function MessengerLayout({
   activeLifecycle = null,
   onLifecycleChange,
   activeCustomInbox = null,
-  onCustomInboxChange
+  onCustomInboxChange,
+  inboxCounts = {}
 }: MessengerLayoutProps) {
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [teamInboxOpen, setTeamInboxOpen] = useState(true);
@@ -310,11 +312,14 @@ export function MessengerLayout({
                         <p className="text-xs text-muted-foreground">No inboxes created</p>
                       </div>
                     ) : (
-                      teamInboxes.map((inbox) => (
+                      teamInboxes.map((inbox) => {
+                        const count = inboxCounts[inbox.id] || 0;
+                        const isActive = activeCustomInbox === inbox.id;
+                        return (
                         <button
                           key={inbox.id}
                           onClick={() => {
-                            if (activeCustomInbox === inbox.id) {
+                            if (isActive) {
                               onCustomInboxChange?.(null);
                             } else {
                               onCustomInboxChange?.(inbox.id);
@@ -323,7 +328,7 @@ export function MessengerLayout({
                           }}
                           className={cn(
                             "group w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
-                            activeCustomInbox === inbox.id
+                            isActive
                               ? "bg-primary/10 text-primary font-medium"
                               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                           )}
@@ -331,6 +336,16 @@ export function MessengerLayout({
                         >
                           <span className="text-base">{inbox.emoji}</span>
                           <span className="flex-1 text-left truncate">{inbox.name}</span>
+                          {count > 0 && (
+                            <span className={cn(
+                              "text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
+                              isActive 
+                                ? "bg-primary/20 text-primary" 
+                                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                            )}>
+                              {count}
+                            </span>
+                          )}
                           <span
                             onClick={(e) => {
                               e.stopPropagation();
@@ -342,7 +357,8 @@ export function MessengerLayout({
                             <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
                           </span>
                         </button>
-                      ))
+                        );
+                      })
                     )}
                   </nav>
                 </CollapsibleContent>
@@ -378,11 +394,14 @@ export function MessengerLayout({
                         <p className="text-xs text-muted-foreground">No inboxes created</p>
                       </div>
                     ) : (
-                      userInboxes.map((inbox) => (
+                      userInboxes.map((inbox) => {
+                        const count = inboxCounts[inbox.id] || 0;
+                        const isActive = activeCustomInbox === inbox.id;
+                        return (
                         <button
                           key={inbox.id}
                           onClick={() => {
-                            if (activeCustomInbox === inbox.id) {
+                            if (isActive) {
                               onCustomInboxChange?.(null);
                             } else {
                               onCustomInboxChange?.(inbox.id);
@@ -391,7 +410,7 @@ export function MessengerLayout({
                           }}
                           className={cn(
                             "group w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
-                            activeCustomInbox === inbox.id
+                            isActive
                               ? "bg-primary/10 text-primary font-medium"
                               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                           )}
@@ -399,6 +418,16 @@ export function MessengerLayout({
                         >
                           <span className="text-base">{inbox.emoji}</span>
                           <span className="flex-1 text-left truncate">{inbox.name}</span>
+                          {count > 0 && (
+                            <span className={cn(
+                              "text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
+                              isActive 
+                                ? "bg-primary/20 text-primary" 
+                                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                            )}>
+                              {count}
+                            </span>
+                          )}
                           <span
                             onClick={(e) => {
                               e.stopPropagation();
@@ -410,7 +439,8 @@ export function MessengerLayout({
                             <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
                           </span>
                         </button>
-                      ))
+                        );
+                      })
                     )}
                   </nav>
                 </CollapsibleContent>
