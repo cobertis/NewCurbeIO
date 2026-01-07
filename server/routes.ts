@@ -43267,7 +43267,7 @@ CRITICAL REMINDERS:
         if (conversation.channel === "instagram") {
           try {
             // Get Instagram connection for this company
-      const igConnection = await db
+            const igConnectionResult = await db
               .select()
               .from(channelConnections)
               .where(and(
@@ -43275,6 +43275,7 @@ CRITICAL REMINDERS:
                 eq(channelConnections.channel, "instagram"),
                 eq(channelConnections.status, "active")
               ));
+            const igConnection = igConnectionResult[0];
 
             if (!igConnection || !igConnection.accessTokenEnc) {
               console.error("[Inbox Instagram] No Instagram connection found");
