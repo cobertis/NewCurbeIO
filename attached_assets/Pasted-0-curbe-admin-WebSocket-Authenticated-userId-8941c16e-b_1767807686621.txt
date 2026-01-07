@@ -1,0 +1,40 @@
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [Facebook Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Facebook Webhook] Body type: object isBuffer: true length: 395
+0|curbe-admin  | [Facebook Webhook] Invalid signature
+0|curbe-admin  | 5:41:12 PM [express] POST /api/webhooks/meta/facebook 403 in 24ms :: {"error":"Forbidden: Invalid si…
+0|curbe-admin  | [Facebook Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Facebook Webhook] Body type: object isBuffer: true length: 395
+0|curbe-admin  | [Facebook Webhook] Invalid signature
+0|curbe-admin  | 5:41:12 PM [express] POST /api/webhooks/meta/facebook 403 in 6ms :: {"error":"Forbidden: Invalid sig…
+0|curbe-admin  | [Facebook Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Facebook Webhook] Body type: object isBuffer: true length: 395
+0|curbe-admin  | [Facebook Webhook] Invalid signature
+0|curbe-admin  | 5:41:12 PM [express] POST /api/webhooks/meta/facebook 403 in 1ms :: {"error":"Forbidden: Invalid sig…
+0|curbe-admin  | [Facebook Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Facebook Webhook] Body type: object isBuffer: true length: 395
+0|curbe-admin  | [Facebook Webhook] Invalid signature
+0|curbe-admin  | 5:41:12 PM [express] POST /api/webhooks/meta/facebook 403 in 1ms :: {"error":"Forbidden: Invalid sig…
+0|curbe-admin  | [Facebook Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Facebook Webhook] Body type: object isBuffer: true length: 395
+0|curbe-admin  | [Facebook Webhook] Invalid signature
+0|curbe-admin  | 5:41:13 PM [express] POST /api/webhooks/meta/facebook 403 in 2ms :: {"error":"Forbidden: Invalid sig…
+0|curbe-admin  | [Facebook Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Facebook Webhook] Body type: object isBuffer: true length: 395
+0|curbe-admin  | [Facebook Webhook] Invalid signature
+0|curbe-admin  | 5:41:13 PM [express] POST /api/webhooks/meta/facebook 403 in 2ms :: {"error":"Forbidden: Invalid sig…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [Facebook Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Facebook Webhook] Body type: object isBuffer: true length: 395
+0|curbe-admin  | [Facebook Webhook] Invalid signature
+0|curbe-admin  | 5:41:16 PM [express] POST /api/webhooks/meta/facebook 403 in 1ms :: {"error":"Forbidden: Invalid sig…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0
