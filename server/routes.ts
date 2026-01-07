@@ -29773,6 +29773,7 @@ CRITICAL REMINDERS:
     "instagram_manage_comments",
     "pages_show_list",
     "business_management",
+    "pages_read_engagement",
   ].join(",");
 
   // POST /api/integrations/meta/instagram/start - Start Instagram OAuth flow
