@@ -114,7 +114,7 @@ async function processWebhookEvent(event: typeof fbWebhookEvents.$inferSelect): 
       let customerName: string | null = null;
       let profilePictureUrl: string | null = null;
       if (connection.fbPageAccessToken) {
-        const pageToken = decryptToken(connection.fbPageAccessToken);
+        const pageToken = connection.fbPageAccessToken;
         const profile = await getFacebookUserProfile(customerPsid, pageToken);
         customerName = profile.name;
         profilePictureUrl = profile.profilePictureUrl;

@@ -43209,7 +43209,7 @@ CRITICAL REMINDERS:
               return res.status(400).json({ message: "Facebook page not connected. Please set up Facebook in the Integrations page." });
             }
 
-            const pageAccessToken = decryptToken(fbConnection.fbPageAccessToken);
+            const pageAccessToken = fbConnection.fbPageAccessToken;
             const recipientPsid = conversation.phoneNumber; // PSID stored in phoneNumber field
 
             // Send message via Facebook Graph API
