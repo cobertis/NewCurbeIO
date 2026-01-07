@@ -3734,22 +3734,24 @@ export default function InboxPage() {
                           {selectedConversation.channel === "mms" && <MessageSquare className="h-3.5 w-3.5 text-blue-600" />}
                           {selectedConversation.channel === "imessage" && <SiApple className="h-3.5 w-3.5 text-gray-800 dark:text-gray-200" />}
                           {selectedConversation.channel === "messenger" && <SiMessenger className="h-3.5 w-3.5 text-blue-500" />}
+                          {selectedConversation.channel === "facebook" && <SiFacebook className="h-3.5 w-3.5 text-blue-600" />}
                           {selectedConversation.channel === "telegram" && <SiTelegram className="h-3.5 w-3.5 text-sky-500" />}
                           {selectedConversation.channel === "instagram" && <SiInstagram className="h-3.5 w-3.5 text-pink-500" />}
                           {selectedConversation.channel === "live_chat" && <Globe className="h-3.5 w-3.5 text-orange-500" />}
                           {selectedConversation.channel === "email" && <Mail className="h-3.5 w-3.5 text-red-500" />}
-                          {!["whatsapp", "sms", "mms", "imessage", "messenger", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && <MessageSquare className="h-3.5 w-3.5 text-gray-500" />}
+                          {!["whatsapp", "sms", "mms", "imessage", "messenger", "facebook", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && <MessageSquare className="h-3.5 w-3.5 text-gray-500" />}
                           <span className="text-sm font-medium">
                             {selectedConversation.channel === "whatsapp" && "WhatsApp"}
                             {selectedConversation.channel === "sms" && "SMS"}
                             {selectedConversation.channel === "mms" && "MMS"}
                             {selectedConversation.channel === "imessage" && "iMessage"}
                             {selectedConversation.channel === "messenger" && "Messenger"}
+                            {selectedConversation.channel === "facebook" && "Facebook Messenger"}
                             {selectedConversation.channel === "telegram" && "Telegram"}
                             {selectedConversation.channel === "instagram" && "Instagram"}
                             {selectedConversation.channel === "live_chat" && "Live Chat"}
                             {selectedConversation.channel === "email" && "Email"}
-                            {!["whatsapp", "sms", "mms", "imessage", "messenger", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && (selectedConversation.channel?.charAt(0).toUpperCase() + selectedConversation.channel?.slice(1) || "Unknown")}
+                            {!["whatsapp", "sms", "mms", "imessage", "messenger", "facebook", "telegram", "instagram", "live_chat", "email"].includes(selectedConversation.channel) && (selectedConversation.channel?.charAt(0).toUpperCase() + selectedConversation.channel?.slice(1) || "Unknown")}
                           </span>
                         </div>
                       </div>
