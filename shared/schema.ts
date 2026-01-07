@@ -6766,6 +6766,11 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   // WhatsApp 24-hour conversation window tracking
   conversationExpiresAt: timestamp("conversation_expires_at"), // When the 24h free-form messaging window expires
   
+  // Instagram HUMAN_AGENT 7-day messaging window
+  humanAgentEnabled: boolean("human_agent_enabled").default(false), // Whether human agent mode is active (extends window to 7 days)
+  humanAgentEnabledAt: timestamp("human_agent_enabled_at"), // When human agent mode was enabled
+  lastInboundAt: timestamp("last_inbound_at"), // Last message received from customer (for 7-day window validation)
+  
   // Lifecycle stage for CRM funnel
   lifecycleStage: text("lifecycle_stage").default("new_lead"), // new_lead, hot_lead, payment, customer
   customInboxId: varchar("custom_inbox_id").references(() => customInboxes.id, { onDelete: "set null" }), // Custom inbox assignment

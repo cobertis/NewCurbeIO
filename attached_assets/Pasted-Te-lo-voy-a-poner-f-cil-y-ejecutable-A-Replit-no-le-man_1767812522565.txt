@@ -1,0 +1,143 @@
+Te lo voy a poner fácil y ejecutable. A Replit no le mandes “ideas”; mándale **tareas exactas** con endpoints, payloads y logs. Aquí tienes un prompt listo para copiar/pegar para que implementen **Human Agent (Instagram Messaging)** como Dios manda y Meta lo apruebe.
+
+---
+
+## Prompt para Replit (copy/paste)
+
+Implementa soporte “Human Agent” para Instagram Messaging en nuestro CRM (Curbe.io). Objetivo: poder responder a mensajes de Instagram fuera de la ventana estándar usando el tag `HUMAN_AGENT`, SOLO para soporte humano (no marketing). Necesito backend + UI + logs para grabar el screencast de Meta App Review.
+
+### 1) Base de datos
+
+Crear tabla `meta_ig_connections` (o equivalente) por company/tenant:
+
+* `id`
+* `company_id`
+* `ig_business_account_id`
+* `page_id` (si aplica por conexión)
+* `access_token` (page token o token válido para enviar mensajes)
+* `token_expires_at` (si aplica)
+* `created_at`, `updated_at`
+
+Crear tabla `ig_conversations`:
+
+* `id`
+* `company_id`
+* `ig_thread_id` (si existe)
+* `ig_user_id` (PSID/IGSID según API)
+* `last_inbound_at`
+* `last_outbound_at`
+* `human_agent_enabled` boolean default false
+* `human_agent_enabled_at`
+* `created_at`, `updated_at`
+
+### 2) UI
+
+En Inbox de Instagram (vista de conversación):
+
+* Switch: “Escalar a agente humano (7 días)” (human agent)
+* Texto de aviso: “Usar solo para soporte humano en conversaciones iniciadas por el usuario. No marketing.”
+  Cuando se activa el switch:
+* set `human_agent_enabled=true` para esa conversación.
+
+### 3) Backend: enviar mensaje IG con tag HUMAN_AGENT
+
+Crear endpoint interno:
+`POST /api/integrations/meta/instagram/send`
+
+Body:
+
+```json
+{
+  "companyId": "...",
+  "conversationId": "...",
+  "recipientId": "...",
+  "text": "..."
+}
+```
+
+Reglas:
+
+* Si `human_agent_enabled=true` => enviar con tag `HUMAN_AGENT`.
+* Si `human_agent_enabled=false` => enviar normal (sin tag) dentro de ventana estándar.
+* Prohibir enviar con `HUMAN_AGENT` si el mensaje contiene palabras típicas de marketing (promo, descuento, oferta, etc.) o si la conversación no tiene inbound reciente (esto es para compliance y para pasar App Review).
+
+### 4) Llamada a Meta Graph API
+
+Usar Graph API v24.0 (o la que tengamos).
+Implementar función `sendInstagramMessage()` que haga POST al endpoint correcto para mensajes IG.
+Payload requerido:
+
+* `recipient` (id del usuario)
+* `message` (text)
+* `messaging_type: "RESPONSE"`
+* `tag: "HUMAN_AGENT"` cuando aplique
+
+Ejemplo (pseudocódigo):
+
+```js
+POST https://graph.facebook.com/v24.0/{IG_BUSINESS_ID}/messages
+{
+  "recipient": { "id": recipientId },
+  "message": { "text": text },
+  "messaging_type": "RESPONSE",
+  "tag": "HUMAN_AGENT"
+}
+```
+
+(Nota: si nuestro setup usa `/me/messages` o Page ID en vez de IG business id, ajusta al endpoint correcto según nuestra conexión actual. Lo importante es que el request final incluya `tag=HUMAN_AGENT` y `messaging_type=RESPONSE`.)
+
+### 5) Webhook (si no está)
+
+Asegurar webhook para Instagram Messaging:
+
+* Recibir inbound mensajes
+* Guardar `last_inbound_at`
+* Mapear `recipientId` (usuario IG) para responder
+
+### 6) Logging obligatorio para App Review
+
+En cada envío, loguear en server (sin exponer tokens):
+
+* companyId
+* conversationId
+* recipientId (parcial/masked)
+* `human_agent_used: true/false`
+* payload final (sin token) mostrando claramente `tag: "HUMAN_AGENT"` cuando aplique
+* response status + error body si falla
+
+También crear un modo “demo” (solo admin) que muestre el último request/response para grabar el screencast.
+
+### 7) Tests manuales
+
+Proveer un checklist:
+
+1. Conectar Instagram.
+2. Recibir inbound DM.
+3. Activar “Human agent” en conversación.
+4. Enviar respuesta desde Curbe.
+5. Ver en logs el request con `tag=HUMAN_AGENT`.
+6. Confirmar que el mensaje llega al DM.
+
+Entregables:
+
+* PR con cambios backend + UI
+* Instrucciones para grabar video de 60–90s mostrando: inbound DM → inbox Curbe → toggle human agent → send → log con tag HUMAN_AGENT → mensaje recibido en IG.
+
+```
+
+---
+
+## Dos cosas que NO debes dejar que Replit haga (porque te jode App Review)
+1) **No** uses `HUMAN_AGENT` por defecto en todos los mensajes. Debe ser un toggle y solo soporte.
+2) **No** lo mezcles con automatizaciones de marketing. Meta lo odia.
+
+---
+
+## Nota brutalmente honesta
+Si tú en realidad quieres esta función para “seguir leads” fuera de 24h, te estás metiendo en un callejón de rechazo. Presenta esto como **soporte** y mantenlo como soporte en el producto. Si quieres follow-ups, se diseña otro canal/estrategia.
+
+---
+
+Si me dices tu stack exacto (Next.js/Express/Prisma/Supabase, etc.) te lo adapto a tu arquitectura con nombres de archivos y dónde tocar código, pero con esto Replit ya puede implementarlo sin hacerse el loco.
+::contentReference[oaicite:0]{index=0}
+```
