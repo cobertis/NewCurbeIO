@@ -44645,8 +44645,8 @@ CRITICAL REMINDERS:
       );
 
       // If not found, try iMessage conversations
-      let [imessageConv] = !telnyxConv ? await db.select().from(imessageConversations).where(
-        and(eq(imessageConversations.id, id), eq(imessageConversations.companyId, companyId))
+      let [imessageConv] = !telnyxConv ? await db.select().from(imessageConversationsTable).where(
+        and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId))
       ) : [null];
 
       if (!telnyxConv && !imessageConv) {
@@ -44682,12 +44682,12 @@ CRITICAL REMINDERS:
           .where(eq(telnyxConversations.id, id))
           .returning();
       } else {
-        [updated] = await db.update(imessageConversations)
+        [updated] = await db.update(imessageConversationsTable)
           .set({ 
             customInboxId: customInboxId || null,
             updatedAt: new Date()
           })
-          .where(eq(imessageConversations.id, id))
+          .where(eq(imessageConversationsTable.id, id))
           .returning();
       }
 
