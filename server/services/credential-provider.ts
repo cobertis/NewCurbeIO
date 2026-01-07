@@ -220,15 +220,18 @@ export const credentialProvider = {
     return result;
   },
 
-  async getMeta(): Promise<{ appId: string; appSecret: string; webhookVerifyToken: string; facebookConfigId: string; instagramConfigId: string; whatsappConfigId: string }> {
+  async getMeta(): Promise<{ appId: string; appSecret: string; instagramAppSecret: string; webhookVerifyToken: string; facebookConfigId: string; instagramConfigId: string; whatsappConfigId: string }> {
     const cacheKey = getCacheKey('meta');
-    const cached = getFromCache<{ appId: string; appSecret: string; webhookVerifyToken: string; facebookConfigId: string; instagramConfigId: string; whatsappConfigId: string }>(cacheKey);
+    const cached = getFromCache<{ appId: string; appSecret: string; instagramAppSecret: string; webhookVerifyToken: string; facebookConfigId: string; instagramConfigId: string; whatsappConfigId: string }>(cacheKey);
     if (cached) return cached;
 
     const appId = await secretsService.getCredential("meta" as ApiProvider, "app_id") || 
                   process.env.META_APP_ID || '';
     const appSecret = await secretsService.getCredential("meta" as ApiProvider, "app_secret") || 
                       process.env.META_APP_SECRET || '';
+    // Instagram has its own app secret for webhook signature validation
+    const instagramAppSecret = await secretsService.getCredential("meta" as ApiProvider, "instagram_app_secret") || 
+                               process.env.META_INSTAGRAM_APP_SECRET || '';
     const webhookVerifyToken = await secretsService.getCredential("meta" as ApiProvider, "webhook_verify_token") || 
                                process.env.META_WEBHOOK_VERIFY_TOKEN || '';
     
@@ -243,7 +246,7 @@ export const credentialProvider = {
     const whatsappConfigId = await secretsService.getCredential("meta" as ApiProvider, "whatsapp_config_id") || 
                              unifiedConfigId || process.env.META_WHATSAPP_CONFIG_ID || '';
     
-    const result = { appId, appSecret, webhookVerifyToken, facebookConfigId, instagramConfigId, whatsappConfigId };
+    const result = { appId, appSecret, instagramAppSecret, webhookVerifyToken, facebookConfigId, instagramConfigId, whatsappConfigId };
     setCache(cacheKey, result);
     return result;
   },

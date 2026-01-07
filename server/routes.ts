@@ -27538,31 +27538,36 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/webhooks/meta/facebook - Receive Facebook Messenger webhook events
   app.post("/api/webhooks/meta/facebook", async (req: Request, res: Response) => {
     try {
-    console.log("[Facebook Webhook] POST received - User-Agent:", req.headers["user-agent"]);
-    console.log("[Facebook Webhook] Body type:", typeof req.body, "isBuffer:", Buffer.isBuffer(req.body), "length:", req.body?.length);
+    console.log("[Meta Webhook] POST received - User-Agent:", req.headers["user-agent"]);
+    console.log("[Meta Webhook] Body type:", typeof req.body, "isBuffer:", Buffer.isBuffer(req.body), "length:", req.body?.length);
       const rawBody = req.body as Buffer;
       const signature = req.headers["x-hub-signature-256"] as string;
 
-      const { appSecret } = await credentialProvider.getMeta();
-      if (!appSecret) {
-        console.error("[Facebook Webhook] App secret not configured");
+      const { appSecret, instagramAppSecret } = await credentialProvider.getMeta();
+      if (!appSecret && !instagramAppSecret) {
+        console.error("[Meta Webhook] No app secrets configured");
         return res.status(500).json({ error: "Webhook not configured" });
       }
 
       if (!signature) {
-        console.error("[Facebook Webhook] Missing X-Hub-Signature-256 header");
+        console.error("[Meta Webhook] Missing X-Hub-Signature-256 header");
         return res.status(403).json({ error: "Forbidden: Missing signature" });
       }
 
-      if (!validateMetaWebhookSignature(rawBody, signature, appSecret)) {
-        const expectedSig = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
-        console.error("[Facebook Webhook] Invalid signature");
-        console.error("[Facebook Webhook] Debug - Secret prefix:", appSecret.substring(0, 6) + "...");
-        console.error("[Facebook Webhook] Debug - Secret length:", appSecret.length);
-        console.error("[Facebook Webhook] Debug - Received sig:", signature.substring(0, 20) + "...");
-        console.error("[Facebook Webhook] Debug - Expected sig:", expectedSig.substring(0, 20) + "...");
+      // Try to validate with Facebook App Secret first, then Instagram App Secret
+      // Instagram uses a different app secret for webhook signatures
+      const isValidFacebook = appSecret && validateMetaWebhookSignature(rawBody, signature, appSecret);
+      const isValidInstagram = instagramAppSecret && validateMetaWebhookSignature(rawBody, signature, instagramAppSecret);
+      
+      if (!isValidFacebook && !isValidInstagram) {
+        console.error("[Meta Webhook] Invalid signature - tried both Facebook and Instagram secrets");
+        console.error("[Meta Webhook] Debug - Facebook secret prefix:", appSecret ? appSecret.substring(0, 6) + "..." : "not set");
+        console.error("[Meta Webhook] Debug - Instagram secret prefix:", instagramAppSecret ? instagramAppSecret.substring(0, 6) + "..." : "not set");
+        console.error("[Meta Webhook] Debug - Received sig:", signature.substring(0, 30) + "...");
         return res.status(403).json({ error: "Forbidden: Invalid signature" });
       }
+      
+      console.log("[Meta Webhook] Signature validated with:", isValidFacebook ? "Facebook" : "Instagram", "app secret");
 
       const payload = JSON.parse(rawBody.toString());
       
