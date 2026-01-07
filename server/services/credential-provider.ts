@@ -220,9 +220,9 @@ export const credentialProvider = {
     return result;
   },
 
-  async getMeta(): Promise<{ appId: string; appSecret: string; webhookVerifyToken: string; facebookConfigId: string }> {
+  async getMeta(): Promise<{ appId: string; appSecret: string; webhookVerifyToken: string; facebookConfigId: string; instagramConfigId: string; whatsappConfigId: string }> {
     const cacheKey = getCacheKey('meta');
-    const cached = getFromCache<{ appId: string; appSecret: string; webhookVerifyToken: string; facebookConfigId: string }>(cacheKey);
+    const cached = getFromCache<{ appId: string; appSecret: string; webhookVerifyToken: string; facebookConfigId: string; instagramConfigId: string; whatsappConfigId: string }>(cacheKey);
     if (cached) return cached;
 
     const appId = await secretsService.getCredential("meta" as ApiProvider, "app_id") || 
@@ -233,8 +233,13 @@ export const credentialProvider = {
                                process.env.META_WEBHOOK_VERIFY_TOKEN || '';
     const facebookConfigId = await secretsService.getCredential("meta" as ApiProvider, "facebook_config_id") || 
                              process.env.META_FACEBOOK_CONFIG_ID || '';
+    const instagramConfigId = await secretsService.getCredential("meta" as ApiProvider, "instagram_config_id") || 
+                              process.env.META_INSTAGRAM_CONFIG_ID || '';
+    const whatsappConfigId = await secretsService.getCredential("meta" as ApiProvider, "whatsapp_config_id") || 
+                             process.env.META_BUSINESS_LOGIN_CONFIG_ID || 
+                             process.env.META_WHATSAPP_CONFIG_ID || '';
     
-    const result = { appId, appSecret, webhookVerifyToken, facebookConfigId };
+    const result = { appId, appSecret, webhookVerifyToken, facebookConfigId, instagramConfigId, whatsappConfigId };
     setCache(cacheKey, result);
     return result;
   },

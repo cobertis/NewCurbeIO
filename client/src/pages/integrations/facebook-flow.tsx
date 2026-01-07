@@ -35,8 +35,6 @@ interface FBLoginResponse {
   status: string;
 }
 
-const FB_APP_ID = import.meta.env.VITE_META_APP_ID || "";
-const FB_FACEBOOK_CONFIG_ID = import.meta.env.VITE_META_FACEBOOK_CONFIG_ID || "";
 const FB_SDK_VERSION = "v24.0";
 
 export default function FacebookFlowPage() {
@@ -45,6 +43,10 @@ export default function FacebookFlowPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [fbSdkLoaded, setFbSdkLoaded] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+
+  const { data: metaConfig } = useQuery<{ appId: string; configId: string; facebookConfigId: string }>({
+    queryKey: ["/api/integrations/meta/config"],
+  });
 
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/facebook/status"],
@@ -60,21 +62,35 @@ export default function FacebookFlowPage() {
   }, [isConnected]);
 
   useEffect(() => {
-    if (document.getElementById("facebook-jssdk")) {
+    if (!metaConfig?.appId) return;
+    
+    const initFbSdk = () => {
       if (window.FB) {
+        window.FB.init({
+          appId: metaConfig.appId,
+          cookie: true,
+          xfbml: true,
+          version: FB_SDK_VERSION,
+        });
         setFbSdkLoaded(true);
+        return true;
       }
-      return;
+      return false;
+    };
+
+    if (document.getElementById("facebook-jssdk")) {
+      if (initFbSdk()) return;
+      const checkInterval = setInterval(() => {
+        if (window.FB) {
+          initFbSdk();
+          clearInterval(checkInterval);
+        }
+      }, 100);
+      return () => clearInterval(checkInterval);
     }
 
     window.fbAsyncInit = function() {
-      window.FB.init({
-        appId: FB_APP_ID,
-        cookie: true,
-        xfbml: true,
-        version: FB_SDK_VERSION,
-      });
-      setFbSdkLoaded(true);
+      initFbSdk();
     };
 
     const script = document.createElement("script");
@@ -83,14 +99,7 @@ export default function FacebookFlowPage() {
     script.async = true;
     script.defer = true;
     document.body.appendChild(script);
-
-    return () => {
-      const existingScript = document.getElementById("facebook-jssdk");
-      if (existingScript) {
-        existingScript.remove();
-      }
-    };
-  }, []);
+  }, [metaConfig?.appId]);
 
   const exchangeCodeMutation = useMutation({
     mutationFn: async (data: { code: string }) => {
@@ -116,6 +125,8 @@ export default function FacebookFlowPage() {
   });
 
   const handleLoginWithFacebook = useCallback(() => {
+    const configId = metaConfig?.facebookConfigId || metaConfig?.configId;
+    
     if (!fbSdkLoaded || !window.FB) {
       toast({
         variant: "destructive",
@@ -125,7 +136,7 @@ export default function FacebookFlowPage() {
       return;
     }
 
-    if (!FB_FACEBOOK_CONFIG_ID) {
+    if (!configId) {
       toast({
         variant: "destructive",
         title: "Configuration missing",
@@ -165,7 +176,7 @@ export default function FacebookFlowPage() {
         }
       },
       {
-        config_id: FB_FACEBOOK_CONFIG_ID,
+        config_id: configId,
         response_type: "code",
         override_default_response_type: true,
         extras: {
@@ -175,7 +186,7 @@ export default function FacebookFlowPage() {
         },
       }
     );
-  }, [fbSdkLoaded, toast, exchangeCodeMutation]);
+  }, [fbSdkLoaded, toast, exchangeCodeMutation, metaConfig]);
 
   const handleDiscard = () => {
     setLocation("/settings/facebook");

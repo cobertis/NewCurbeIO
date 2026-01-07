@@ -26774,6 +26774,25 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   const META_APP_SECRET = process.env.META_APP_SECRET;
   const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback`;
   const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
+
+  // GET /api/integrations/meta/config - Get Meta app config for frontend SDK
+  app.get("/api/integrations/meta/config", async (req: Request, res: Response) => {
+    try {
+      const { appId, whatsappConfigId, facebookConfigId, instagramConfigId } = await credentialProvider.getMeta();
+      // Return only the config_id (same for all if using one app)
+      const configId = whatsappConfigId || facebookConfigId || instagramConfigId;
+      return res.json({ 
+        appId, 
+        configId,
+        whatsappConfigId: whatsappConfigId || configId,
+        facebookConfigId: facebookConfigId || configId,
+        instagramConfigId: instagramConfigId || configId
+      });
+    } catch (error) {
+      console.error("[Meta Config] Error:", error);
+      return res.status(500).json({ error: "Failed to get Meta config" });
+    }
+  });
   
   // Scopes required for WhatsApp Business Platform Embedded Signup
   // https://developers.facebook.com/docs/whatsapp/embedded-signup
