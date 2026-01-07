@@ -30049,7 +30049,7 @@ CRITICAL REMINDERS:
       const tokenData = await tokenResponse.json() as any;
       
       if (!tokenResponse.ok || tokenData.error) {
-        console.error("[Facebook OAuth] Token exchange failed:", tokenData.error);
+        console.error("[Facebook OAuth] Token exchange failed:", JSON.stringify(tokenData));
         return errorRedirect("connection_failed");
       }
       
