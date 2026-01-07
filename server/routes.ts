@@ -27538,6 +27538,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/webhooks/meta/facebook - Receive Facebook Messenger webhook events
   app.post("/api/webhooks/meta/facebook", async (req: Request, res: Response) => {
     try {
+    console.log("[Facebook Webhook] POST received - User-Agent:", req.headers["user-agent"]);
+    console.log("[Facebook Webhook] Body type:", typeof req.body, "isBuffer:", Buffer.isBuffer(req.body), "length:", req.body?.length);
       const rawBody = req.body as Buffer;
       const signature = req.headers["x-hub-signature-256"] as string;
 
