@@ -4623,6 +4623,7 @@ export const channelConnections = pgTable("channel_connections", {
   // Instagram fields
   igUserId: text("ig_user_id"),
   igUsername: text("ig_username"),
+  igProfilePictureUrl: text("ig_profile_picture_url"),
   pageId: text("page_id"),
   pageName: text("page_name"),
   

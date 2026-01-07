@@ -29948,6 +29948,7 @@ CRITICAL REMINDERS:
       
       const connectionData = {
         igUserId: igAccount.id,
+        igProfilePictureUrl: igAccount.profile_picture_url || null,
         igUsername: igAccount.username,
         pageId: selectedPage.id,
         pageName: selectedPage.name,
@@ -30074,6 +30075,7 @@ CRITICAL REMINDERS:
           .set({
             status: "active",
             igUserId: igAccountId,
+            igProfilePictureUrl: igAccount.profile_picture_url || null,
             igUsername: igAccount.username,
             pageId: pageId,
             pageName: pageName,
@@ -30091,6 +30093,7 @@ CRITICAL REMINDERS:
           companyId: user.companyId,
           channel: "instagram",
           status: "active",
+          igProfilePictureUrl: igAccount.profile_picture_url || null,
           igUserId: igAccountId,
           igUsername: igAccount.username,
           pageId: pageId,

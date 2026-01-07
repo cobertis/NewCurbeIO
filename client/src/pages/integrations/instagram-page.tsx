@@ -45,6 +45,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SettingsLayout } from "@/components/settings-layout";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SiInstagram } from "react-icons/si";
 import { Plus, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2, User } from "lucide-react";
 import type { ChannelConnection } from "@shared/schema";
@@ -55,6 +56,7 @@ interface InstagramAccount {
   id: string | number;
   accountName: string;
   username: string;
+  profilePictureUrl: string | null;
   status: "active" | "pending" | "error" | "revoked";
   dateConnected: Date;
 }
@@ -80,6 +82,7 @@ export default function InstagramPage() {
     id: connection.id || 1,
     accountName: connection.pageName || connection.displayName || "Instagram Account",
     username: connection.igUsername || "username",
+    profilePictureUrl: (connection as any).igProfilePictureUrl || null,
     status: connection.status as "active" | "pending" | "error" | "revoked",
     dateConnected: connection.createdAt || new Date(),
   }] : [];
@@ -327,8 +330,15 @@ export default function InstagramPage() {
                 paginatedAccounts.map((account) => (
                   <TableRow key={account.id} data-testid={`row-instagram-account-${account.id}`}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-slate-400" />
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          {account.profilePictureUrl ? (
+                            <AvatarImage src={account.profilePictureUrl} alt={account.accountName} />
+                          ) : null}
+                          <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xs">
+                            {account.accountName.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
                         <span className="font-medium">{account.accountName}</span>
                       </div>
                     </TableCell>
