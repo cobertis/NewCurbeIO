@@ -261,6 +261,7 @@ export default function InboxPage() {
   const [newConversationChannel, setNewConversationChannel] = useState<"sms" | "whatsapp">("sms");
   const [selectedWaConnection, setSelectedWaConnection] = useState<string>("");
   const [isInternalNote, setIsInternalNote] = useState(false);
+  const [replyMode, setReplyMode] = useState<"dm" | "comment">("dm");
   const [chatInfoOpen, setChatInfoOpen] = useState(true);
   const [contactInfoOpen, setContactInfoOpen] = useState(true);
   const [insightsOpen, setInsightsOpen] = useState(true);
@@ -727,11 +728,14 @@ export default function InboxPage() {
   }, [selectedConversation?.channel, selectedConversation?.conversationExpiresAt, messages]);
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ conversationId, text, isInternalNote, files, optimisticId }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[]; optimisticId: string }) => {
+    mutationFn: async ({ conversationId, text, isInternalNote, files, optimisticId, replyMode }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[]; optimisticId: string; replyMode?: "dm" | "comment" }) => {
       const formData = new FormData();
       formData.append('text', text);
       if (isInternalNote) {
         formData.append('isInternalNote', 'true');
+      }
+      if (replyMode) {
+        formData.append('replyMode', replyMode);
       }
       if (files && files.length > 0) {
         files.forEach((file) => {
@@ -1732,14 +1736,25 @@ export default function InboxPage() {
     setIsInternalNote(false);
     setSelectedFiles([]);
     
+    // Determine reply mode for Instagram comments
+    const isInstagramComment = (selectedConversation as any)?.originType === 'comment' && 
+                               selectedConversation?.channel === 'instagram';
+    const currentReplyMode = isInstagramComment ? replyMode : undefined;
+    
     // Send in background
     sendMessageMutation.mutate({ 
       conversationId: selectedConversationId, 
       text: messageText,
       isInternalNote: messageIsNote,
       files: messageFiles,
-      optimisticId
+      optimisticId,
+      replyMode: currentReplyMode
     });
+    
+    // Reset reply mode to DM after sending
+    if (isInstagramComment) {
+      setReplyMode("dm");
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -3564,6 +3579,32 @@ export default function InboxPage() {
                     </TooltipProvider>
                   )}
                 </div>
+
+                {/* Instagram Comment Reply Mode Selector */}
+                {(selectedConversation as any)?.originType === 'comment' && 
+                 selectedConversation?.channel === 'instagram' && (
+                  <div className="flex items-center gap-1 bg-muted/50 rounded px-2 py-1">
+                    <span className="text-xs text-muted-foreground mr-1">Reply:</span>
+                    <Button
+                      variant={replyMode === "comment" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setReplyMode("comment")}
+                      className="h-6 px-2 text-xs"
+                      data-testid="btn-reply-comment"
+                    >
+                      Comment
+                    </Button>
+                    <Button
+                      variant={replyMode === "dm" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setReplyMode("dm")}
+                      className="h-6 px-2 text-xs"
+                      data-testid="btn-reply-dm"
+                    >
+                      DM
+                    </Button>
+                  </div>
+                )}
 
                 {/* Right: Internal Note Toggle + Send Button */}
                 <div className="flex items-center gap-2">

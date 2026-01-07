@@ -42362,7 +42362,7 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: "No company associated with user" });
       }
       const { id } = req.params;
-      const { text, isInternalNote } = req.body;
+      const { text, isInternalNote, replyMode } = req.body;
       const files = (req as any).files as Express.Multer.File[] | undefined;
       
       // Text is required only if no files attached
@@ -42372,7 +42372,7 @@ CRITICAL REMINDERS:
       
       try {
         // First try Telnyx conversation
-      await db
+      let conversation = await db
           .select()
           .from(telnyxConversations)
           .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
@@ -42382,7 +42382,7 @@ CRITICAL REMINDERS:
         
         if (!conversation) {
           // Try iMessage conversation
-      await db
+      imessageConv = await db
             .select()
             .from(imessageConversationsTable)
             .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)));
@@ -43265,7 +43265,7 @@ CRITICAL REMINDERS:
         if (conversation.channel === "instagram") {
           try {
             // Get Instagram connection for this company
-      await db
+      const igConnection = await db
               .select()
               .from(channelConnections)
               .where(and(
@@ -43302,22 +43302,73 @@ CRITICAL REMINDERS:
               console.log(`[Inbox Instagram] HUMAN_AGENT tag enabled for conversation ${conversation.id}`);
             }
 
-            // Send message via Instagram Graph API (same endpoint as Facebook Messenger)
+            // Send message via Instagram Graph API
             const META_GRAPH_VERSION = "v21.0";
+            
+            // Check if this is a public comment reply
+            const isPublicCommentReply = replyMode === "comment" && conversation.originType === "comment" && conversation.igCommentId;
+            
+            if (isPublicCommentReply) {
+              // Reply publicly to the comment using Instagram Comments API
+              const commentReplyUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
+              console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId}`);
+              
+              const commentResponse = await fetch(commentReplyUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  message: text,
+                  access_token: pageAccessToken
+                })
+              });
+              
+              const commentData = await commentResponse.json();
+              if (!commentResponse.ok) {
+                console.error("[Inbox Instagram] Failed to post comment reply:", commentData);
+                return res.status(400).json({ message: commentData.error?.message || "Failed to reply to comment" });
+              }
+              
+              console.log(`[Inbox Instagram] Public comment reply sent: ${commentData.id}`);
+              
+              // Save message to database
+              const [message] = await db
+                .insert(telnyxMessages)
+                .values({
+                  conversationId: id,
+                  direction: "outbound",
+                  messageType: "outgoing",
+                  channel: "instagram",
+                  text: text || "",
+                  contentType: "text",
+                  status: "sent",
+                  telnyxMessageId: commentData.id || null,
+                  sentBy: userId,
+                  sentAt: new Date(),
+                  errorMessage: null,
+                  mediaUrls: null,
+                  isCommentContext: true,
+                })
+                .returning();
+              
+              // Update conversation
+              await db
+                .update(telnyxConversations)
+                .set({ 
+                  lastMessage: (text || "").substring(0, 100), 
+                  lastMessageAt: new Date(), 
+                  updatedAt: new Date() 
+                })
+                .where(eq(telnyxConversations.id, id));
+              
+              broadcastInboxMessage(companyId, id);
+              return res.status(201).json(message);
+            }
+            
+            // Regular DM flow (including private reply to comment)
             const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages`;
             
-            // For comment-based conversations, first message should be a private reply to the comment
-            // Subsequent messages should use the user's IG ID directly
-            const isFirstReplyToComment = conversation.originType === 'comment' && conversation.igCommentId;
-
-            const messagePayload: any = {
-              recipient: isFirstReplyToComment 
-                ? { comment_id: conversation.igCommentId }  // Private reply to comment
-                : { id: recipientIgId },                     // Regular DM
-              messaging_type: "RESPONSE",
-              message: {}
-            };
-            if (isFirstReplyToComment) {
+            // For comment-based conversations with DM mode, first message should be a private reply
+            const isFirstReplyToComment = replyMode === "dm" && conversation.originType === "comment" && conversation.igCommentId;
 
               console.log(`[Inbox Instagram] Sending private reply to comment ${conversation.igCommentId}`);
             }
@@ -43509,7 +43560,7 @@ CRITICAL REMINDERS:
     
     try {
       // First try Telnyx conversation
-      await db.select()
+      const telnyxConv = await db.select()
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.id, id),
