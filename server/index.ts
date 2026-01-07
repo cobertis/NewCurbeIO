@@ -15,6 +15,7 @@ import { startPaymentReminderScheduler } from "./payment-reminder-scheduler";
 import { seedCampaignStudioData } from "./scripts/seedCampaignStudio";
 import { startSesQueueScheduler } from "./ses-queue-scheduler";
 import { startAllWorkers as startWhatsAppWorkers } from "./services/whatsapp-workers";
+import { startFacebookWebhookWorker } from "./services/facebook-webhook-worker";
 
 // Handle unhandled promise rejections to prevent server crashes
 process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
@@ -64,7 +65,7 @@ app.set('trust proxy', true);
 // Webhooks need raw body for signature verification
 // We parse all other routes as JSON
 app.use((req, res, next) => {
-  if (req.originalUrl === '/api/webhooks/stripe' || req.originalUrl === '/webhooks/telnyx' || req.originalUrl === '/api/webhooks/meta/whatsapp') {
+  if (req.originalUrl === '/api/webhooks/stripe' || req.originalUrl === '/webhooks/telnyx' || req.originalUrl === '/api/webhooks/meta/whatsapp' || req.originalUrl === '/api/webhooks/meta/facebook') {
     next();
   } else {
     express.json({ limit: '10mb' })(req, res, next);
@@ -75,6 +76,7 @@ app.use((req, res, next) => {
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 app.use('/webhooks/telnyx', express.raw({ type: 'application/json' }));
 app.use('/api/webhooks/meta/whatsapp', express.raw({ type: 'application/json' }));
+app.use('/api/webhooks/meta/facebook', express.raw({ type: 'application/json' }));
 
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser()); // Required to read cookies like 'trusted_device'
@@ -216,6 +218,9 @@ app.use((req, res, next) => {
     
     // Start WhatsApp webhook and send workers for async processing
     startWhatsAppWorkers();
+    
+    // Start Facebook Messenger webhook worker for async processing
+    startFacebookWebhookWorker();
     
     // Test email service on startup
     import("./email").then(({ emailService }) => {

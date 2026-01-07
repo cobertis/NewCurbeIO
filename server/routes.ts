@@ -99,7 +99,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -27505,6 +27505,78 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+
+
+  // GET /api/webhooks/meta/facebook - Facebook Messenger webhook verification
+  app.get("/api/webhooks/meta/facebook", async (req: Request, res: Response) => {
+    try {
+      const mode = req.query["hub.mode"] as string;
+      const token = req.query["hub.verify_token"] as string;
+      const challenge = req.query["hub.challenge"] as string;
+
+      const { webhookVerifyToken: verifyToken } = await credentialProvider.getMeta();
+      const finalVerifyToken = verifyToken || process.env.META_WEBHOOK_VERIFY_TOKEN || "";
+
+      if (!finalVerifyToken) {
+        console.error("[Facebook Webhook] META_WEBHOOK_VERIFY_TOKEN not configured");
+        return res.status(500).send("Webhook verify token not configured");
+      }
+
+      if (mode === "subscribe" && token === finalVerifyToken) {
+        console.log("[Facebook Webhook] Verification successful");
+        return res.status(200).send(challenge);
+      } else {
+        console.error("[Facebook Webhook] Verification failed - mode:", mode, "token match:", token === finalVerifyToken);
+        return res.status(403).send("Forbidden");
+      }
+    } catch (error) {
+      console.error("[Facebook Webhook] Verification error:", error);
+      return res.status(500).send("Internal server error");
+    }
+  });
+
+  // POST /api/webhooks/meta/facebook - Receive Facebook Messenger webhook events
+  app.post("/api/webhooks/meta/facebook", async (req: Request, res: Response) => {
+    try {
+      const rawBody = req.body as Buffer;
+      const signature = req.headers["x-hub-signature-256"] as string;
+
+      const { appSecret } = await credentialProvider.getMeta();
+      if (!appSecret) {
+        console.error("[Facebook Webhook] App secret not configured");
+        return res.status(500).json({ error: "Webhook not configured" });
+      }
+
+      if (!signature) {
+        console.error("[Facebook Webhook] Missing X-Hub-Signature-256 header");
+        return res.status(403).json({ error: "Forbidden: Missing signature" });
+      }
+
+      if (!validateMetaWebhookSignature(rawBody, signature, appSecret)) {
+        console.error("[Facebook Webhook] Invalid signature");
+        return res.status(403).json({ error: "Forbidden: Invalid signature" });
+      }
+
+      const payload = JSON.parse(rawBody.toString());
+      
+      // Only process page-related events (Facebook Messenger)
+      if (payload.object !== "page") {
+        console.log("[Facebook Webhook] Ignoring non-page event:", payload.object);
+        return res.status(200).send("EVENT_RECEIVED");
+      }
+
+      await db.insert(fbWebhookEvents).values({
+        payload: payload,
+        status: "pending",
+        attempt: 0,
+      });
+      console.log("[Facebook Webhook] ACK - queued for async processing");
+      return res.status(200).send("EVENT_RECEIVED");
+    } catch (error) {
+      console.error("[Facebook Webhook] Error processing webhook:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // GET /api/integrations/whatsapp/status - Get WhatsApp connection status
   app.get("/api/integrations/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {

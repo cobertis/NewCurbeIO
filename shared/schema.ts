@@ -4764,6 +4764,21 @@ export const waWebhookEvents = pgTable("wa_webhook_events", {
   pendingIdx: index("wa_webhook_events_pending_idx").on(table.status, table.receivedAt),
 }));
 
+// Facebook Messenger Webhook Events - Async processing queue
+export const fbWebhookEventStatusEnum = pgEnum("fb_webhook_event_status", ["pending", "processing", "done", "failed"]);
+
+export const fbWebhookEvents = pgTable("fb_webhook_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  status: fbWebhookEventStatusEnum("status").notNull().default("pending"),
+  attempt: integer("attempt").notNull().default(0),
+  lastError: text("last_error"),
+  payload: jsonb("payload").notNull(),
+}, (table) => ({
+  pendingIdx: index("fb_webhook_events_pending_idx").on(table.status, table.receivedAt),
+}));
+
 // WhatsApp Send Outbox - Queue with retries/backoff + DLQ
 export const waSendOutboxStatusEnum = pgEnum("wa_send_outbox_status", ["pending", "running", "done", "failed"]);
 
@@ -4807,6 +4822,7 @@ export const insertWaMessageSchema = createInsertSchema(waMessages).omit({ id: t
 export const insertWaWebhookLogSchema = createInsertSchema(waWebhookLogs).omit({ id: true, createdAt: true });
 export const insertWaWebhookDedupeSchema = createInsertSchema(waWebhookDedupe).omit({ id: true, createdAt: true });
 export const insertWaWebhookEventSchema = createInsertSchema(waWebhookEvents).omit({ id: true });
+export const insertFbWebhookEventSchema = createInsertSchema(fbWebhookEvents).omit({ id: true });
 export const insertWaSendOutboxSchema = createInsertSchema(waSendOutbox).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOauthStateSchema = createInsertSchema(oauthStates).omit({ id: true, createdAt: true });
 
@@ -4822,6 +4838,8 @@ export type WaWebhookDedupe = typeof waWebhookDedupe.$inferSelect;
 export type InsertWaWebhookDedupe = z.infer<typeof insertWaWebhookDedupeSchema>;
 export type WaWebhookEvent = typeof waWebhookEvents.$inferSelect;
 export type InsertWaWebhookEvent = z.infer<typeof insertWaWebhookEventSchema>;
+export type FbWebhookEvent = typeof fbWebhookEvents.$inferSelect;
+export type InsertFbWebhookEvent = z.infer<typeof insertFbWebhookEventSchema>;
 export type WaSendOutbox = typeof waSendOutbox.$inferSelect;
 export type InsertWaSendOutbox = z.infer<typeof insertWaSendOutboxSchema>;
 export type OauthState = typeof oauthStates.$inferSelect;
