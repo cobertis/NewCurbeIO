@@ -1,0 +1,34 @@
+21dc0f53
+0|curbe-admin  | [WhatsApp Call WS] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 disconnected
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 registered for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [Meta Webhook] POST received - User-Agent: Webhooks/1.0 (https://fb.me/webhooks)
+0|curbe-admin  | [Meta Webhook] Body type: object isBuffer: true length: 316
+0|curbe-admin  | [Meta Webhook] Signature validated with: Instagram app secret
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 11:18:57 PM [express] POST /api/webhooks/meta/facebook 200 in 22ms
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+

@@ -43323,7 +43323,7 @@ CRITICAL REMINDERS:
                 return res.status(400).json({ error: "Media attachments are not supported for public comment replies. Use DM mode to send media." });
               }
               
-              const commentReplyUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
+              const commentReplyUrl = `https://graph.instagram.com/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
               console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId}`);
               
               // Debug: Check token permissions
@@ -43336,13 +43336,9 @@ CRITICAL REMINDERS:
                 console.log(`[Inbox Instagram] Could not fetch permissions`);
               }
               
-              // Meta requires JSON body with Content-Type header for comment replies (per official docs)
-              const commentResponse = await fetch(`${commentReplyUrl}?access_token=${pageAccessToken}`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ message: text })
+              // Instagram API with Instagram Login requires graph.instagram.com with URL params
+              const commentResponse = await fetch(`${commentReplyUrl}?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`, {
+                method: "POST"
               });
               
               const commentData = await commentResponse.json();
