@@ -78,6 +78,143 @@ async function processWebhookEvent(event: typeof fbWebhookEvents.$inferSelect): 
   }
 }
 
+async function processInstagramComment(igAccountId: string, commentData: any, fullPayload: any): Promise<void> {
+  const commentId = commentData.id;
+  const commentText = commentData.text;
+  const commenterId = commentData.from?.id;
+  const commenterUsername = commentData.from?.username;
+  const mediaId = commentData.media?.id;
+  
+  if (!commentId || !commenterId) {
+    console.log("[Meta Webhook Worker] Missing comment ID or commenter ID");
+    return;
+  }
+  
+  const connection = await db.query.channelConnections.findFirst({
+    where: and(
+      eq(channelConnections.igUserId, igAccountId),
+      eq(channelConnections.channel, "instagram"),
+      eq(channelConnections.status, "active")
+    ),
+  });
+  
+  if (!connection) {
+    console.log(`[Meta Webhook Worker] No Instagram connection for comment from ${igAccountId}`);
+    return;
+  }
+  
+  const companyId = connection.companyId;
+  
+  const dedupeKey = `ig_comment:${commentId}`;
+  try {
+    const result = await db.execute(sql`
+      INSERT INTO wa_webhook_dedupe (company_id, dedupe_key, event_type)
+      VALUES (${companyId}, ${dedupeKey}, 'comment')
+      ON CONFLICT (company_id, dedupe_key, event_type) DO NOTHING
+      RETURNING id
+    `);
+    if (!result.rows || result.rows.length === 0) {
+      console.log(`[Meta Webhook Worker] Duplicate comment skipped: ${commentId}`);
+      return;
+    }
+  } catch (e) {
+    console.log(`[Meta Webhook Worker] Dedupe check failed for comment ${commentId}, processing anyway`);
+  }
+  
+  let mediaPermalink: string | null = null;
+  if (mediaId && connection.accessTokenEnc) {
+    try {
+      const pageToken = decryptToken(connection.accessTokenEnc);
+      const mediaUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${mediaId}?fields=permalink&access_token=${pageToken}`;
+      const resp = await fetch(mediaUrl);
+      if (resp.ok) {
+        const mediaData = await resp.json() as any;
+        mediaPermalink = mediaData.permalink || null;
+      }
+    } catch (e) {
+      console.log(`[Meta Webhook Worker] Could not fetch media permalink for ${mediaId}`);
+    }
+  }
+  
+  let customerName = commenterUsername || null;
+  let profilePictureUrl: string | null = null;
+  if (connection.accessTokenEnc) {
+    try {
+      const pageToken = decryptToken(connection.accessTokenEnc);
+      const profile = await getInstagramUserProfile(commenterId, pageToken);
+      customerName = profile.name || commenterUsername || null;
+      profilePictureUrl = profile.profilePictureUrl;
+    } catch (e) {
+      // Continue without profile
+    }
+  }
+  
+  const companyPhone = connection.igUsername || connection.displayName || igAccountId;
+  const originMetadata = {
+    commentId,
+    mediaId,
+    mediaPermalink,
+    originalCommentText: commentText,
+  };
+  
+  const upsertResult = await db.execute<typeof telnyxConversations.$inferSelect>(sql`
+    INSERT INTO telnyx_conversations 
+      (company_id, phone_number, company_phone_number, channel, display_name, profile_picture_url, status, unread_count, last_message, last_message_at, origin_type, origin_metadata, ig_comment_id)
+    VALUES 
+      (${companyId}, ${commenterId}, ${companyPhone}, 'instagram', ${customerName}, ${profilePictureUrl}, 'open', 1, ${commentText || '[comment]'}, NOW(), 'comment', ${JSON.stringify(originMetadata)}::jsonb, ${commentId})
+    ON CONFLICT (company_id, phone_number, company_phone_number, channel) 
+    DO UPDATE SET
+      unread_count = telnyx_conversations.unread_count + 1,
+      last_message = ${commentText || '[comment]'},
+      last_message_at = NOW(),
+      display_name = COALESCE(telnyx_conversations.display_name, ${customerName}),
+      profile_picture_url = COALESCE(telnyx_conversations.profile_picture_url, ${profilePictureUrl}),
+      status = CASE 
+        WHEN telnyx_conversations.status IN ('solved', 'archived') THEN 'open'
+        ELSE telnyx_conversations.status
+      END,
+      origin_type = COALESCE(telnyx_conversations.origin_type, 'comment'),
+      origin_metadata = COALESCE(telnyx_conversations.origin_metadata, ${JSON.stringify(originMetadata)}::jsonb),
+      ig_comment_id = COALESCE(telnyx_conversations.ig_comment_id, ${commentId}),
+      updated_at = NOW()
+    RETURNING *
+  `);
+  
+  let conversation = upsertResult.rows?.[0];
+  if (!conversation) {
+    const found = await db.query.telnyxConversations.findFirst({
+      where: and(
+        eq(telnyxConversations.companyId, companyId),
+        eq(telnyxConversations.phoneNumber, commenterId),
+        eq(telnyxConversations.channel, "instagram")
+      ),
+    });
+    if (!found) {
+      console.error(`[Meta Webhook Worker] Failed to create conversation for comment ${commentId}`);
+      return;
+    }
+    conversation = found;
+  }
+  
+  await db.insert(telnyxMessages).values({
+    conversationId: conversation.id,
+    direction: "inbound",
+    text: commentText || "[comment on your post]",
+    status: "delivered",
+    telnyxMessageId: commentId,
+    isCommentContext: true,
+  });
+  
+  console.log(`[Meta Webhook Worker] Created Instagram comment conversation: ${conversation.id} from ${customerName || commenterId}`);
+  
+  broadcastNewMessage(commenterId, {
+    conversationId: conversation.id,
+    channel: "instagram",
+    text: commentText,
+    isComment: true,
+  }, companyId);
+}
+
 async function processInstagramEvent(payload: any): Promise<void> {
   for (const entry of payload.entry) {
     const igAccountId = entry.id;
@@ -227,6 +364,13 @@ async function processInstagramEvent(payload: any): Promise<void> {
       }, companyId);
 
       console.log(`[Meta Webhook Worker] Saved inbound Instagram message to inbox: ${messageId}`);
+    }
+
+    const changes = entry.changes || [];
+    for (const change of changes) {
+      if (change.field === "comments") {
+        await processInstagramComment(entry.id, change.value, payload);
+      }
     }
   }
 }
