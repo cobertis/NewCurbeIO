@@ -27112,7 +27112,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/whatsapp/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/whatsapp/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.BASE_URL || "";
+    const baseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || req.protocol || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+    const frontendUrl = baseUrl;
     const errorRedirect = (reason: string, errorCode?: string, traceId?: string) => {
       let redirectUrl = `${frontendUrl}/settings/whatsapp?whatsapp=error&reason=${encodeURIComponent(reason)}`;
       if (errorCode) redirectUrl += `&code=${encodeURIComponent(errorCode)}`;
@@ -29745,7 +29746,8 @@ CRITICAL REMINDERS:
 
   // GET /api/integrations/meta/instagram/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/instagram/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.BASE_URL || "";
+    const baseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || req.protocol || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+    const frontendUrl = baseUrl;
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?instagram=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -29784,9 +29786,11 @@ CRITICAL REMINDERS:
       
       // Exchange code for access token
       const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+      const { appId: metaAppId, appSecret: metaAppSecret } = await credentialProvider.getMeta();
+      const callbackRedirectUri = process.env.META_FACEBOOK_REDIRECT_URI || `${baseUrl}/api/integrations/meta/facebook/callback`;
       const tokenParams = new URLSearchParams({
-        client_id: META_APP_ID!,
-        client_secret: META_APP_SECRET!,
+        client_id: metaAppId,
+        client_secret: metaAppSecret,
         code: code as string,
         redirect_uri: META_INSTAGRAM_REDIRECT_URI,
       });
@@ -29982,7 +29986,8 @@ CRITICAL REMINDERS:
 
   // GET /api/integrations/meta/facebook/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/facebook/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.BASE_URL || "";
+    const baseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || req.protocol || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+    const frontendUrl = baseUrl;
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?facebook=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -30021,11 +30026,13 @@ CRITICAL REMINDERS:
       
       // Exchange code for access token
       const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+      const { appId: metaAppId, appSecret: metaAppSecret } = await credentialProvider.getMeta();
+      const callbackRedirectUri = process.env.META_FACEBOOK_REDIRECT_URI || `${baseUrl}/api/integrations/meta/facebook/callback`;
       const tokenParams = new URLSearchParams({
-        client_id: META_APP_ID!,
-        client_secret: META_APP_SECRET!,
+        client_id: metaAppId,
+        client_secret: metaAppSecret,
         code: code as string,
-        redirect_uri: META_FACEBOOK_REDIRECT_URI,
+        redirect_uri: callbackRedirectUri,
       });
       
       const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
@@ -30213,7 +30220,8 @@ CRITICAL REMINDERS:
 
   // GET /api/integrations/tiktok/callback - OAuth callback from TikTok
   app.get("/api/integrations/tiktok/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.BASE_URL || "";
+    const baseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || req.protocol || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+    const frontendUrl = baseUrl;
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?tiktok=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -30265,6 +30273,8 @@ CRITICAL REMINDERS:
       }
       
       const tokenUrl = "https://open.tiktokapis.com/v2/oauth/token/";
+      const { appId: metaAppId, appSecret: metaAppSecret } = await credentialProvider.getMeta();
+      const callbackRedirectUri = process.env.META_FACEBOOK_REDIRECT_URI || `${baseUrl}/api/integrations/meta/facebook/callback`;
       const tokenParams = new URLSearchParams({
         client_key: clientKey,
         client_secret: clientSecret,
