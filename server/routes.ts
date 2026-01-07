@@ -26779,7 +26779,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     "whatsapp_business_management",
     "whatsapp_business_messaging",
     "business_management",
-    "pages_manage_engagement"
   ].join(",");
 
   // POST /api/integrations/meta/whatsapp/start - Start OAuth flow
@@ -29774,7 +29773,6 @@ CRITICAL REMINDERS:
     "instagram_manage_comments",
     "pages_show_list",
     "business_management",
-    "pages_manage_engagement"
   ].join(",");
 
   // POST /api/integrations/meta/instagram/start - Start Instagram OAuth flow
@@ -30144,7 +30142,6 @@ CRITICAL REMINDERS:
     "pages_manage_metadata",
     "pages_show_list",
     "business_management",
-    "pages_manage_engagement"
   ].join(",");
 
   // POST /api/integrations/meta/facebook/start - Start Facebook OAuth flow
