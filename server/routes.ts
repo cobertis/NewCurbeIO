@@ -27572,7 +27572,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     
     const user = req.user as any;
     if (!user.companyId) return res.json({ connected: false, connection: null });
-    await db.query.channelConnections.findFirst({
+    const connection = await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp")
@@ -41870,7 +41870,7 @@ CRITICAL REMINDERS:
     const { id } = req.params;
     try {
       // First try Telnyx conversation
-      await db
+      const telnyxConv = await db
         .select()
         .from(telnyxConversations)
         .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
@@ -43886,7 +43886,7 @@ CRITICAL REMINDERS:
     
     try {
       // Try to find conversation in Telnyx (SMS) table first
-      await db
+      const telnyxConv = await db
         .select()
         .from(telnyxConversations)
         .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
@@ -45198,7 +45198,7 @@ CRITICAL REMINDERS:
       const userId = user.id;
 
       // Fetch team inboxes (visible to all) and custom inboxes (only user's own)
-      await db.select()
+      const inboxes = await db.select()
         .from(customInboxes)
         .where(
           and(
@@ -45224,7 +45224,7 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       const companyId = user.companyId;
       const userId = user.id;
-      await db.select()
+      const inboxes = await db.select()
         .from(customInboxes)
         .where(
           and(
