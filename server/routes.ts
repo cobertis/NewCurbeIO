@@ -44639,12 +44639,17 @@ CRITICAL REMINDERS:
       const { id } = req.params;
       const { customInboxId } = req.body;
 
-      // Verify conversation exists and belongs to company
-      const [conversation] = await db.select().from(telnyxConversations).where(
+      // Try to find in Telnyx conversations first
+      let [telnyxConv] = await db.select().from(telnyxConversations).where(
         and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId))
       );
 
-      if (!conversation) {
+      // If not found, try iMessage conversations
+      let [imessageConv] = !telnyxConv ? await db.select().from(imessageConversations).where(
+        and(eq(imessageConversations.id, id), eq(imessageConversations.companyId, companyId))
+      ) : [null];
+
+      if (!telnyxConv && !imessageConv) {
         return res.status(404).json({ message: "Conversation not found" });
       }
 
@@ -44666,14 +44671,25 @@ CRITICAL REMINDERS:
         }
       }
 
-      // Update conversation
-      const [updated] = await db.update(telnyxConversations)
-        .set({ 
-          customInboxId: customInboxId || null,
-          updatedAt: new Date()
-        })
-        .where(eq(telnyxConversations.id, id))
-        .returning();
+      // Update the appropriate conversation table
+      let updated;
+      if (telnyxConv) {
+        [updated] = await db.update(telnyxConversations)
+          .set({ 
+            customInboxId: customInboxId || null,
+            updatedAt: new Date()
+          })
+          .where(eq(telnyxConversations.id, id))
+          .returning();
+      } else {
+        [updated] = await db.update(imessageConversations)
+          .set({ 
+            customInboxId: customInboxId || null,
+            updatedAt: new Date()
+          })
+          .where(eq(imessageConversations.id, id))
+          .returning();
+      }
 
       res.json(updated);
     } catch (error: any) {
