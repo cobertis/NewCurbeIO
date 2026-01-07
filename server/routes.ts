@@ -29912,29 +29912,38 @@ CRITICAL REMINDERS:
         return res.status(400).json({ error: "Authorization code is required" });
       }
       
-      console.log("[Instagram SDK] Exchanging code for company:", user.companyId);
+      console.log("[Instagram SDK] Processing auth for company:", user.companyId);
       
       const { appId: metaAppId, appSecret: metaAppSecret } = await credentialProvider.getMeta();
       
-      // Exchange code for access token
-      const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
-      const tokenParams = new URLSearchParams({
-        client_id: metaAppId,
-        client_secret: metaAppSecret,
-        code: code,
-        redirect_uri: "",
-      });
+      let userAccessToken: string;
       
-      const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
-      const tokenData = await tokenResponse.json() as any;
-      
-      if (!tokenResponse.ok || tokenData.error) {
-        console.error("[Instagram SDK] Token exchange failed:", JSON.stringify(tokenData));
-        return res.status(400).json({ error: tokenData.error?.message || "Failed to exchange code" });
+      // Check if this is already an access token (starts with "EAA") or a code
+      if (code.startsWith("EAA")) {
+        console.log("[Instagram SDK] Received access token directly");
+        userAccessToken = code;
+      } else {
+        console.log("[Instagram SDK] Exchanging authorization code for token");
+        const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+        const tokenParams = new URLSearchParams({
+          client_id: metaAppId,
+          client_secret: metaAppSecret,
+          code: code,
+          redirect_uri: "",
+        });
+        
+        const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
+        const tokenData = await tokenResponse.json() as any;
+        
+        if (!tokenResponse.ok || tokenData.error) {
+          console.error("[Instagram SDK] Token exchange failed:", JSON.stringify(tokenData));
+          return res.status(400).json({ error: tokenData.error?.message || "Failed to exchange code" });
+        }
+        
+        userAccessToken = tokenData.access_token;
       }
       
-      const userAccessToken = tokenData.access_token;
-      
+      // Get users Facebook pages with Instagram Business Account
       // Get users Facebook pages with Instagram Business Account
       const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?access_token=${userAccessToken}\&fields=id,name,access_token,instagram_business_account`;
       const pagesResponse = await fetch(pagesUrl);
@@ -30277,28 +30286,38 @@ CRITICAL REMINDERS:
         return res.status(400).json({ error: "Authorization code is required" });
       }
       
-      console.log("[Facebook SDK] Exchanging code for company:", user.companyId);
+      console.log("[Facebook SDK] Processing auth for company:", user.companyId);
       
       const { appId: metaAppId, appSecret: metaAppSecret } = await credentialProvider.getMeta();
       
-      // Exchange code for access token
-      const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
-      const tokenParams = new URLSearchParams({
-        client_id: metaAppId,
-        client_secret: metaAppSecret,
-        code: code,
-        redirect_uri: "",
-      });
+      let userAccessToken: string;
       
-      const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
-      const tokenData = await tokenResponse.json() as any;
-      
-      if (!tokenResponse.ok || tokenData.error) {
-        console.error("[Facebook SDK] Token exchange failed:", JSON.stringify(tokenData));
-        return res.status(400).json({ error: tokenData.error?.message || "Failed to exchange code" });
+      // Check if this is already an access token (starts with "EAA") or a code
+      if (code.startsWith("EAA")) {
+        console.log("[Facebook SDK] Received access token directly");
+        userAccessToken = code;
+      } else {
+        console.log("[Facebook SDK] Exchanging authorization code for token");
+        const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+        const tokenParams = new URLSearchParams({
+          client_id: metaAppId,
+          client_secret: metaAppSecret,
+          code: code,
+          redirect_uri: "",
+        });
+        
+        const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
+        const tokenData = await tokenResponse.json() as any;
+        
+        if (!tokenResponse.ok || tokenData.error) {
+          console.error("[Facebook SDK] Token exchange failed:", JSON.stringify(tokenData));
+          return res.status(400).json({ error: tokenData.error?.message || "Failed to exchange code" });
+        }
+        
+        userAccessToken = tokenData.access_token;
       }
       
-      const userAccessToken = tokenData.access_token;
+      // Get users Facebook pages
       
       // Get users Facebook pages
       const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?access_token=${userAccessToken}\&fields=id,name,access_token`;
