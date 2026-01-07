@@ -6775,6 +6775,10 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   lifecycleStage: text("lifecycle_stage").default("new_lead"), // new_lead, hot_lead, payment, customer
   customInboxId: varchar("custom_inbox_id").references(() => customInboxes.id, { onDelete: "set null" }), // Custom inbox assignment
   
+  // Instagram Comment origin tracking
+  originType: text("origin_type"), // "dm" | "comment" - identifies if conversation started from DM or comment
+  originMetadata: jsonb("origin_metadata"), // { commentId, mediaId, mediaPermalink, originalCommentText }
+  igCommentId: text("ig_comment_id"), // Instagram comment ID for reply routing
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
@@ -6817,6 +6821,7 @@ export const telnyxMessages = pgTable("telnyx_messages", {
   deliveredAt: timestamp("delivered_at"), // When message was delivered
   readAt: timestamp("read_at"), // When message was read by recipient
   errorMessage: text("error_message"), // Error details if failed
+  isCommentContext: boolean("is_comment_context").notNull().default(false), // Marks the first message as the original comment
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   conversationIdx: index("telnyx_messages_conversation_idx").on(table.conversationId),

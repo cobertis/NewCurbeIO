@@ -29804,6 +29804,7 @@ CRITICAL REMINDERS:
   const META_INSTAGRAM_SCOPES = [
     "instagram_basic",
     "instagram_manage_messages",
+    "instagram_manage_comments",
     "pages_show_list",
     "business_management"
   ].join(",");
