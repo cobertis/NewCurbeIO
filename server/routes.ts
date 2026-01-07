@@ -27555,7 +27555,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
 
       if (!validateMetaWebhookSignature(rawBody, signature, appSecret)) {
+        const expectedSig = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
         console.error("[Facebook Webhook] Invalid signature");
+        console.error("[Facebook Webhook] Debug - Secret prefix:", appSecret.substring(0, 6) + "...");
+        console.error("[Facebook Webhook] Debug - Secret length:", appSecret.length);
+        console.error("[Facebook Webhook] Debug - Received sig:", signature.substring(0, 20) + "...");
+        console.error("[Facebook Webhook] Debug - Expected sig:", expectedSig.substring(0, 20) + "...");
         return res.status(403).json({ error: "Forbidden: Invalid signature" });
       }
 
