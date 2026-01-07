@@ -1525,6 +1525,14 @@ export default function InboxPage() {
   }, [conversations, searchQuery, activeView, activeLifecycle, activeCustomInbox, filterShow, filterSortBy, filterUnreplied]);
 
   const viewLabel = useMemo(() => {
+    // If a custom inbox filter is active, show that label
+    if (activeCustomInbox) {
+      const inbox = customInboxes.find(i => i.id === activeCustomInbox);
+      if (inbox) {
+        return `${inbox.emoji || "📁"} ${inbox.name}`;
+      }
+    }
+    
     // If a lifecycle filter is active, show that label
     if (activeLifecycle) {
       const lifecycleLabels: Record<string, string> = {
@@ -1550,7 +1558,7 @@ export default function InboxPage() {
       case "instagram": return "Instagram";
       default: return "All Open";
     }
-  }, [activeView, activeLifecycle]);
+  }, [activeView, activeLifecycle, activeCustomInbox, customInboxes]);
 
   const formatMessageTime = (dateStr: string) => {
     const date = new Date(dateStr);
