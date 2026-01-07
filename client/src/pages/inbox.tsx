@@ -2215,7 +2215,7 @@ export default function InboxPage() {
                         {(conversation as any).profilePictureUrl && (
                           <AvatarImage src={(conversation as any).profilePictureUrl} alt={conversation.displayName || "Profile"} />
                         )}
-                        <AvatarFallback className="bg-sky-100 text-sky-700 text-sm">
+                        <AvatarFallback className="!bg-sky-100 !text-sky-700 text-sm font-medium">
                           {getInitials(conversation.displayName, conversation.phoneNumber)}
                         </AvatarFallback>
                       </Avatar>
@@ -2302,7 +2302,7 @@ export default function InboxPage() {
                     {(selectedConversation as any).profilePictureUrl && (
                       <AvatarImage src={(selectedConversation as any).profilePictureUrl} alt={selectedConversation.displayName || "Profile"} />
                     )}
-                    <AvatarFallback className="bg-sky-100 text-sky-700">
+                    <AvatarFallback className="!bg-sky-100 !text-sky-700 font-medium">
                       {getInitials(selectedConversation.displayName, selectedConversation.phoneNumber)}
                     </AvatarFallback>
                   </Avatar>
