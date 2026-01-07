@@ -157,14 +157,15 @@ async function processInstagramEvent(payload: any): Promise<void> {
 
       const upsertResult = await db.execute<typeof telnyxConversations.$inferSelect>(sql`
         INSERT INTO telnyx_conversations 
-          (company_id, phone_number, company_phone_number, channel, display_name, profile_picture_url, status, unread_count, last_message, last_message_at)
+          (company_id, phone_number, company_phone_number, channel, display_name, profile_picture_url, status, unread_count, last_message, last_message_at, last_inbound_at)
         VALUES 
-          (${companyId}, ${customerIgId}, ${companyPhone}, 'instagram', ${customerName}, ${profilePictureUrl}, 'open', 1, ${lastMessageValue}, ${messageTimestamp})
+          (${companyId}, ${customerIgId}, ${companyPhone}, 'instagram', ${customerName}, ${profilePictureUrl}, 'open', 1, ${lastMessageValue}, ${messageTimestamp}, ${messageTimestamp})
         ON CONFLICT (company_id, phone_number, company_phone_number, channel) 
         DO UPDATE SET
           unread_count = telnyx_conversations.unread_count + 1,
           last_message = ${lastMessageValue},
           last_message_at = ${messageTimestamp},
+          last_inbound_at = ${messageTimestamp},
           display_name = COALESCE(telnyx_conversations.display_name, ${customerName}),
           profile_picture_url = COALESCE(telnyx_conversations.profile_picture_url, ${profilePictureUrl}),
           status = CASE 

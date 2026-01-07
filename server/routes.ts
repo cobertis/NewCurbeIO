@@ -43377,6 +43377,26 @@ CRITICAL REMINDERS:
             const pageAccessToken = decryptToken(igConnection.accessTokenEnc);
             const recipientIgId = conversation.phoneNumber; // Instagram scoped ID stored in phoneNumber field
 
+            // HUMAN_AGENT mode validation: Check 7-day window if enabled
+            if (conversation.humanAgentEnabled) {
+              const lastInboundAt = conversation.lastInboundAt;
+              if (lastInboundAt) {
+                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+                if (new Date(lastInboundAt) < sevenDaysAgo) {
+                  console.error("[Inbox Instagram] HUMAN_AGENT: 7-day messaging window expired. Last inbound:", lastInboundAt);
+                  return res.status(400).json({ 
+                    message: "Cannot send message: The 7-day human agent messaging window has expired. The customer must message you first to restart the conversation." 
+                  });
+                }
+              } else {
+                console.error("[Inbox Instagram] HUMAN_AGENT: No lastInboundAt timestamp found");
+                return res.status(400).json({ 
+                  message: "Cannot send message: No previous customer message found. The customer must message you first." 
+                });
+              }
+              console.log(`[Inbox Instagram] HUMAN_AGENT tag enabled for conversation ${conversation.id}`);
+            }
+
             // Send message via Instagram Graph API (same endpoint as Facebook Messenger)
             const META_GRAPH_VERSION = "v21.0";
             const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages`;
@@ -43386,6 +43406,12 @@ CRITICAL REMINDERS:
               messaging_type: "RESPONSE",
               message: {}
             };
+            
+            // Add HUMAN_AGENT tag when human agent mode is enabled (extends messaging window to 7 days)
+            if (conversation.humanAgentEnabled) {
+              messagePayload.tag = "HUMAN_AGENT";
+              console.log(`[Inbox Instagram] Using HUMAN_AGENT tag for message to ${recipientIgId}`);
+            }
 
             // Handle text message
             if (text && text.trim()) {
@@ -43413,14 +43439,19 @@ CRITICAL REMINDERS:
 
               // If we also have text, send it as a separate message first
               if (text && text.trim()) {
+                // Build text payload with HUMAN_AGENT tag if enabled
+                const textPayload: any = {
+                  recipient: { id: recipientIgId },
+                  messaging_type: "RESPONSE",
+                  message: { text }
+                };
+                if (conversation.humanAgentEnabled) {
+                  textPayload.tag = "HUMAN_AGENT";
+                }
                 const textResponse = await fetch(`${sendUrl}?access_token=${pageAccessToken}`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    recipient: { id: recipientIgId },
-                    messaging_type: "RESPONSE",
-                    message: { text }
-                  })
+                  body: JSON.stringify(textPayload)
                 });
                 const textData = await textResponse.json();
                 if (!textResponse.ok) {
@@ -43612,6 +43643,67 @@ CRITICAL REMINDERS:
     } catch (error: any) {
       console.error("[Inbox] Error updating conversation:", error);
       res.status(500).json({ message: "Failed to update conversation" });
+    }
+  });
+
+
+  // PATCH /api/inbox/conversations/:id/human-agent - Toggle human agent mode for Instagram conversations
+  app.patch("/api/inbox/conversations/:id/human-agent", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const { enabled } = req.body;
+    const companyId = (req.user as any).companyId;
+    const userId = (req.user as any).id;
+    
+    try {
+      // Validate enabled is a boolean
+      if (typeof enabled !== "boolean") {
+        return res.status(400).json({ message: "enabled must be a boolean" });
+      }
+
+      // Verify conversation exists and belongs to company
+      const [conversation] = await db.select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.id, id),
+          eq(telnyxConversations.companyId, companyId)
+        ));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Only allow for Instagram channel conversations
+      if (conversation.channel !== "instagram") {
+        return res.status(400).json({ message: "Human agent mode is only available for Instagram conversations" });
+      }
+      
+      const updateData: any = { 
+        humanAgentEnabled: enabled,
+        humanAgentEnabledAt: enabled ? new Date() : null,
+        updatedAt: new Date(),
+        updatedBy: userId 
+      };
+      
+      const [updated] = await db.update(telnyxConversations)
+        .set(updateData)
+        .where(and(
+          eq(telnyxConversations.id, id),
+          eq(telnyxConversations.companyId, companyId)
+        ))
+        .returning();
+      
+      console.log(`[Inbox Instagram] Human agent mode ${enabled ? "enabled" : "disabled"} for conversation ${id} by user ${userId}`);
+      
+      // Broadcast update to clients
+      broadcastConversationUpdate(companyId, id);
+      
+      res.json({ conversation: updated });
+    } catch (error: any) {
+      console.error("[Inbox] Error updating human agent mode:", error);
+      res.status(500).json({ message: "Failed to update human agent mode" });
     }
   });
 
