@@ -29768,12 +29768,9 @@ CRITICAL REMINDERS:
 
   const META_INSTAGRAM_REDIRECT_URI = process.env.META_INSTAGRAM_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/instagram/callback`;
   const META_INSTAGRAM_SCOPES = [
-    "instagram_basic",
-    "instagram_manage_messages",
-    "instagram_manage_comments",
-    "pages_show_list",
-    "business_management",
-    "pages_read_engagement",
+    "instagram_business_basic",
+    "instagram_business_manage_messages", 
+    "instagram_business_manage_comments",
   ].join(",");
 
   // POST /api/integrations/meta/instagram/start - Start Instagram OAuth flow
@@ -29800,8 +29797,12 @@ CRITICAL REMINDERS:
         }
       });
       
-      const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
-      authUrl.searchParams.set("client_id", metaAppId);
+      // Use Instagram App ID for Instagram Business Login (separate from Facebook App ID)
+      const instagramAppId = process.env.META_INSTAGRAM_APP_ID || metaAppId;
+      
+      // Use Instagram Business Login OAuth flow
+      const authUrl = new URL("https://www.instagram.com/oauth/authorize");
+      authUrl.searchParams.set("client_id", instagramAppId);
       const instagramBaseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || req.protocol || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
       const instagramRedirectUri = process.env.META_INSTAGRAM_REDIRECT_URI || `${instagramBaseUrl}/api/integrations/meta/instagram/callback`;
       authUrl.searchParams.set("redirect_uri", instagramRedirectUri);
@@ -29854,54 +29855,76 @@ CRITICAL REMINDERS:
         .set({ usedAt: new Date() })
         .where(eq(oauthStates.id, oauthState.id));
       
-      // Exchange code for access token
-      const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+      // Instagram Business Login: Exchange code for access token using form data
+      const instagramAppId = process.env.META_INSTAGRAM_APP_ID;
+      const instagramAppSecret = process.env.META_INSTAGRAM_APP_SECRET;
       const { appId: metaAppId, appSecret: metaAppSecret } = await credentialProvider.getMeta();
-      const callbackRedirectUri = process.env.META_FACEBOOK_REDIRECT_URI || `${baseUrl}/api/integrations/meta/facebook/callback`;
-      const tokenParams = new URLSearchParams({
-        client_id: metaAppId,
-        client_secret: metaAppSecret,
+      
+      // Use Instagram credentials if available, fallback to Meta (Facebook) credentials
+      const clientId = instagramAppId || metaAppId;
+      const clientSecret = instagramAppSecret || metaAppSecret;
+      
+      const instagramRedirectUri = process.env.META_INSTAGRAM_REDIRECT_URI || `${baseUrl}/api/integrations/meta/instagram/callback`;
+      
+      // Step 1: Exchange authorization code for short-lived access token
+      // Instagram Business Login requires form data POST (not URL params)
+      const tokenFormData = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "authorization_code",
+        redirect_uri: instagramRedirectUri,
         code: code as string,
-        redirect_uri: META_INSTAGRAM_REDIRECT_URI,
       });
       
-      const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
+      const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: tokenFormData.toString(),
+      });
       const tokenData = await tokenResponse.json() as any;
       
-      if (tokenData.error) {
-        console.error("[Instagram OAuth] Token exchange failed:", tokenData.error);
+      if (tokenData.error_type || tokenData.error_message) {
+        console.error("[Instagram OAuth] Token exchange failed:", tokenData);
         return errorRedirect("connection_failed");
       }
       
-      const accessToken = tokenData.access_token;
-      console.log("[WhatsApp OAuth] Got access token, fetching WABA info...");
+      const shortLivedToken = tokenData.access_token;
+      const igUserId = tokenData.user_id;
+      console.log("[Instagram OAuth] Got short-lived token, exchanging for long-lived token...");
       
-      // Fetch pages with Instagram Business accounts
-      const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?fields=id,name,instagram_business_account{id,username}&access_token=${accessToken}`;
-      const pagesResponse = await fetch(pagesUrl);
-      const pagesData = await pagesResponse.json() as any;
+      // Step 2: Exchange short-lived token for long-lived token (60 days)
+      const longLivedTokenUrl = `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${clientSecret}&access_token=${shortLivedToken}`;
+      const longLivedResponse = await fetch(longLivedTokenUrl);
+      const longLivedData = await longLivedResponse.json() as any;
       
-      if (pagesData.error) {
-        console.error("[Instagram OAuth] Failed to fetch pages:", pagesData.error);
+      let accessToken = shortLivedToken;
+      let tokenExpiresIn = 3600; // 1 hour default for short-lived
+      
+      if (longLivedData.access_token) {
+        accessToken = longLivedData.access_token;
+        tokenExpiresIn = longLivedData.expires_in || 5184000; // ~60 days
+        console.log("[Instagram OAuth] Got long-lived token, expires in:", tokenExpiresIn, "seconds");
+      } else {
+        console.warn("[Instagram OAuth] Failed to get long-lived token, using short-lived:", longLivedData);
+      }
+      
+      // Step 3: Get Instagram user info
+      const userInfoUrl = `https://graph.instagram.com/${META_GRAPH_VERSION}/me?fields=id,username,name,profile_picture_url&access_token=${accessToken}`;
+      const userInfoResponse = await fetch(userInfoUrl);
+      const igAccount = await userInfoResponse.json() as any;
+      
+      if (igAccount.error) {
+        console.error("[Instagram OAuth] Failed to fetch user info:", igAccount.error);
         return errorRedirect("permission_denied");
       }
       
-      const pagesWithInstagram = (pagesData.data || []).filter((page: any) => page.instagram_business_account);
-      
-      if (pagesWithInstagram.length === 0) {
-        console.error("[Instagram OAuth] No Instagram Business accounts found");
-        return errorRedirect("not_professional");
-      }
-      
-      // For now, use the first page with Instagram Business account
-      const selectedPage = pagesWithInstagram[0];
-      const igAccount = selectedPage.instagram_business_account;
+      console.log("[Instagram OAuth] Got user info:", igAccount.username);
       
       const encryptedToken = encryptToken(accessToken);
       const scopes = META_INSTAGRAM_SCOPES.split(",");
-      const tokenExpiresAt = tokenData.expires_in 
-        ? new Date(Date.now() + tokenData.expires_in * 1000) 
-        : null;
+      const tokenExpiresAt = new Date(Date.now() + tokenExpiresIn * 1000);
       
       // UPSERT connection
       const existing = await db.query.channelConnections.findFirst({
@@ -29912,11 +29935,12 @@ CRITICAL REMINDERS:
       });
       
       const connectionData = {
-        igUserId: igAccount.id,
+        igUserId: igAccount.id || igUserId,
         igProfilePictureUrl: igAccount.profile_picture_url || null,
         igUsername: igAccount.username,
-        pageId: selectedPage.id,
-        pageName: selectedPage.name,
+        displayName: igAccount.name || igAccount.username,
+        pageId: null, // Not using Facebook Pages flow
+        pageName: null, // Not using Facebook Pages flow
         accessTokenEnc: encryptedToken,
         tokenExpiresAt,
         scopes,
@@ -29924,7 +29948,7 @@ CRITICAL REMINDERS:
         connectedAt: new Date(),
         lastError: null,
         updatedAt: new Date(),
-        metadata: pagesWithInstagram.length > 1 ? { availableAccounts: pagesWithInstagram } : null,
+        metadata: { authFlow: "instagram_business_login" },
       };
       
       if (existing) {
@@ -43284,6 +43308,9 @@ CRITICAL REMINDERS:
             }
 
             const pageAccessToken = decryptToken(igConnection.accessTokenEnc);
+            // Detect token type and use appropriate API host
+            const isInstagramBusinessToken = pageAccessToken.startsWith("IGAAM");
+            const apiHost = isInstagramBusinessToken ? "graph.instagram.com" : "graph.facebook.com";
             const recipientIgId = conversation.phoneNumber; // Instagram scoped ID stored in phoneNumber field
 
             // HUMAN_AGENT mode validation: Check 7-day window if enabled
@@ -43323,8 +43350,8 @@ CRITICAL REMINDERS:
                 return res.status(400).json({ error: "Media attachments are not supported for public comment replies. Use DM mode to send media." });
               }
               
-              const commentReplyUrl = `https://graph.instagram.com/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
-              console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId}`);
+              const commentReplyUrl = `https://${apiHost}/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
+              console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId} using ${apiHost}`);
               
               // Debug: Check token permissions
               try {
