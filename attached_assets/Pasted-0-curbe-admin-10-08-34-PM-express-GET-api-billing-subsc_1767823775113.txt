@@ -1,0 +1,44 @@
+0|curbe-admin  | 10:08:34 PM [express] GET /api/billing/subscription 200 in 457ms :: {"subscription":{"id":"76f844ef-e…
+0|curbe-admin  | 10:08:35 PM [express] GET /api/integrations/instagram/status 304 in 31ms :: {"connection":{"id":"74cf…
+0|curbe-admin  | 10:08:35 PM [express] GET /api/session 304 in 68ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d2…
+0|curbe-admin  | [Instagram] Disconnected for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 10:08:38 PM [express] POST /api/integrations/instagram/disconnect 200 in 25ms :: {"success":true}
+0|curbe-admin  | 10:08:38 PM [express] GET /api/integrations/instagram/status 200 in 22ms :: {"connection":{"id":"74cf…
+0|curbe-admin  | 10:08:40 PM [express] GET /api/integrations/meta/config 304 in 9ms :: {"appId":"775292408902612","con…
+0|curbe-admin  | 10:08:40 PM [express] GET /api/session 304 in 33ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d2…
+0|curbe-admin  | [Instagram SDK] Processing auth for company: 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [Instagram SDK] Received access token directly
+0|curbe-admin  | [Instagram SDK] Connected @curbe.io for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 10:08:59 PM [express] POST /api/integrations/meta/instagram/exchange-code 200 in 696ms :: {"success":…
+0|curbe-admin  | 10:08:59 PM [express] GET /api/integrations/instagram/status 200 in 19ms :: {"connection":{"id":"74cf…
+0|curbe-admin  | 10:09:00 PM [express] GET /api/session 304 in 61ms :: {"user":{"id":"8941c16e-b7a3-4e63-845e-afdf93d2…
+0|curbe-admin  | [Meta Webhook] POST received - User-Agent: Webhooks/1.0 (https://fb.me/webhooks)
+0|curbe-admin  | [Meta Webhook] Body type: object isBuffer: true length: 319
+0|curbe-admin  | [Meta Webhook] Signature validated with: Instagram app secret
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 10:09:13 PM [express] POST /api/webhooks/meta/facebook 200 in 4ms
+0|curbe-admin  | [WhatsApp Call] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 unregistered from company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WhatsApp Call WS] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 disconnected
+0|curbe-admin  | 10:09:26 PM [express] GET /api/wallet/balance 304 in 20ms :: {"balance":"44.1175","currency":"USD","a…
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 8941c16e-b7a3-4e63-845e-afdf93d260e3 registered for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=8941c16e-b7a3-4e63-845e-afdf93d260e3, companyId=078dac90-b0ca-44f1-9739-f78221dc0f53, role=admin
+

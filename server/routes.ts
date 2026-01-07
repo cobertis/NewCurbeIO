@@ -43328,6 +43328,16 @@ CRITICAL REMINDERS:
               const commentReplyUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
               console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId}`);
               
+              // Debug: Check token permissions
+              try {
+                const permissionsUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/permissions?access_token=${pageAccessToken}`;
+                const permResponse = await fetch(permissionsUrl);
+                const permData = await permResponse.json() as any;
+                console.log(`[Inbox Instagram] Token permissions:`, JSON.stringify(permData.data?.map((p: any) => `${p.permission}:${p.status}`) || permData));
+              } catch (e) {
+                console.log(`[Inbox Instagram] Could not fetch permissions`);
+              }
+              
               // Meta requires URL params, NOT JSON body for comment replies
               const params = new URLSearchParams({
                 message: text,
