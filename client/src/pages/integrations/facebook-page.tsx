@@ -79,10 +79,10 @@ export default function FacebookPage() {
 
   const pages: FacebookPage[] = connection ? [{
     id: connection.id || 1,
-    pageName: connection.displayName || "Facebook Page",
-    accountName: connection.displayName ? "Connected Account" : "Account",
+    pageName: connection.fbPageName || "Facebook Page",
+    accountName: connection.displayName || "Connected Account",
     status: connection.status as "active" | "pending" | "error" | "revoked",
-    dateConnected: connection.createdAt || new Date(),
+    dateConnected: connection.connectedAt || connection.createdAt || new Date(),
   }] : [];
 
   const sortedPages = [...pages].sort((a, b) => {
