@@ -43451,7 +43451,7 @@ CRITICAL REMINDERS:
             }
 
             // Send the message
-            const igResponse = await fetch(`${sendUrl}?access_token=${pageAccessToken}`, {
+            const igResponse = await fetch(sendUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(messagePayload)

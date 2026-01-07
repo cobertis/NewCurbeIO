@@ -1,0 +1,48 @@
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [Inbox] Deleted Telnyx conversation be2bfacc-5dbf-46c1-99c0-d8ea743cb472 for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 9:56:33 PM [express] DELETE /api/inbox/conversations/be2bfacc-5dbf-46c1-99c0-d8ea743cb472 200 in 22m…
+0|curbe-admin  | [Inbox] Returning 3 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 9:56:33 PM [express] GET /api/inbox/conversations 200 in 29ms :: {"conversations":[{"id":"742b5951-9…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | 9:56:40 PM [express] GET /api/ai/autopilot/pending 304 in 54ms :: {"pending":[]}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | 9:56:50 PM [express] GET /api/ai/autopilot/pending 304 in 38ms :: {"pending":[]}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [Meta Webhook] POST received - User-Agent: Webhooks/1.0 (https://fb.me/webhooks)
+0|curbe-admin  | [Meta Webhook] Body type: object isBuffer: true length: 319
+0|curbe-admin  | [Meta Webhook] Signature validated with: Instagram app secret
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 9:56:54 PM [express] POST /api/webhooks/meta/facebook 200 in 3ms
+0|curbe-admin  | [Meta Webhook Worker] Dedupe check failed for comment 18064587809215420, processing anyway
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [Meta Webhook Worker] Created Instagram comment conversation: 1deb4ee4-aca5-434a-a80b-312779688a15 from Fragaby
+0|curbe-admin  | [WebSocket] Broadcasting new_message to 6 authenticated clients (company: 078dac90-b0ca-44f1-9739-f78221dc0f53)
+0|curbe-admin  | 9:56:55 PM [express] GET /api/notifications 304 in 26ms :: {"notifications":[{"id":"02b5b34a-350e-41…
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 9:56:55 PM [express] GET /api/inbox/conversations 200 in 23ms :: {"conversations":[{"id":"1deb4ee4-a…
+0|curbe-admin  | [Inbox] Returning 4 conversations for company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | 9:56:55 PM [express] GET /api/inbox/conversations 304 in 33ms :: {"conversations":[{"id":"1deb4ee4-a…
+0|curbe-admin  | 9:56:55 PM [express] GET /api/inbox/conversations 400 in 23ms :: {"message":"No company associated w…
+0|curbe-admin  | 9:56:55 PM [express] GET /api/notifications 304 in 24ms :: {"notifications":[{"id":"a3a6bf12-2829-44…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | 9:57:00 PM [express] GET /api/ai/autopilot/pending 304 in 33ms :: {"pending":[]}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | 9:57:05 PM [express] GET /api/wallet/balance 304 in 20ms :: {"balance":"44.1175","currency":"USD","a…
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [ExtensionCall] Extension 101 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 101 registered for user 8941c16e-b7a3-4e63-845e-afdf93d260e3
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 078dac90-b0ca-44f1-9739-f78221dc0f53
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | 9:57:10 PM [express] GET /api/ai/autopilot/pending 304 in 34ms :: {"pending":[]}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+
