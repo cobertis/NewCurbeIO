@@ -78,8 +78,8 @@ export default function InstagramPage() {
 
   const accounts: InstagramAccount[] = connection ? [{
     id: connection.id || 1,
-    accountName: connection.displayName || "Instagram Account",
-    username: connection.instagramUsername || "username",
+    accountName: connection.pageName || connection.displayName || "Instagram Account",
+    username: connection.igUsername || "username",
     status: connection.status as "active" | "pending" | "error" | "revoked",
     dateConnected: connection.createdAt || new Date(),
   }] : [];
