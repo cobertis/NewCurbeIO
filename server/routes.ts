@@ -42375,7 +42375,7 @@ CRITICAL REMINDERS:
       let conversation = await db
           .select()
           .from(telnyxConversations)
-          .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+          .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)))?.[0];
         
         let isImessageConversation = false;
         let imessageConv: any = null;
