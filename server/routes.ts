@@ -42372,20 +42372,22 @@ CRITICAL REMINDERS:
       
       try {
         // First try Telnyx conversation
-      let conversation = await db
+        const telnyxConversations_result = await db
           .select()
           .from(telnyxConversations)
-          .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)))?.[0];
+          .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+        let conversation = telnyxConversations_result[0];
         
         let isImessageConversation = false;
         let imessageConv: any = null;
         
         if (!conversation) {
           // Try iMessage conversation
-      imessageConv = await db
+          const imessageResult = await db
             .select()
             .from(imessageConversationsTable)
-            .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)))?.[0];
+            .where(and(eq(imessageConversationsTable.id, id), eq(imessageConversationsTable.companyId, companyId)));
+          imessageConv = imessageResult[0];
           
           if (imessageConv) {
             isImessageConversation = true;
@@ -43322,13 +43324,14 @@ CRITICAL REMINDERS:
               const commentReplyUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
               console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId}`);
               
-              const commentResponse = await fetch(commentReplyUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  message: text,
-                  access_token: pageAccessToken
-                })
+              // Meta requires URL params, NOT JSON body for comment replies
+              const params = new URLSearchParams({
+                message: text,
+                access_token: pageAccessToken
+              });
+              
+              const commentResponse = await fetch(`${commentReplyUrl}?${params.toString()}`, {
+                method: "POST"
               });
               
               const commentData = await commentResponse.json();
@@ -43374,7 +43377,7 @@ CRITICAL REMINDERS:
             }
             
             // Regular DM flow (including private reply to comment)
-            const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages`;
+            const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages?access_token=${pageAccessToken}`;
             
             // For comment-based conversations with DM mode, first message should be a private reply
             const isFirstReplyToComment = replyMode === "dm" && conversation.originType === "comment" && conversation.igCommentId;
