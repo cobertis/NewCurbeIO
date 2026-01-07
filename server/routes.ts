@@ -43310,6 +43310,15 @@ CRITICAL REMINDERS:
             
             if (isPublicCommentReply) {
               // Reply publicly to the comment using Instagram Comments API
+              // Instagram API limitation: Public comment replies only support text, no media attachments
+              if (!text || !text.trim()) {
+                return res.status(400).json({ error: "Text is required for public comment replies" });
+              }
+              
+              if (mediaUrls && mediaUrls.length > 0) {
+                return res.status(400).json({ error: "Media attachments are not supported for public comment replies. Use DM mode to send media." });
+              }
+              
               const commentReplyUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
               console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId}`);
               
@@ -43370,6 +43379,15 @@ CRITICAL REMINDERS:
             // For comment-based conversations with DM mode, first message should be a private reply
             const isFirstReplyToComment = replyMode === "dm" && conversation.originType === "comment" && conversation.igCommentId;
 
+            const messagePayload: any = {
+              recipient: isFirstReplyToComment 
+                ? { comment_id: conversation.igCommentId }  // Private reply to comment
+                : { id: recipientIgId },                     // Regular DM
+              messaging_type: "RESPONSE",
+              message: {}
+            };
+            
+            if (isFirstReplyToComment) {
               console.log(`[Inbox Instagram] Sending private reply to comment ${conversation.igCommentId}`);
             }
             
