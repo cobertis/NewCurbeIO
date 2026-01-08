@@ -118,6 +118,7 @@ import EmailIntegration from "@/pages/email-integration";
 import EmailIntegrationFlow from "@/pages/email-integration-flow";
 import SmsVoiceVirtualPbx from "@/pages/integrations/sms-voice-virtual-pbx";
 import SmsVoiceCpaas from "@/pages/integrations/sms-voice-cpaas";
+import SmsVoicePortIn from "@/pages/integrations/sms-voice-port-in";
 import FacebookIntegration from "@/pages/integrations/facebook";
 import FacebookFlow from "@/pages/integrations/facebook-flow";
 import FacebookPageComponent from "@/pages/integrations/facebook-page";
@@ -1268,7 +1269,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                             : '';
 
                           // Format phone number for display (e.g., 13054578187 -> (305) 457-8187)
-                          const formatPhone = (phone) => {
+                          const formatPhone = (phone: string) => {
                             const digits = phone.replace(/\D/g, '');
                             if (digits.length === 11 && digits.startsWith('1')) {
                               return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
@@ -1280,7 +1281,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                           };
 
                           // Extract phone number from text
-                          const extractPhone = (text) => {
+                          const extractPhone = (text: string) => {
                             const match = text.match(/\d{10,11}/);
                             return match ? match[0] : null;
                           };
@@ -1733,6 +1734,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SmsVoiceCpaas />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/sms-voice/port-in">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoicePortIn />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

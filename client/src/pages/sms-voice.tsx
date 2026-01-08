@@ -169,6 +169,11 @@ export function SmsVoiceContent() {
       href: "/settings/sms-voice/numbers",
     },
     {
+      title: "Port-In Orders",
+      description: "View and manage phone number porting requests from other carriers.",
+      href: "/settings/sms-voice/port-in",
+    },
+    {
       title: "Bring your own CPaaS",
       description: "Manage your connected CPaaS providers (Twilio, Vonage, etc.) and linked numbers.",
       href: "/settings/sms-voice/cpaas",
@@ -263,6 +268,11 @@ export default function SmsVoice() {
       title: "Numbers",
       description: "Manage your virtual numbers for SMS, MMS, and voice services.",
       href: "/settings/sms-voice/numbers",
+    },
+    {
+      title: "Port-In Orders",
+      description: "View and manage phone number porting requests from other carriers.",
+      href: "/settings/sms-voice/port-in",
     },
     {
       title: "Bring your own CPaaS",
