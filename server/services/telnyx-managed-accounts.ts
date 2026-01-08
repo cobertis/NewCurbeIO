@@ -435,12 +435,12 @@ export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
       return { success: false, error: createResult.error || "Failed to create managed account" };
     }
 
-    // Now create an API key for the new account
-    console.log(`[Telnyx Managed] Creating API key for new account: ${createResult.managedAccount.id}`);
-    const newKeyResult = await createManagedAccountApiKey(createResult.managedAccount.id);
+    // The API key should already be in the creation response
+    const apiKey = createResult.managedAccount.api_key;
     
-    if (!newKeyResult.success || !newKeyResult.apiKey) {
-      // Save account ID at least, so we can retry key creation later
+    if (!apiKey || !apiKey.startsWith('KEY')) {
+      console.error(`[Telnyx Managed] No valid API key in account creation response`);
+      // Save account ID at least
       await db
         .update(wallets)
         .set({
@@ -450,21 +450,21 @@ export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
         })
         .where(eq(wallets.id, wallet.id));
       
-      return { success: false, error: newKeyResult.error || "Failed to create API key for new account" };
+      return { success: false, error: "No API key returned from account creation" };
     }
 
     await db
       .update(wallets)
       .set({
         telnyxAccountId: createResult.managedAccount.id,
-        telnyxApiToken: newKeyResult.apiKey,
+        telnyxApiToken: apiKey,
         updatedAt: new Date(),
       })
       .where(eq(wallets.id, wallet.id));
 
-    console.log(`[Telnyx Managed] New account ${createResult.managedAccount.id} with API key saved to wallet ${wallet.id}`);
+    console.log(`[Telnyx Managed] New account ${createResult.managedAccount.id} with API key saved to wallet ${wallet.id}: ${apiKey.substring(0, 10)}...`);
 
-    return { success: true, apiToken: newKeyResult.apiKey };
+    return { success: true, apiToken: apiKey };
   } catch (error) {
     console.error("[Telnyx Managed] Ensure token error:", error);
     return {
