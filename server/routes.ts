@@ -94,8 +94,12 @@ import {
   insertCampaignTemplateSchema,
   insertCampaignPlaceholderSchema,
   insertImessageCampaignSchema,
-  createCampaignWithDetailsSchema
+  createCampaignWithDetailsSchema,
+  importLeadBatches,
+  importLeads,
+  InsertImportLead
 } from "@shared/schema";
+import { parse as csvParse } from "csv-parse";
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
@@ -45481,6 +45485,283 @@ CRITICAL REMINDERS:
     } catch (error: any) {
       console.error("[Inbox Assignment] Error:", error);
       res.status(500).json({ message: error.message || "Failed to assign inbox" });
+    }
+  });
+
+
+  // ==============================================
+  // CSV LEAD IMPORT ENDPOINTS
+  // ==============================================
+
+  // Helper to parse multi-value fields (comma-separated)
+  const parseMultiValue = (value: string | undefined): string[] => {
+    if (!value) return [];
+    return value.split(',').map(v => v.trim()).filter(v => v && v !== '');
+  };
+
+  // Helper to parse Y/N to boolean
+  const parseYesNo = (value: string | undefined): boolean | null => {
+    if (!value) return null;
+    const upper = value.trim().toUpperCase();
+    if (upper === 'Y' || upper === 'YES' || upper === '1' || upper === 'TRUE') return true;
+    if (upper === 'N' || upper === 'NO' || upper === '0' || upper === 'FALSE') return false;
+    return null;
+  };
+
+  // Known CSV columns that map to specific fields
+  const KNOWN_CSV_COLUMNS = new Set([
+    'UUID', 'FIRST_NAME', 'LAST_NAME', 'PERSONAL_ADDRESS', 'PERSONAL_CITY',
+    'PERSONAL_STATE', 'PERSONAL_ZIP', 'AGE_RANGE', 'GENDER', 'CHILDREN',
+    'HOMEOWNER', 'MARRIED', 'NET_WORTH', 'INCOME_RANGE', 'MOBILE_PHONE',
+    'DIRECT_NUMBER', 'PERSONAL_PHONE', 'PERSONAL_EMAILS', 'BUSINESS_EMAIL',
+    'JOB_TITLE', 'COMPANY_NAME'
+  ]);
+
+  // Setup multer for CSV file upload
+  const leadImportUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only CSV files are allowed'));
+      }
+    }
+  });
+
+  // POST /api/leads/import - Upload CSV file and process leads
+  app.post("/api/leads/import", requireActiveCompany, leadImportUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const userId = user.id;
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No CSV file provided" });
+      }
+
+      const fileName = req.file.originalname;
+      const csvContent = req.file.buffer.toString('utf-8');
+
+      // Create batch record
+      const [batch] = await db.insert(importLeadBatches).values({
+        companyId,
+        createdBy: userId,
+        fileName,
+        status: 'processing',
+        totalRows: 0,
+        processedRows: 0,
+        errorRows: 0,
+        errors: []
+      }).returning();
+
+      // Parse CSV
+      const records: any[] = await new Promise((resolve, reject) => {
+        csvParse(csvContent, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+          relax_column_count: true
+        }, (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+      });
+
+      const totalRows = records.length;
+      let processedRows = 0;
+      let errorRows = 0;
+      const errors: { row: number; message: string }[] = [];
+
+      // Process each row
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i];
+        try {
+          // Collect phone numbers from multiple columns
+          const phones: string[] = [
+            ...parseMultiValue(row['MOBILE_PHONE']),
+            ...parseMultiValue(row['DIRECT_NUMBER']),
+            ...parseMultiValue(row['PERSONAL_PHONE'])
+          ].filter(p => p.length > 0);
+
+          // Collect emails from multiple columns
+          const emails: string[] = [
+            ...parseMultiValue(row['PERSONAL_EMAILS']),
+            ...parseMultiValue(row['BUSINESS_EMAIL'])
+          ].filter(e => e.length > 0);
+
+          // Collect extra data (columns not in known set)
+          const extraData: Record<string, any> = {};
+          for (const [key, value] of Object.entries(row)) {
+            if (!KNOWN_CSV_COLUMNS.has(key) && value) {
+              extraData[key] = value;
+            }
+          }
+
+          const leadData: InsertImportLead = {
+            batchId: batch.id,
+            companyId,
+            externalId: row['UUID'] || null,
+            firstName: row['FIRST_NAME'] || null,
+            lastName: row['LAST_NAME'] || null,
+            address: row['PERSONAL_ADDRESS'] || null,
+            city: row['PERSONAL_CITY'] || null,
+            state: row['PERSONAL_STATE'] || null,
+            zip: row['PERSONAL_ZIP'] || null,
+            ageRange: row['AGE_RANGE'] || null,
+            gender: row['GENDER'] || null,
+            hasChildren: parseYesNo(row['CHILDREN']),
+            isHomeowner: parseYesNo(row['HOMEOWNER']),
+            isMarried: parseYesNo(row['MARRIED']),
+            netWorth: row['NET_WORTH'] || null,
+            incomeRange: row['INCOME_RANGE'] || null,
+            phones: phones.length > 0 ? phones : null,
+            emails: emails.length > 0 ? emails : null,
+            jobTitle: row['JOB_TITLE'] || null,
+            companyName: row['COMPANY_NAME'] || null,
+            extraData: Object.keys(extraData).length > 0 ? extraData : {}
+          };
+
+          await db.insert(importLeads).values(leadData);
+          processedRows++;
+        } catch (rowError: any) {
+          errorRows++;
+          errors.push({ row: i + 1, message: rowError.message || 'Unknown error' });
+        }
+      }
+
+      // Update batch status
+      await db.update(importLeadBatches)
+        .set({
+          status: errorRows === totalRows ? 'failed' : 'completed',
+          totalRows,
+          processedRows,
+          errorRows,
+          errors,
+          completedAt: new Date()
+        })
+        .where(eq(importLeadBatches.id, batch.id));
+
+      res.json({
+        batchId: batch.id,
+        fileName,
+        totalRows,
+        processedRows,
+        errorRows,
+        errors: errors.slice(0, 10) // Return first 10 errors
+      });
+    } catch (error: any) {
+      console.error("[Lead Import] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to import leads" });
+    }
+  });
+
+  // GET /api/leads/import/batches - List all import batches for the company
+  app.get("/api/leads/import/batches", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+
+      const batches = await db.select()
+        .from(importLeadBatches)
+        .where(eq(importLeadBatches.companyId, companyId))
+        .orderBy(desc(importLeadBatches.createdAt));
+
+      res.json(batches);
+    } catch (error: any) {
+      console.error("[Lead Import] Error fetching batches:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch batches" });
+    }
+  });
+
+  // GET /api/leads/import - List leads with pagination and filters
+  app.get("/api/leads/import", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { batchId, search, page = '1', limit = '50' } = req.query;
+
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+      const offset = (pageNum - 1) * limitNum;
+
+      // Build where conditions
+      const conditions = [eq(importLeads.companyId, companyId)];
+
+      if (batchId) {
+        conditions.push(eq(importLeads.batchId, batchId as string));
+      }
+
+      if (search) {
+        const searchTerm = `%${search}%`;
+        conditions.push(
+          or(
+            sql`${importLeads.firstName} ILIKE ${searchTerm}`,
+            sql`${importLeads.lastName} ILIKE ${searchTerm}`,
+            sql`${importLeads.emails}::text ILIKE ${searchTerm}`,
+            sql`${importLeads.phones}::text ILIKE ${searchTerm}`
+          )!
+        );
+      }
+
+      // Get total count
+      const [{ count: totalCount }] = await db.select({ count: count() })
+        .from(importLeads)
+        .where(and(...conditions));
+
+      // Get leads
+      const leads = await db.select()
+        .from(importLeads)
+        .where(and(...conditions))
+        .orderBy(desc(importLeads.createdAt))
+        .limit(limitNum)
+        .offset(offset);
+
+      res.json({
+        leads,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: Number(totalCount),
+          totalPages: Math.ceil(Number(totalCount) / limitNum)
+        }
+      });
+    } catch (error: any) {
+      console.error("[Lead Import] Error fetching leads:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch leads" });
+    }
+  });
+
+  // DELETE /api/leads/import/batches/:batchId - Delete a batch and all its leads
+  app.delete("/api/leads/import/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { batchId } = req.params;
+
+      // Verify batch belongs to company
+      const [batch] = await db.select()
+        .from(importLeadBatches)
+        .where(and(
+          eq(importLeadBatches.id, batchId),
+          eq(importLeadBatches.companyId, companyId)
+        ));
+
+      if (!batch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+
+      // Delete leads first (cascade should handle this, but explicit is safer)
+      await db.delete(importLeads).where(eq(importLeads.batchId, batchId));
+
+      // Delete batch
+      await db.delete(importLeadBatches).where(eq(importLeadBatches.id, batchId));
+
+      res.json({ success: true, message: "Batch and all associated leads deleted" });
+    } catch (error: any) {
+      console.error("[Lead Import] Error deleting batch:", error);
+      res.status(500).json({ message: error.message || "Failed to delete batch" });
     }
   });
 
