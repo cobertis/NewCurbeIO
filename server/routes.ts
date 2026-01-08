@@ -34630,6 +34630,8 @@ CRITICAL REMINDERS:
             )
           );
         
+        console.log(`[TF Verification Sync] Found ${appsToSync.length} apps to sync for company ${companyId}`);
+        
         if (appsToSync.length > 0) {
           const { getTelnyxMasterApiKey } = await import("./services/telnyx-numbers-service");
           const apiKey = await getTelnyxMasterApiKey();
@@ -34637,6 +34639,7 @@ CRITICAL REMINDERS:
           for (const app of appsToSync) {
             if (!app.telnyxVerificationRequestId) continue;
             try {
+              console.log(`[TF Verification Sync] Checking Telnyx for app ${app.id}, request ID: ${app.telnyxVerificationRequestId}`);
               const response = await fetch(
                 `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/${app.telnyxVerificationRequestId}`,
                 {
@@ -34647,14 +34650,18 @@ CRITICAL REMINDERS:
                 }
               );
               
+              console.log(`[TF Verification Sync] Telnyx response status: ${response.status}`);
+              
               if (response.ok) {
                 const data = await response.json();
                 const telnyxStatus = data.data?.verificationStatus || data.verificationStatus;
+                console.log(`[TF Verification Sync] Telnyx verification status: ${telnyxStatus}`);
                 
                 if (telnyxStatus) {
                   // Map Telnyx status to internal status
                   let mappedStatus = "pending";
-                  switch (telnyxStatus.toLowerCase().replace(/\s+/g, '_')) {
+                  const normalizedStatus = telnyxStatus.toLowerCase().replace(/\s+/g, '_');
+                  switch (normalizedStatus) {
                     case "verified":
                       mappedStatus = "verified";
                       break;
@@ -34671,6 +34678,8 @@ CRITICAL REMINDERS:
                       mappedStatus = "pending";
                   }
                   
+                  console.log(`[TF Verification Sync] Mapped status: ${telnyxStatus} -> ${mappedStatus}, current: ${app.status}`);
+                  
                   if (mappedStatus !== app.status) {
                     await db
                       .update(complianceApplications)
@@ -34679,6 +34688,9 @@ CRITICAL REMINDERS:
                     console.log(`[TF Verification Sync] Updated ${app.id}: ${app.status} -> ${mappedStatus}`);
                   }
                 }
+              } else {
+                const errorText = await response.text();
+                console.error(`[TF Verification Sync] Telnyx API error: ${response.status} - ${errorText}`);
               }
             } catch (e) {
               console.error(`[TF Verification Sync] Error syncing ${app.id}:`, e);
@@ -34688,7 +34700,6 @@ CRITICAL REMINDERS:
       } catch (syncError) {
         console.error("[TF Verification Sync] Error during sync:", syncError);
       }
-
       // Get all phone numbers for the company (simple query without join)
       const phoneNumbersRaw = await db
         .select()
