@@ -1458,11 +1458,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[BlueBubbles Webhook] Unknown event type: ${eventType}`);
       }
       // Always return 200 OK to acknowledge webhook receipt
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[BlueBubbles Webhook] Error processing webhook:", error);
       // Still return 200 to prevent webhook retries for processing errors
-      res.json({ success: true });
+      res.json({ company });
     }
   });
   // Attachment upload endpoint
@@ -1782,7 +1782,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         options.search = search as string;
       }
       const conversations = await storage.getImessageConversationsByCompany(user.companyId, options);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching iMessage conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -2142,7 +2142,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         reaction,
         action
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating reaction:", error);
       res.status(500).json({ message: "Failed to update reaction" });
@@ -2169,7 +2169,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const { blueBubblesManager } = await import("./bluebubbles");
         await blueBubblesManager.markAsRead(user.companyId, conversation.chatGuid);
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error marking conversation as read:", error);
       res.status(500).json({ message: "Failed to mark as read" });
@@ -2235,7 +2235,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Conversation not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
@@ -2272,7 +2272,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         conversationId,
         userId: user.id
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error sending typing indicator:", error);
       res.status(500).json({ message: "Failed to send typing indicator" });
@@ -2338,7 +2338,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         messageGuid: messageGuid,
         conversationId: message.conversationId
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting iMessage:", error);
       res.status(500).json({ message: "Failed to delete message" });
@@ -2379,7 +2379,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         completed: campaigns.filter(c => c.status === 'completed').length,
         draft: campaigns.filter(c => c.status === 'draft').length,
       };
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error listing iMessage campaigns:", error);
       res.status(500).json({ message: "Failed to list campaigns" });
@@ -2490,7 +2490,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Access denied" });
       }
       // Return wrapped response for consistency with other endpoints
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting iMessage campaign:", error);
       res.status(500).json({ message: "Failed to get campaign" });
@@ -2566,7 +2566,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete campaign" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting iMessage campaign:", error);
       res.status(500).json({ message: "Failed to delete campaign" });
@@ -2675,7 +2675,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentRun && currentRun.status === 'running') {
         await storage.updateImessageCampaignRun(currentRun.id, { status: 'paused' });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error pausing iMessage campaign:", error);
       res.status(500).json({ message: "Failed to pause campaign" });
@@ -2712,7 +2712,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentRun && currentRun.status === 'paused') {
         await storage.updateImessageCampaignRun(currentRun.id, { status: 'running' });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error resuming iMessage campaign:", error);
       res.status(500).json({ message: "Failed to resume campaign" });
@@ -2752,7 +2752,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           completedAt: new Date(),
         });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error stopping iMessage campaign:", error);
       res.status(500).json({ message: "Failed to stop campaign" });
@@ -3008,7 +3008,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Log but don't fail the request if notification fails
         console.error('Failed to send consent signed notification:', notificationError);
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error signing consent:", error);
       res.status(500).json({ message: "Failed to sign consent document" });
@@ -3309,7 +3309,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (err) {
         return res.status(500).json({ message: "Failed to logout" });
       }
-      res.json({ success: true });
+      res.json({ company });
     });
   });
   // Get all active sessions for the current user
@@ -3351,7 +3351,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ipAddress: sessionData.ipAddress || 'Unknown IP',
         };
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error fetching user sessions:", error);
       res.status(500).json({ message: "Failed to fetch sessions" });
@@ -3892,7 +3892,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const user = req.user!;
       await storage.updateUser(user.id, { onboardingCompleted: true });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("[ONBOARDING] Error marking complete:", error);
       res.status(500).json({ message: "Failed to mark onboarding as complete" });
@@ -5240,7 +5240,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     
     try {
       const invitations = await storage.getInvitationsByCompany(currentUser.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("[GET INVITATIONS] Error:", error);
       res.status(500).json({ message: "Failed to fetch invitations" });
@@ -5269,7 +5269,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       await storage.deleteInvitation(token);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("[DELETE INVITATION] Error:", error);
       res.status(500).json({ message: "Failed to delete invitation" });
@@ -5360,7 +5360,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         users = [];
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
@@ -5493,7 +5493,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       await storage.deleteUser(userId);
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[DELETE USER] Error:", error);
       res.status(500).json({ message: error.message || "Failed to delete user" });
@@ -5545,7 +5545,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const userId = req.session!.userId!;
       const [user] = await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error getting availability status:", error);
       res.status(500).json({ message: "Failed to get availability status" });
@@ -5565,7 +5565,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       
       console.log(`[Agent Availability] User ${userId} set status to: ${status}`);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error updating availability status:", error);
       res.status(500).json({ message: "Failed to update availability status" });
@@ -5622,7 +5622,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       console.log(`[Timezone] User ${user.email} updated timezone to: ${timezone}`);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Timezone] Error updating timezone:", error);
       res.status(500).json({ message: "Failed to update timezone" });
@@ -5687,7 +5687,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const { password, ...sanitizedUser } = updatedUser;
       console.log(`[User Update] Admin ${currentUser.email} updated user ${targetUser.email}:`, Object.keys(allowedFields));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: error.message || "Failed to update user" });
@@ -5711,7 +5711,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         avatar: user.avatar,
         role: user.role,
       }));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
@@ -6171,7 +6171,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }))
         .sort((a, b) => b.policies - a.policies)
         .slice(0, 10);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
@@ -6217,7 +6217,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             agentName
           };
         });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching recent policies:", error);
       res.status(500).json({ message: "Failed to fetch recent policies" });
@@ -6230,15 +6230,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       if (currentUser.role === "superadmin") {
         const companies = await storage.getAllCompanies();
-        return res.json({ success: true, skipped: true });
+        return res.json({ companies });
       }
       
       if (currentUser.companyId) {
         const company = await storage.getCompany(currentUser.companyId);
-        return res.json({ success: true, skipped: true });
+        return res.json({ companies: company ? [company] : [] });
       }
       
-      res.json({ success: true });
+      res.json({ companies: [] });
     } catch (error: any) {
       console.error("Error fetching companies:", error);
       res.status(500).json({ message: "Failed to fetch companies" });
@@ -6256,7 +6256,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!company) {
       return res.status(404).json({ message: "Company not found" });
     }
-    res.json({ success: true });
+    res.json({ company });
   });
   // Update company by ID (admin or superadmin)
   app.patch("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6309,7 +6309,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Company not found" });
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Company Update] Error:", error);
       res.status(400).json({ message: error.message || "Failed to update company" });
@@ -6344,7 +6344,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         updatedBy: currentUser.email,
       },
     });
-    res.json({ success: true });
+    res.json({ company });
   });
   app.delete("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -6381,7 +6381,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Company Delete] Error:", error);
       res.status(500).json({ message: "Failed to delete company: " + (error.message || "Unknown error") });
@@ -6693,7 +6693,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         emailSettings: {},
       });
     }
-    res.json({ success: true });
+    res.json({ company });
   });
   // Update company settings (admin or superadmin)
   app.patch("/api/settings/company", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6721,7 +6721,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       const updatedSettings = await storage.updateCompanySettings(companyId, validatedData);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
@@ -6759,7 +6759,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
@@ -6829,7 +6829,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[SIP Update] Error:", error);
       res.status(400).json({ message: error.message || "Failed to update SIP settings" });
@@ -6848,7 +6848,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
@@ -6871,7 +6871,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
@@ -6886,7 +6886,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const plans = currentUser.role === "superadmin" 
       ? await storage.getAllPlans()
       : await storage.getActivePlans();
-    res.json({ success: true });
+    res.json({ company });
   });
   // Get plan by ID
   app.get("/api/plans/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6894,7 +6894,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!plan) {
       return res.status(404).json({ message: "Plan not found" });
     }
-    res.json({ success: true });
+    res.json({ company });
   });
   // Create plan (superadmin only)
   app.post("/api/plans", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6905,7 +6905,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const validatedData = insertPlanSchema.parse(req.body);
       const plan = await storage.createPlan(validatedData);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
@@ -6922,7 +6922,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedPlan) {
         return res.status(404).json({ message: "Plan not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
@@ -6971,7 +6971,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!success) {
       return res.status(404).json({ message: "Plan not found" });
     }
-    res.json({ success: true });
+    res.json({ company });
   });
   // ==================== PLAN FEATURE ASSIGNMENTS ====================
   
@@ -6984,7 +6984,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Plan not found" });
       }
       const assignments = await storage.getPlanFeatureAssignments(planId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching plan feature assignments:", error);
       res.status(500).json({ message: "Failed to fetch plan feature assignments" });
@@ -7006,7 +7006,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const assignmentsSchema = z.array(insertPlanFeatureAssignmentSchema.omit({ planId: true }));
       const validatedData = assignmentsSchema.parse(req.body);
       const assignments = await storage.setPlanFeatureAssignments(planId, validatedData);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error setting plan feature assignments:", error);
       if (error.name === "ZodError") {
@@ -7036,7 +7036,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!assignment) {
         return res.status(404).json({ message: "Feature assignment not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating plan feature assignment:", error);
       res.status(500).json({ message: "Failed to update plan feature assignment" });
@@ -7059,7 +7059,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Feature assignment not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting plan feature assignment:", error);
       res.status(500).json({ message: "Failed to delete plan feature assignment" });
@@ -7180,13 +7180,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/plan-features", async (req: Request, res: Response) => {
     // Public endpoint - no auth required for pricing page display
     const features = await storage.getAllPlanFeatures();
-    res.json({ success: true });
+    res.json({ company });
   });
   // Get active plans for public pricing page (no auth required)
   app.get("/api/public/plans", async (req: Request, res: Response) => {
     // Public endpoint - returns only active plans for pricing page
     const plans = await storage.getActivePlans();
-    res.json({ success: true });
+    res.json({ company });
   });
   // Create plan feature (superadmin only)
   app.post("/api/plan-features", requireAuth, async (req: Request, res: Response) => {
@@ -7197,7 +7197,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const validatedData = insertPlanFeatureSchema.parse(req.body);
       const feature = await storage.createPlanFeature(validatedData);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
@@ -7214,7 +7214,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedFeature) {
         return res.status(404).json({ message: "Feature not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
@@ -7229,7 +7229,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!success) {
       return res.status(404).json({ message: "Feature not found" });
     }
-    res.json({ success: true });
+    res.json({ company });
   });
   // INVOICES & PAYMENTS
   // ===================================================================
@@ -7242,11 +7242,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (companyId) {
         // Get invoices for specific company
         const invoices = await storage.getInvoicesByCompany(companyId);
-        res.json({ success: true });
+        res.json({ company });
       } else {
         // Get ALL invoices from ALL companies
         const invoices = await storage.getAllInvoices();
-        res.json({ success: true });
+        res.json({ company });
       }
     } else {
       // Non-superadmins can only see their company's invoices
@@ -7255,7 +7255,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Company ID required" });
       }
       const invoices = await storage.getInvoicesByCompany(companyId);
-      res.json({ success: true });
+      res.json({ company });
     }
   });
   // Get invoice by ID
@@ -7271,7 +7271,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     // Get invoice items
     const items = await storage.getInvoiceItems(invoice.id);
-    res.json({ success: true });
+    res.json({ company });
   });
   // Get payments (scoped by company for non-superadmins)
   app.get("/api/payments", requireActiveCompany, async (req: Request, res: Response) => {
@@ -7283,7 +7283,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(400).json({ message: "Company ID required" });
     }
     const payments = await storage.getPaymentsByCompany(companyId);
-    res.json({ success: true });
+    res.json({ company });
   });
   // ===================================================================
   // SUBSCRIPTION & STRIPE CHECKOUT
@@ -7298,7 +7298,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(400).json({ message: "Company ID required" });
     }
     const subscription = await storage.getSubscriptionByCompany(companyId);
-    res.json({ success: true });
+    res.json({ company });
   });
   // Assign plan to company (superadmin only) - Creates or updates subscription without Stripe
   app.post("/api/companies/:companyId/subscription", requireActiveCompany, async (req: Request, res: Response) => {
@@ -7431,7 +7431,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             stripeSubscriptionId: stripeSubscription.id,
           },
         });
-        res.json({ success: true });
+        res.json({ company });
       } else {
         // Create new subscription
         const newSubscription = await storage.createSubscription({
@@ -7451,7 +7451,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             stripeSubscriptionId: stripeSubscription.id,
           },
         });
-        res.json({ success: true });
+        res.json({ company });
       }
     } catch (error: any) {
       console.error("Error assigning plan to company:", error);
@@ -7631,7 +7631,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // NEVER send trial notification when updating an existing subscription
         // Trial notification is ONLY sent once when subscription is created for the first time
         // NOT when changing plans, NOT when updating, ONLY on initial creation
-        res.json({ success: true });
+        res.json({ company });
       } else {
         // Create new subscription
         const newSubscription = await storage.createSubscription({
@@ -7663,7 +7663,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
           }
         }
-        res.json({ success: true });
+        res.json({ company });
       }
     } catch (error: any) {
       console.error("Error selecting plan:", error);
@@ -7696,7 +7696,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         `${req.headers.origin}/subscription/success`,
         `${req.headers.origin}/subscription/cancel`
       );
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -7723,7 +7723,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const cancelAtPeriodEnd = req.body.cancelAtPeriodEnd !== false;
       await cancelStripeSubscription(subscription.stripeSubscriptionId, cancelAtPeriodEnd);
       await storage.cancelSubscription(subscription.id, cancelAtPeriodEnd);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -7774,7 +7774,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { createCustomerPortalSession } = await import("./stripe");
       const returnUrl = `${req.headers.origin}/billing`;
       const session = await createCustomerPortalSession(customerId, returnUrl);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -7837,7 +7837,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const dateB = new Date(b.invoiceDate || b.createdAt);
         return dateB.getTime() - dateA.getTime();
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -7874,7 +7874,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         invoice.stripeHostedInvoiceUrl || undefined
       );
       if (emailSent) {
-        res.json({ success: true });
+        res.json({ company });
       } else {
         res.status(500).json({ message: "Failed to send invoice email" });
       }
@@ -7904,7 +7904,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // User-scoped: admins see only their own payments
       const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
       const payments = await storage.getPaymentsByCompany(companyId, userId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -7933,7 +7933,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .orderBy(desc(callLogs.createdAt))
         .limit(limit);
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Billing] Error fetching call logs:", error);
       res.status(500).json({ message: error.message });
@@ -8379,7 +8379,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         updateData.trialEnd = undefined;
         updateData.trialStart = undefined;
         await storage.updateSubscription(subscription.id, updateData);
-        res.json({ success: true });
+        res.json({ company });
       } catch (paymentError: any) {
         // Payment test failed - return error without modifying subscription
         console.error('[SKIP-TRIAL] Payment test failed:', paymentError.message);
@@ -8466,7 +8466,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const message = immediate 
         ? "Plan upgraded successfully with proration"
         : "Plan change scheduled for end of billing period";
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -8590,7 +8590,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const { applyCoupon } = await import("./stripe");
       const stripeSubscription = await applyCoupon(subscription.stripeSubscriptionId, couponCode);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -8725,10 +8725,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (activeDiscount) {
             await storage.updateDiscountStatus(activeDiscount.id, 'expired');
           }
-          res.json({ success: true });
+          res.json({ company });
         }
       } else {
-        res.json({ success: true });
+        res.json({ company });
       }
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -8750,7 +8750,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const discounts = await storage.getDiscountHistoryForCompany(companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error('[BILLING] Error fetching discount history:', error);
       res.status(500).json({ message: "Failed to fetch discount history" });
@@ -8780,7 +8780,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (activeDiscount) {
         await storage.updateDiscountStatus(activeDiscount.id, 'expired');
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -8897,7 +8897,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         expYear: pm.expYear || 0,
         isDefault: pm.isDefault
       }));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error('[BILLING] Error fetching payment methods:', error);
       res.status(500).json({ message: error.message });
@@ -9023,7 +9023,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       console.log(`[BILLING] Added payment method ${paymentMethodId} for user ${currentUser.id}`);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error('[STRIPE] Error attaching payment method:', error);
       res.status(500).json({ message: error.message });
@@ -9071,7 +9071,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error('[STRIPE] Error setting default payment method:', error);
       res.status(500).json({ message: error.message });
@@ -9128,7 +9128,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await storage.deleteUserPaymentMethod(paymentMethodId);
       
       console.log(`[BILLING] Deleted payment method ${paymentMethodId} for user ${currentUser.id}`);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error('[STRIPE] Error deleting payment method:', error);
       res.status(500).json({ message: error.message });
@@ -9155,7 +9155,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // User-scoped: admins see only their own billing address, superadmins can see all
       const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
       const billingAddress = await storage.getBillingAddress(companyId, userId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error('[BILLING] Error fetching billing address:', error);
       res.status(500).json({ message: "Failed to fetch billing address" });
@@ -9225,7 +9225,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         console.log('[BILLING] Updated Stripe customer billing information with phone:', subscription.stripeCustomerId);
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error('[BILLING] Error saving billing address:', error);
       res.status(500).json({ message: "Failed to save billing address" });
@@ -9293,7 +9293,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const tickets = await storage.getAllFinancialSupportTickets();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error('[TICKETS] Error fetching tickets:', error);
       res.status(500).json({ message: "Error fetching tickets" });
@@ -9311,7 +9311,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error('[TICKETS] Error fetching ticket:', error);
       res.status(500).json({ message: "Error fetching ticket" });
@@ -9381,7 +9381,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // No notifications for pending, under_review, or closed statuses
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error('[TICKETS] Error updating ticket:', error);
       res.status(500).json({ message: "Error updating ticket" });
@@ -9399,7 +9399,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Ticket not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error('[TICKETS] Error deleting ticket:', error);
       res.status(500).json({ message: "Error deleting ticket" });
@@ -9624,7 +9624,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         default:
           console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Webhook error:", error.message);
       res.status(400).json({ message: `Webhook verification failed: ${error.message}` });
@@ -9701,7 +9701,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       const notifications = await storage.getNotificationsByUser(user.id, limit);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch notifications" });
     }
@@ -9718,7 +9718,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const success = await storage.markNotificationAsRead(req.params.id);
       if (success) {
-        res.json({ success: true });
+        res.json({ company });
       } else {
         res.status(404).json({ message: "Notification not found" });
       }
@@ -9731,7 +9731,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const user = req.user!;
     try {
       const success = await storage.markAllNotificationsAsRead(user.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to mark all notifications as read" });
     }
@@ -9748,7 +9748,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const success = await storage.deleteNotification(req.params.id);
       if (success) {
-        res.json({ success: true });
+        res.json({ company });
       } else {
         res.status(500).json({ message: "Failed to delete notification" });
       }
@@ -9792,7 +9792,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to create notification" });
     }
@@ -9804,7 +9804,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Notification not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to update notification" });
     }
@@ -9814,7 +9814,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const user = req.user!; // User is guaranteed by middleware
     try {
       await storage.markAllNotificationsAsRead(user.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to mark notifications as read" });
     }
@@ -9868,7 +9868,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const broadcasts = await storage.getBroadcastHistory(100);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error('Get broadcast history error:', error);
       res.status(500).json({ message: "Failed to get broadcast history" });
@@ -9976,7 +9976,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const result = await storage.createNotification(notification);
       // Broadcast to update real-time
       broadcastNotificationUpdate();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error('Create missed call notification error:', error);
       res.status(500).json({ message: "Failed to create notification" });
@@ -9991,7 +9991,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const templates = await storage.getEmailTemplates();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch email templates" });
     }
@@ -10007,7 +10007,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!template) {
         return res.status(404).json({ message: "Template not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch email template" });
     }
@@ -10038,7 +10038,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!template) {
         return res.status(404).json({ message: "Template not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(400).json({ message: "Invalid template data" });
     }
@@ -10054,7 +10054,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Template not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete template" });
     }
@@ -10068,7 +10068,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const allFeatures = await storage.getAllFeatures();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch features" });
     }
@@ -10115,7 +10115,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Feature not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete feature" });
     }
@@ -10130,7 +10130,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const companyFeatures = await storage.getCompanyFeatures(req.params.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch company features" });
     }
@@ -10173,7 +10173,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Feature not found for this company" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to remove feature from company" });
     }
@@ -10234,7 +10234,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         return log;
       }));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch audit logs" });
     }
@@ -10258,7 +10258,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         templateSlug: "resend",
       });
       if (success) {
-        res.json({ success: true });
+        res.json({ company });
       } else {
         res.status(500).json({ message: "Failed to resend email" });
       }
@@ -10276,7 +10276,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const campaigns = await storage.getAllCampaigns();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch campaigns" });
     }
@@ -10365,7 +10365,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete campaign" });
     }
@@ -10407,7 +10407,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const smsCampaigns = await storage.getAllSmsCampaigns();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SMS campaigns" });
     }
@@ -10431,7 +10431,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         targetListId: targetListId || null,
         status: "draft",
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to create SMS campaign" });
     }
@@ -10448,7 +10448,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "SMS campaign not found" });
       }
       const messages = await storage.getCampaignSmsMessages(req.params.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SMS campaign" });
     }
@@ -10497,7 +10497,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "SMS campaign not found" });
       }
       await storage.deleteSmsCampaign(req.params.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete SMS campaign" });
     }
@@ -10594,7 +10594,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const contacts = await storage.getAllUsers();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contacts" });
     }
@@ -10642,7 +10642,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return contact;
       });
       console.log(`[CONTACTS UNIFICADOS] Contactos sanitizados y retornando: ${sanitizedContacts.length}`);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error fetching unified contacts:", error);
       res.status(500).json({ message: "Failed to fetch unified contacts" });
@@ -10826,7 +10826,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Contact not found" });
       }
       await storage.deleteManualContact(req.params.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("[CONTACTS] Error deleting contact:", error);
       res.status(500).json({ message: "Failed to delete contact" });
@@ -11013,7 +11013,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await storage.createUser(userData);
         imported++;
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("[IMPORT CONTACTS] Error:", error);
       res.status(500).json({ message: "Failed to import contacts" });
@@ -11145,7 +11145,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Failed to remove entry from blacklist" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("[BLACKLIST] Error removing from blacklist:", error);
       res.status(500).json({ message: "Failed to remove from blacklist" });
@@ -11208,7 +11208,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           new Date()
         );
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to unsubscribe" });
     }
@@ -11389,7 +11389,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (status && typeof status === 'string') filters.status = status;
       if (search && typeof search === 'string') filters.search = search;
       const emails = await storage.getCampaignEmails(id, filters);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to get campaign emails" });
     }
@@ -11495,7 +11495,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Contact list not found" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete contact list" });
     }
@@ -11508,7 +11508,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const members = await storage.getListMembers(req.params.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch list members" });
     }
@@ -11580,7 +11580,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Member not found in list" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to remove member" });
     }
@@ -11626,7 +11626,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const messages = await storage.getAllIncomingSmsMessages();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch incoming SMS messages" });
     }
@@ -11639,7 +11639,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       await storage.markSmsAsRead(req.params.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       res.status(500).json({ message: "Failed to mark message as read" });
     }
@@ -11662,7 +11662,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.removeHeader('ETag');
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -11682,7 +11682,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversations = await storage.getChatConversations(companyId);
       // Count conversations (unique users) with unread messages
       const unreadCount = conversations.filter(c => c.unreadCount > 0).length;
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error fetching unread count:", error);
       res.status(500).json({ message: "Failed to fetch unread count" });
@@ -11701,7 +11701,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await Promise.all(
         conversations.map(conv => storage.markConversationAsRead(conv.phoneNumber))
       );
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error marking all as read:", error);
       res.status(500).json({ message: "Failed to mark all as read" });
@@ -11723,7 +11723,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.removeHeader('ETag');
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error fetching conversation messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -11806,7 +11806,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Superadmins can optionally filter by companyId via query param
       const companyId = req.query.companyId as string | undefined;
       await storage.markConversationAsRead(phoneNumber, companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error marking conversation as read:", error);
       res.status(500).json({ message: "Failed to mark conversation as read" });
@@ -11899,7 +11899,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { id } = req.params;
       // For deletes, companyId can be null for superadmins (they can delete any note)
       await storage.deleteChatNote(id, currentUser.companyId || undefined);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error deleting chat note:", error);
       res.status(500).json({ message: "Failed to delete note" });
@@ -11927,7 +11927,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const wsService = req.app.get('wsService');
         wsService.broadcastConversationUpdate();
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
@@ -12251,7 +12251,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching quote:", error);
       res.status(500).json({ message: "Failed to fetch quote" });
@@ -12284,7 +12284,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching members details:", error);
       res.status(500).json({ message: "Failed to fetch members details" });
@@ -12319,7 +12319,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error calculating household income:", error);
       res.status(500).json({ message: "Failed to calculate household income" });
@@ -12454,7 +12454,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       // Return quote with plain text SSN (as stored in database)
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating quote:", error);
       // Return validation errors with proper details
@@ -12497,7 +12497,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting quote:", error);
       res.status(500).json({ message: "Failed to delete quote" });
@@ -12779,7 +12779,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching quotes by applicant:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
@@ -12799,7 +12799,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "You don't have permission to view this quote" });
       }
       const plans = await storage.listQuotePlans(id, quote.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error listing quote plans:", error);
       res.status(500).json({ 
@@ -12846,7 +12846,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           source: newPlan.source,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error adding quote plan:", error);
       res.status(500).json({ 
@@ -12882,7 +12882,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quoteId: id,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error removing quote plan:", error);
       res.status(500).json({ 
@@ -12916,7 +12916,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "set_primary",
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error setting primary plan:", error);
       res.status(500).json({ 
@@ -12959,7 +12959,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           value: isArchived,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error archiving quote:", error);
       res.status(400).json({ message: error.message || "Failed to update quote status" });
@@ -12993,7 +12993,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting quote members:", error);
       res.status(500).json({ message: "Failed to get quote members" });
@@ -13034,7 +13034,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting quote member:", error);
       res.status(500).json({ message: "Failed to get quote member" });
@@ -13124,7 +13124,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating quote member:", error);
       if (error.name === 'ZodError') {
@@ -13173,7 +13173,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting quote member:", error);
       res.status(500).json({ message: "Failed to delete quote member" });
@@ -13360,7 +13360,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           role: member.role,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating member:", error);
       res.status(500).json({ message: "Failed to update member" });
@@ -13406,7 +13406,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           memberName: `${member.firstName} ${member.lastName}`,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting member:", error);
       res.status(500).json({ message: "Failed to delete member" });
@@ -13437,7 +13437,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Income information not found" });
       }
       // Income is stored as plain text (not encrypted)
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting member income:", error);
       res.status(500).json({ message: "Failed to get member income" });
@@ -13500,7 +13500,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error upserting member income:", error);
       if (error.name === 'ZodError') {
@@ -13546,7 +13546,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting member income:", error);
       res.status(500).json({ message: "Failed to delete member income" });
@@ -13588,7 +13588,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["visaNumber", "greenCardNumber", "i94Number"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting member immigration:", error);
       res.status(500).json({ message: "Failed to get member immigration" });
@@ -13632,7 +13632,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error upserting member immigration:", error);
       if (error.name === 'ZodError') {
@@ -13678,7 +13678,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting member immigration:", error);
       res.status(500).json({ message: "Failed to delete member immigration" });
@@ -13705,7 +13705,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const documents = await storage.getQuoteMemberDocuments(memberId, quote.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting member documents:", error);
       res.status(500).json({ message: "Failed to get member documents" });
@@ -13838,7 +13838,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting document:", error);
       res.status(500).json({ message: "Failed to get document" });
@@ -13944,7 +13944,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
@@ -13978,7 +13978,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting payment methods:", error);
       res.status(500).json({ message: "Failed to get payment methods" });
@@ -14019,7 +14019,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting payment method:", error);
       res.status(500).json({ message: "Failed to get payment method" });
@@ -14112,7 +14112,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating payment method:", error);
       if (error.name === 'ZodError') {
@@ -14163,7 +14163,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting payment method:", error);
       res.status(500).json({ message: "Failed to delete payment method" });
@@ -14205,7 +14205,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error setting default payment method:", error);
       res.status(500).json({ message: "Failed to set default payment method" });
@@ -14274,7 +14274,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const notes = await storage.getQuoteNotes(quoteId, quote.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching quote notes:", error);
       res.status(500).json({ message: "Failed to fetch quote notes" });
@@ -14341,7 +14341,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updates: Object.keys(updateData),
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating quote note:", error);
       res.status(500).json({ message: "Failed to update quote note" });
@@ -14390,7 +14390,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting quote note:", error);
       res.status(500).json({ message: "Failed to delete quote note" });
@@ -14536,7 +14536,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         category: category as string | undefined,
         search: q as string | undefined
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error listing quote documents:", error);
       res.status(500).json({ message: "Failed to list documents" });
@@ -14727,7 +14727,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
@@ -14755,7 +14755,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (priority && typeof priority === 'string') filters.priority = priority;
       if (userId && typeof userId === 'string') filters.userId = userId;
       const reminders = await storage.listQuoteReminders(quoteId, quote.companyId, filters);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
@@ -14912,7 +14912,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quoteId,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting reminder:", error);
       res.status(500).json({ message: "Failed to delete reminder" });
@@ -15487,7 +15487,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching standalone reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
@@ -15632,7 +15632,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           planName: plan.name || 'unknown',
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error selecting plan:", error);
       res.status(500).json({ message: "Failed to select plan" });
@@ -15671,7 +15671,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           selectedPlan: quote.selectedPlan,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error submitting quote as policy:", error);
       res.status(500).json({ 
@@ -15731,7 +15731,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (validatedData.status || validatedData.documentsStatus || validatedData.paymentStatus) {
         broadcastNotificationUpdate();
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating quote statuses:", error);
       if (error.name === 'ZodError') {
@@ -15768,7 +15768,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           token: consent.token,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error generating consent document:", error);
       res.status(500).json({ message: "Failed to generate consent document" });
@@ -15941,7 +15941,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "sent",
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error sending consent:", error);
       res.status(500).json({ message: "Failed to send consent document" });
@@ -15962,7 +15962,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const consents = await storage.listQuoteConsents(quoteId, quote.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error listing consents:", error);
       res.status(500).json({ message: "Failed to list consents" });
@@ -15993,7 +15993,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: consentId,
         companyId: currentUser.companyId || undefined,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
@@ -16342,7 +16342,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId || undefined,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting quote folder:", error);
       res.status(500).json({ message: "Failed to delete quote folder" });
@@ -16897,7 +16897,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching policies by applicant:", error);
       res.status(500).json({ message: "Failed to fetch policies" });
@@ -17026,7 +17026,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching policy:", error);
       res.status(500).json({ message: "Failed to fetch policy" });
@@ -17059,7 +17059,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching members details:", error);
       res.status(500).json({ message: "Failed to fetch members details" });
@@ -17094,7 +17094,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error calculating household income:", error);
       res.status(500).json({ message: "Failed to calculate household income" });
@@ -17235,7 +17235,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Invalidate dashboard cache
       const { dashboardCache } = await import("./dashboard-cache");
       if (currentUser.companyId) { dashboardCache.invalidateCompany(currentUser.companyId); }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating policy:", error);
       // Return validation errors with proper details
@@ -17476,7 +17476,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: status,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating policy status:", error);
       res.status(400).json({ message: error.message || "Failed to update policy status" });
@@ -17517,7 +17517,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: isArchived,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating policy archive status:", error);
       res.status(400).json({ message: error.message || "Failed to update policy archive status" });
@@ -17603,7 +17603,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Invalidate dashboard cache
       const { dashboardCache } = await import("./dashboard-cache");
       if (currentUser.companyId) { dashboardCache.invalidateCompany(currentUser.companyId); }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting policy:", error);
       res.status(500).json({ message: "Failed to delete policy" });
@@ -18041,7 +18041,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           planName: selectedPlan.name,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating policy plan:", error);
       res.status(500).json({ 
@@ -18064,7 +18064,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "You don't have permission to view this policy" });
       }
       const plans = await storage.listPolicyPlans(id, policy.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error listing policy plans:", error);
       res.status(500).json({ 
@@ -18111,7 +18111,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           source: newPlan.source,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error adding policy plan:", error);
       res.status(500).json({ 
@@ -18229,7 +18229,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Don't fail the policy update if wallet sync fails
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating policy plan:", error);
       res.status(500).json({ 
@@ -18265,7 +18265,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           policyId: id,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error removing policy plan:", error);
       res.status(500).json({ 
@@ -18299,7 +18299,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "set_primary",
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error setting primary plan:", error);
       res.status(500).json({ 
@@ -18336,7 +18336,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting policy members:", error);
       res.status(500).json({ message: "Failed to get policy members" });
@@ -18377,7 +18377,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting policy member:", error);
       res.status(500).json({ message: "Failed to get policy member" });
@@ -18423,7 +18423,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating policy member:", error);
       if (error.name === 'ZodError') {
@@ -18472,7 +18472,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting policy member:", error);
       res.status(500).json({ message: "Failed to delete policy member" });
@@ -18633,7 +18633,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           role: member.role,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating member:", error);
       res.status(500).json({ message: "Failed to update member" });
@@ -18679,7 +18679,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           memberName: `${member.firstName} ${member.lastName}`,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting member:", error);
       res.status(500).json({ message: "Failed to delete member" });
@@ -18710,7 +18710,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Income information not found" });
       }
       // Income is stored as plain text (not encrypted)
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting member income:", error);
       res.status(500).json({ message: "Failed to get member income" });
@@ -18774,7 +18774,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error upserting member income:", error);
       if (error.name === 'ZodError') {
@@ -18820,7 +18820,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting member income:", error);
       res.status(500).json({ message: "Failed to delete member income" });
@@ -18862,7 +18862,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["visaNumber", "greenCardNumber", "i94Number"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting member immigration:", error);
       res.status(500).json({ message: "Failed to get member immigration" });
@@ -18906,7 +18906,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error upserting member immigration:", error);
       if (error.name === 'ZodError') {
@@ -18952,7 +18952,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting member immigration:", error);
       res.status(500).json({ message: "Failed to delete member immigration" });
@@ -18979,7 +18979,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const documents = await storage.getPolicyMemberDocuments(memberId, policy.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting member documents:", error);
       res.status(500).json({ message: "Failed to get member documents" });
@@ -19112,7 +19112,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting document:", error);
       res.status(500).json({ message: "Failed to get document" });
@@ -19218,7 +19218,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
@@ -19256,7 +19256,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting payment methods:", error);
       res.status(500).json({ message: "Failed to get payment methods" });
@@ -19299,7 +19299,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error getting payment method:", error);
       res.status(500).json({ message: "Failed to get payment method" });
@@ -19395,7 +19395,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating payment method:", error);
       if (error.name === 'ZodError') {
@@ -19449,7 +19449,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting payment method:", error);
       res.status(500).json({ message: "Failed to delete payment method" });
@@ -19491,7 +19491,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error setting default payment method:", error);
       res.status(500).json({ message: "Failed to set default payment method" });
@@ -19564,7 +19564,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get notes for ALL policies of this client
       const notes = await storage.getPolicyNotes(canonicalPolicyIds, policy.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching policy notes:", error);
       res.status(500).json({ message: "Failed to fetch policy notes" });
@@ -19635,7 +19635,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updates: Object.keys(updateData),
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating policy note:", error);
       res.status(500).json({ message: "Failed to update policy note" });
@@ -19692,7 +19692,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting policy note:", error);
       res.status(500).json({ message: "Failed to delete policy note" });
@@ -19806,7 +19806,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         category: category as string | undefined,
         search: q as string | undefined
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error listing policy documents:", error);
       res.status(500).json({ message: "Failed to list documents" });
@@ -19999,7 +19999,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
@@ -20029,7 +20029,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (userId && typeof userId === 'string') filters.userId = userId;
       // Get reminders ONLY for this specific policy
       const reminders = await storage.listPolicyReminders(policyId, policy.companyId, filters);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
@@ -20186,7 +20186,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           policyId,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting reminder:", error);
       res.status(500).json({ message: "Failed to delete reminder" });
@@ -20348,7 +20348,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           planName: plan.name || 'unknown',
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error selecting plan:", error);
       res.status(500).json({ message: "Failed to select plan" });
@@ -20672,7 +20672,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (validatedData.status || validatedData.documentsStatus || validatedData.paymentStatus) {
         broadcastNotificationUpdate();
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating policy statuses:", error);
       if (error.name === 'ZodError') {
@@ -20709,7 +20709,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           token: consent.token,
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error generating consent document:", error);
       res.status(500).json({ message: "Failed to generate consent document" });
@@ -20882,7 +20882,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "sent",
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error sending consent:", error);
       res.status(500).json({ message: "Failed to send consent document" });
@@ -20907,7 +20907,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get consents for ALL policies of this client
       const consents = await storage.listPolicyConsents(canonicalPolicyIds, policy.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error listing consents:", error);
       res.status(500).json({ message: "Failed to list consents" });
@@ -20938,7 +20938,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: consentId,
         companyId: currentUser.companyId || undefined,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting policy consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
@@ -21058,7 +21058,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId || undefined,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting policy folder:", error);
       res.status(500).json({ message: "Failed to delete policy folder" });
@@ -21115,7 +21115,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const currentUser = req.user!;
     try {
       const landingPages = await storage.getLandingPagesByUser(currentUser.id, currentUser.companyId!);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching landing pages:", error);
       res.status(500).json({ message: "Failed to fetch landing pages" });
@@ -21127,7 +21127,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { slug } = req.params;
     try {
       const isAvailable = await storage.checkSlugAvailability(slug, currentUser.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error checking slug availability:", error);
       res.status(500).json({ message: "Failed to check slug availability" });
@@ -21148,7 +21148,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Get blocks for this landing page
       const blocks = await storage.getBlocksByLandingPage(id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching landing page:", error);
       res.status(500).json({ message: "Failed to fetch landing page" });
@@ -21262,7 +21262,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating landing page:", error);
       if (error.name === "ZodError") {
@@ -21299,7 +21299,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting landing page:", error);
       res.status(500).json({ message: "Failed to delete landing page" });
@@ -21320,7 +21320,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const blocks = await storage.getBlocksByLandingPage(id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching blocks:", error);
       res.status(500).json({ message: "Failed to fetch blocks" });
@@ -21398,7 +21398,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: blockId,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating block:", error);
       if (error.name === "ZodError") {
@@ -21439,7 +21439,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: blockId,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting block:", error);
       res.status(500).json({ message: "Failed to delete block" });
@@ -21473,7 +21473,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: landingPageId,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error reordering blocks:", error);
       res.status(500).json({ message: "Failed to reorder blocks" });
@@ -21549,7 +21549,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           referer: req.get('referer'),
         },
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error tracking view:", error);
       res.status(500).json({ message: "Failed to track view" });
@@ -21576,7 +21576,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error tracking click:", error);
       res.status(500).json({ message: "Failed to track click" });
@@ -21602,7 +21602,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         eventType: eventType as string | undefined,
         limit: limit ? parseInt(limit as string) : undefined,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching analytics:", error);
       res.status(500).json({ message: "Failed to fetch analytics" });
@@ -21672,7 +21672,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching leads:", error);
       res.status(500).json({ message: "Failed to fetch leads" });
@@ -21736,7 +21736,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         offset: offset ? parseInt(offset as string) : undefined,
         status: status as string | undefined,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching appointments:", error);
       res.status(500).json({ message: "Failed to fetch appointments" });
@@ -21939,7 +21939,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         offset: offset ? parseInt(offset as string) : undefined,
         search: search as string | undefined,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching landing leads:", error);
       res.status(500).json({ message: "Failed to fetch leads" });
@@ -21956,7 +21956,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching landing appointments:", error);
       res.status(500).json({ message: "Failed to fetch appointments" });
@@ -21992,7 +21992,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedAppointment) {
         return res.status(500).json({ message: "Failed to update appointment" });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating landing appointment:", error);
       if (error.name === 'ZodError') {
@@ -22029,7 +22029,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Delete the appointment
       await storage.deleteLandingAppointment(id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting landing appointment:", error);
       res.status(500).json({ message: "Failed to delete appointment" });
@@ -22110,7 +22110,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           dateOverrides: [],
         });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching appointment availability:", error);
       res.status(500).json({ message: "Failed to fetch appointment availability" });
@@ -22675,7 +22675,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: "inactive",
         billingStatus: "cancelled",
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deactivating phone number:", error);
       res.status(500).json({ message: "Failed to deactivate phone number" });
@@ -23146,7 +23146,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[BulkVS Webhook] Error:", error);
       res.status(500).json({ message: "Webhook processing failed", error: error.message });
@@ -23267,7 +23267,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[BulkVS Webhook] Error:", error);
       res.status(500).json({ message: "Webhook processing failed", error: error.message });
@@ -23481,7 +23481,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Broadcast thread deletion via WebSocket
       broadcastBulkvsThreadUpdate(user.id, null);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting thread:", error);
       res.status(500).json({ message: "Failed to delete thread" });
@@ -23507,7 +23507,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get updated thread and broadcast
       const updatedThread = await storage.getBulkvsThread(id);
       broadcastBulkvsThreadUpdate(user.id, updatedThread);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error marking thread as read:", error);
       res.status(500).json({ message: "Failed to mark thread as read" });
@@ -23616,7 +23616,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error listing tasks:", error);
       res.status(500).json({ message: "Failed to list tasks" });
@@ -23794,7 +23794,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         details: existingTask ? `Deleted task: ${existingTask.title}` : "Deleted task",
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task" });
@@ -24008,7 +24008,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const allImages = await storage.getAllBirthdayImages();
       const activeImages = allImages.filter(img => img.isActive);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching active birthday images:", error);
       res.status(500).json({ message: "Failed to fetch birthday images" });
@@ -24099,7 +24099,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - Superadmin only" });
       }
       const images = await storage.getAllBirthdayImages();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching birthday images:", error);
       res.status(500).json({ message: "Failed to fetch birthday images" });
@@ -24191,7 +24191,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         details: image ? `Deleted birthday image: ${image.name}` : "Deleted birthday image",
       });
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting birthday image:", error);
       res.status(500).json({ message: "Failed to delete birthday image" });
@@ -24263,7 +24263,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const history = user.role === "superadmin" 
         ? await storage.getBirthdayGreetingHistory(user.companyId)
         : await storage.getBirthdayGreetingHistory(user.companyId, user.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching birthday greeting history:", error);
       res.status(500).json({ message: "Failed to fetch birthday greeting history" });
@@ -24507,7 +24507,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
       const conversations = await storage.getImessageConversations(user.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching iMessage conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -24533,7 +24533,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         parseInt(limit as string),
         parseInt(offset as string)
       );
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching iMessage messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -24633,7 +24633,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           lastMessageFromMe: true,
         });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error sending iMessage:", error);
       res.status(500).json({ message: "Failed to send message", error: error.message });
@@ -25218,7 +25218,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await db.update(whatsappInstances)
         .set({ status: "disconnected", qrCode: null, updatedAt: new Date() })
         .where(eq(whatsappInstances.id, instance.id));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error disconnecting:", error);
       res.status(500).json({ message: "Failed to disconnect" });
@@ -25302,7 +25302,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           )
         );
       const total = Number(result[0]?.total || 0);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error getting unread count:", error);
       res.status(500).json({ message: "Failed to get unread count" });
@@ -25359,7 +25359,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(whatsappConversations.instanceId, instance.id),
           eq(whatsappConversations.remoteJid, remoteJid)
         ));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error fetching profile picture:", error);
       res.status(500).json({ message: "Failed to fetch profile picture" });
@@ -25544,7 +25544,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Delete conversation
       await db.delete(whatsappConversations).where(eq(whatsappConversations.id, id));
       console.log(`[WhatsApp] Deleted conversation ${id} and its messages`);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
@@ -25615,7 +25615,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }).returning();
       broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending message:", error);
       res.status(500).json({ message: error.message || "Failed to send" });
@@ -25703,7 +25703,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }).returning();
       broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending media:", error);
       res.status(500).json({ message: error.message || "Failed to send media" });
@@ -25778,7 +25778,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending audio:", error);
       res.status(500).json({ message: error.message || "Failed to send audio" });
@@ -25838,7 +25838,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       await evolutionApi.sendTyping(instance.instanceName, remoteJid);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to send typing" });
     }
@@ -25865,7 +25865,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Use global presence endpoint - sets online status for the entire instance
       await evolutionApi.setGlobalPresence(instance.instanceName, presence);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to set presence" });
     }
@@ -25914,7 +25914,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await db.update(whatsappMessages)
         .set({ mediaUrl })
         .where(eq(whatsappMessages.id, messageId));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error downloading media:", error);
       res.status(500).json({ message: error.message || "Failed to download media" });
@@ -26472,7 +26472,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updated++;
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing chats:", error);
       res.status(500).json({ message: "Failed to sync chats" });
@@ -26547,7 +26547,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newCount++;
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing messages:", error);
       res.status(500).json({ message: "Failed to sync messages" });
@@ -26631,7 +26631,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error(`[WhatsApp] Error syncing messages for ${conversation.remoteJid}:`, chatError);
         }
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing all messages:", error);
       res.status(500).json({ message: "Failed to sync messages" });
@@ -26700,7 +26700,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(whatsappConversations.remoteJid, remoteJid)
         ));
       broadcastWhatsAppChatUpdate(user.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Mark read error:", error);
       res.status(500).json({ message: "Failed to mark messages as read" });
@@ -26751,7 +26751,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending reaction:", error);
       res.status(500).json({ message: "Failed to send reaction" });
@@ -31962,7 +31962,7 @@ CRITICAL REMINDERS:
         .from(voicemails)
         .where(and(...unreadConditions));
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Voicemails] List error:", error);
       res.status(500).json({ message: "Failed to fetch voicemails" });
@@ -31990,7 +31990,7 @@ CRITICAL REMINDERS:
           eq(voicemails.companyId, user.companyId)
         ));
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Voicemails] Mark read error:", error);
       res.status(500).json({ message: "Failed to mark voicemail as read" });
@@ -32017,7 +32017,7 @@ CRITICAL REMINDERS:
           eq(voicemails.companyId, user.companyId)
         ));
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Voicemails] Delete error:", error);
       res.status(500).json({ message: "Failed to delete voicemail" });
@@ -32170,7 +32170,7 @@ CRITICAL REMINDERS:
       }
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
       res.status(500).json({ message: "Failed to get wallet" });
@@ -32212,7 +32212,7 @@ CRITICAL REMINDERS:
         })
       );
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Wallet] Error getting transactions:", error);
       res.status(500).json({ message: "Failed to get transactions" });
@@ -32570,7 +32570,7 @@ CRITICAL REMINDERS:
         };
       });
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Phone System] Error getting phone numbers:", error);
       res.status(500).json({ message: "Failed to get phone numbers" });
@@ -33223,7 +33223,7 @@ CRITICAL REMINDERS:
       }
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
       res.status(500).json({ message: "Failed to get wallet" });
@@ -33265,7 +33265,7 @@ CRITICAL REMINDERS:
         })
       );
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Wallet] Error getting transactions:", error);
       res.status(500).json({ message: "Failed to get transactions" });
@@ -33367,7 +33367,7 @@ CRITICAL REMINDERS:
       const { secretsService } = await import("./services/secrets-service");
       const credentials = await secretsService.listCredentials();
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Credentials] Error listing:", error);
       res.status(500).json({ message: "Failed to list credentials" });
@@ -33546,7 +33546,7 @@ CRITICAL REMINDERS:
           ]
         },
       ];
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Credentials] Error getting providers:", error);
       res.status(500).json({ message: "Failed to get providers" });
@@ -33565,7 +33565,7 @@ CRITICAL REMINDERS:
         credentialId as string | undefined,
         limit ? parseInt(limit as string) : 50
       );
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Credentials] Error getting audit:", error);
       res.status(500).json({ message: "Failed to get audit log" });
@@ -33635,7 +33635,7 @@ CRITICAL REMINDERS:
       }
       const decryptedValue = secretsService.decrypt(credential.encryptedValue, credential.iv);
       await logRevealAttempt(true);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Credentials] Error revealing:", error);
       await logRevealAttempt(false, "internal_error");
@@ -33717,7 +33717,7 @@ CRITICAL REMINDERS:
         .returning();
       const { credentialProvider } = await import("./services/credential-provider");
       credentialProvider.invalidate(updated.provider as any, updated.keyName);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Credentials] Error updating:", error);
       res.status(500).json({ message: "Failed to update credential" });
@@ -33744,7 +33744,7 @@ CRITICAL REMINDERS:
       await secretsService.deleteCredential(id, user.id);
       const { credentialProvider } = await import("./services/credential-provider");
       credentialProvider.invalidate(credential.provider as any, credential.keyName);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Credentials] Error deleting:", error);
       res.status(500).json({ message: "Failed to delete credential" });
@@ -33777,7 +33777,7 @@ CRITICAL REMINDERS:
         await secretsService.deleteCredential(credential.id, user.id);
         credentialProvider.invalidate(credential.provider as any, credential.keyName);
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Credentials] Error bulk deleting:", error);
       res.status(500).json({ message: "Failed to delete credentials" });
@@ -33890,7 +33890,7 @@ CRITICAL REMINDERS:
       const { systemConfigService } = await import("./services/system-config");
       await systemConfigService.initialize();
       const config = await systemConfigService.getPublicConfig();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Config] Error getting public config:", error);
       res.status(500).json({ message: "Failed to get public config" });
@@ -33902,10 +33902,10 @@ CRITICAL REMINDERS:
     try {
       const { credentialProvider } = await import("./services/credential-provider");
       const stripeCredentials = await credentialProvider.getStripe();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Config] Error getting Stripe publishable key:", error);
-      res.json({ success: true });
+      res.json({ company });
     }
   });
   // GET /api/system-config - List all config (superadmin only)
@@ -33919,7 +33919,7 @@ CRITICAL REMINDERS:
       const { systemConfigService } = await import("./services/system-config");
       await systemConfigService.initialize();
       const configs = await systemConfigService.getAll();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Config] Error listing configs:", error);
       res.status(500).json({ message: "Failed to list configs" });
@@ -33947,7 +33947,7 @@ CRITICAL REMINDERS:
         updatedBy: user.id,
       });
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Config] Error updating config:", error);
       res.status(500).json({ message: "Failed to update config" });
@@ -33977,7 +33977,7 @@ CRITICAL REMINDERS:
         updatedBy: user.id,
       });
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Config] Error creating config:", error);
       res.status(500).json({ message: "Failed to create config" });
@@ -33999,7 +33999,7 @@ CRITICAL REMINDERS:
         return res.status(404).json({ message: "Config not found" });
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[System Config] Error deleting config:", error);
       res.status(500).json({ message: "Failed to delete config" });
@@ -34124,7 +34124,7 @@ CRITICAL REMINDERS:
         telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,
       }));
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("[SMS-Voice] Error fetching numbers:", error);
       res.status(500).json({ message: "Failed to fetch phone numbers" });
@@ -34167,7 +34167,7 @@ CRITICAL REMINDERS:
         .set({ displayName: displayName.trim() || null })
         .where(eq(telnyxPhoneNumbers.id, id));
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error) {
       console.error("[Telnyx] Error updating phone number display name:", error);
       res.status(500).json({ message: "Failed to update display name" });
@@ -34394,7 +34394,7 @@ CRITICAL REMINDERS:
         source: "telnyx",
       };
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx TFV] Error fetching verification request by phone:", error);
       res.status(500).json({ message: "Failed to fetch verification request" });
@@ -34462,7 +34462,7 @@ CRITICAL REMINDERS:
         sample_messages: trafficProfile.sample_messages || raw.sample_messages || [],
       };
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx] Error fetching verification request:", error);
       res.status(500).json({ message: "Failed to fetch verification request" });
@@ -34708,7 +34708,7 @@ CRITICAL REMINDERS:
       } else {
         console.log(`[10DLC Brand] Charged $${BRAND_REGISTRATION_FEE.toFixed(2)} for brand registration. New balance: $${chargeResult.newBalance}`);
       }
-            res.json({ success: true });
+            res.json({ company });
     } catch (error: any) {
       console.error("Error creating brand:", error);
       res.status(500).json({ message: error.message });
@@ -34804,7 +34804,7 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching messaging profile:", error);
       res.status(500).json({ message: error.message });
@@ -34892,7 +34892,7 @@ CRITICAL REMINDERS:
       }
         console.log(`[Messaging Profile] Saved to wallet ${wallet.id}: ${profileId}`);
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error creating messaging profile:", error);
       res.status(500).json({ message: error.message });
@@ -34939,7 +34939,7 @@ CRITICAL REMINDERS:
         .set({ telnyxMessagingProfileId: null, updatedAt: new Date() })
         .where(eq(wallets.id, wallet.id));
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error deleting messaging profile:", error);
       res.status(500).json({ message: error.message });
@@ -35037,7 +35037,7 @@ CRITICAL REMINDERS:
       const result = await response.json();
       console.log("[10DLC Campaigns] Response:", JSON.stringify(result, null, 2));
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching 10DLC campaigns:", error);
       res.status(500).json({ message: error.message });
@@ -35168,7 +35168,7 @@ CRITICAL REMINDERS:
       } else {
         console.log(`[10DLC Campaign] Charged $${CAMPAIGN_REVIEW_FEE.toFixed(2)} for campaign review. New balance: $${chargeResult.newBalance}`);
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error creating 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35200,7 +35200,7 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35272,7 +35272,7 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign] Updated:", result);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error updating 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35315,7 +35315,7 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign] Appeal submitted:", result);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error appealing 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35395,7 +35395,7 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign Numbers] Final count:", allNumbers.length, "numbers with messaging profile");
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error fetching campaign phone numbers:", error);
       res.status(500).json({ message: error.message });
@@ -35507,7 +35507,7 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: errors[0]?.error || "Failed to assign phone numbers", errors });
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error assigning phone numbers to campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35544,7 +35544,7 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign] Successfully removed", phoneNumber);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("Error removing phone number from campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35736,7 +35736,7 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Toll-Free Verification] Error:", error);
       res.status(500).json({ message: error.message });
@@ -35812,7 +35812,7 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[RCS] Error fetching agent:", error);
       res.status(500).json({ message: error.message });
@@ -35850,7 +35850,7 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Agent updated:", agentId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[RCS] Error updating agent:", error);
       res.status(500).json({ message: error.message });
@@ -35897,7 +35897,7 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Capabilities checked for:", phoneNumber);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[RCS] Error checking capabilities:", error);
       res.status(500).json({ message: error.message });
@@ -35947,7 +35947,7 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Test number added successfully:", result.data);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[RCS] Error adding test number:", error);
       res.status(500).json({ message: error.message });
@@ -36045,7 +36045,7 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Message sent to:", to, "via agent:", agentId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[RCS] Error sending message:", error);
       res.status(500).json({ message: error.message });
@@ -36239,7 +36239,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Search error:", error);
       res.status(500).json({ message: "Failed to search phone numbers" });
@@ -36406,7 +36406,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Get numbers error:", error);
       res.status(500).json({ message: "Failed to get phone numbers" });
@@ -36432,7 +36432,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ success: false, error: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Repair] Error:", error);
       res.status(500).json({ message: "Failed to repair phone number connection" });
@@ -36725,7 +36725,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Call Recording] Update error:", error);
       res.status(500).json({ message: "Failed to update call recording settings" });
@@ -36755,7 +36755,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Spam Protection] Update error:", error);
       res.status(500).json({ message: "Failed to update spam protection settings" });
@@ -36841,7 +36841,7 @@ CRITICAL REMINDERS:
       }
       const { listE911Addresses } = await import("./services/telnyx-e911-service");
       const addresses = await listE911Addresses(user.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[E911 API] List addresses error:", error);
       res.status(500).json({ message: "Failed to list E911 addresses" });
@@ -36875,7 +36875,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[E911 API] Create address error:", error);
       res.status(500).json({ message: "Failed to create E911 address" });
@@ -36898,7 +36898,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[E911 API] Delete address error:", error);
       res.status(500).json({ message: "Failed to delete E911 address" });
@@ -36914,7 +36914,7 @@ CRITICAL REMINDERS:
       }
       const { getPhoneNumbersWithE911Status } = await import("./services/telnyx-e911-service");
       const numbers = await getPhoneNumbersWithE911Status(user.companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[E911 API] Get phone numbers error:", error);
       res.status(500).json({ message: "Failed to get phone numbers with E911 status" });
@@ -36941,7 +36941,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[E911 API] Assign address error:", error);
       res.status(500).json({ message: "Failed to assign E911 address to phone number" });
@@ -36964,7 +36964,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[E911 API] Remove E911 error:", error);
       res.status(500).json({ message: "Failed to remove E911 from phone number" });
@@ -37026,7 +37026,7 @@ CRITICAL REMINDERS:
       }
       const result = await response.json();
       console.log("[Telnyx Caller ID Lookup] Update successful:", result.data?.caller_id_name_enabled);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Caller ID Lookup] Update error:", error);
       res.status(500).json({ message: "Failed to update caller ID lookup settings" });
@@ -37048,7 +37048,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Voicemail] Get settings error:", error);
       res.status(500).json({ message: "Failed to get voicemail settings" });
@@ -37081,7 +37081,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Voicemail] Update error:", error);
       res.status(500).json({ message: "Failed to update voicemail settings" });
@@ -37115,7 +37115,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Number Voice Settings] Update error:", error);
       res.status(500).json({ message: "Failed to update voice settings" });
@@ -37459,7 +37459,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Managed] List error:", error);
       res.status(500).json({ message: "Failed to list managed accounts" });
@@ -37480,7 +37480,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Managed] Disable error:", error);
       res.status(500).json({ message: "Failed to disable managed account" });
@@ -37500,7 +37500,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Telnyx Managed] Enable error:", error);
       res.status(500).json({ message: "Failed to enable managed account" });
@@ -37703,7 +37703,7 @@ CRITICAL REMINDERS:
       const { invalidatePricingCache } = await import('./services/pricing-config');
       invalidatePricingCache();
       console.log("[Global Pricing] Updated by user:", user.id);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Global Pricing] PUT error:", error);
       res.status(500).json({ message: "Failed to update pricing configuration" });
@@ -38981,7 +38981,7 @@ CRITICAL REMINDERS:
       }
       await db.insert(callLogs).values(insertValues).returning();
       console.log("[WebRTC] Created call log:", newLog.id, "direction:", direction, "to:", toNumber);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[WebRTC] Call log error:", error);
       res.status(500).json({ message: "Failed to log call" });
@@ -39000,7 +39000,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[E911] Get addresses error:", error);
       res.status(500).json({ message: "Failed to get emergency addresses" });
@@ -39126,11 +39126,11 @@ CRITICAL REMINDERS:
       }
       
       // Not found - always return 200 OK
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       // CRITICAL: Never return 500 for caller lookup - just return not found
       console.error("[Caller Lookup] Unexpected error (returning 200):", error.message);
-      res.json({ success: true });
+      res.json({ company });
     }
   });
   // GET /api/call-logs - Get call history for user (user-scoped)
@@ -39240,7 +39240,7 @@ CRITICAL REMINDERS:
         
         return log;
       }));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Call Logs] Get error:", error);
       res.status(500).json({ message: "Failed to get call history" });
@@ -39292,7 +39292,7 @@ CRITICAL REMINDERS:
           endedAt: endedAt ? new Date(endedAt) : null,
         })
         .returning();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Call Logs] Create error:", error);
       res.status(500).json({ message: "Failed to create call log" });
@@ -39408,7 +39408,7 @@ CRITICAL REMINDERS:
         .returning();
       // Broadcast the updated call log
       broadcastNewCallLog(user.companyId, updated as any);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Call Logs] Update error:", error);
       res.status(500).json({ message: "Failed to update call log" });
@@ -39465,7 +39465,7 @@ CRITICAL REMINDERS:
           eq(callLogs.id, id),
           eq(callLogs.companyId, user.companyId)
         ));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Call Logs] Delete error:", error);
       res.status(500).json({ message: "Failed to delete call log" });
@@ -39493,7 +39493,7 @@ CRITICAL REMINDERS:
             eq(callLogs.userId, user.id)
           ));
       }
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Call Logs] Clear all error:", error);
       res.status(500).json({ message: "Failed to clear call history" });
@@ -39842,7 +39842,7 @@ CRITICAL REMINDERS:
           eq(voicemails.companyId, user.companyId)
         ))
         .returning();
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Voicemails] Update error:", error);
       res.status(500).json({ message: "Failed to update voicemail" });
@@ -39863,7 +39863,7 @@ CRITICAL REMINDERS:
           eq(voicemails.id, id),
           eq(voicemails.companyId, user.companyId)
         ));
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Voicemails] Delete error:", error);
       res.status(500).json({ message: "Failed to delete voicemail" });
@@ -41894,7 +41894,7 @@ CRITICAL REMINDERS:
       });
       
       console.log("[Inbox] Returning", conversations.length, "conversations for company", companyId);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Inbox] Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -43747,7 +43747,7 @@ CRITICAL REMINDERS:
       // Broadcast update to clients
       broadcastConversationUpdate(companyId, id);
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Inbox] Error updating human agent mode:", error);
       res.status(500).json({ message: "Failed to update human agent mode" });
@@ -43800,7 +43800,7 @@ CRITICAL REMINDERS:
       // Broadcast update to clients
       broadcastConversationUpdate(companyId, id);
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Inbox] Error updating conversation AI settings:", error);
       res.status(500).json({ message: "Failed to update AI settings" });
@@ -44042,7 +44042,7 @@ CRITICAL REMINDERS:
         wsService.broadcastConversationUpdate();
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Inbox] Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
@@ -44148,7 +44148,7 @@ CRITICAL REMINDERS:
         .orderBy(desc(complianceApplications.createdAt))
         .limit(1);
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Compliance] Error getting current application:", error);
       res.status(500).json({ message: "Failed to get current application" });
@@ -44171,7 +44171,7 @@ CRITICAL REMINDERS:
         .from(complianceApplications)
         .where(eq(complianceApplications.companyId, user.companyId));
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Compliance] Error listing applications:", error);
       res.status(500).json({ message: error.message || "Failed to list applications" });
@@ -44215,7 +44215,7 @@ CRITICAL REMINDERS:
           .limit(1);
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Compliance] Error getting active application:", error);
       res.status(500).json({ message: "Failed to get active application" });
@@ -45039,7 +45039,7 @@ CRITICAL REMINDERS:
       console.log(`[Compliance Upload] File saved: ${file.filename}, URL: ${publicUrl}`);
       
       // Return the public URL that carriers can access without login
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Compliance Upload] Error:", error);
       res.status(500).json({ message: error.message || "Upload failed" });
@@ -45090,7 +45090,7 @@ CRITICAL REMINDERS:
         }
       }
 
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[RecordingMedia] Error listing media:", error);
       res.status(500).json({ message: "Failed to list recording media" });
@@ -45244,7 +45244,7 @@ CRITICAL REMINDERS:
 
       console.log(`[RecordingMedia] Deleted ${mediaEntry.type}_${mediaEntry.language}: ${mediaEntry.objectPath || mediaEntry.mediaName}`);
 
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[RecordingMedia] Error deleting media:", error);
       res.status(500).json({ message: "Failed to delete recording media" });
@@ -45299,7 +45299,7 @@ CRITICAL REMINDERS:
       }
       
       console.log(`[Force Routing] Number ${phoneNumber.phoneNumber} now routed to Call Control App ${telSettings.callControlAppId}`);
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Force Routing] Error:", error);
       res.status(500).json({ message: error.message || "Failed to force routing" });
@@ -45426,7 +45426,7 @@ CRITICAL REMINDERS:
       }
       await db.delete(customInboxes).where(eq(customInboxes.id, id));
 
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Custom Inboxes] Error deleting:", error);
       res.status(500).json({ message: error.message || "Failed to delete inbox" });
@@ -45771,7 +45771,7 @@ CRITICAL REMINDERS:
       // Delete batch
       await db.delete(importLeadBatches).where(eq(importLeadBatches.id, batchId));
 
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Lead Import] Error deleting batch:", error);
       res.status(500).json({ message: error.message || "Failed to delete batch" });
@@ -46417,7 +46417,7 @@ CRITICAL REMINDERS:
         }
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Contact Points] Error opting out:", error);
       res.status(500).json({ message: error.message || "Failed to opt out contact point" });
@@ -46478,7 +46478,7 @@ CRITICAL REMINDERS:
         }
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Contact Points] Error marking invalid:", error);
       res.status(500).json({ message: error.message || "Failed to mark contact point as invalid" });
@@ -46561,7 +46561,7 @@ CRITICAL REMINDERS:
       // Recompute derived fields after mutation
       await leadDerivedFieldsService.upsertLeadOperational(companyId, cp.personId, lead.lastBatchId || '');
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Contact Points] Error setting primary:", error);
       res.status(500).json({ message: error.message || "Failed to set primary contact point" });
@@ -46724,7 +46724,7 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: result.error });
       }
       
-      res.json({ success: true });
+      res.json({ company });
     } catch (error: any) {
       console.error("[Merge Queue] Error resolving merge:", error);
       res.status(500).json({ message: error.message || "Failed to resolve merge task" });
