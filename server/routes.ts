@@ -34691,6 +34691,19 @@ CRITICAL REMINDERS:
               } else {
                 const errorText = await response.text();
                 console.error(`[TF Verification Sync] Telnyx API error: ${response.status} - ${errorText}`);
+                
+                // Handle 404 - verification request not found in Telnyx
+                if (response.status === 404) {
+                  console.log(`[TF Verification Sync] Verification request ${app.telnyxVerificationRequestId} not found in Telnyx, resetting application ${app.id}`);
+                  await db
+                    .update(complianceApplications)
+                    .set({ 
+                      status: "draft", 
+                      telnyxVerificationRequestId: null 
+                    })
+                    .where(eq(complianceApplications.id, app.id));
+                  console.log(`[TF Verification Sync] Reset ${app.id} to draft - user must re-submit verification`);
+                }
               }
             } catch (e) {
               console.error(`[TF Verification Sync] Error syncing ${app.id}:`, e);
@@ -38760,7 +38773,7 @@ CRITICAL REMINDERS:
       }
       
       // Fallback: Get any active company-level telephony credentials
-      const phoneNumbersRaw = await db
+      const [credential] = await db
         .select({ 
           sipUsername: telephonyCredentials.sipUsername,
           sipPassword: telephonyCredentials.sipPassword
@@ -44848,7 +44861,7 @@ CRITICAL REMINDERS:
       }
       
       // First try to find a submitted/pending/approved application
-      const phoneNumbersRaw = await db
+      let applications = await db
         .select()
         .from(complianceApplications)
         .where(
@@ -44859,10 +44872,11 @@ CRITICAL REMINDERS:
         )
         .orderBy(desc(complianceApplications.createdAt))
         .limit(1);
+      let application = applications[0];
       
       // If no submitted application, check for draft with selected phone number
       if (!application) {
-      const phoneNumbersRaw = await db
+      const draftApps = await db
           .select()
           .from(complianceApplications)
           .where(
@@ -44874,6 +44888,7 @@ CRITICAL REMINDERS:
           )
           .orderBy(desc(complianceApplications.createdAt))
           .limit(1);
+        application = draftApps[0];
       }
       
       res.json({ application: application || null });

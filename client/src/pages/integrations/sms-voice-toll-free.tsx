@@ -233,7 +233,7 @@ export default function SmsVoiceTollFree() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {number.complianceStatus && number.complianceStatus !== "unverified" ? (
+                          {number.complianceStatus && number.complianceStatus !== "unverified" && number.complianceStatus !== "draft" ? (
                             <Button
                               variant="outline"
                               size="sm"

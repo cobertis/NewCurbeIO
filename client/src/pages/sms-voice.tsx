@@ -70,7 +70,9 @@ export interface TelnyxVerificationRequest {
 }
 
 export function getComplianceStatusBadge(status: string | null) {
-  switch (status) {
+  const normalizedStatus = status?.toLowerCase().replace(/_/g, ' ');
+  
+  switch (normalizedStatus) {
     case "approved":
     case "verified":
       return (
@@ -81,15 +83,33 @@ export function getComplianceStatusBadge(status: string | null) {
     case "pending":
     case "submitted":
     case "in_review":
+    case "in progress":
+    case "waiting for vendor":
+    case "waiting for telnyx":
       return (
         <Badge data-testid="badge-status-pending" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
           Pending
+        </Badge>
+      );
+    case "waiting for customer":
+      return (
+        <Badge data-testid="badge-status-action" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
+          Action Required
         </Badge>
       );
     case "rejected":
       return (
         <Badge data-testid="badge-status-rejected" className="bg-red-500/10 text-red-600 border-red-500/20">
           Rejected
+        </Badge>
+      );
+    case "draft":
+    case "unverified":
+    case null:
+    case undefined:
+      return (
+        <Badge data-testid="badge-status-unverified" className="bg-slate-500/10 text-slate-600 border-slate-500/20">
+          Unverified
         </Badge>
       );
     default:
