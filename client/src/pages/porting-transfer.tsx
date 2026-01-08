@@ -30,6 +30,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { LoadingSpinner } from '@/components/loading-spinner';
+import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
@@ -95,6 +96,7 @@ const endUserInfoSchema = z.object({
   accountNumber: z.string().optional(),
   pin: z.string().optional(),
   streetAddress: z.string().min(1, 'Street address is required'),
+  streetAddress2: z.string().optional(),
   city: z.string().min(1, 'City is required'),
   state: z.string().min(2, 'State is required'),
   postalCode: z.string().min(5, 'Postal code is required'),
@@ -257,6 +259,7 @@ export default function PortingTransfer() {
       accountNumber: '',
       pin: '',
       streetAddress: '',
+      streetAddress2: '',
       city: '',
       state: '',
       postalCode: '',
@@ -481,6 +484,7 @@ export default function PortingTransfer() {
         },
         location: {
           street_address: data.streetAddress,
+          extended_address: data.streetAddress2 || undefined,
           locality: data.city,
           administrative_area: data.state,
           postal_code: data.postalCode,
@@ -921,13 +925,34 @@ export default function PortingTransfer() {
                       control={endUserForm.control}
                       name="streetAddress"
                       render={({ field }) => (
+                        <AddressAutocomplete
+                          value={field.value}
+                          onChange={field.onChange}
+                          onAddressSelect={(address) => {
+                            endUserForm.setValue('streetAddress', address.street);
+                            endUserForm.setValue('city', address.city);
+                            endUserForm.setValue('state', address.state);
+                            endUserForm.setValue('postalCode', address.postalCode);
+                          }}
+                          label="Street Address"
+                          placeholder="Start typing an address..."
+                          testId="input-street-address"
+                          error={endUserForm.formState.errors.streetAddress?.message}
+                        />
+                      )}
+                    />
+
+                    <FormField
+                      control={endUserForm.control}
+                      name="streetAddress2"
+                      render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Street Address</FormLabel>
+                          <FormLabel>Address Line 2 (Optional)</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              data-testid="input-street-address"
-                              placeholder="123 Main Street"
+                              data-testid="input-street-address-2"
+                              placeholder="Apt, Suite, Unit, Building, Floor, etc."
                             />
                           </FormControl>
                           <FormMessage />
@@ -1202,7 +1227,9 @@ export default function PortingTransfer() {
                           <div>{endUserInfo.billingPhone}</div>
                           <div className="text-muted-foreground">Address:</div>
                           <div>
-                            {endUserInfo.streetAddress}, {endUserInfo.city}, {endUserInfo.state} {endUserInfo.postalCode}
+                            {endUserInfo.streetAddress}
+                            {endUserInfo.streetAddress2 && `, ${endUserInfo.streetAddress2}`}
+                            {`, ${endUserInfo.city}, ${endUserInfo.state} ${endUserInfo.postalCode}`}
                           </div>
                         </div>
                       </div>
