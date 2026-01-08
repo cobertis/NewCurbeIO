@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useLocation, Link } from 'wouter';
+import SignatureCanvas from 'react-signature-canvas';
 import { 
   Phone, 
   CheckCircle, 
@@ -17,7 +18,10 @@ import {
   MapPin,
   AlertCircle,
   Loader2,
-  Check
+  Check,
+  PenLine,
+  Download,
+  Eraser
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -31,9 +35,11 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { LoadingSpinner } from '@/components/loading-spinner';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
+import { generateLOAPdf, downloadPdf, blobToFile, type LOAData } from '@/lib/loa-pdf-generator';
 
 type WizardStep = 'enter-numbers' | 'check-portability' | 'create-order' | 'end-user-info' | 'upload-documents' | 'select-foc-date' | 'review-submit';
 
@@ -249,6 +255,12 @@ export default function PortingTransfer() {
   const [focWindows, setFocWindows] = useState<FocWindow[]>([]);
   const loaInputRef = useRef<HTMLInputElement>(null);
   const invoiceInputRef = useRef<HTMLInputElement>(null);
+
+  const [loaDialogOpen, setLoaDialogOpen] = useState(false);
+  const [loaCurrentCarrier, setLoaCurrentCarrier] = useState('');
+  const [loaBillingTelephoneNumber, setLoaBillingTelephoneNumber] = useState('');
+  const [isGeneratingLoa, setIsGeneratingLoa] = useState(false);
+  const signatureRef = useRef<SignatureCanvas>(null);
 
   const endUserForm = useForm<EndUserInfoFormData>({
     resolver: zodResolver(endUserInfoSchema),
@@ -499,6 +511,103 @@ export default function PortingTransfer() {
   const handleUploadDocumentsNext = async () => {
     setCurrentStep('select-foc-date');
     getFocDatesMutation.mutate();
+  };
+
+  const handleOpenLoaDialog = () => {
+    if (portabilityResults.length > 0 && portabilityResults[0]?.carrier_name) {
+      setLoaCurrentCarrier(portabilityResults[0].carrier_name);
+    }
+    if (endUserInfo?.billingPhone) {
+      setLoaBillingTelephoneNumber(endUserInfo.billingPhone);
+    }
+    setLoaDialogOpen(true);
+  };
+
+  const handleClearSignature = () => {
+    signatureRef.current?.clear();
+  };
+
+  const handleGenerateLoa = async () => {
+    if (!endUserInfo) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please complete the end user information first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!loaCurrentCarrier.trim()) {
+      toast({
+        title: 'Current Carrier Required',
+        description: 'Please enter the current carrier name.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!loaBillingTelephoneNumber.trim()) {
+      toast({
+        title: 'BTN Required',
+        description: 'Please enter the billing telephone number.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (signatureRef.current?.isEmpty()) {
+      toast({
+        title: 'Signature Required',
+        description: 'Please sign in the signature box.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsGeneratingLoa(true);
+
+    try {
+      const signatureDataUrl = signatureRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
+
+      const loaData: LOAData = {
+        entityName: endUserInfo.entityName,
+        authPersonName: endUserInfo.authPersonName,
+        billingPhone: endUserInfo.billingPhone,
+        streetAddress: endUserInfo.streetAddress,
+        streetAddress2: endUserInfo.streetAddress2,
+        city: endUserInfo.city,
+        state: endUserInfo.state,
+        postalCode: endUserInfo.postalCode,
+        currentCarrier: loaCurrentCarrier,
+        billingTelephoneNumber: loaBillingTelephoneNumber,
+        phoneNumbers: portableNumbers,
+        signatureDataUrl,
+        signatureDate: format(new Date(), 'MMMM d, yyyy'),
+      };
+
+      const pdfBlob = await generateLOAPdf(loaData);
+      const filename = `LOA_${endUserInfo.entityName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      const pdfFile = blobToFile(pdfBlob, filename);
+
+      setLoaFile(pdfFile);
+      setLoaDialogOpen(false);
+
+      toast({
+        title: 'LOA Generated',
+        description: 'Your Letter of Authorization has been created and attached.',
+      });
+
+      downloadPdf(pdfBlob, filename);
+    } catch (error) {
+      console.error('Failed to generate LOA:', error);
+      toast({
+        title: 'Generation Failed',
+        description: 'Failed to generate LOA. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingLoa(false);
+    }
   };
 
   const handleSelectFocDateNext = async () => {
@@ -1052,7 +1161,17 @@ export default function PortingTransfer() {
                             </div>
                           </div>
                         </div>
-                        <div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            onClick={handleOpenLoaDialog}
+                            data-testid="button-generate-loa"
+                          >
+                            <PenLine className="h-4 w-4 mr-2" />
+                            Generate LOA
+                          </Button>
                           <input
                             ref={loaInputRef}
                             type="file"
@@ -1289,6 +1408,144 @@ export default function PortingTransfer() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={loaDialogOpen} onOpenChange={setLoaDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PenLine className="h-5 w-5" />
+              Generate Letter of Authorization
+            </DialogTitle>
+            <DialogDescription>
+              Review the information below and sign to generate your LOA document.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+              <h4 className="font-medium text-sm">Customer Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="text-muted-foreground">Entity Name:</div>
+                <div>{endUserInfo?.entityName || '-'}</div>
+                <div className="text-muted-foreground">Authorized Person:</div>
+                <div>{endUserInfo?.authPersonName || '-'}</div>
+                <div className="text-muted-foreground">Address:</div>
+                <div>
+                  {endUserInfo ? (
+                    <>
+                      {endUserInfo.streetAddress}
+                      {endUserInfo.streetAddress2 && <>, {endUserInfo.streetAddress2}</>}
+                      <br />
+                      {endUserInfo.city}, {endUserInfo.state} {endUserInfo.postalCode}
+                    </>
+                  ) : '-'}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <h4 className="font-medium text-sm mb-2">Phone Numbers to Port</h4>
+              <div className="flex flex-wrap gap-2">
+                {portableNumbers.map((num) => (
+                  <Badge key={num} variant="secondary">{displayPhoneNumber(num)}</Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="loa-current-carrier">Current Carrier *</Label>
+                  <Input
+                    id="loa-current-carrier"
+                    placeholder="e.g., AT&T, Verizon"
+                    value={loaCurrentCarrier}
+                    onChange={(e) => setLoaCurrentCarrier(e.target.value)}
+                    data-testid="input-loa-current-carrier"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loa-btn">Billing Telephone Number (BTN) *</Label>
+                  <Input
+                    id="loa-btn"
+                    placeholder="(555) 123-4567"
+                    value={loaBillingTelephoneNumber}
+                    onChange={(e) => setLoaBillingTelephoneNumber(e.target.value)}
+                    data-testid="input-loa-btn"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Signature *</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearSignature}
+                  data-testid="button-clear-signature"
+                >
+                  <Eraser className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              </div>
+              <div className="border rounded-lg bg-white dark:bg-gray-900 p-1">
+                <SignatureCanvas
+                  ref={signatureRef}
+                  canvasProps={{
+                    className: 'w-full h-32 cursor-crosshair',
+                    style: { width: '100%', height: '128px' },
+                  }}
+                  backgroundColor="transparent"
+                  penColor="black"
+                  data-testid="canvas-signature"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Sign above using your mouse or finger
+              </p>
+            </div>
+
+            <div className="p-3 bg-muted/30 rounded-lg flex items-center justify-between">
+              <div>
+                <span className="text-sm text-muted-foreground">Date:</span>
+                <span className="text-sm font-medium ml-2">{format(new Date(), 'MMMM d, yyyy')}</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLoaDialogOpen(false)}
+              data-testid="button-cancel-loa"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleGenerateLoa}
+              disabled={isGeneratingLoa}
+              data-testid="button-create-loa"
+            >
+              {isGeneratingLoa ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Generate & Download
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
