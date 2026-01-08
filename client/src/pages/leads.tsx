@@ -131,6 +131,7 @@ export default function Leads() {
   const [csvUploadDialogOpen, setCsvUploadDialogOpen] = useState(false);
   const [uploadingCsv, setUploadingCsv] = useState(false);
   const [sortBy, setSortBy] = useState<string>("score_desc");
+  const [batchSearchQuery, setBatchSearchQuery] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: batchesData, isLoading: isLoadingBatches } = useQuery<{ batches: ImportBatch[] }>({
@@ -440,24 +441,38 @@ export default function Leads() {
                   <Plus className="h-4 w-4 mr-1.5" />
                   Create Lead
                 </Button>
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={(open) => { if (!open) setBatchSearchQuery(""); }}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="min-w-[140px] justify-between" data-testid="dropdown-batch">
                       <span className="truncate">{batchFilter === "all" ? "All Batches" : batches.find(b => b.id === batchFilter)?.fileName || "Batch"}</span>
                       <ChevronDown className="h-4 w-4 ml-1.5 shrink-0" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[220px]">
-                    <DropdownMenuItem onClick={() => { setBatchFilter("all"); setPage(1); }}>
-                      All Batches
-                    </DropdownMenuItem>
-                    {batches.length > 0 && <DropdownMenuSeparator />}
-                    {batches.map((batch) => (
-                      <DropdownMenuItem key={batch.id} onClick={() => { setBatchFilter(batch.id); setPage(1); }}>
-                        <span className="truncate flex-1">{batch.fileName}</span>
-                        <Badge variant="outline" className="ml-2 text-[10px]">{batch.totalRows}</Badge>
+                  <DropdownMenuContent align="end" className="w-[260px]">
+                    <div className="px-2 pb-2">
+                      <Input
+                        placeholder="Search batches..."
+                        value={batchSearchQuery}
+                        onChange={(e) => setBatchSearchQuery(e.target.value)}
+                        className="h-8 text-sm"
+                        onClick={(e) => e.stopPropagation()}
+                        data-testid="input-batch-search"
+                      />
+                    </div>
+                    <DropdownMenuSeparator />
+                    <div className="max-h-[200px] overflow-y-auto">
+                      <DropdownMenuItem onClick={() => { setBatchFilter("all"); setPage(1); }}>
+                        All Batches
                       </DropdownMenuItem>
-                    ))}
+                      {batches
+                        .filter(b => b.fileName.toLowerCase().includes(batchSearchQuery.toLowerCase()))
+                        .map((batch) => (
+                          <DropdownMenuItem key={batch.id} onClick={() => { setBatchFilter(batch.id); setPage(1); }}>
+                            <span className="truncate flex-1">{batch.fileName}</span>
+                            <Badge variant="outline" className="ml-2 text-[10px]">{batch.totalRows}</Badge>
+                          </DropdownMenuItem>
+                        ))}
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -557,41 +572,71 @@ export default function Leads() {
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0 flex-1">
                                   <p className="text-sm font-medium truncate" title={batch.fileName}>{batch.fileName}</p>
-                                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                    <span>{batch.processedRows || batch.totalRows} rows</span>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                                    {format(new Date(batch.createdAt), 'MMM d, yyyy h:mm a')}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                                    <span>{batch.processedRows || batch.totalRows} leads</span>
+                                    {batch.status === 'completed' && batch.totalRows > 0 && (batch.processedRows || 0) > 0 && (
+                                      <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                                        {Math.round((((batch.processedRows || 0) - (batch.errorRows || 0)) / batch.totalRows) * 100)}% OK
+                                      </Badge>
+                                    )}
                                     {batch.status === 'processing' && (
                                       <Badge variant="secondary" className="text-[10px] px-1 py-0 gap-1">
                                         <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                                        {Math.round(((batch.processedRows || 0) / batch.totalRows) * 100)}%
+                                        {batch.totalRows > 0 ? Math.round(((batch.processedRows || 0) / batch.totalRows) * 100) : 0}%
                                       </Badge>
                                     )}
                                     {batch.errorRows > 0 && (
-                                      <Badge variant="destructive" className="text-[10px] px-1 py-0">{batch.errorRows} err</Badge>
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <Badge variant="destructive" className="text-[10px] px-1 py-0 gap-0.5">
+                                            <AlertCircle className="h-2.5 w-2.5" />
+                                            {batch.errorRows}
+                                          </Badge>
+                                        </TooltipTrigger>
+                                        <TooltipContent>{batch.errorRows} rows had errors</TooltipContent>
+                                      </Tooltip>
                                     )}
                                   </div>
                                 </div>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                      <MoreHorizontal className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setBatchFilter(batch.id); setPage(1); }}>
-                                      View leads
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                      className="text-destructive"
-                                      onClick={(e) => { e.stopPropagation(); setBatchToDelete(batch); setDeleteBatchDialogOpen(true); }}
-                                    >
-                                      Delete batch
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => { setBatchFilter(batch.id); setPage(1); }}
+                                    data-testid={`button-view-batch-${batch.id}`}
+                                  >
+                                    View
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setBatchFilter(batch.id); setPage(1); }}>
+                                        View leads
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast({ title: "Reprocess", description: "Reprocessing batch..." }); }}>
+                                        Reprocess batch
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem 
+                                        className="text-destructive"
+                                        onClick={(e) => { e.stopPropagation(); setBatchToDelete(batch); setDeleteBatchDialogOpen(true); }}
+                                      >
+                                        Delete batch
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                               </div>
                               {batch.status === 'processing' && (
-                                <Progress value={((batch.processedRows || 0) / batch.totalRows) * 100} className="h-1 mt-2" />
+                                <Progress value={batch.totalRows > 0 ? ((batch.processedRows || 0) / batch.totalRows) * 100 : 0} className="h-1 mt-2" />
                               )}
                             </div>
                           ))}
@@ -668,28 +713,43 @@ export default function Leads() {
                         <UserX className="h-10 w-10 text-muted-foreground/50 mb-3" />
                         <h3 className="font-medium mb-1">No leads yet</h3>
                         <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-                          Import a CSV file to get started. Your leads will be automatically enriched with contactability data.
+                          Import a CSV file to get started. Leads will be automatically enriched with contactability data.
                         </p>
-                        <Button size="sm" onClick={() => setCsvUploadDialogOpen(true)}>
-                          <Upload className="h-4 w-4 mr-1.5" />
-                          Import CSV
-                        </Button>
-                        <p className="text-xs text-muted-foreground mt-3">
-                          Expected columns: first_name, last_name, email, phone, city, state, zip
-                        </p>
+                        <div className="flex gap-2 mb-4">
+                          <Button size="sm" onClick={() => setCsvUploadDialogOpen(true)}>
+                            <Upload className="h-4 w-4 mr-1.5" />
+                            Import CSV
+                          </Button>
+                          <Button size="sm" variant="outline" asChild>
+                            <a href="/api/leads/sample-csv" download="sample_leads.csv">
+                              <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                              Download Sample
+                            </a>
+                          </Button>
+                        </div>
+                        <div className="text-left text-xs text-muted-foreground bg-muted/50 rounded-md p-3 max-w-xs">
+                          <p className="font-medium mb-1.5">What happens when you import:</p>
+                          <ul className="space-y-1">
+                            <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-600" /> Leads parsed and validated</li>
+                            <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-600" /> Phone/email verification</li>
+                            <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-600" /> DNC status checked</li>
+                            <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-600" /> Contactability score assigned</li>
+                          </ul>
+                        </div>
                       </div>
                     ) : (
                       <ScrollArea className="h-full">
                         <Table>
                           <TableHeader className="sticky top-0 bg-background z-10">
                             <TableRow className="hover:bg-transparent">
-                              <TableHead className="w-[200px]">Lead</TableHead>
-                              <TableHead className="w-[140px]">Best Contact</TableHead>
-                              <TableHead className="w-[60px] text-center">Score</TableHead>
-                              <TableHead className="w-[120px]">Status</TableHead>
-                              <TableHead className="w-[100px]">Batch</TableHead>
-                              <TableHead className="w-[80px]">Created</TableHead>
-                              <TableHead className="w-[50px]"></TableHead>
+                              <TableHead className="w-[180px]">Lead</TableHead>
+                              <TableHead className="w-[120px]">Best Contact</TableHead>
+                              <TableHead className="w-[50px] text-center">Score</TableHead>
+                              <TableHead className="w-[100px]">Status</TableHead>
+                              <TableHead className="w-[90px]">Owner</TableHead>
+                              <TableHead className="w-[90px]">Batch</TableHead>
+                              <TableHead className="w-[70px]">Created</TableHead>
+                              <TableHead className="w-[40px]"></TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -765,15 +825,49 @@ export default function Leads() {
                                     </Select>
                                   </TableCell>
                                   <TableCell className="py-2">
-                                    <span className="text-xs text-muted-foreground truncate block max-w-[100px]" title={lead.batchFileName || '-'}>
+                                    <span className="text-xs text-muted-foreground truncate block max-w-[80px]" title={lead.ownerName || 'Unassigned'}>
+                                      {lead.ownerName || '-'}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <span className="text-xs text-muted-foreground truncate block max-w-[80px]" title={lead.batchFileName || '-'}>
                                       {lead.batchFileName || '-'}
                                     </span>
                                   </TableCell>
                                   <TableCell className="py-2 text-xs text-muted-foreground">
                                     {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: false })}
                                   </TableCell>
-                                  <TableCell className="py-2">
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                  <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                          <MoreHorizontal className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => openLeadDrawer(lead.id)}>
+                                          View details
+                                        </DropdownMenuItem>
+                                        {lead.bestPhoneToCall && (
+                                          <DropdownMenuItem>
+                                            <PhoneCall className="h-3.5 w-3.5 mr-1.5" />
+                                            Call
+                                          </DropdownMenuItem>
+                                        )}
+                                        {lead.bestPhoneForSms && (
+                                          <DropdownMenuItem>
+                                            <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                                            Send SMS
+                                          </DropdownMenuItem>
+                                        )}
+                                        {lead.bestEmail && (
+                                          <DropdownMenuItem>
+                                            <Mail className="h-3.5 w-3.5 mr-1.5" />
+                                            Send Email
+                                          </DropdownMenuItem>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </TableCell>
                                 </TableRow>
                               );
