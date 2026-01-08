@@ -392,9 +392,51 @@ export default function PortingTransfer() {
     },
   });
 
+  const uploadDocumentToTelnyx = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch('/api/telnyx/porting/upload-document', {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to upload document');
+    }
+    
+    const data = await response.json();
+    return data.documentId;
+  };
+
   const submitOrderMutation = useMutation({
     mutationFn: async () => {
       const orderId = (portingOrder as any)?.localId || portingOrder?.id;
+      
+      // Upload documents first if they exist
+      let loaDocumentId: string | null = null;
+      let invoiceDocumentId: string | null = null;
+      
+      if (loaFile) {
+        loaDocumentId = await uploadDocumentToTelnyx(loaFile);
+      }
+      
+      if (invoiceFile) {
+        invoiceDocumentId = await uploadDocumentToTelnyx(invoiceFile);
+      }
+      
+      // Update order with document IDs if we have any
+      if (loaDocumentId || invoiceDocumentId) {
+        const documents: any = {};
+        if (loaDocumentId) documents.loa = loaDocumentId;
+        if (invoiceDocumentId) documents.invoice = invoiceDocumentId;
+        
+        await apiRequest('PATCH', `/api/telnyx/porting/orders/${orderId}`, { documents });
+      }
+      
+      // Now submit
       return apiRequest('POST', `/api/telnyx/porting/orders/${orderId}/submit`, {});
     },
     onSuccess: (data) => {
@@ -485,23 +527,20 @@ export default function PortingTransfer() {
   const handleEndUserInfoNext = async (data: EndUserInfoFormData) => {
     setEndUserInfo(data);
     
+    // Send flat structure that backend expects
     await updateOrderMutation.mutateAsync({
       endUser: {
-        admin: {
-          entity_name: data.entityName,
-          auth_person_name: data.authPersonName,
-          billing_phone_number: data.billingPhone,
-          account_number: data.accountNumber || undefined,
-          pin_passcode: data.pin || undefined,
-        },
-        location: {
-          street_address: data.streetAddress,
-          extended_address: data.streetAddress2 || undefined,
-          locality: data.city,
-          administrative_area: data.state,
-          postal_code: data.postalCode,
-          country_code: 'US',
-        },
+        entityName: data.entityName,
+        authPersonName: data.authPersonName,
+        billingPhone: data.billingPhone,
+        accountNumber: data.accountNumber || undefined,
+        pin: data.pin || undefined,
+        streetAddress: data.streetAddress,
+        extendedAddress: data.streetAddress2 || undefined,
+        locality: data.city,
+        administrativeArea: data.state,
+        postalCode: data.postalCode,
+        countryCode: 'US',
       },
     });
 

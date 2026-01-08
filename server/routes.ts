@@ -4962,7 +4962,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  app.post("/api/telnyx/porting/upload-document", requireAuth, async (req: Request, res: Response) => {
+  const portingDocumentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.mimetype)) {
+        return cb(new Error('Invalid file type. Only PDF, JPEG, PNG, and GIF are allowed.'));
+      }
+      cb(null, true);
+    },
+  });
+
+  app.post("/api/telnyx/porting/upload-document", requireAuth, portingDocumentUpload.single('file'), async (req: Request, res: Response) => {
     try {
       const user = req.user!;
       
