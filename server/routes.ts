@@ -4671,7 +4671,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getCompanyPortingOrders } = await import("./services/telnyx-porting-service");
-      const orders = await getCompanyPortingOrders(user.companyId);
+      const rawOrders = await getCompanyPortingOrders(user.companyId);
+
+      const orders = rawOrders.map(order => ({
+        ...order,
+        status: typeof order.status === 'object' && order.status !== null 
+          ? (order.status).value || 'draft'
+          : order.status || 'draft'
+      }));
 
       return res.json({ orders });
     } catch (error) {
@@ -4700,7 +4707,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
-      return res.json({ order: localOrder, telnyxOrder });
+      const normalizedOrder = {
+        ...localOrder,
+        status: typeof localOrder.status === 'object' && localOrder.status !== null 
+          ? (localOrder.status).value || 'draft'
+          : localOrder.status || 'draft'
+      };
+
+      return res.json({ order: normalizedOrder, telnyxOrder });
     } catch (error) {
       console.error("[Porting] Get order error:", error);
       return res.status(500).json({ message: "Failed to get porting order" });
