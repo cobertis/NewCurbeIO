@@ -108,7 +108,12 @@ export default function Leads() {
   });
 
   const { data: importedLeadsData, isLoading: isLoadingImportedLeads } = useQuery<{ leads: ImportedLead[], total: number }>({
-    queryKey: ["/api/leads/import", { batchId: batchFilter, search: searchTerm, page: importPage, limit: 50 }],
+    queryKey: ["/api/leads/import", { 
+      batchId: batchFilter !== "all" ? batchFilter : undefined, 
+      search: searchTerm || undefined, 
+      page: importPage, 
+      limit: 50 
+    }],
   });
 
   const updateMutation = useMutation({
