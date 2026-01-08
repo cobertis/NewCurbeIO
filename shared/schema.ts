@@ -7606,3 +7606,75 @@ export const insertCustomInboxSchema = createInsertSchema(customInboxes).omit({
 
 export type CustomInbox = typeof customInboxes.$inferSelect;
 export type InsertCustomInbox = z.infer<typeof insertCustomInboxSchema>;
+
+// =====================================================
+// TELNYX PORTING ORDERS (Port-In Number from Other Carriers)
+// =====================================================
+
+export const telnyxPortingOrders = pgTable("telnyx_porting_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  
+  telnyxPortingOrderId: varchar("telnyx_porting_order_id"),
+  
+  phoneNumbers: text("phone_numbers").array().notNull(),
+  
+  status: text("status").notNull().default("draft"),
+  
+  portabilityCheckResults: jsonb("portability_check_results"),
+  
+  currentCarrierName: text("current_carrier_name"),
+  currentCarrierAccountNumber: text("current_carrier_account_number"),
+  currentCarrierPin: text("current_carrier_pin"),
+  
+  endUserEntityName: text("end_user_entity_name"),
+  endUserAuthPersonName: text("end_user_auth_person_name"),
+  endUserBillingPhone: text("end_user_billing_phone"),
+  
+  streetAddress: text("street_address"),
+  extendedAddress: text("extended_address"),
+  locality: text("locality"),
+  administrativeArea: text("administrative_area"),
+  postalCode: text("postal_code"),
+  countryCode: text("country_code").default("US"),
+  
+  loaDocumentId: varchar("loa_document_id"),
+  invoiceDocumentId: varchar("invoice_document_id"),
+  
+  focDatetimeRequested: timestamp("foc_datetime_requested"),
+  focDatetimeActual: timestamp("foc_datetime_actual"),
+  
+  requirements: jsonb("requirements"),
+  requirementsStatus: boolean("requirements_status").default(false),
+  
+  connectionId: varchar("connection_id"),
+  messagingProfileId: varchar("messaging_profile_id"),
+  
+  webhookUrl: text("webhook_url"),
+  userReference: text("user_reference"),
+  
+  lastError: text("last_error"),
+  
+  submittedAt: timestamp("submitted_at"),
+  portedAt: timestamp("ported_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("telnyx_porting_orders_company_id_idx").on(table.companyId),
+  telnyxOrderIdIdx: index("telnyx_porting_orders_telnyx_id_idx").on(table.telnyxPortingOrderId),
+  statusIdx: index("telnyx_porting_orders_status_idx").on(table.status),
+}));
+
+export const insertTelnyxPortingOrderSchema = createInsertSchema(telnyxPortingOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  submittedAt: true,
+  portedAt: true,
+  cancelledAt: true,
+});
+
+export type TelnyxPortingOrder = typeof telnyxPortingOrders.$inferSelect;
+export type InsertTelnyxPortingOrder = z.infer<typeof insertTelnyxPortingOrderSchema>;
