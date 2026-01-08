@@ -1,0 +1,97 @@
+Quiero que rediseñes completamente la UI de /leads porque visualmente es mala: demasiado espacio vacío, jerarquía pobre, no se siente como un CRM operativo. Necesito un diseño moderno tipo “dashboard CRM” con alta densidad útil, buena legibilidad y acciones claras.
+
+STACK/UI:
+- Next.js + Tailwind + shadcn/ui
+- Usar: Card, Button, Badge, Tabs, DropdownMenu, Popover, Tooltip, Sheet/Drawer, Input, Select, Separator
+- Para tabla: TanStack Table (react-table) o equivalente
+- Layout en grid con max-w-screen-2xl, mx-auto, px-6, py-6
+- Tipografía y spacing consistentes (no megablocs vacíos). Altura de cards contenida.
+
+OBJETIVO UX:
+- Que un usuario pueda: importar batch, filtrar, ver leads, abrir un lead, ejecutar acción (call/sms/email), ver/bloquear DNC, y cambiar status. Todo rápido.
+- Reducir “hero empty state”. Cuando no haya leads, que sea compacto y útil (instrucciones + botón import + ejemplo de formato).
+
+NUEVO LAYOUT (estructura exacta):
+1) TOP BAR (sticky)
+   - Izquierda: “Leads” + contador (ej: 12,482) + última actualización (opcional)
+   - Derecha: botones primarios:
+       [Import CSV] (primary)
+       [Create Lead] (secondary)
+       Dropdown “Batch” (All Batches) con búsqueda y estado
+   - Debajo del título: una fila de KPIs compactos (chips/cards pequeños):
+       Total Leads | Contactable | DNC Blocked | No Valid Phone | Verified Email
+     Cada KPI es clickable para filtrar.
+
+2) MAIN CONTENT: 2 columnas (responsive)
+   - Columna izquierda (w-80 en desktop): “Import Batches” como sidebar card
+       - Lista de batches (scroll interno, no ocupa media pantalla)
+       - Cada batch muestra: nombre/fecha, #leads, %contactable, warnings
+       - Botón “View” y menú (…) para delete/reprocess
+       - Si no hay batches: empty state pequeño dentro del card, no una pantalla entera.
+   - Columna derecha (flex-1): “Leads Table” card grande
+       - Header del card:
+           Search input (full) + botón [Filters] que abre popover/sheet
+           A la derecha: Sort dropdown (Score desc, Newest, etc.)
+       - Debajo: “Active Filters” como chips removibles (compacto)
+       - Tabla con sticky header, filas densas y legibles
+
+3) FILTERS (no siempre visibles)
+   - Actualmente hay demasiados controles siempre mostrando y se ve feo.
+   - Cambiar a un botón [Filters] que abre:
+       a) En desktop: Popover ancho o panel lateral (Sheet)
+       b) En mobile: Sheet
+   - Dentro de filtros agrupar por secciones con títulos:
+       Status / Location / Contactability / Risk Flags / Score
+   - Mantener los mismos filtros que ya existen:
+       Only Contactable, Exclude DNC, Has Mobile, Verified Email, Min Score, State, ZIP
+       Risk Flags: DNC All, No Valid Phone, No Valid Email, All Opted Out
+
+4) TABLE DESIGN (operativa, no “bonita”)
+   - Columnas recomendadas:
+       Lead (name + city/state)
+       Best Contact (iconos Call/SMS/Email con tooltip; si blocked mostrar badge DNC)
+       Score (badge + barra mini opcional)
+       Status (editable inline con Select)
+       Owner (opcional)
+       Batch (tag)
+       Created (relative time)
+       Actions (…)
+   - Row click abre Drawer/Sheet de detalle.
+
+5) LEAD DETAIL (Drawer/Sheet a la derecha)
+   - Arriba: nombre + location + score + risk badges
+   - Action row grande:
+       CALL / SMS / EMAIL
+     Botones deshabilitados si no permitido (DNC/optout/invalid) y mostrar razón exacta.
+   - Sección “Contact Points” en tabla pequeña:
+       subtype, value masked, valid, verified, dnc, last attempt, set primary
+   - Sección “Insights” colapsable (employment, demographics, raw)
+
+EMPTY STATES (crítico):
+- No usar un bloque gigante al centro que parece landing.
+- Si no hay leads:
+   - En el card de Leads Table mostrar:
+     “No leads yet” + botón Import + link “download sample CSV” + checklist de qué pasará al importar.
+- Si no hay batches:
+   - En sidebar mostrar mini empty con botón Import y texto corto.
+
+VISUAL POLISH (obligatorio):
+- Reducir altura de secciones, evitar tarjetas enormes con un icono al medio.
+- Mejorar contraste: headings claros, separators sutiles.
+- Espaciado: gap-4 / gap-6, no padding gigante.
+- Evitar líneas largas: limitar ancho del contenido con max-w.
+- Iconografía consistente (lucide-react).
+- Hover states en filas; selected state al abrir drawer.
+- Sticky top bar y sticky header de tabla para usarlo como herramienta real.
+
+ACCEPTANCE CRITERIA:
+- En desktop se ve “lleno” y productivo: batches a la izquierda + tabla a la derecha (sin mega espacios).
+- Filtros no ocupan 2 filas permanentes; están en popover/sheet.
+- Import CSV siempre visible y claro.
+- Empty state ocupa poco y guía a la acción.
+- Tabla usable con 1000+ leads (virtualization opcional si ya tienen performance issues).
+- No se rompe el diseño con textos largos (truncate + tooltip).
+
+ENTREGA:
+- Implementa el layout y componentes UI (sin cambiar la lógica de negocio).
+- Refactoriza /leads en componentes: LeadsPage, BatchesSidebar, LeadsTable, FiltersSheet, LeadDetailDrawer.

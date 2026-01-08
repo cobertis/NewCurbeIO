@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Search, CheckCircle, XCircle, Trash2, Users, ChevronDown, Mail, Phone, MessageSquare, AlertTriangle, Ban, ShieldOff, Zap, PhoneCall, Star, Info, FileJson, Building, Filter, X, Upload, FileSpreadsheet, Calendar, Loader2 } from "lucide-react";
+import { Search, CheckCircle, XCircle, Trash2, Users, ChevronDown, Mail, Phone, MessageSquare, AlertTriangle, Ban, ShieldOff, Zap, PhoneCall, Star, Info, FileJson, Building, Filter, X, Upload, FileSpreadsheet, Calendar, Loader2, AlertCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -125,6 +125,11 @@ export default function Leads() {
 
   const { data: batchesData, isLoading: isLoadingBatches } = useQuery<{ batches: ImportBatch[] }>({
     queryKey: ["/api/leads/operational/batches"],
+    refetchInterval: (query) => {
+      const batches = query.state.data?.batches || [];
+      const hasProcessing = batches.some(b => b.status === 'processing');
+      return hasProcessing ? 3000 : false;
+    },
   });
 
   const { data: operationalLeadsData, isLoading: isLoadingLeads } = useQuery<{ leads: OperationalLead[], total: number }>({
@@ -474,16 +479,38 @@ export default function Leads() {
                         {batch.status}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {batch.totalRows} rows
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(batch.createdAt), 'MMM d, yyyy h:mm a')}
-                      </span>
-                    </div>
+                    {batch.status === 'processing' ? (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Processing...
+                          </span>
+                          <span>{batch.processedRows || 0} / {batch.totalRows} rows</span>
+                        </div>
+                        <Progress 
+                          value={batch.totalRows > 0 ? ((batch.processedRows || 0) / batch.totalRows) * 100 : 0} 
+                          className="h-1.5"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {batch.processedRows || batch.totalRows} rows
+                        </span>
+                        {batch.errorRows > 0 && (
+                          <span className="flex items-center gap-1 text-destructive">
+                            <AlertCircle className="h-3 w-3" />
+                            {batch.errorRows} errors
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {format(new Date(batch.createdAt), 'MMM d, yyyy h:mm a')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 ml-2">
                     {batchFilter !== batch.id && (

@@ -45780,6 +45780,7 @@ CRITICAL REMINDERS:
 
 
   // POST /api/leads/import/csv - Upload and process CSV file through canonical pipeline
+  // ASYNC BACKGROUND PROCESSING: Returns immediately, processes in batches in background
   app.post("/api/leads/import/csv", requireActiveCompany, leadImportUpload.single('file'), async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
@@ -45808,7 +45809,11 @@ CRITICAL REMINDERS:
 
       const totalRows = records.length;
 
-      // Create batch record with metadata
+      if (totalRows === 0) {
+        return res.status(400).json({ message: "CSV file is empty or has no valid rows" });
+      }
+
+      // Create batch record with metadata - status: 'processing'
       const [batch] = await db.insert(importLeadBatches).values({
         companyId,
         createdBy: userId,
@@ -45820,63 +45825,106 @@ CRITICAL REMINDERS:
         errors: []
       }).returning();
 
-      let processedCount = 0;
-      let skippedCount = 0;
-      let errorCount = 0;
-      const errors: { row: number; message: string }[] = [];
-      const warnings: { row: number; warnings: any[] }[] = [];
-
-      // Process each row through the canonicalizer
-      for (let i = 0; i < records.length; i++) {
-        const row = records[i];
-        try {
-          const result = await leadCanonicalizerService.processRow(
-            companyId,
-            batch.id,
-            i + 1,
-            row
-          );
-
-          if (result.skippedDuplicate) {
-            skippedCount++;
-          } else {
-            processedCount++;
-          }
-
-          if (result.warnings && result.warnings.length > 0) {
-            warnings.push({ row: i + 1, warnings: result.warnings });
-          }
-        } catch (rowError: any) {
-          errorCount++;
-          errors.push({ row: i + 1, message: rowError.message || 'Unknown error' });
-        }
-      }
-
-      // Update batch with final counts
-      const finalStatus = errorCount === totalRows ? 'failed' : 
-                          errorCount > 0 ? 'completed_with_errors' : 'completed';
-      
-      await db.update(importLeadBatches)
-        .set({
-          status: finalStatus,
-          totalRows,
-          processedRows: processedCount,
-          errorRows: errorCount,
-          errors: errors.slice(0, 100),
-          completedAt: new Date()
-        })
-        .where(eq(importLeadBatches.id, batch.id));
-
+      // IMMEDIATELY RETURN - don't wait for processing
       res.json({
         batchId: batch.id,
         fileName,
         totalRows,
-        processed: processedCount,
-        skipped: skippedCount,
-        errors: errorCount,
-        errorDetails: errors.slice(0, 10),
-        warnings: warnings.slice(0, 10)
+        status: 'processing',
+        message: `Import started. Processing ${totalRows} leads in background.`
       });
+
+      // BACKGROUND PROCESSING - Process in batches of 50 rows
+      const BATCH_SIZE = 50;
+      let processedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+      const errors: { row: number; message: string }[] = [];
+
+      const processBatch = async (startIndex: number) => {
+        const endIndex = Math.min(startIndex + BATCH_SIZE, records.length);
+        
+        for (let i = startIndex; i < endIndex; i++) {
+          const row = records[i];
+          try {
+            const result = await leadCanonicalizerService.processRow(
+              companyId,
+              batch.id,
+              i + 1,
+              row
+            );
+
+            if (result.skippedDuplicate) {
+              skippedCount++;
+            } else {
+              processedCount++;
+            }
+          } catch (rowError: any) {
+            errorCount++;
+            if (errors.length < 100) {
+              errors.push({ row: i + 1, message: rowError.message || 'Unknown error' });
+            }
+          }
+        }
+
+        // Update batch progress after each batch of rows
+        await db.update(importLeadBatches)
+          .set({
+            processedRows: processedCount + skippedCount,
+            errorRows: errorCount,
+            errors: errors.slice(0, 100)
+          })
+          .where(eq(importLeadBatches.id, batch.id));
+
+        // Process next batch if there are more rows
+        if (endIndex < records.length) {
+          setImmediate(() => {
+            processBatch(endIndex).catch(async (err) => {
+              console.error(`[Lead Import CSV] Error in batch processing:`, err);
+              try {
+                await db.update(importLeadBatches)
+                  .set({ status: 'failed', errors: [...errors.slice(0, 99), { row: endIndex, message: err.message || 'Processing error' }], completedAt: new Date() })
+                  .where(eq(importLeadBatches.id, batch.id));
+              } catch (updateErr) {
+                console.error(`[Lead Import CSV] Failed to mark batch as failed:`, updateErr);
+              }
+            });
+          });
+        } else {
+          // All rows processed - update final status
+          const finalStatus = errorCount === totalRows ? 'failed' : 
+                              errorCount > 0 ? 'completed_with_errors' : 'completed';
+          
+          await db.update(importLeadBatches)
+            .set({
+              status: finalStatus,
+              processedRows: processedCount + skippedCount,
+              errorRows: errorCount,
+              errors: errors.slice(0, 100),
+              completedAt: new Date()
+            })
+            .where(eq(importLeadBatches.id, batch.id));
+
+          console.log(`[Lead Import CSV] Batch ${batch.id} completed: ${processedCount} processed, ${skippedCount} skipped, ${errorCount} errors`);
+        }
+      };
+
+      // Start background processing with error handling
+      setImmediate(() => processBatch(0).catch(async (err) => {
+        console.error(`[Lead Import CSV] Fatal error processing batch ${batch.id}:`, err);
+        try {
+          await db.update(importLeadBatches)
+            .set({
+              status: 'failed',
+              errors: [{ row: 0, message: err.message || 'Unexpected processing error' }],
+              completedAt: new Date()
+            })
+            .where(eq(importLeadBatches.id, batch.id));
+        } catch (updateErr) {
+          console.error(`[Lead Import CSV] Failed to mark batch ${batch.id} as failed:`, updateErr);
+        }
+      }));
+
     } catch (error: any) {
       console.error("[Lead Import CSV] Error:", error);
       res.status(500).json({ message: error.message || "Failed to import CSV" });
