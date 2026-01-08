@@ -417,7 +417,9 @@ export default function GettingStarted() {
                   {activeApplication?.selectedPhoneNumber ? (
                     <>
                       <div className="flex items-center gap-2 mb-2">
-                        <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Your Toll-Free Number</p>
+                        <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">
+                          {activeApplication.numberType === '10dlc' ? 'Your 10DLC Number' : 'Your Toll-Free Number'}
+                        </p>
                         {!['submitted', 'pending_review', 'approved', 'rejected'].includes(activeApplication.status) && (
                           <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -444,7 +446,7 @@ export default function GettingStarted() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-lg text-gray-900 dark:text-gray-100" data-testid="text-toll-free-number">
+                        <h4 className="font-semibold text-lg text-gray-900 dark:text-gray-100" data-testid="text-phone-number">
                           {formatPhoneNumber(activeApplication.selectedPhoneNumber)}
                         </h4>
                         <Button
@@ -459,11 +461,17 @@ export default function GettingStarted() {
                       </div>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                         {!['submitted', 'pending_review', 'approved', 'rejected'].includes(activeApplication.status) && 
-                          "We've assigned a toll-free number to your account. Please complete the registration to start texting."}
+                          (activeApplication.numberType === '10dlc' 
+                            ? "We've assigned a 10DLC number to your account. Please complete the registration to start texting."
+                            : "We've assigned a toll-free number to your account. Please complete the registration to start texting.")}
                         {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && 
-                          "We've assigned a toll-free number to your account for 1 month for free, so you can start engaging with your audience sooner. Please complete a free verification to start texting."}
+                          (activeApplication.numberType === '10dlc'
+                            ? "We've assigned a 10DLC number to your account for 1 month for free. Please complete the verification to start texting."
+                            : "We've assigned a toll-free number to your account for 1 month for free, so you can start engaging with your audience sooner. Please complete a free verification to start texting.")}
                         {activeApplication.status === 'approved' && 
-                          "Your toll-free number is verified and ready to use."}
+                          (activeApplication.numberType === '10dlc'
+                            ? "Your 10DLC number is verified and ready to use."
+                            : "Your toll-free number is verified and ready to use.")}
                         {activeApplication.status === 'rejected' && 
                           "Your verification was rejected. Please contact support."}
                       </p>
