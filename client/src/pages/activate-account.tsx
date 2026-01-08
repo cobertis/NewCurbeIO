@@ -18,7 +18,34 @@ export default function ActivateAccount() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [hasExistingPassword, setHasExistingPassword] = useState(false);
   const { toast } = useToast();
+
+  // Helper function to activate account without password (for users who already have one)
+  const activateWithoutPassword = async (tokenParam: string) => {
+    try {
+      const response = await fetch("/api/auth/activate-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ token: tokenParam }),
+      });
+
+      if (response.ok) {
+        setIsSuccess(true);
+        toast({
+          title: "Account activated!",
+          description: "You can now sign in to your workspace.",
+          duration: 3000,
+        });
+      } else {
+        const error = await response.json();
+        setErrorMessage(error.message || "This activation link is invalid or has expired");
+      }
+    } catch (error) {
+      setErrorMessage("An error occurred while activating your account");
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -39,7 +66,14 @@ export default function ActivateAccount() {
         });
 
         if (response.ok) {
+          const data = await response.json();
           setToken(tokenParam);
+          setHasExistingPassword(data.hasPassword || false);
+          
+          // If user already has a password, automatically activate their account
+          if (data.hasPassword) {
+            await activateWithoutPassword(tokenParam);
+          }
         } else {
           const error = await response.json();
           setErrorMessage(error.message || "This activation link is invalid or has expired");
@@ -130,7 +164,9 @@ export default function ActivateAccount() {
             <Check className="w-10 h-10 text-green-600" />
           </div>
           <p className="text-center text-[14px] text-gray-500 mb-6 leading-relaxed max-w-sm">
-            Thank you for setting up your password. Your account is now active and ready to use.
+            {hasExistingPassword 
+              ? "Your account has been activated. You can now sign in with your existing password."
+              : "Thank you for setting up your password. Your account is now active and ready to use."}
           </p>
           <Button
             onClick={() => setLocation("/login")}

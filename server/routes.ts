@@ -1451,10 +1451,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[BlueBubbles Webhook] Unknown event type: ${eventType}`);
       }
       // Always return 200 OK to acknowledge webhook receipt
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Webhook processed" });
     } catch (error: any) {
       console.error("[BlueBubbles Webhook] Error processing webhook:", error);
       // Still return 200 to prevent webhook retries for processing errors
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: false, message: "Webhook processing error", error: error.message });
     }
   });
@@ -1775,6 +1779,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         options.search = search as string;
       }
       const conversations = await storage.getImessageConversationsByCompany(user.companyId, options);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ conversations });
     } catch (error: any) {
       console.error("Error fetching iMessage conversations:", error);
@@ -2056,7 +2062,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
         // Return success with the created message (webhook will update it)
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           conversation,
           message: optimisticMessage
@@ -2135,6 +2143,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         reaction,
         action
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error updating reaction:", error);
@@ -2162,6 +2172,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const { blueBubblesManager } = await import("./bluebubbles");
         await blueBubblesManager.markAsRead(user.companyId, conversation.chatGuid);
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error marking conversation as read:", error);
@@ -2228,6 +2240,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Conversation not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error deleting conversation:", error);
@@ -2265,6 +2279,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         conversationId,
         userId: user.id
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error sending typing indicator:", error);
@@ -2331,6 +2347,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         messageGuid: messageGuid,
         conversationId: message.conversationId
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error deleting iMessage:", error);
@@ -2372,6 +2390,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         completed: campaigns.filter(c => c.status === 'completed').length,
         draft: campaigns.filter(c => c.status === 'draft').length,
       };
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ campaigns: enrichedCampaigns, stats });
     } catch (error: any) {
       console.error("Error listing iMessage campaigns:", error);
@@ -2483,6 +2503,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Access denied" });
       }
       // Return wrapped response for consistency with other endpoints
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ campaign });
     } catch (error: any) {
       console.error("Error getting iMessage campaign:", error);
@@ -2559,6 +2581,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete campaign" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Campaign deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting iMessage campaign:", error);
@@ -2668,6 +2692,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentRun && currentRun.status === 'running') {
         await storage.updateImessageCampaignRun(currentRun.id, { status: 'paused' });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Campaign paused successfully" });
     } catch (error: any) {
       console.error("Error pausing iMessage campaign:", error);
@@ -2705,6 +2731,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentRun && currentRun.status === 'paused') {
         await storage.updateImessageCampaignRun(currentRun.id, { status: 'running' });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Campaign resumed successfully" });
     } catch (error: any) {
       console.error("Error resuming iMessage campaign:", error);
@@ -2745,6 +2773,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           completedAt: new Date(),
         });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Campaign stopped successfully" });
     } catch (error: any) {
       console.error("Error stopping iMessage campaign:", error);
@@ -3001,6 +3031,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Log but don't fail the request if notification fails
         console.error('Failed to send consent signed notification:', notificationError);
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ consent: signedConsent, message: "Consent signed successfully" });
     } catch (error: any) {
       console.error("Error signing consent:", error);
@@ -3302,6 +3334,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (err) {
         return res.status(500).json({ message: "Failed to logout" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     });
   });
@@ -3344,6 +3378,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ipAddress: sessionData.ipAddress || 'Unknown IP',
         };
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ sessions: formattedSessions });
     } catch (error) {
       console.error("Error fetching user sessions:", error);
@@ -3396,7 +3432,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error("Error destroying current session:", err);
           return res.status(500).json({ message: "Failed to logout from all sessions" });
         }
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true,
           message: "Successfully cleared all sessions and trusted devices"
         });
@@ -3653,6 +3691,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           companyName: newCompany.name,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
         message: "Registration successful! Please check your email to activate your account.",
@@ -3870,6 +3910,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         })
         .where(eq(users.id, user.id));
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         skippedOnboardingSteps: newSkipped 
@@ -3885,6 +3927,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const user = req.user!;
       await storage.updateUser(user.id, { onboardingCompleted: true });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       console.error("[ONBOARDING] Error marking complete:", error);
@@ -5185,6 +5229,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         companyId: user.companyId || undefined,
         metadata: { method },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         message: `Verification code sent via ${method}`,
@@ -5391,6 +5437,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         email: user.email,
         metadata: { method },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         message: `New verification code sent via ${method}`
@@ -5421,9 +5469,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (activationToken.usedAt) {
         return res.status(400).json({ message: "This activation link has already been used" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
-        message: "Token is valid"
+        message: "Token is valid",
+        hasPassword: user?.password ? true : false
       });
     } catch (error) {
       console.error("Error validating activation token:", error);
@@ -5473,6 +5524,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { notificationService } = await import("./notification-service");
       const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
       await notificationService.notifyUserActivated(userName, user.email, user.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
         message: "Account activated successfully"
@@ -5566,6 +5619,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Send notifications to admins and superadmins
       const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
       await notificationService.notifyPasswordResetRequested(user.id, user.email, userName);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
         message: "If an account with that email or username exists, a password reset link has been sent."
@@ -5595,9 +5650,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (resetToken.usedAt) {
         return res.status(400).json({ message: "This password reset link has already been used" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
-        message: "Token is valid"
+        message: "Token is valid",
+        hasPassword: user?.password ? true : false
       });
     } catch (error) {
       console.error("Error validating password reset token:", error);
@@ -5676,6 +5734,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Send notifications to user and superadmins
       const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
       await notificationService.notifyPasswordResetCompleted(user.id, user.email, userName);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
         message: "Password reset successfully"
@@ -5756,6 +5816,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     
     try {
       const invitations = await storage.getInvitationsByCompany(currentUser.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ invitations });
     } catch (error) {
       console.error("[GET INVITATIONS] Error:", error);
@@ -5785,6 +5847,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       await storage.deleteInvitation(token);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       console.error("[DELETE INVITATION] Error:", error);
@@ -5876,6 +5940,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         users = [];
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ users });
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -6009,6 +6075,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       await storage.deleteUser(userId);
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "User deleted successfully" });
     } catch (error: any) {
       console.error("[DELETE USER] Error:", error);
@@ -6061,6 +6129,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const userId = req.session!.userId!;
       const [user] = await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ status: user?.agentAvailabilityStatus || "offline" });
     } catch (error) {
       console.error("Error getting availability status:", error);
@@ -6081,6 +6151,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       
       console.log(`[Agent Availability] User ${userId} set status to: ${status}`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, status });
     } catch (error) {
       console.error("Error updating availability status:", error);
@@ -6138,6 +6210,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       console.log(`[Timezone] User ${user.email} updated timezone to: ${timezone}`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, timezone: updatedUser.timezone });
     } catch (error: any) {
       console.error("[Timezone] Error updating timezone:", error);
@@ -6203,6 +6277,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const { password, ...sanitizedUser } = updatedUser;
       console.log(`[User Update] Admin ${currentUser.email} updated user ${targetUser.email}:`, Object.keys(allowedFields));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ user: sanitizedUser });
     } catch (error: any) {
       console.error("Error updating user:", error);
@@ -6227,6 +6303,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         avatar: user.avatar,
         role: user.role,
       }));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ agents });
     } catch (error) {
       console.error("Error fetching company agents:", error);
@@ -6687,6 +6765,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }))
         .sort((a, b) => b.policies - a.policies)
         .slice(0, 10);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ carriers });
     } catch (error: any) {
       console.error("Error fetching company agents:", error);
@@ -6733,6 +6813,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             agentName
           };
         });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policies: recentPolicies });
     } catch (error: any) {
       console.error("Error fetching recent policies:", error);
@@ -6753,6 +6835,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const company = await storage.getCompany(currentUser.companyId);
         return res.json({ companies: company ? [company] : [] });
       }
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ companies: [] });
     } catch (error: any) {
@@ -6824,6 +6908,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedCompany) {
         return res.status(404).json({ message: "Company not found" });
       }
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ company: updatedCompany });
     } catch (error: any) {
@@ -6905,6 +6991,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           cleanupErrors: cleanupResult.errors,
         },
       });
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ 
         success: true, 
@@ -7251,6 +7339,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       const updatedSettings = await storage.updateCompanySettings(companyId, validatedData);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ settings: updatedSettings });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
@@ -7289,6 +7379,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ user: sanitizedUser });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
@@ -7329,6 +7421,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (Object.keys(updateData).length > 0) {
         await storage.updateUser(user.id, updateData);
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
         preferences: {
@@ -7359,6 +7453,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ user: sanitizedUser });
     } catch (error: any) {
       console.error("[SIP Update] Error:", error);
@@ -7378,6 +7474,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ user: sanitizedUser });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
@@ -7401,6 +7499,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ user: sanitizedUser });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
@@ -7435,6 +7535,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const validatedData = insertPlanSchema.parse(req.body);
       const plan = await storage.createPlan(validatedData);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ plan });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
@@ -7452,6 +7554,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedPlan) {
         return res.status(404).json({ message: "Plan not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ plan: updatedPlan });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
@@ -7478,6 +7582,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         stripeAnnualPriceId: stripeIds.stripeAnnualPriceId,
         stripeSetupFeePriceId: stripeIds.stripeSetupFeePriceId,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         plan: updatedPlan,
@@ -7514,6 +7620,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Plan not found" });
       }
       const assignments = await storage.getPlanFeatureAssignments(planId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ assignments });
     } catch (error: any) {
       console.error("Error fetching plan feature assignments:", error);
@@ -7536,6 +7644,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const assignmentsSchema = z.array(insertPlanFeatureAssignmentSchema.omit({ planId: true }));
       const validatedData = assignmentsSchema.parse(req.body);
       const assignments = await storage.setPlanFeatureAssignments(planId, validatedData);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ assignments });
     } catch (error: any) {
       console.error("Error setting plan feature assignments:", error);
@@ -7566,6 +7676,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!assignment) {
         return res.status(404).json({ message: "Feature assignment not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ assignment });
     } catch (error: any) {
       console.error("Error updating plan feature assignment:", error);
@@ -7589,6 +7701,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Feature assignment not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error deleting plan feature assignment:", error);
@@ -7687,6 +7801,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const prices = await listAllStripePrices();
       // Also get current plans from database
       const plans = await storage.getAllPlans();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         stripePrices: prices,
         currentPlans: plans.map(p => ({
@@ -7727,6 +7843,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const validatedData = insertPlanFeatureSchema.parse(req.body);
       const feature = await storage.createPlanFeature(validatedData);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ feature });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
@@ -7744,6 +7862,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedFeature) {
         return res.status(404).json({ message: "Feature not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ feature: updatedFeature });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
@@ -7772,11 +7892,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (companyId) {
         // Get invoices for specific company
         const invoices = await storage.getInvoicesByCompany(companyId);
-        res.json({ invoices });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ invoices });
       } else {
         // Get ALL invoices from ALL companies
         const invoices = await storage.getAllInvoices();
-        res.json({ invoices });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ invoices });
       }
     } else {
       // Non-superadmins can only see their company's invoices
@@ -7785,6 +7909,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Company ID required" });
       }
       const invoices = await storage.getInvoicesByCompany(companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ invoices });
     }
   });
@@ -7961,7 +8087,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             stripeSubscriptionId: stripeSubscription.id,
           },
         });
-        res.json({ subscription: updatedSubscription });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ subscription: updatedSubscription });
       } else {
         // Create new subscription
         const newSubscription = await storage.createSubscription({
@@ -7981,7 +8109,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             stripeSubscriptionId: stripeSubscription.id,
           },
         });
-        res.json({ subscription: newSubscription });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ subscription: newSubscription });
       }
     } catch (error: any) {
       console.error("Error assigning plan to company:", error);
@@ -8161,7 +8291,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // NEVER send trial notification when updating an existing subscription
         // Trial notification is ONLY sent once when subscription is created for the first time
         // NOT when changing plans, NOT when updating, ONLY on initial creation
-        res.json({ subscription: updatedSubscription });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ subscription: updatedSubscription });
       } else {
         // Create new subscription
         const newSubscription = await storage.createSubscription({
@@ -8193,7 +8325,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
           }
         }
-        res.json({ subscription: newSubscription });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ subscription: newSubscription });
       }
     } catch (error: any) {
       console.error("Error selecting plan:", error);
@@ -8226,6 +8360,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         `${req.headers.origin}/subscription/success`,
         `${req.headers.origin}/subscription/cancel`
       );
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ url: session.url });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -8253,6 +8389,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const cancelAtPeriodEnd = req.body.cancelAtPeriodEnd !== false;
       await cancelStripeSubscription(subscription.stripeSubscriptionId, cancelAtPeriodEnd);
       await storage.cancelSubscription(subscription.id, cancelAtPeriodEnd);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -8304,6 +8442,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { createCustomerPortalSession } = await import("./stripe");
       const returnUrl = `${req.headers.origin}/billing`;
       const session = await createCustomerPortalSession(customerId, returnUrl);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ url: session.url });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -8367,6 +8507,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const dateB = new Date(b.invoiceDate || b.createdAt);
         return dateB.getTime() - dateA.getTime();
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ invoices });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -8404,7 +8546,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         invoice.stripeHostedInvoiceUrl || undefined
       );
       if (emailSent) {
-        res.json({ success: true, message: "Invoice sent successfully" });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ success: true, message: "Invoice sent successfully" });
       } else {
         res.status(500).json({ message: "Failed to send invoice email" });
       }
@@ -8434,6 +8578,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // User-scoped: admins see only their own payments
       const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
       const payments = await storage.getPaymentsByCompany(companyId, userId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ payments });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -8462,6 +8608,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(eq(callLogs.companyId, user.companyId))
         .orderBy(desc(callLogs.createdAt))
         .limit(limit);
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ calls: logs });
     } catch (error: any) {
@@ -8760,7 +8908,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Special handling for demo company - skip Stripe API calls
       if (companyId === 'demo-company-001' || subscription.stripeSubscriptionId === 'sub_demo_testing') {
         console.log('[BILLING] Demo company detected, skipping Stripe API call');
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           subscription: {
             ...subscription,
             plan,
@@ -8773,7 +8923,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (subscription.stripeSubscriptionId) {
         const { getSubscriptionDetails } = await import("./stripe");
         const stripeSubscription = await getSubscriptionDetails(subscription.stripeSubscriptionId);
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           subscription: {
             ...subscription,
             plan,
@@ -8782,7 +8934,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       } else {
         // Manual subscription (no Stripe), return local data only
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           subscription: {
             ...subscription,
             plan,
@@ -8909,7 +9063,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         updateData.trialEnd = undefined;
         updateData.trialStart = undefined;
         await storage.updateSubscription(subscription.id, updateData);
-        res.json({ message: "Trial period ended successfully", subscription: updatedSubscription });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ message: "Trial period ended successfully", subscription: updatedSubscription });
       } catch (paymentError: any) {
         // Payment test failed - return error without modifying subscription
         console.error('[SKIP-TRIAL] Payment test failed:', paymentError.message);
@@ -8996,6 +9152,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const message = immediate 
         ? "Plan upgraded successfully with proration"
         : "Plan change scheduled for end of billing period";
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message, subscription: updatedStripeSubscription });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -9033,6 +9191,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await storage.updateSubscription(subscription.id, {
         cancelAtPeriodEnd: cancelAtPeriodEnd !== false,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: cancelAtPeriodEnd !== false 
           ? "Subscription will be cancelled at the end of the billing period" 
@@ -9084,6 +9244,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await storage.updateSubscription(subscription.id, {
         cancelAtPeriodEnd: false,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: "Subscription reactivated successfully",
         subscription: updatedSubscription 
@@ -9120,6 +9282,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const { applyCoupon } = await import("./stripe");
       const stripeSubscription = await applyCoupon(subscription.stripeSubscriptionId, couponCode);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Coupon applied successfully", subscription: stripeSubscription });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -9188,6 +9352,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Broadcast notification update via WebSocket
       broadcastNotificationUpdate();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: `${percentOff}% discount applied for ${months} month${months > 1 ? 's' : ''}`,
         discount: {
@@ -9255,10 +9421,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (activeDiscount) {
             await storage.updateDiscountStatus(activeDiscount.id, 'expired');
           }
-          res.json({ discount: null });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ discount: null });
         }
       } else {
-        res.json({ discount: null });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ discount: null });
       }
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -9280,6 +9450,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const discounts = await storage.getDiscountHistoryForCompany(companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ discounts });
     } catch (error: any) {
       console.error('[BILLING] Error fetching discount history:', error);
@@ -9310,6 +9482,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (activeDiscount) {
         await storage.updateDiscountStatus(activeDiscount.id, 'expired');
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Discount removed successfully" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -9353,6 +9527,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
       console.log('[SYNC-PHONES] Sync completed:', results);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: "Phone number sync completed", 
         results,
@@ -9427,6 +9603,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         expYear: pm.expYear || 0,
         isDefault: pm.isDefault
       }));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ paymentMethods });
     } catch (error: any) {
       console.error('[BILLING] Error fetching payment methods:', error);
@@ -9468,6 +9646,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           userEmail: currentUser.email
         }
       });
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ 
         clientSecret: setupIntent.client_secret,
@@ -9553,6 +9733,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       console.log(`[BILLING] Added payment method ${paymentMethodId} for user ${currentUser.id}`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Payment method added successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error attaching payment method:', error);
@@ -9600,6 +9782,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           invoice_settings: { default_payment_method: pmRecord.stripePaymentMethodId }
         });
       }
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ success: true, message: "Default payment method updated successfully" });
     } catch (error: any) {
@@ -9658,6 +9842,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await storage.deleteUserPaymentMethod(paymentMethodId);
       
       console.log(`[BILLING] Deleted payment method ${paymentMethodId} for user ${currentUser.id}`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Payment method deleted successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error deleting payment method:', error);
@@ -9685,6 +9871,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // User-scoped: admins see only their own billing address, superadmins can see all
       const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
       const billingAddress = await storage.getBillingAddress(companyId, userId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ billingAddress });
     } catch (error: any) {
       console.error('[BILLING] Error fetching billing address:', error);
@@ -9755,6 +9943,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         console.log('[BILLING] Updated Stripe customer billing information with phone:', subscription.stripeCustomerId);
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ billingAddress, message: "Billing address saved successfully" });
     } catch (error: any) {
       console.error('[BILLING] Error saving billing address:', error);
@@ -9801,6 +9991,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { broadcastNotificationUpdate } = await import("./websocket");
       broadcastNotificationUpdate();
       console.log('[FINANCIAL SUPPORT] Ticket created and superadmins notified:', ticket.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         ticket,
         message: "Your request has been submitted. Our team will review it and respond to you within 48 hours." 
@@ -9823,6 +10015,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const tickets = await storage.getAllFinancialSupportTickets();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ tickets });
     } catch (error) {
       console.error('[TICKETS] Error fetching tickets:', error);
@@ -9841,6 +10035,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ ticket });
     } catch (error) {
       console.error('[TICKETS] Error fetching ticket:', error);
@@ -9911,6 +10107,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // No notifications for pending, under_review, or closed statuses
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ ticket: fullTicket });
     } catch (error) {
       console.error('[TICKETS] Error updating ticket:', error);
@@ -9929,6 +10127,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Ticket not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       console.error('[TICKETS] Error deleting ticket:', error);
@@ -10154,6 +10354,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         default:
           console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ received: true });
     } catch (error: any) {
       console.error("Webhook error:", error.message);
@@ -10173,7 +10375,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { emailService } = await import("./email");
       const isConnected = await emailService.verifyConnection();
       if (isConnected) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           message: "Email service connected successfully" 
         });
@@ -10208,7 +10412,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         "Este es un email de prueba del sistema de notificaciones de Curbe Admin. Si estás recibiendo esto, significa que el sistema de emails está funcionando correctamente."
       );
       if (success) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           message: `Test email sent successfully to ${to}` 
         });
@@ -10231,6 +10437,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       const notifications = await storage.getNotificationsByUser(user.id, limit);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ notifications });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch notifications" });
@@ -10248,7 +10456,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const success = await storage.markNotificationAsRead(req.params.id);
       if (success) {
-        res.json({ success: true });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ success: true });
       } else {
         res.status(404).json({ message: "Notification not found" });
       }
@@ -10261,6 +10471,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const user = req.user!;
     try {
       const success = await storage.markAllNotificationsAsRead(user.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success });
     } catch (error) {
       res.status(500).json({ message: "Failed to mark all notifications as read" });
@@ -10278,7 +10490,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const success = await storage.deleteNotification(req.params.id);
       if (success) {
-        res.json({ success: true });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ success: true });
       } else {
         res.status(500).json({ message: "Failed to delete notification" });
       }
@@ -10322,6 +10536,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ notification });
     } catch (error) {
       res.status(500).json({ message: "Failed to create notification" });
@@ -10334,6 +10550,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Notification not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to update notification" });
@@ -10344,6 +10562,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const user = req.user!; // User is guaranteed by middleware
     try {
       await storage.markAllNotificationsAsRead(user.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to mark notifications as read" });
@@ -10373,6 +10593,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: result.broadcast.id,
         metadata: { details: `Broadcast notification sent to ${result.notifications.length} users: ${validatedData.title}` },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         count: result.notifications.length,
@@ -10398,6 +10620,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const broadcasts = await storage.getBroadcastHistory(100);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ broadcasts });
     } catch (error) {
       console.error('Get broadcast history error:', error);
@@ -10431,6 +10655,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: result.broadcast.id,
         metadata: { details: `Resent broadcast notification to ${result.notifications.length} users: ${broadcast.title}` },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         count: result.notifications.length,
@@ -10470,6 +10696,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error('Failed to log delete operation:', logError);
         // Continue anyway - don't fail the delete because of logging
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         message: "Broadcast deleted successfully"
@@ -10506,6 +10734,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const result = await storage.createNotification(notification);
       // Broadcast to update real-time
       broadcastNotificationUpdate();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, notification: result });
     } catch (error) {
       console.error('Create missed call notification error:', error);
@@ -10521,6 +10751,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const templates = await storage.getEmailTemplates();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ templates });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch email templates" });
@@ -10537,6 +10769,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!template) {
         return res.status(404).json({ message: "Template not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ template });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch email template" });
@@ -10568,6 +10802,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!template) {
         return res.status(404).json({ message: "Template not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ template });
     } catch (error) {
       res.status(400).json({ message: "Invalid template data" });
@@ -10584,6 +10820,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Template not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete template" });
@@ -10598,6 +10836,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const allFeatures = await storage.getAllFeatures();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ features: allFeatures });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch features" });
@@ -10645,6 +10885,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Feature not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete feature" });
@@ -10660,6 +10902,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const companyFeatures = await storage.getCompanyFeatures(req.params.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ features: companyFeatures });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch company features" });
@@ -10703,6 +10947,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Feature not found for this company" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to remove feature from company" });
@@ -10764,6 +11010,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         return log;
       }));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ logs: enrichedLogs });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch audit logs" });
@@ -10788,7 +11036,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         templateSlug: "resend",
       });
       if (success) {
-        res.json({ success: true, message: "Email resent successfully" });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ success: true, message: "Email resent successfully" });
       } else {
         res.status(500).json({ message: "Failed to resend email" });
       }
@@ -10806,6 +11056,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const campaigns = await storage.getAllCampaigns();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ campaigns });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch campaigns" });
@@ -10895,6 +11147,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Campaign not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete campaign" });
@@ -10919,6 +11173,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[CAMPAIGN SEND] Started sending campaign ${req.params.id} in background`);
       // Get updated campaign with "sending" status
       const updatedCampaign = await storage.getCampaign(req.params.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         campaign: updatedCampaign, 
         message: "Campaign is being sent in the background"
@@ -10937,6 +11193,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const smsCampaigns = await storage.getAllSmsCampaigns();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ smsCampaigns });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SMS campaigns" });
@@ -10961,6 +11219,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         targetListId: targetListId || null,
         status: "draft",
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ smsCampaign });
     } catch (error) {
       res.status(500).json({ message: "Failed to create SMS campaign" });
@@ -10978,6 +11238,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "SMS campaign not found" });
       }
       const messages = await storage.getCampaignSmsMessages(req.params.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ smsCampaign, messages });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SMS campaign" });
@@ -11027,6 +11289,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "SMS campaign not found" });
       }
       await storage.deleteSmsCampaign(req.params.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete SMS campaign" });
@@ -11106,6 +11370,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       })();
       const updatedCampaign = await storage.getSmsCampaign(req.params.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         smsCampaign: updatedCampaign, 
         message: "SMS campaign is being sent in the background"
@@ -11124,6 +11390,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const contacts = await storage.getAllUsers();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ contacts, telnyxPhoneNumbers });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contacts" });
@@ -11172,6 +11440,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return contact;
       });
       console.log(`[CONTACTS UNIFICADOS] Contactos sanitizados y retornando: ${sanitizedContacts.length}`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ contacts: sanitizedContacts });
     } catch (error) {
       console.error("Error fetching unified contacts:", error);
@@ -11356,6 +11626,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Contact not found" });
       }
       await storage.deleteManualContact(req.params.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Contact deleted successfully" });
     } catch (error) {
       console.error("[CONTACTS] Error deleting contact:", error);
@@ -11543,6 +11815,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await storage.createUser(userData);
         imported++;
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ imported, skipped, total: contacts.length, limitErrors: limitErrors.length > 0 ? limitErrors : undefined });
     } catch (error) {
       console.error("[IMPORT CONTACTS] Error:", error);
@@ -11675,6 +11949,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!success) {
         return res.status(404).json({ message: "Failed to remove entry from blacklist" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       console.error("[BLACKLIST] Error removing from blacklist:", error);
@@ -11738,6 +12014,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           new Date()
         );
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Successfully unsubscribed from emails" });
     } catch (error) {
       res.status(500).json({ message: "Failed to unsubscribe" });
@@ -11764,6 +12042,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         message: subscribed ? "User subscribed to SMS" : "User unsubscribed from SMS",
@@ -11919,6 +12199,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (status && typeof status === 'string') filters.status = status;
       if (search && typeof search === 'string') filters.search = search;
       const emails = await storage.getCampaignEmails(id, filters);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ emails });
     } catch (error) {
       res.status(500).json({ message: "Failed to get campaign emails" });
@@ -11947,6 +12229,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         limit: 1,
         includeBlacklistOnly: true,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         lists,
         unassignedCount: unassignedCount.total,
@@ -12025,6 +12309,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Contact list not found" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Contact list deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete contact list" });
@@ -12038,6 +12324,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const members = await storage.getListMembers(req.params.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ members });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch list members" });
@@ -12110,6 +12398,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Member not found in list" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Member removed successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to remove member" });
@@ -12137,6 +12427,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           movedCount++;
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: `${movedCount} contacts moved successfully`,
         movedCount,
@@ -12156,6 +12448,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const messages = await storage.getAllIncomingSmsMessages();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ incomingSmsMessages: messages });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch incoming SMS messages" });
@@ -12169,6 +12463,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       await storage.markSmsAsRead(req.params.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Message marked as read" });
     } catch (error) {
       res.status(500).json({ message: "Failed to mark message as read" });
@@ -12192,6 +12488,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.removeHeader('ETag');
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ conversations });
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -12212,6 +12510,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversations = await storage.getChatConversations(companyId);
       // Count conversations (unique users) with unread messages
       const unreadCount = conversations.filter(c => c.unreadCount > 0).length;
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ unreadCount });
     } catch (error) {
       console.error("Error fetching unread count:", error);
@@ -12231,6 +12531,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await Promise.all(
         conversations.map(conv => storage.markConversationAsRead(conv.phoneNumber))
       );
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error) {
       console.error("Error marking all as read:", error);
@@ -12253,6 +12555,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.removeHeader('ETag');
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ messages });
     } catch (error) {
       console.error("Error fetching conversation messages:", error);
@@ -12298,7 +12602,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           );
           // Broadcast update to WebSocket clients for real-time updates
           broadcastConversationUpdate();
-          res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
             message: "SMS sent successfully",
             messageId: outgoingMessage.id,
             twilioSid: twilioResult.sid
@@ -12336,6 +12642,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Superadmins can optionally filter by companyId via query param
       const companyId = req.query.companyId as string | undefined;
       await storage.markConversationAsRead(phoneNumber, companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Conversation marked as read" });
     } catch (error) {
       console.error("Error marking conversation as read:", error);
@@ -12429,6 +12737,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { id } = req.params;
       // For deletes, companyId can be null for superadmins (they can delete any note)
       await storage.deleteChatNote(id, currentUser.companyId || undefined);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Note deleted successfully" });
     } catch (error) {
       console.error("Error deleting chat note:", error);
@@ -12457,6 +12767,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const wsService = req.app.get('wsService');
         wsService.broadcastConversationUpdate();
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Conversation deleted successfully" });
     } catch (error) {
       console.error("Error deleting conversation:", error);
@@ -12781,6 +13093,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ quote });
     } catch (error: any) {
       console.error("Error fetching quote:", error);
@@ -12814,6 +13128,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ members: membersWithDetails });
     } catch (error: any) {
       console.error("Error fetching members details:", error);
@@ -12849,6 +13165,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ totalIncome });
     } catch (error: any) {
       console.error("Error calculating household income:", error);
@@ -12984,6 +13302,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       // Return quote with plain text SSN (as stored in database)
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ quote: updatedQuote });
     } catch (error: any) {
       console.error("Error updating quote:", error);
@@ -13027,6 +13347,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Quote deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting quote:", error);
@@ -13071,6 +13393,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: newBlockStatus,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         quote: updatedQuote, 
         message: newBlockStatus ? "Quote blocked successfully" : "Quote unblocked successfully" 
@@ -13260,6 +13584,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       console.log(`[DUPLICATE QUOTE] Successfully duplicated quote ${id} to ${newQuoteId}`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         quote: newQuote,
         message: `Quote duplicated successfully. New Quote ID: ${newQuoteId}`,
@@ -13309,6 +13635,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ quotes });
     } catch (error: any) {
       console.error("Error fetching quotes by applicant:", error);
@@ -13329,6 +13657,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "You don't have permission to view this quote" });
       }
       const plans = await storage.listQuotePlans(id, quote.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ plans });
     } catch (error: any) {
       console.error("Error listing quote plans:", error);
@@ -13376,6 +13706,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           source: newPlan.source,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ plan: newPlan });
     } catch (error: any) {
       console.error("Error adding quote plan:", error);
@@ -13412,6 +13744,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quoteId: id,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error removing quote plan:", error);
@@ -13446,6 +13780,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "set_primary",
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error setting primary plan:", error);
@@ -13489,6 +13825,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           value: isArchived,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ quote: updatedQuote });
     } catch (error: any) {
       console.error("Error archiving quote:", error);
@@ -13523,6 +13861,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ members });
     } catch (error: any) {
       console.error("Error getting quote members:", error);
@@ -13564,6 +13904,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ member });
     } catch (error: any) {
       console.error("Error getting quote member:", error);
@@ -13654,6 +13996,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ member: updatedMember });
     } catch (error: any) {
       console.error("Error updating quote member:", error);
@@ -13703,6 +14047,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Member deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting quote member:", error);
@@ -13890,6 +14236,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           role: member.role,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ member: updatedMember });
     } catch (error: any) {
       console.error("Error updating member:", error);
@@ -13936,6 +14284,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           memberName: `${member.firstName} ${member.lastName}`,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Member deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member:", error);
@@ -13967,6 +14317,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Income information not found" });
       }
       // Income is stored as plain text (not encrypted)
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ income });
     } catch (error: any) {
       console.error("Error getting member income:", error);
@@ -14030,6 +14382,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ income });
     } catch (error: any) {
       console.error("Error upserting member income:", error);
@@ -14076,6 +14430,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Income information deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member income:", error);
@@ -14118,6 +14474,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["visaNumber", "greenCardNumber", "i94Number"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ immigration });
     } catch (error: any) {
       console.error("Error getting member immigration:", error);
@@ -14162,6 +14520,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ immigration });
     } catch (error: any) {
       console.error("Error upserting member immigration:", error);
@@ -14208,6 +14568,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Immigration information deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member immigration:", error);
@@ -14235,6 +14597,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const documents = await storage.getQuoteMemberDocuments(memberId, quote.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ documents });
     } catch (error: any) {
       console.error("Error getting member documents:", error);
@@ -14368,6 +14732,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ document });
     } catch (error: any) {
       console.error("Error getting document:", error);
@@ -14474,6 +14840,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting document:", error);
@@ -14508,6 +14876,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ paymentMethods });
     } catch (error: any) {
       console.error("Error getting payment methods:", error);
@@ -14549,6 +14919,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ paymentMethod });
     } catch (error: any) {
       console.error("Error getting payment method:", error);
@@ -14642,6 +15014,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ paymentMethod: updated });
     } catch (error: any) {
       console.error("Error updating payment method:", error);
@@ -14693,6 +15067,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Payment method deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting payment method:", error);
@@ -14735,6 +15111,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Payment method set as default successfully" });
     } catch (error: any) {
       console.error("Error setting default payment method:", error);
@@ -14804,6 +15182,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const notes = await storage.getQuoteNotes(quoteId, quote.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ notes });
     } catch (error: any) {
       console.error("Error fetching quote notes:", error);
@@ -14871,6 +15251,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updates: Object.keys(updateData),
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Quote note updated successfully" });
     } catch (error: any) {
       console.error("Error updating quote note:", error);
@@ -14920,6 +15302,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Quote note deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting quote note:", error);
@@ -14999,6 +15383,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           uploadedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         url: fileUrl,
         filename: req.file.filename,
@@ -15066,6 +15452,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         category: category as string | undefined,
         search: q as string | undefined
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ documents });
     } catch (error: any) {
       console.error("Error listing quote documents:", error);
@@ -15257,6 +15645,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting document:", error);
@@ -15285,6 +15675,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (priority && typeof priority === 'string') filters.priority = priority;
       if (userId && typeof userId === 'string') filters.userId = userId;
       const reminders = await storage.listQuoteReminders(quoteId, quote.companyId, filters);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ reminders });
     } catch (error: any) {
       console.error("Error fetching reminders:", error);
@@ -15442,6 +15834,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quoteId,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Reminder deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting reminder:", error);
@@ -16017,6 +16411,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ reminders: enrichedReminders });
     } catch (error: any) {
       console.error("Error fetching standalone reminders:", error);
@@ -16162,6 +16558,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           planName: plan.name || 'unknown',
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ quote: updatedQuote });
     } catch (error: any) {
       console.error("Error selecting plan:", error);
@@ -16201,6 +16599,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           selectedPlan: quote.selectedPlan,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policy, policyId: policy.id });
     } catch (error: any) {
       console.error("Error submitting quote as policy:", error);
@@ -16261,6 +16661,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (validatedData.status || validatedData.documentsStatus || validatedData.paymentStatus) {
         broadcastNotificationUpdate();
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ quote: updatedQuote });
     } catch (error: any) {
       console.error("Error updating quote statuses:", error);
@@ -16298,6 +16700,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           token: consent.token,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ consent });
     } catch (error: any) {
       console.error("Error generating consent document:", error);
@@ -16471,6 +16875,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "sent",
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ consent: updatedConsent, url: channel === 'link' ? consentUrl : undefined });
     } catch (error: any) {
       console.error("Error sending consent:", error);
@@ -16492,6 +16898,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const consents = await storage.listQuoteConsents(quoteId, quote.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ consents });
     } catch (error: any) {
       console.error("Error listing consents:", error);
@@ -16523,6 +16931,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: consentId,
         companyId: currentUser.companyId || undefined,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Consent document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting consent:", error);
@@ -16872,6 +17282,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId || undefined,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Folder deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting quote folder:", error);
@@ -16911,6 +17323,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           folderId: folderId || null,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: `${count} ${count === 1 ? 'quote' : 'quotes'} moved successfully`,
         count 
@@ -17427,6 +17841,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policies });
     } catch (error: any) {
       console.error("Error fetching policies by applicant:", error);
@@ -17556,6 +17972,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policy });
     } catch (error: any) {
       console.error("Error fetching policy:", error);
@@ -17589,6 +18007,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ members: membersWithDetails });
     } catch (error: any) {
       console.error("Error fetching members details:", error);
@@ -17624,6 +18044,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ totalIncome });
     } catch (error: any) {
       console.error("Error calculating household income:", error);
@@ -17765,6 +18187,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Invalidate dashboard cache
       const { dashboardCache } = await import("./dashboard-cache");
       if (currentUser.companyId) { dashboardCache.invalidateCompany(currentUser.companyId); }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error updating policy:", error);
@@ -17957,6 +18381,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       console.log(`[DUPLICATE POLICY] Successfully duplicated policy ${id} to ${newPolicyId}`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         policy: newPolicy,
         message: `Policy duplicated successfully. New Policy ID: ${newPolicyId}`,
@@ -18006,6 +18432,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: status,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error updating policy status:", error);
@@ -18047,6 +18475,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: isArchived,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policy: updatedPolicy, message: isArchived ? "Policy archived successfully" : "Policy unarchived successfully" });
     } catch (error: any) {
       console.error("Error updating policy archive status:", error);
@@ -18091,6 +18521,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: newBlockStatus,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         policy: updatedPolicy, 
         message: newBlockStatus ? "Policy blocked successfully" : "Policy unblocked successfully" 
@@ -18133,6 +18565,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Invalidate dashboard cache
       const { dashboardCache } = await import("./dashboard-cache");
       if (currentUser.companyId) { dashboardCache.invalidateCompany(currentUser.companyId); }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Policy deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy:", error);
@@ -18571,6 +19005,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           planName: selectedPlan.name,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error updating policy plan:", error);
@@ -18594,6 +19030,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "You don't have permission to view this policy" });
       }
       const plans = await storage.listPolicyPlans(id, policy.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ plans });
     } catch (error: any) {
       console.error("Error listing policy plans:", error);
@@ -18641,6 +19079,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           source: newPlan.source,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ plan: newPlan });
     } catch (error: any) {
       console.error("Error adding policy plan:", error);
@@ -18759,6 +19199,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Don't fail the policy update if wallet sync fails
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ plan: updatedPlan });
     } catch (error: any) {
       console.error("Error updating policy plan:", error);
@@ -18795,6 +19237,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           policyId: id,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error removing policy plan:", error);
@@ -18829,6 +19273,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "set_primary",
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error setting primary plan:", error);
@@ -18866,6 +19312,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ members });
     } catch (error: any) {
       console.error("Error getting policy members:", error);
@@ -18907,6 +19355,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ member });
     } catch (error: any) {
       console.error("Error getting policy member:", error);
@@ -18953,6 +19403,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ member: updatedMember });
     } catch (error: any) {
       console.error("Error updating policy member:", error);
@@ -19002,6 +19454,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Member deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy member:", error);
@@ -19163,6 +19617,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           role: member.role,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ member: updatedMember });
     } catch (error: any) {
       console.error("Error updating member:", error);
@@ -19209,6 +19665,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           memberName: `${member.firstName} ${member.lastName}`,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Member deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member:", error);
@@ -19240,6 +19698,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Income information not found" });
       }
       // Income is stored as plain text (not encrypted)
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ income });
     } catch (error: any) {
       console.error("Error getting member income:", error);
@@ -19304,6 +19764,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ income });
     } catch (error: any) {
       console.error("Error upserting member income:", error);
@@ -19350,6 +19812,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Income information deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member income:", error);
@@ -19392,6 +19856,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["visaNumber", "greenCardNumber", "i94Number"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ immigration });
     } catch (error: any) {
       console.error("Error getting member immigration:", error);
@@ -19436,6 +19902,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ immigration });
     } catch (error: any) {
       console.error("Error upserting member immigration:", error);
@@ -19482,6 +19950,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Immigration information deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member immigration:", error);
@@ -19509,6 +19979,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const documents = await storage.getPolicyMemberDocuments(memberId, policy.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ documents });
     } catch (error: any) {
       console.error("Error getting member documents:", error);
@@ -19642,6 +20114,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ document });
     } catch (error: any) {
       console.error("Error getting document:", error);
@@ -19748,6 +20222,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting document:", error);
@@ -19786,6 +20262,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ paymentMethods });
     } catch (error: any) {
       console.error("Error getting payment methods:", error);
@@ -19829,6 +20307,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ paymentMethod });
     } catch (error: any) {
       console.error("Error getting payment method:", error);
@@ -19925,6 +20405,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ paymentMethod: updated });
     } catch (error: any) {
       console.error("Error updating payment method:", error);
@@ -19979,6 +20461,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Payment method deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting payment method:", error);
@@ -20021,6 +20505,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Payment method set as default successfully" });
     } catch (error: any) {
       console.error("Error setting default payment method:", error);
@@ -20094,6 +20580,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get notes for ALL policies of this client
       const notes = await storage.getPolicyNotes(canonicalPolicyIds, policy.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ notes });
     } catch (error: any) {
       console.error("Error fetching policy notes:", error);
@@ -20165,6 +20653,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updates: Object.keys(updateData),
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Policy note updated successfully" });
     } catch (error: any) {
       console.error("Error updating policy note:", error);
@@ -20222,6 +20712,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Policy note deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy note:", error);
@@ -20301,6 +20793,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           uploadedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         url: fileUrl,
         filename: req.file.filename,
@@ -20336,6 +20830,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         category: category as string | undefined,
         search: q as string | undefined
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ documents });
     } catch (error: any) {
       console.error("Error listing policy documents:", error);
@@ -20529,6 +21025,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting document:", error);
@@ -20559,6 +21057,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (userId && typeof userId === 'string') filters.userId = userId;
       // Get reminders ONLY for this specific policy
       const reminders = await storage.listPolicyReminders(policyId, policy.companyId, filters);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ reminders });
     } catch (error: any) {
       console.error("Error fetching reminders:", error);
@@ -20716,6 +21216,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           policyId,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Reminder deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting reminder:", error);
@@ -20878,6 +21380,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           planName: plan.name || 'unknown',
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error selecting plan:", error);
@@ -20997,6 +21501,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           code: "PLAN_NOT_FOUND"
         });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         plan: foundPlan,
         household_aptc: householdAptc,
@@ -21202,6 +21708,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (validatedData.status || validatedData.documentsStatus || validatedData.paymentStatus) {
         broadcastNotificationUpdate();
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error updating policy statuses:", error);
@@ -21239,6 +21747,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           token: consent.token,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ consent });
     } catch (error: any) {
       console.error("Error generating consent document:", error);
@@ -21412,6 +21922,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "sent",
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ consent: updatedConsent, url: channel === 'link' ? consentUrl : undefined });
     } catch (error: any) {
       console.error("Error sending consent:", error);
@@ -21437,6 +21949,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get consents for ALL policies of this client
       const consents = await storage.listPolicyConsents(canonicalPolicyIds, policy.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ consents });
     } catch (error: any) {
       console.error("Error listing consents:", error);
@@ -21468,6 +21982,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: consentId,
         companyId: currentUser.companyId || undefined,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Consent document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy consent:", error);
@@ -21588,6 +22104,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId || undefined,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Folder deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy folder:", error);
@@ -21627,6 +22145,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           folderId: folderId || null,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: `${count} ${count === 1 ? 'policy' : 'policies'} moved successfully`,
         count 
@@ -21645,6 +22165,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const currentUser = req.user!;
     try {
       const landingPages = await storage.getLandingPagesByUser(currentUser.id, currentUser.companyId!);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ landingPages });
     } catch (error: any) {
       console.error("Error fetching landing pages:", error);
@@ -21657,6 +22179,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { slug } = req.params;
     try {
       const isAvailable = await storage.checkSlugAvailability(slug, currentUser.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ available: isAvailable });
     } catch (error: any) {
       console.error("Error checking slug availability:", error);
@@ -21678,6 +22202,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Get blocks for this landing page
       const blocks = await storage.getBlocksByLandingPage(id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ landingPage, blocks });
     } catch (error: any) {
       console.error("Error fetching landing page:", error);
@@ -21711,6 +22237,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const blocks = allBlocks.filter(block => block.isVisible);
       // Get company data (including logo) for public display
       const company = await storage.getCompany(landingPage.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         landingPage, 
         blocks,
@@ -21792,6 +22320,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ landingPage });
     } catch (error: any) {
       console.error("Error updating landing page:", error);
@@ -21829,6 +22359,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Landing page deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting landing page:", error);
@@ -21850,6 +22382,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const blocks = await storage.getBlocksByLandingPage(id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ blocks });
     } catch (error: any) {
       console.error("Error fetching blocks:", error);
@@ -21928,6 +22462,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: blockId,
         companyId: currentUser.companyId,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ block });
     } catch (error: any) {
       console.error("Error updating block:", error);
@@ -21969,6 +22505,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: blockId,
         companyId: currentUser.companyId,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Block deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting block:", error);
@@ -22003,6 +22541,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: landingPageId,
         companyId: currentUser.companyId,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Blocks reordered successfully" });
     } catch (error: any) {
       console.error("Error reordering blocks:", error);
@@ -22048,6 +22588,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           blockCount: blocks.length,
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: "Blocks synced successfully", 
         blocks: syncedBlocks 
@@ -22079,6 +22621,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           referer: req.get('referer'),
         },
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "View tracked successfully" });
     } catch (error: any) {
       console.error("Error tracking view:", error);
@@ -22106,6 +22650,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Click tracked successfully" });
     } catch (error: any) {
       console.error("Error tracking click:", error);
@@ -22132,6 +22678,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         eventType: eventType as string | undefined,
         limit: limit ? parseInt(limit as string) : undefined,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ analytics });
     } catch (error: any) {
       console.error("Error fetching analytics:", error);
@@ -22202,6 +22750,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ leads });
     } catch (error: any) {
       console.error("Error fetching leads:", error);
@@ -22266,6 +22816,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         offset: offset ? parseInt(offset as string) : undefined,
         status: status as string | undefined,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ appointments });
     } catch (error: any) {
       console.error("Error fetching appointments:", error);
@@ -22295,6 +22847,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: "Appointment status updated successfully",
         appointment 
@@ -22325,6 +22879,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Get available slots
       const slots = await storage.getAvailableSlots(blockId, date);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         date,
         availableSlots: slots 
@@ -22469,6 +23025,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         offset: offset ? parseInt(offset as string) : undefined,
         search: search as string | undefined,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ leads });
     } catch (error: any) {
       console.error("Error fetching landing leads:", error);
@@ -22486,6 +23044,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ appointments });
     } catch (error: any) {
       console.error("Error fetching landing appointments:", error);
@@ -22522,6 +23082,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedAppointment) {
         return res.status(500).json({ message: "Failed to update appointment" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ appointment: updatedAppointment });
     } catch (error: any) {
       console.error("Error updating landing appointment:", error);
@@ -22559,6 +23121,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Delete the appointment
       await storage.deleteLandingAppointment(id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Appointment deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting landing appointment:", error);
@@ -22640,6 +23204,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           dateOverrides: [],
         });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ availability });
     } catch (error: any) {
       console.error("Error fetching appointment availability:", error);
@@ -22665,6 +23231,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           userId: currentUser.id,
         });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: "Configuración de disponibilidad actualizada exitosamente",
         availability 
@@ -23205,6 +23773,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: "inactive",
         billingStatus: "cancelled",
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: "Phone number deactivated successfully" });
     } catch (error: any) {
       console.error("Error deactivating phone number:", error);
@@ -23676,6 +24246,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[BulkVS Webhook] Error:", error);
@@ -23797,6 +24369,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[BulkVS Webhook] Error:", error);
@@ -24011,6 +24585,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Broadcast thread deletion via WebSocket
       broadcastBulkvsThreadUpdate(user.id, null);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Thread deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting thread:", error);
@@ -24037,6 +24613,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get updated thread and broadcast
       const updatedThread = await storage.getBulkvsThread(id);
       broadcastBulkvsThreadUpdate(user.id, updatedThread);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error marking thread as read:", error);
@@ -24146,6 +24724,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ tasks: enrichedTasks });
     } catch (error: any) {
       console.error("Error listing tasks:", error);
@@ -24324,6 +24904,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         details: existingTask ? `Deleted task: ${existingTask.title}` : "Deleted task",
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Task deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting task:", error);
@@ -24538,6 +25120,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const allImages = await storage.getAllBirthdayImages();
       const activeImages = allImages.filter(img => img.isActive);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ images: activeImages });
     } catch (error: any) {
       console.error("Error fetching active birthday images:", error);
@@ -24629,6 +25213,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - Superadmin only" });
       }
       const images = await storage.getAllBirthdayImages();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ images });
     } catch (error: any) {
       console.error("Error fetching birthday images:", error);
@@ -24721,6 +25307,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         details: image ? `Deleted birthday image: ${image.name}` : "Deleted birthday image",
       });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Birthday image deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting birthday image:", error);
@@ -24793,6 +25381,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const history = user.role === "superadmin" 
         ? await storage.getBirthdayGreetingHistory(user.companyId)
         : await storage.getBirthdayGreetingHistory(user.companyId, user.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ history });
     } catch (error: any) {
       console.error("Error fetching birthday greeting history:", error);
@@ -25037,6 +25627,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
       const conversations = await storage.getImessageConversations(user.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ conversations });
     } catch (error: any) {
       console.error("Error fetching iMessage conversations:", error);
@@ -25063,6 +25655,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         parseInt(limit as string),
         parseInt(offset as string)
       );
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ messages });
     } catch (error: any) {
       console.error("Error fetching iMessage messages:", error);
@@ -25163,6 +25757,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           lastMessageFromMe: true,
         });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message, conversationId: conversation.id });
     } catch (error: any) {
       console.error("Error sending iMessage:", error);
@@ -25748,6 +26344,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await db.update(whatsappInstances)
         .set({ status: "disconnected", qrCode: null, updatedAt: new Date() })
         .where(eq(whatsappInstances.id, instance.id));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[WhatsApp] Error disconnecting:", error);
@@ -25832,6 +26430,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           )
         );
       const total = Number(result[0]?.total || 0);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ total });
     } catch (error: any) {
       console.error("[WhatsApp] Error getting unread count:", error);
@@ -25889,6 +26489,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(whatsappConversations.instanceId, instance.id),
           eq(whatsappConversations.remoteJid, remoteJid)
         ));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ profilePicUrl, contactId });
     } catch (error: any) {
       console.error("[WhatsApp] Error fetching profile picture:", error);
@@ -25949,6 +26551,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(whatsappConversations.instanceId, instance.id),
           eq(whatsappConversations.remoteJid, remoteJid)
         ));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         contactId, 
         pushName: profile.pushName,
@@ -26074,6 +26678,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Delete conversation
       await db.delete(whatsappConversations).where(eq(whatsappConversations.id, id));
       console.log(`[WhatsApp] Deleted conversation ${id} and its messages`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Conversation deleted" });
     } catch (error: any) {
       console.error("[WhatsApp] Error deleting conversation:", error);
@@ -26145,6 +26751,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }).returning();
       broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending message:", error);
@@ -26233,6 +26841,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }).returning();
       broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending media:", error);
@@ -26308,6 +26918,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending audio:", error);
@@ -26368,6 +26980,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       await evolutionApi.sendTyping(instance.instanceName, remoteJid);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to send typing" });
@@ -26395,6 +27009,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Use global presence endpoint - sets online status for the entire instance
       await evolutionApi.setGlobalPresence(instance.instanceName, presence);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to set presence" });
@@ -26444,6 +27060,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await db.update(whatsappMessages)
         .set({ mediaUrl })
         .where(eq(whatsappMessages.id, messageId));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ mediaUrl });
     } catch (error: any) {
       console.error("[WhatsApp] Error downloading media:", error);
@@ -27002,6 +27620,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updated++;
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, synced, updated, total: chats.length });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing chats:", error);
@@ -27077,6 +27697,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newCount++;
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ synced: newCount });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing messages:", error);
@@ -27161,6 +27783,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error(`[WhatsApp] Error syncing messages for ${conversation.remoteJid}:`, chatError);
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ synced: totalSynced, chatUpdates });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing all messages:", error);
@@ -27230,6 +27854,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(whatsappConversations.remoteJid, remoteJid)
         ));
       broadcastWhatsAppChatUpdate(user.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ marked: unreadMessages.length });
     } catch (error: any) {
       console.error("[WhatsApp] Mark read error:", error);
@@ -27280,6 +27906,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         });
       }
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ success: true });
     } catch (error: any) {
@@ -32492,6 +33120,8 @@ CRITICAL REMINDERS:
         .from(voicemails)
         .where(and(...unreadConditions));
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ voicemails: userVoicemails, unreadCount: unreadCount?.count || 0 });
     } catch (error: any) {
       console.error("[Voicemails] List error:", error);
@@ -32520,6 +33150,8 @@ CRITICAL REMINDERS:
           eq(voicemails.companyId, user.companyId)
         ));
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[Voicemails] Mark read error:", error);
@@ -32546,6 +33178,8 @@ CRITICAL REMINDERS:
           eq(voicemails.id, id),
           eq(voicemails.companyId, user.companyId)
         ));
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ success: true });
     } catch (error: any) {
@@ -32700,6 +33334,8 @@ CRITICAL REMINDERS:
       }
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ wallet });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
@@ -32742,6 +33378,8 @@ CRITICAL REMINDERS:
         })
       );
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ transactions: enrichedTransactions });
     } catch (error: any) {
       console.error("[Wallet] Error getting transactions:", error);
@@ -32766,6 +33404,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(400).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         transaction: result.transaction,
@@ -32797,6 +33437,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(400).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         transaction: result.transaction,
@@ -32820,6 +33462,8 @@ CRITICAL REMINDERS:
       if (!wallet) {
         return res.json({ balance: "0.0000", currency: "USD" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         balance: wallet.balance, 
         currency: wallet.currency,
@@ -32900,6 +33544,8 @@ CRITICAL REMINDERS:
       }
       console.log(`[Wallet Top-Up] Successfully added $${amount} to wallet for company ${user.companyId}`);
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
         newBalance: depositResult.newBalance,
@@ -32951,6 +33597,8 @@ CRITICAL REMINDERS:
         })
         .where(eq(wallets.id, wallet.id));
       console.log(`[Wallet] Auto-recharge ${enabled ? 'enabled' : 'disabled'} for company ${user.companyId}`);
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ 
         success: true,
@@ -33099,6 +33747,8 @@ CRITICAL REMINDERS:
           messagingProfileId: num.messaging_profile_id
         };
       });
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ numbers });
     } catch (error: any) {
@@ -33803,6 +34453,8 @@ CRITICAL REMINDERS:
       }
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ wallet });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
@@ -33845,6 +34497,8 @@ CRITICAL REMINDERS:
         })
       );
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ transactions: enrichedTransactions });
     } catch (error: any) {
       console.error("[Wallet] Error getting transactions:", error);
@@ -33869,6 +34523,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(400).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         transaction: result.transaction,
@@ -33900,6 +34556,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(400).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         transaction: result.transaction,
@@ -33923,6 +34581,8 @@ CRITICAL REMINDERS:
       if (!wallet) {
         return res.json({ balance: "0.0000", currency: "USD" });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         balance: wallet.balance, 
         currency: wallet.currency,
@@ -33946,6 +34606,8 @@ CRITICAL REMINDERS:
       }
       const { secretsService } = await import("./services/secrets-service");
       const credentials = await secretsService.listCredentials();
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ credentials });
     } catch (error: any) {
@@ -34135,6 +34797,8 @@ CRITICAL REMINDERS:
           ]
         },
       ];
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ providers: providerConfigs, apiProviders });
     } catch (error: any) {
       console.error("[System Credentials] Error getting providers:", error);
@@ -34154,6 +34818,8 @@ CRITICAL REMINDERS:
         credentialId as string | undefined,
         limit ? parseInt(limit as string) : 50
       );
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ auditLog });
     } catch (error: any) {
       console.error("[System Credentials] Error getting audit:", error);
@@ -34224,6 +34890,8 @@ CRITICAL REMINDERS:
       }
       const decryptedValue = secretsService.decrypt(credential.encryptedValue, credential.iv);
       await logRevealAttempt(true);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ value: decryptedValue });
     } catch (error: any) {
       console.error("[System Credentials] Error revealing:", error);
@@ -34260,6 +34928,8 @@ CRITICAL REMINDERS:
         const { reinitializeEmailService } = await import("./email");
         await reinitializeEmailService();
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
         credential: {
@@ -34306,6 +34976,8 @@ CRITICAL REMINDERS:
         .returning();
       const { credentialProvider } = await import("./services/credential-provider");
       credentialProvider.invalidate(updated.provider as any, updated.keyName);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, credential: updated });
     } catch (error: any) {
       console.error("[System Credentials] Error updating:", error);
@@ -34333,6 +35005,8 @@ CRITICAL REMINDERS:
       await secretsService.deleteCredential(id, user.id);
       const { credentialProvider } = await import("./services/credential-provider");
       credentialProvider.invalidate(credential.provider as any, credential.keyName);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[System Credentials] Error deleting:", error);
@@ -34366,6 +35040,8 @@ CRITICAL REMINDERS:
         await secretsService.deleteCredential(credential.id, user.id);
         credentialProvider.invalidate(credential.provider as any, credential.keyName);
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, deletedCount: credentialsToDelete.length });
     } catch (error: any) {
       console.error("[System Credentials] Error bulk deleting:", error);
@@ -34452,6 +35128,8 @@ CRITICAL REMINDERS:
         return res.status(500).json({ message: "Failed to rotate credential" });
       }
       credentialProvider.invalidate(rotated.provider as any, rotated.keyName);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true,
         credential: {
@@ -34479,6 +35157,8 @@ CRITICAL REMINDERS:
       const { systemConfigService } = await import("./services/system-config");
       await systemConfigService.initialize();
       const config = await systemConfigService.getPublicConfig();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ config });
     } catch (error: any) {
       console.error("[System Config] Error getting public config:", error);
@@ -34491,9 +35171,13 @@ CRITICAL REMINDERS:
     try {
       const { credentialProvider } = await import("./services/credential-provider");
       const stripeCredentials = await credentialProvider.getStripe();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ publishableKey: stripeCredentials.publishableKey || null });
     } catch (error: any) {
       console.error("[System Config] Error getting Stripe publishable key:", error);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ publishableKey: null });
     }
   });
@@ -34508,6 +35192,8 @@ CRITICAL REMINDERS:
       const { systemConfigService } = await import("./services/system-config");
       await systemConfigService.initialize();
       const configs = await systemConfigService.getAll();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ configs });
     } catch (error: any) {
       console.error("[System Config] Error listing configs:", error);
@@ -34535,6 +35221,8 @@ CRITICAL REMINDERS:
         isPublic,
         updatedBy: user.id,
       });
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ success: true });
     } catch (error: any) {
@@ -34566,6 +35254,8 @@ CRITICAL REMINDERS:
         updatedBy: user.id,
       });
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[System Config] Error creating config:", error);
@@ -34587,6 +35277,8 @@ CRITICAL REMINDERS:
       if (!deleted) {
         return res.status(404).json({ message: "Config not found" });
       }
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ success: true });
     } catch (error: any) {
@@ -34816,6 +35508,8 @@ CRITICAL REMINDERS:
         telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,
       }));
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ numbers: numbersWithCompliance });
     } catch (error) {
       console.error("[SMS-Voice] Error fetching numbers:", error);
@@ -34859,6 +35553,8 @@ CRITICAL REMINDERS:
         .set({ displayName: displayName.trim() || null })
         .where(eq(telnyxPhoneNumbers.id, id));
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Display name updated" });
     } catch (error) {
       console.error("[Telnyx] Error updating phone number display name:", error);
@@ -34899,6 +35595,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error || "Failed to release phone number" });
       }
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ 
         success: true, 
@@ -34958,7 +35656,9 @@ CRITICAL REMINDERS:
       const result = await updateCnamListing(telnyxPhoneId, companyId, true, sanitizedCnam);
       
       if (result.success) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           message: `Caller ID name set to "${result.cnamName}". It may take 3-5 business days to propagate across all carriers.`,
           callerIdName: result.cnamName
@@ -35086,6 +35786,8 @@ CRITICAL REMINDERS:
         source: "telnyx",
       };
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ verification: flattened });
     } catch (error: any) {
       console.error("[Telnyx TFV] Error fetching verification request by phone:", error);
@@ -35154,6 +35856,8 @@ CRITICAL REMINDERS:
         sample_messages: trafficProfile.sample_messages || raw.sample_messages || [],
       };
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ verification: flattened });
     } catch (error: any) {
       console.error("[Telnyx] Error fetching verification request:", error);
@@ -35187,6 +35891,8 @@ CRITICAL REMINDERS:
       
       // Check if user is the owner
       const isOwner = settings.ownerUserId === currentUser.id;
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ 
         hasAccess: isOwner, 
@@ -35400,7 +36106,9 @@ CRITICAL REMINDERS:
       } else {
         console.log(`[10DLC Brand] Charged $${BRAND_REGISTRATION_FEE.toFixed(2)} for brand registration. New balance: $${chargeResult.newBalance}`);
       }
-            res.json({ success: true, brand: newBrand });
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ success: true, brand: newBrand });
     } catch (error: any) {
       console.error("Error creating brand:", error);
       res.status(500).json({ message: error.message });
@@ -35496,6 +36204,8 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ exists: true, profile: result.data });
     } catch (error: any) {
       console.error("Error fetching messaging profile:", error);
@@ -35584,6 +36294,8 @@ CRITICAL REMINDERS:
       }
         console.log(`[Messaging Profile] Saved to wallet ${wallet.id}: ${profileId}`);
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, profile: result.data });
     } catch (error: any) {
       console.error("Error creating messaging profile:", error);
@@ -35630,6 +36342,8 @@ CRITICAL REMINDERS:
         .update(wallets)
         .set({ telnyxMessagingProfileId: null, updatedAt: new Date() })
         .where(eq(wallets.id, wallet.id));
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ success: true });
     } catch (error: any) {
@@ -35728,6 +36442,8 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[10DLC Campaigns] Response:", JSON.stringify(result, null, 2));
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ campaigns: result.records || result.data || [] });
     } catch (error: any) {
@@ -35860,6 +36576,8 @@ CRITICAL REMINDERS:
       } else {
         console.log(`[10DLC Campaign] Charged $${CAMPAIGN_REVIEW_FEE.toFixed(2)} for campaign review. New balance: $${chargeResult.newBalance}`);
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, campaign: result.data || result });
     } catch (error: any) {
       console.error("Error creating 10DLC campaign:", error);
@@ -35892,6 +36610,8 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ campaign: result.data || result });
     } catch (error: any) {
       console.error("Error fetching 10DLC campaign:", error);
@@ -35964,6 +36684,8 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign] Updated:", result);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, campaign: result.data || result });
     } catch (error: any) {
       console.error("Error updating 10DLC campaign:", error);
@@ -36007,6 +36729,8 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign] Appeal submitted:", result);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, campaign: result.data || result });
     } catch (error: any) {
       console.error("Error appealing 10DLC campaign:", error);
@@ -36087,6 +36811,8 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign Numbers] Final count:", allNumbers.length, "numbers with messaging profile");
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ phoneNumbers: allNumbers });
     } catch (error: any) {
       console.error("Error fetching campaign phone numbers:", error);
@@ -36199,6 +36925,8 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: errors[0]?.error || "Failed to assign phone numbers", errors });
       }
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, assigned: results, errors });
     } catch (error: any) {
       console.error("Error assigning phone numbers to campaign:", error);
@@ -36236,6 +36964,8 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign] Successfully removed", phoneNumber);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error removing phone number from campaign:", error);
@@ -36428,6 +37158,8 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ verification: result.data });
     } catch (error: any) {
       console.error("[Toll-Free Verification] Error:", error);
@@ -36504,6 +37236,8 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ agent: result.data });
     } catch (error: any) {
       console.error("[RCS] Error fetching agent:", error);
@@ -36542,6 +37276,8 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Agent updated:", agentId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ agent: result.data });
     } catch (error: any) {
       console.error("[RCS] Error updating agent:", error);
@@ -36589,6 +37325,8 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Capabilities checked for:", phoneNumber);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ capabilities: result.data });
     } catch (error: any) {
       console.error("[RCS] Error checking capabilities:", error);
@@ -36639,6 +37377,8 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Test number added successfully:", result.data);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ testNumber: result.data });
     } catch (error: any) {
       console.error("[RCS] Error adding test number:", error);
@@ -36737,6 +37477,8 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Message sent to:", to, "via agent:", agentId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ message: result.data });
     } catch (error: any) {
       console.error("[RCS] Error sending message:", error);
@@ -36828,6 +37570,8 @@ CRITICAL REMINDERS:
       }
       
       // User has no assigned number or extension
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         hasAssignedNumber: false, 
         canMakeCalls: false,
@@ -36931,6 +37675,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Search error:", error);
@@ -37054,6 +37800,8 @@ CRITICAL REMINDERS:
       } else {
         console.log("[Provisioning] Skipping auto-provision for company:", user.companyId, "- already completed");
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         orderId: result.orderId,
@@ -37098,6 +37846,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ numbers: result.numbers, totalCount: result.numbers?.length || 0 });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Get numbers error:", error);
@@ -37124,6 +37874,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ success: false, error: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, connectionId: result.connectionId, message: "Phone number successfully assigned to credential connection" });
     } catch (error: any) {
       console.error("[Telnyx Repair] Error:", error);
@@ -37417,6 +38169,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[Telnyx Call Recording] Update error:", error);
@@ -37447,6 +38201,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[Telnyx Spam Protection] Update error:", error);
@@ -37533,6 +38289,8 @@ CRITICAL REMINDERS:
       }
       const { listE911Addresses } = await import("./services/telnyx-e911-service");
       const addresses = await listE911Addresses(user.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ addresses });
     } catch (error: any) {
       console.error("[E911 API] List addresses error:", error);
@@ -37567,6 +38325,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, addressId: result.addressId, telnyxAddressId: result.telnyxAddressId });
     } catch (error: any) {
       console.error("[E911 API] Create address error:", error);
@@ -37590,6 +38350,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[E911 API] Delete address error:", error);
@@ -37606,6 +38368,8 @@ CRITICAL REMINDERS:
       }
       const { getPhoneNumbersWithE911Status } = await import("./services/telnyx-e911-service");
       const numbers = await getPhoneNumbersWithE911Status(user.companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ numbers });
     } catch (error: any) {
       console.error("[E911 API] Get phone numbers error:", error);
@@ -37633,6 +38397,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[E911 API] Assign address error:", error);
@@ -37656,6 +38422,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[E911 API] Remove E911 error:", error);
@@ -37718,6 +38486,8 @@ CRITICAL REMINDERS:
       }
       const result = await response.json();
       console.log("[Telnyx Caller ID Lookup] Update successful:", result.data?.caller_id_name_enabled);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, enabled: result.data?.caller_id_name_enabled });
     } catch (error: any) {
       console.error("[Telnyx Caller ID Lookup] Update error:", error);
@@ -37740,6 +38510,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, enabled: result.enabled, pin: result.pin });
     } catch (error: any) {
       console.error("[Telnyx Voicemail] Get settings error:", error);
@@ -37773,6 +38545,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[Telnyx Voicemail] Update error:", error);
@@ -37807,6 +38581,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[Number Voice Settings] Update error:", error);
@@ -38063,6 +38839,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         managedAccountId: result.managedAccountId,
@@ -38127,6 +38905,8 @@ CRITICAL REMINDERS:
           message: "Phone system account was disabled. Please set up again." 
         });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         configured: true, 
         managedAccountId,
@@ -38151,6 +38931,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ accounts: result.accounts });
     } catch (error: any) {
       console.error("[Telnyx Managed] List error:", error);
@@ -38172,6 +38954,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Managed account disabled" });
     } catch (error: any) {
       console.error("[Telnyx Managed] Disable error:", error);
@@ -38192,6 +38976,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Managed account enabled" });
     } catch (error: any) {
       console.error("[Telnyx Managed] Enable error:", error);
@@ -38395,6 +39181,8 @@ CRITICAL REMINDERS:
       const { invalidatePricingCache } = await import('./services/pricing-config');
       invalidatePricingCache();
       console.log("[Global Pricing] Updated by user:", user.id);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Pricing configuration updated successfully" });
     } catch (error: any) {
       console.error("[Global Pricing] PUT error:", error);
@@ -38440,6 +39228,8 @@ CRITICAL REMINDERS:
         .catch(err => {
           console.error("[Provisioning] Error for company:", user.companyId, err);
         });
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         message: "WebRTC provisioning started. This may take a few seconds." 
@@ -38507,7 +39297,9 @@ CRITICAL REMINDERS:
       // Trigger provisioning
       const result = await telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id);
       if (result.success) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           message: "WebRTC infrastructure provisioned successfully",
           texmlAppId: result.texmlAppId,
@@ -38537,7 +39329,9 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.repairPhoneNumberRouting(user.companyId, user.id);
       if (result.success) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           message: `Phone number routing repaired successfully. ${result.repairedCount} numbers updated.`,
           repairedCount: result.repairedCount
@@ -38565,7 +39359,9 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.fixTexmlWebhooks(user.companyId, user.id);
       if (result.success) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           message: "TeXML webhooks fixed successfully. Inbound calls will now route to WebRTC clients."
         });
@@ -38600,7 +39396,9 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.repairSipUriCalling(user.companyId, user.id);
       if (result.success) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           message: "SIP URI calling enabled successfully. Inbound calls can now reach WebRTC clients."
         });
@@ -38626,7 +39424,9 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.repairSrtpSettings(user.companyId, user.id);
       if (result.success) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           message: "SRTP disabled successfully. Outbound WebRTC calls should now work."
         });
@@ -38651,7 +39451,9 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.repairHDCodecs(user.companyId, user.id);
       if (result.success) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true,
           message: "HD codecs configured successfully. Voice quality will now use G.722 HD audio."
         });
@@ -38855,7 +39657,9 @@ CRITICAL REMINDERS:
       const { updateCredentialConnectionForWebRTC } = await import("./services/telnyx-e911-service");
       const result = await updateCredentialConnectionForWebRTC(user.companyId);
       if (result.success) {
-        res.json({ 
+      const user = await storage.getUser(activationToken.userId);
+      
+      res.json({ 
           success: true, 
           message: "WebRTC configuration updated successfully. Codecs: OPUS, G722, G711U, G711A. Encryption: SRTP enabled." 
         });
@@ -38955,6 +39759,8 @@ CRITICAL REMINDERS:
           skipped++;
         }
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         message: `Synced ${synced} recordings, skipped ${skipped}`,
@@ -39673,6 +40479,8 @@ CRITICAL REMINDERS:
       }
       await db.insert(callLogs).values(insertValues).returning();
       console.log("[WebRTC] Created call log:", newLog.id, "direction:", direction, "to:", toNumber);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, id: newLog.id, created: true });
     } catch (error: any) {
       console.error("[WebRTC] Call log error:", error);
@@ -39692,6 +40500,8 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ addresses: result.addresses || [] });
     } catch (error: any) {
       console.error("[E911] Get addresses error:", error);
@@ -39818,10 +40628,14 @@ CRITICAL REMINDERS:
       }
       
       // Not found - always return 200 OK
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ found: false });
     } catch (error: any) {
       // CRITICAL: Never return 500 for caller lookup - just return not found
       console.error("[Caller Lookup] Unexpected error (returning 200):", error.message);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ found: false });
     }
   });
@@ -39932,6 +40746,8 @@ CRITICAL REMINDERS:
         
         return log;
       }));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ logs: enrichedLogs });
     } catch (error: any) {
       console.error("[Call Logs] Get error:", error);
@@ -39984,6 +40800,8 @@ CRITICAL REMINDERS:
           endedAt: endedAt ? new Date(endedAt) : null,
         })
         .returning();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, id: log.id, log });
     } catch (error: any) {
       console.error("[Call Logs] Create error:", error);
@@ -40100,6 +40918,8 @@ CRITICAL REMINDERS:
         .returning();
       // Broadcast the updated call log
       broadcastNewCallLog(user.companyId, updated as any);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, log: updated });
     } catch (error: any) {
       console.error("[Call Logs] Update error:", error);
@@ -40157,6 +40977,8 @@ CRITICAL REMINDERS:
           eq(callLogs.id, id),
           eq(callLogs.companyId, user.companyId)
         ));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[Call Logs] Delete error:", error);
@@ -40185,6 +41007,8 @@ CRITICAL REMINDERS:
             eq(callLogs.userId, user.id)
           ));
       }
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[Call Logs] Clear all error:", error);
@@ -40499,6 +41323,8 @@ CRITICAL REMINDERS:
           eq(voicemails.companyId, user.companyId),
           eq(voicemails.status, "new")
         ));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         voicemails: messages,
         unreadCount: unreadCount?.count || 0
@@ -40534,6 +41360,8 @@ CRITICAL REMINDERS:
           eq(voicemails.companyId, user.companyId)
         ))
         .returning();
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, voicemail: updated });
     } catch (error: any) {
       console.error("[Voicemails] Update error:", error);
@@ -40555,6 +41383,8 @@ CRITICAL REMINDERS:
           eq(voicemails.id, id),
           eq(voicemails.companyId, user.companyId)
         ));
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[Voicemails] Delete error:", error);
@@ -40761,6 +41591,8 @@ CRITICAL REMINDERS:
         console.error("[DEPLOY] Deployment failed:", err);
       });
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         message: "Deployment started", 
         jobId: job.id,
@@ -40787,6 +41619,8 @@ CRITICAL REMINDERS:
         .limit(10);
       
       const [latestJob] = jobs;
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ 
         jobs,
@@ -42586,6 +43420,8 @@ CRITICAL REMINDERS:
       });
       
       console.log("[Inbox] Returning", conversations.length, "conversations for company", companyId);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ conversations });
     } catch (error: any) {
       console.error("[Inbox] Error fetching conversations:", error);
@@ -44439,6 +45275,8 @@ CRITICAL REMINDERS:
       // Broadcast update to clients
       broadcastConversationUpdate(companyId, id);
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ conversation: updated });
     } catch (error: any) {
       console.error("[Inbox] Error updating human agent mode:", error);
@@ -44491,6 +45329,8 @@ CRITICAL REMINDERS:
       
       // Broadcast update to clients
       broadcastConversationUpdate(companyId, id);
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ conversation: updated });
     } catch (error: any) {
@@ -44554,6 +45394,8 @@ CRITICAL REMINDERS:
       
       
       console.log(`[LiveChat] Agent ${userId} (${agentName}) accepted chat ${id}`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ 
         success: true, 
         conversationId: id,
@@ -44734,6 +45576,8 @@ CRITICAL REMINDERS:
         wsService.broadcastConversationUpdate();
       }
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: "Conversation deleted successfully" });
     } catch (error: any) {
       console.error("[Inbox] Error deleting conversation:", error);
@@ -44840,6 +45684,8 @@ CRITICAL REMINDERS:
         .orderBy(desc(complianceApplications.createdAt))
         .limit(1);
       
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ application: application || null });
     } catch (error: any) {
       console.error("[Compliance] Error getting current application:", error);
@@ -44862,6 +45708,8 @@ CRITICAL REMINDERS:
         })
         .from(complianceApplications)
         .where(eq(complianceApplications.companyId, user.companyId));
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ applications });
     } catch (error: any) {
@@ -44908,6 +45756,8 @@ CRITICAL REMINDERS:
           .limit(1);
         application = draftApps[0];
       }
+      
+      const user = await storage.getUser(activationToken.userId);
       
       res.json({ application: application || null });
     } catch (error: any) {
@@ -45733,6 +46583,8 @@ CRITICAL REMINDERS:
       console.log(`[Compliance Upload] File saved: ${file.filename}, URL: ${publicUrl}`);
       
       // Return the public URL that carriers can access without login
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ url: publicUrl });
     } catch (error: any) {
       console.error("[Compliance Upload] Error:", error);
@@ -45784,6 +46636,8 @@ CRITICAL REMINDERS:
         }
       }
 
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ slots });
     } catch (error: any) {
       console.error("[RecordingMedia] Error listing media:", error);
@@ -45938,6 +46792,8 @@ CRITICAL REMINDERS:
 
       console.log(`[RecordingMedia] Deleted ${mediaEntry.type}_${mediaEntry.language}: ${mediaEntry.objectPath || mediaEntry.mediaName}`);
 
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[RecordingMedia] Error deleting media:", error);
@@ -45993,6 +46849,8 @@ CRITICAL REMINDERS:
       }
       
       console.log(`[Force Routing] Number ${phoneNumber.phoneNumber} now routed to Call Control App ${telSettings.callControlAppId}`);
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true, message: `Phone number ${phoneNumber.phoneNumber} now using Call Control App` });
     } catch (error: any) {
       console.error("[Force Routing] Error:", error);
@@ -46120,6 +46978,8 @@ CRITICAL REMINDERS:
       }
       await db.delete(customInboxes).where(eq(customInboxes.id, id));
 
+      const user = await storage.getUser(activationToken.userId);
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[Custom Inboxes] Error deleting:", error);
