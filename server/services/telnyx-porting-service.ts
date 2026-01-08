@@ -2,18 +2,27 @@ import { db } from "../db";
 import { telnyxPortingOrders, companies, users } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getCompanyTelnyxApiToken } from "./wallet-service";
+import { ensureCompanyTelnyxToken } from "./telnyx-managed-accounts";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 
 /**
  * CRITICAL: All Telnyx operations MUST use managed account API key.
  * Never fall back to master key - each company has their own Telnyx managed account.
+ * If token is missing but account exists, it will be regenerated automatically.
  */
 async function getRequiredCompanyTelnyxApiKey(companyId: string): Promise<string> {
-  const apiKey = await getCompanyTelnyxApiToken(companyId);
+  let apiKey = await getCompanyTelnyxApiToken(companyId);
+  
   if (!apiKey) {
-    throw new Error("Company Telnyx account not configured. Please set up your Telnyx managed account first.");
+    console.log(`[Telnyx Porting] No API token found for company ${companyId}, attempting to regenerate...`);
+    const ensureResult = await ensureCompanyTelnyxToken(companyId);
+    if (!ensureResult.success || !ensureResult.apiToken) {
+      throw new Error(ensureResult.error || "Company Telnyx account not configured. Please set up your Telnyx managed account first.");
+    }
+    apiKey = ensureResult.apiToken;
   }
+  
   return apiKey.trim().replace(/[\r\n\t]/g, '');
 }
 

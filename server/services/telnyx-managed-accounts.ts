@@ -257,6 +257,112 @@ export async function getManagedAccount(accountId: string): Promise<GetManagedAc
   }
 }
 
+/**
+ * Regenerate API token for a managed account.
+ * Use this when the token was not saved during initial creation.
+ */
+export async function regenerateManagedAccountToken(accountId: string): Promise<{
+  success: boolean;
+  apiToken?: string;
+  error?: string;
+}> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+
+    console.log(`[Telnyx Managed] Regenerating API token for account: ${accountId}`);
+
+    const response = await fetch(`${TELNYX_API_BASE}/managed_accounts/${accountId}/actions/generate_authentication_token`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Managed] Token regeneration error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to regenerate token: ${response.status} - ${errorText}`,
+      };
+    }
+
+    const result = await response.json();
+    const apiToken = result.data?.api_token || result.data?.api_key;
+    
+    console.log(`[Telnyx Managed] API token regenerated successfully for account: ${accountId}`);
+
+    return {
+      success: true,
+      apiToken,
+    };
+  } catch (error) {
+    console.error("[Telnyx Managed] Token regeneration error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to regenerate token",
+    };
+  }
+}
+
+/**
+ * Ensure a company has a valid Telnyx API token.
+ * If missing, regenerate it from Telnyx and save to wallet.
+ */
+export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
+  success: boolean;
+  apiToken?: string;
+  error?: string;
+}> {
+  try {
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+
+    if (!wallet) {
+      return { success: false, error: "No wallet found for company" };
+    }
+
+    if (wallet.telnyxApiToken) {
+      return { success: true, apiToken: wallet.telnyxApiToken };
+    }
+
+    if (!wallet.telnyxAccountId) {
+      return { success: false, error: "No Telnyx account configured for company" };
+    }
+
+    console.log(`[Telnyx Managed] Company ${companyId} missing API token, regenerating...`);
+    
+    const regenerateResult = await regenerateManagedAccountToken(wallet.telnyxAccountId);
+    
+    if (!regenerateResult.success || !regenerateResult.apiToken) {
+      return { success: false, error: regenerateResult.error || "Failed to regenerate token" };
+    }
+
+    await db
+      .update(wallets)
+      .set({
+        telnyxApiToken: regenerateResult.apiToken,
+        updatedAt: new Date(),
+      })
+      .where(eq(wallets.id, wallet.id));
+
+    console.log(`[Telnyx Managed] API token saved to wallet ${wallet.id}`);
+
+    return { success: true, apiToken: regenerateResult.apiToken };
+  } catch (error) {
+    console.error("[Telnyx Managed] Ensure token error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to ensure token",
+    };
+  }
+}
+
 export async function listManagedAccounts(): Promise<{
   success: boolean;
   accounts?: ManagedAccountInfo[];
