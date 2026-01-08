@@ -760,6 +760,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding/progress"] });
       toast({
         title: "Profile Updated",
         description: "Your profile information has been updated successfully.",
@@ -978,6 +979,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/companies", user?.companyId] });
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding/progress"] });
       toast({
         title: "Company Updated",
         description: "Company information has been updated successfully.",
