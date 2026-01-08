@@ -50,8 +50,9 @@ export async function createManagedAccount(
   try {
     const apiKey = await getTelnyxMasterApiKey();
 
-    // Generate masked email using company slug for white-label privacy
-    const maskedEmail = `${ADMIN_EMAIL_BASE}+${companySlug}@${ADMIN_DOMAIN}`;
+    // Generate UNIQUE masked email using company slug + timestamp to prevent conflicts
+    const timestamp = Date.now();
+    const maskedEmail = `${ADMIN_EMAIL_BASE}+${companySlug}-${timestamp}@${ADMIN_DOMAIN}`;
 
     const requestBody = {
       business_name: businessName,
@@ -395,70 +396,28 @@ export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
         return { success: true, apiToken: createKeyResult.apiKey };
       }
 
-      // If 404, the stored account ID doesn't exist - search for existing account by email
+      // If 404, the stored account ID doesn't exist - clear it and create new
       if (createKeyResult.error?.includes("404")) {
-        console.log(`[Telnyx Managed] Account ${wallet.telnyxAccountId} not found, searching by email...`);
-        
-        const companySlug = company.name.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 20);
-        const expectedEmail = `${ADMIN_EMAIL_BASE}+${companySlug}-${companyId.substring(0, 8)}@${ADMIN_DOMAIN}`;
-        
-        const findResult = await findManagedAccountByEmail(expectedEmail);
-        if (findResult.success && findResult.account) {
-          console.log(`[Telnyx Managed] Found existing account ${findResult.account.id} by email, creating API key...`);
-          
-          const keyResult = await createManagedAccountApiKey(findResult.account.id);
-          if (keyResult.success && keyResult.apiKey) {
-            await db
-              .update(wallets)
-              .set({
-                telnyxAccountId: findResult.account.id,
-                telnyxApiToken: keyResult.apiKey,
-                updatedAt: new Date(),
-              })
-              .where(eq(wallets.id, wallet.id));
-            
-            console.log(`[Telnyx Managed] Recovered account ${findResult.account.id} with new API key`);
-            return { success: true, apiToken: keyResult.apiKey };
-          }
-          return { success: false, error: keyResult.error || "Failed to create API key for recovered account" };
-        }
-        // Account truly doesn't exist, fall through to create new one
+        console.log(`[Telnyx Managed] Account ${wallet.telnyxAccountId} not found (404), will create new account`);
+        // Clear the invalid account ID
+        await db
+          .update(wallets)
+          .set({
+            telnyxAccountId: null,
+            telnyxApiToken: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(wallets.id, wallet.id));
+        // Fall through to create new account
       } else {
         return { success: false, error: createKeyResult.error || "Failed to create API key" };
       }
     }
 
-    // Generate email for this company
-    const companySlug = company.name.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 20);
-    const expectedEmail = `${ADMIN_EMAIL_BASE}+${companySlug}-${companyId.substring(0, 8)}@${ADMIN_DOMAIN}`;
-    
-    // First check if an account already exists with this email
-    console.log(`[Telnyx Managed] Checking if account exists for email: ${expectedEmail}`);
-    const findResult = await findManagedAccountByEmail(expectedEmail);
-    
-    if (findResult.success && findResult.account) {
-      console.log(`[Telnyx Managed] Found existing account ${findResult.account.id}, creating API key...`);
-      
-      const keyResult = await createManagedAccountApiKey(findResult.account.id);
-      if (keyResult.success && keyResult.apiKey) {
-        await db
-          .update(wallets)
-          .set({
-            telnyxAccountId: findResult.account.id,
-            telnyxApiToken: keyResult.apiKey,
-            updatedAt: new Date(),
-          })
-          .where(eq(wallets.id, wallet.id));
-        
-        console.log(`[Telnyx Managed] Linked existing account ${findResult.account.id} with new API key`);
-        return { success: true, apiToken: keyResult.apiKey };
-      }
-      return { success: false, error: keyResult.error || "Failed to create API key for existing account" };
-    }
-
-    // Create new managed account
+    // Create NEW managed account (never search for existing - always create fresh)
     console.log(`[Telnyx Managed] Creating new managed account for company ${companyId}...`);
     
+    const companySlug = company.name.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 20);
     const createResult = await createManagedAccount(company.name, `${companySlug}-${companyId.substring(0, 8)}`);
     
     if (!createResult.success || !createResult.managedAccount) {
