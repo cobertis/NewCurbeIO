@@ -976,9 +976,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* Right side - Column 2 - Content only (no header) */}
         <div className="flex flex-col h-screen">
-          {/* Content Area - Full coverage, no padding */}
+          {/* Content Area - Consistent padding across all pages */}
           <div className="flex-1 min-h-0 overflow-hidden">
-            <main className="h-full overflow-auto">
+            <main className="h-full overflow-auto p-4 lg:p-6 bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
               {children}
             </main>
           </div>

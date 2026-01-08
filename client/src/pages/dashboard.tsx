@@ -183,8 +183,8 @@ export default function Dashboard() {
     ];
 
     return (
-      <div className="flex flex-col gamin-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        <div className="mb-4">
+      <div className="flex flex-col gap-4">
+        <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Super Admin Dashboard</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">System administration and management</p>
         </div>
@@ -216,7 +216,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-4 min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
+    <div className="flex flex-col gap-4">
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {quickStats.map((stat, index) => (
