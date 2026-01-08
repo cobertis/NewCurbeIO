@@ -1,19 +1,20 @@
 import { db } from "../db";
 import { telnyxPortingOrders, companies, users } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { SecretsService } from "./secrets-service";
 import { getCompanyTelnyxApiToken } from "./wallet-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
-const secretsService = new SecretsService();
 
-async function getTelnyxMasterApiKey(): Promise<string> {
-  let apiKey = await secretsService.getCredential("telnyx", "api_key");
+/**
+ * CRITICAL: All Telnyx operations MUST use managed account API key.
+ * Never fall back to master key - each company has their own Telnyx managed account.
+ */
+async function getRequiredCompanyTelnyxApiKey(companyId: string): Promise<string> {
+  const apiKey = await getCompanyTelnyxApiToken(companyId);
   if (!apiKey) {
-    throw new Error("Telnyx API key not configured. Please add it in Settings > API Keys.");
+    throw new Error("Company Telnyx account not configured. Please set up your Telnyx managed account first.");
   }
-  apiKey = apiKey.trim().replace(/[\r\n\t]/g, '');
-  return apiKey;
+  return apiKey.trim().replace(/[\r\n\t]/g, '');
 }
 
 export interface PortabilityCheckResult {
@@ -35,19 +36,12 @@ export interface PortabilityCheckResponse {
 
 export async function checkPortability(
   phoneNumbers: string[],
-  companyId?: string
+  companyId: string
 ): Promise<PortabilityCheckResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Checking portability for ${phoneNumbers.length} numbers`);
+    console.log(`[Telnyx Porting] Checking portability for ${phoneNumbers.length} numbers using managed account`);
 
     const response = await fetch(`${TELNYX_API_BASE}/portability_checks`, {
       method: "POST",
@@ -116,19 +110,12 @@ export interface CreatePortingOrderResponse {
 
 export async function createPortingOrder(
   params: CreatePortingOrderParams,
-  companyId?: string
+  companyId: string
 ): Promise<CreatePortingOrderResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Creating porting order for ${params.phone_numbers.length} numbers`);
+    console.log(`[Telnyx Porting] Creating porting order for ${params.phone_numbers.length} numbers using managed account`);
 
     const response = await fetch(`${TELNYX_API_BASE}/porting_orders`, {
       method: "POST",
@@ -174,19 +161,12 @@ export interface GetPortingOrderResponse {
 
 export async function getPortingOrder(
   portingOrderId: string,
-  companyId?: string
+  companyId: string
 ): Promise<GetPortingOrderResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Getting porting order: ${portingOrderId}`);
+    console.log(`[Telnyx Porting] Getting porting order: ${portingOrderId} using managed account`);
 
     const response = await fetch(`${TELNYX_API_BASE}/porting_orders/${portingOrderId}`, {
       method: "GET",
@@ -232,19 +212,12 @@ export interface GetAllowedFocDatesResponse {
 
 export async function getAllowedFocDates(
   portingOrderId: string,
-  companyId?: string
+  companyId: string
 ): Promise<GetAllowedFocDatesResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Getting allowed FOC dates for order: ${portingOrderId}`);
+    console.log(`[Telnyx Porting] Getting allowed FOC dates for order: ${portingOrderId} using managed account`);
 
     const response = await fetch(`${TELNYX_API_BASE}/porting_orders/${portingOrderId}/allowed_foc_windows`, {
       method: "GET",
@@ -334,19 +307,12 @@ export interface UpdatePortingOrderResponse {
 export async function updatePortingOrder(
   portingOrderId: string,
   params: UpdatePortingOrderParams,
-  companyId?: string
+  companyId: string
 ): Promise<UpdatePortingOrderResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Updating porting order: ${portingOrderId}`, params);
+    console.log(`[Telnyx Porting] Updating porting order: ${portingOrderId} using managed account`, params);
 
     const response = await fetch(`${TELNYX_API_BASE}/porting_orders/${portingOrderId}`, {
       method: "PATCH",
@@ -390,19 +356,12 @@ export interface SubmitPortingOrderResponse {
 
 export async function submitPortingOrder(
   portingOrderId: string,
-  companyId?: string
+  companyId: string
 ): Promise<SubmitPortingOrderResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Submitting porting order: ${portingOrderId}`);
+    console.log(`[Telnyx Porting] Submitting porting order: ${portingOrderId} using managed account`);
 
     const response = await fetch(`${TELNYX_API_BASE}/porting_orders/${portingOrderId}/actions/confirm`, {
       method: "POST",
@@ -443,19 +402,12 @@ export interface CancelPortingOrderResponse {
 
 export async function cancelPortingOrder(
   portingOrderId: string,
-  companyId?: string
+  companyId: string
 ): Promise<CancelPortingOrderResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Cancelling porting order: ${portingOrderId}`);
+    console.log(`[Telnyx Porting] Cancelling porting order: ${portingOrderId} using managed account`);
 
     const response = await fetch(`${TELNYX_API_BASE}/porting_orders/${portingOrderId}/actions/cancel`, {
       method: "POST",
@@ -493,19 +445,12 @@ export interface GetPortingRequirementsResponse {
 
 export async function getPortingRequirements(
   portingOrderId: string,
-  companyId?: string
+  companyId: string
 ): Promise<GetPortingRequirementsResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Getting requirements for order: ${portingOrderId}`);
+    console.log(`[Telnyx Porting] Getting requirements for order: ${portingOrderId} using managed account`);
 
     const response = await fetch(`${TELNYX_API_BASE}/porting_orders/${portingOrderId}/requirements`, {
       method: "GET",
@@ -548,19 +493,12 @@ export async function uploadDocument(
   fileBuffer: Buffer,
   fileName: string,
   mimeType: string,
-  companyId?: string
+  companyId: string
 ): Promise<UploadDocumentResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Uploading document: ${fileName}`);
+    console.log(`[Telnyx Porting] Uploading document: ${fileName} using managed account`);
 
     const FormData = (await import('form-data')).default;
     const formData = new FormData();
@@ -617,17 +555,10 @@ export interface ListPortingOrdersResponse {
 
 export async function listPortingOrders(
   params: ListPortingOrdersParams = {},
-  companyId?: string
+  companyId: string
 ): Promise<ListPortingOrdersResponse> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append("page[number]", String(params.page));
@@ -670,19 +601,12 @@ export async function listPortingOrders(
 
 export async function downloadLoaTemplate(
   portingOrderId: string,
-  companyId?: string
+  companyId: string
 ): Promise<{ success: boolean; pdfBuffer?: Buffer; error?: string }> {
   try {
-    let apiKey: string;
-    
-    if (companyId) {
-      const companyApiKey = await getCompanyTelnyxApiToken(companyId);
-      apiKey = companyApiKey || await getTelnyxMasterApiKey();
-    } else {
-      apiKey = await getTelnyxMasterApiKey();
-    }
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Downloading LOA template for order: ${portingOrderId}`);
+    console.log(`[Telnyx Porting] Downloading LOA template for order: ${portingOrderId} using managed account`);
 
     const response = await fetch(`${TELNYX_API_BASE}/porting_orders/${portingOrderId}/loa_template`, {
       method: "GET",

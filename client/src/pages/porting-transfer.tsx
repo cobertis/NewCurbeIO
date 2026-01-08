@@ -299,10 +299,20 @@ export default function PortingTransfer() {
     },
     onSuccess: (data) => {
       if (data.order && data.telnyxOrder) {
-        setPortingOrder({ ...data.telnyxOrder, localId: data.order.id });
+        const normalizedOrder = {
+          ...data.telnyxOrder,
+          localId: data.order.id,
+          statusText: typeof data.telnyxOrder.status === 'object' ? data.telnyxOrder.status.value : data.telnyxOrder.status,
+        };
+        setPortingOrder(normalizedOrder);
         setCurrentStep('create-order');
       } else if (data.order) {
-        setPortingOrder({ id: data.order.telnyxPortingOrderId || data.order.id, localId: data.order.id, status: { value: data.order.status || 'draft' } } as any);
+        const normalizedOrder = {
+          id: data.order.telnyxPortingOrderId || data.order.id,
+          localId: data.order.id,
+          statusText: data.order.status || 'draft',
+        } as any;
+        setPortingOrder(normalizedOrder);
         setCurrentStep('create-order');
       } else {
         toast({

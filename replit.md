@@ -58,7 +58,7 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 - **Email:** Nodemailer, AWS SES.
 - **SMS/MMS/iMessage:** Twilio, BulkVS, BlueBubbles.
 - **Payments:** Stripe.
-- **Telephony:** Telnyx (WebRTC SDK, Call Control API).
+- **Telephony:** Telnyx (WebRTC SDK, Call Control API). **CRITICAL: ALL Telnyx operations MUST use managed account API key from company's wallet, NEVER fall back to master key. Each company has its own Telnyx managed account.**
 - **Address Autocomplete:** Geoapify Geocoding API (replaced Google Places).
 - **Social Media/Messaging APIs:** Meta (WhatsApp Business Platform), TikTok, Telegram Bot API.
 - **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
