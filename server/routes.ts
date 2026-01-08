@@ -3899,7 +3899,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[BrowserCalling] Starting auto-provision for user ${user.id}, company ${user.companyId}`);
 
       // Step 1: Check if user already has an extension
-      const phoneNumbersRaw = await db
+      const userExtension = await db
         .select()
         .from(pbxExtensions)
         .where(and(
@@ -8442,7 +8442,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
       
       // Get ALL call logs for the company (not filtered by user)
-      const phoneNumbersRaw = await db
+      const logs = await db
         .select()
         .from(callLogs)
         .where(eq(callLogs.companyId, user.companyId))
@@ -8464,7 +8464,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { id } = req.params;
       
       // Get call log
-      const phoneNumbersRaw = await db
+      const [callLog] = await db
         .select()
         .from(callLogs)
         .where(eq(callLogs.id, id));
@@ -14812,7 +14812,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       // Get the note to check permissions
-      const phoneNumbersRaw = await db
+      const [existingNote] = await db
         .select()
         .from(quoteNotes)
         .where(and(
@@ -14878,7 +14878,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       // Get the note to check permissions
-      const phoneNumbersRaw = await db
+      const [existingNote] = await db
         .select()
         .from(quoteNotes)
         .where(and(
@@ -20104,7 +20104,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get ALL policies for this client (notes are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get the note to check permissions
-      const phoneNumbersRaw = await db
+      const [existingNote] = await db
         .select()
         .from(policyNotes)
         .where(and(
@@ -20174,7 +20174,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get ALL policies for this client (notes are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get the note to check permissions
-      const phoneNumbersRaw = await db
+      const [existingNote] = await db
         .select()
         .from(policyNotes)
         .where(and(
@@ -25808,7 +25808,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance) {
         return res.json({ total: 0 });
       }
-      const phoneNumbersRaw = await db
+      const result = await db
         .select({ total: sql<number>`COUNT(*) FILTER (WHERE ${whatsappConversations.unreadCount} > 0)` })
         .from(whatsappConversations)
         .where(
@@ -32338,7 +32338,7 @@ CRITICAL REMINDERS:
         console.log("[Telnyx Voicemail] New voicemail from", fromNumber, "to", toNumber);
         
         // Find the phone number and its owner
-      const phoneNumbersRaw = await db
+      const [phoneNumber] = await db
           .select()
           .from(telnyxPhoneNumbers)
           .where(eq(telnyxPhoneNumbers.phoneNumber, toNumber));
@@ -34614,6 +34614,81 @@ CRITICAL REMINDERS:
       const { syncAllE911StatusForCompany } = await import("./services/telnyx-e911-service");
       await syncAllE911StatusForCompany(companyId);
 
+      // Sync toll-free verification status from Telnyx
+      try {
+        const appsToSync = await db
+          .select({
+            id: complianceApplications.id,
+            telnyxVerificationRequestId: complianceApplications.telnyxVerificationRequestId,
+            status: complianceApplications.status,
+          })
+          .from(complianceApplications)
+          .where(
+            and(
+              eq(complianceApplications.companyId, companyId),
+              isNotNull(complianceApplications.telnyxVerificationRequestId)
+            )
+          );
+        
+        if (appsToSync.length > 0) {
+          const { getTelnyxMasterApiKey } = await import("./services/telnyx-numbers-service");
+          const apiKey = await getTelnyxMasterApiKey();
+          
+          for (const app of appsToSync) {
+            if (!app.telnyxVerificationRequestId) continue;
+            try {
+              const response = await fetch(
+                `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/${app.telnyxVerificationRequestId}`,
+                {
+                  headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+              
+              if (response.ok) {
+                const data = await response.json();
+                const telnyxStatus = data.data?.verificationStatus || data.verificationStatus;
+                
+                if (telnyxStatus) {
+                  // Map Telnyx status to internal status
+                  let mappedStatus = "pending";
+                  switch (telnyxStatus.toLowerCase().replace(/\s+/g, '_')) {
+                    case "verified":
+                      mappedStatus = "verified";
+                      break;
+                    case "rejected":
+                      mappedStatus = "rejected";
+                      break;
+                    case "waiting_for_vendor":
+                    case "waiting_for_customer":
+                    case "waiting_for_telnyx":
+                    case "in_progress":
+                      mappedStatus = "in_review";
+                      break;
+                    default:
+                      mappedStatus = "pending";
+                  }
+                  
+                  if (mappedStatus !== app.status) {
+                    await db
+                      .update(complianceApplications)
+                      .set({ status: mappedStatus })
+                      .where(eq(complianceApplications.id, app.id));
+                    console.log(`[TF Verification Sync] Updated ${app.id}: ${app.status} -> ${mappedStatus}`);
+                  }
+                }
+              }
+            } catch (e) {
+              console.error(`[TF Verification Sync] Error syncing ${app.id}:`, e);
+            }
+          }
+        }
+      } catch (syncError) {
+        console.error("[TF Verification Sync] Error during sync:", syncError);
+      }
+
       // Get all phone numbers for the company (simple query without join)
       const phoneNumbersRaw = await db
         .select()
@@ -34723,7 +34798,7 @@ CRITICAL REMINDERS:
       }
       
       // Verify the phone number belongs to this company
-      const phoneNumbersRaw = await db
+      const [phoneNumber] = await db
         .select()
         .from(telnyxPhoneNumbers)
         .where(and(
@@ -37704,7 +37779,7 @@ CRITICAL REMINDERS:
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-      const phoneNumbersRaw = await db
+      const [settings] = await db
         .select({
           noiseSuppressionEnabled: telephonySettings.noiseSuppressionEnabled,
           noiseSuppressionDirection: telephonySettings.noiseSuppressionDirection,
@@ -37831,7 +37906,7 @@ CRITICAL REMINDERS:
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-      const phoneNumbersRaw = await db
+      const [settings] = await db
         .select({
           recordingEnabled: telephonySettings.recordingEnabled,
           cnamEnabled: telephonySettings.cnamEnabled,
@@ -44737,7 +44812,7 @@ CRITICAL REMINDERS:
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      const phoneNumbersRaw = await db
+      const applications = await db
         .select({
           id: complianceApplications.id,
           selectedPhoneNumber: complianceApplications.selectedPhoneNumber,
