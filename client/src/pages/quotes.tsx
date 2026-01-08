@@ -35,7 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow, format, startOfMonth, addMonths, parseISO } from "date-fns";
 import { quoteStatusOptions, documentsStatusOptions, paymentStatusOptions, useUpdateStatuses, statusFormSchema, type StatusFormValues } from "@/lib/status-editor";
-import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
+import { GeoapifyAddressAutocomplete } from "@/components/geoapify-address-autocomplete";
 import { useTabsState } from "@/hooks/use-tabs-state";
 import {
   detectCardType,
@@ -668,7 +668,7 @@ function EditAddressesSheet({ open, onOpenChange, quote, onSave, isPending, addr
                 <FormItem>
                   <FormLabel>Street Address *</FormLabel>
                   <FormControl>
-                    <GooglePlacesAddressAutocomplete
+                    <GeoapifyAddressAutocomplete
                       value={field.value}
                       onChange={(value: string) => {
                         field.onChange(value);
@@ -14248,7 +14248,7 @@ export default function QuotesPage() {
                       {/* Street Address and Apartment in same row */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
                         <div className="md:col-span-2">
-                          <GooglePlacesAddressAutocomplete
+                          <GeoapifyAddressAutocomplete
                             value={form.watch("street")}
                             onChange={(value) => form.setValue("street", value)}
                             onAddressSelect={(address) => {

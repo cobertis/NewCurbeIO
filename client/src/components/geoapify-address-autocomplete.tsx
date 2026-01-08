@@ -41,6 +41,7 @@ interface GeoapifyAddressAutocompleteProps {
   placeholder?: string;
   testId?: string;
   disabled?: boolean;
+  error?: string;
 }
 
 export function GeoapifyAddressAutocomplete({
@@ -51,6 +52,7 @@ export function GeoapifyAddressAutocomplete({
   placeholder = "Start typing your address...",
   testId = "input-address-autocomplete",
   disabled = false,
+  error,
 }: GeoapifyAddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<GeoapifySuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -146,6 +148,7 @@ export function GeoapifyAddressAutocomplete({
     <div ref={wrapperRef} className="relative space-y-2">
       {label && <label className="block text-xs text-gray-400 mb-1 ml-1">{label}</label>}
       <div className="relative">
+        {error && <p className="text-xs text-destructive mt-1">{error}</p>}
         <Input
           value={value}
           onChange={handleInputChange}

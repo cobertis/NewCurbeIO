@@ -276,7 +276,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StripeCardForm } from "@/components/stripe-card-form";
 import { ManagePaymentMethodsDialog } from "@/components/manage-payment-methods-dialog";
-import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
+import { GeoapifyAddressAutocomplete } from "@/components/geoapify-address-autocomplete";
 
 // Reactivate Phone Button Component
 function ReactivatePhoneButton({ phoneNumber }: { phoneNumber: BulkvsPhoneNumberWithDisplay }) {

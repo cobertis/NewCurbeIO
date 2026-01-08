@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { StepIndicator } from "@/components/compliance/step-indicator";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
+import { GeoapifyAddressAutocomplete } from "@/components/geoapify-address-autocomplete";
 import type { ComplianceApplication } from "@shared/schema";
 
 const steps = [
@@ -685,7 +685,7 @@ export default function ComplianceBrand() {
                       Address Line 1 <span className="text-red-500">*</span>
                     </Label>
                     <div className="mt-1.5">
-                      <GooglePlacesAddressAutocomplete
+                      <GeoapifyAddressAutocomplete
                         value={form.watch("street")}
                         onChange={(value) => form.setValue("street", value)}
                         onAddressSelect={(address) => {
