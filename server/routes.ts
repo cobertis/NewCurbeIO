@@ -4599,6 +4599,396 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ message: "Failed to fetch business suggestions" });
     }
   });
+
+  // ==================== TELNYX PORTING API ====================
+  
+  app.post("/api/telnyx/porting/check-portability", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumbers } = req.body;
+
+      if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+        return res.status(400).json({ message: "Phone numbers array is required" });
+      }
+
+      const { checkPortability } = await import("./services/telnyx-porting-service");
+      const result = await checkPortability(phoneNumbers, user.companyId || undefined);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      return res.json({ results: result.results });
+    } catch (error) {
+      console.error("[Porting] Check portability error:", error);
+      return res.status(500).json({ message: "Failed to check portability" });
+    }
+  });
+
+  app.post("/api/telnyx/porting/orders", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumbers, portabilityResults } = req.body;
+
+      if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+        return res.status(400).json({ message: "Phone numbers array is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "Company ID is required" });
+      }
+
+      const { createPortingOrder, createLocalPortingOrder } = await import("./services/telnyx-porting-service");
+      
+      const telnyxResult = await createPortingOrder({ phone_numbers: phoneNumbers }, user.companyId);
+
+      if (!telnyxResult.success || !telnyxResult.portingOrders?.length) {
+        return res.status(400).json({ message: telnyxResult.error || "Failed to create porting order" });
+      }
+
+      const telnyxOrder = telnyxResult.portingOrders[0];
+      const localOrder = await createLocalPortingOrder({
+        companyId: user.companyId,
+        createdBy: user.id,
+        phoneNumbers,
+        telnyxPortingOrderId: telnyxOrder.id,
+        status: telnyxOrder.status || "draft",
+        portabilityCheckResults: portabilityResults,
+      });
+
+      return res.json({ order: localOrder, telnyxOrder });
+    } catch (error) {
+      console.error("[Porting] Create order error:", error);
+      return res.status(500).json({ message: "Failed to create porting order" });
+    }
+  });
+
+  app.get("/api/telnyx/porting/orders", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "Company ID is required" });
+      }
+
+      const { getCompanyPortingOrders } = await import("./services/telnyx-porting-service");
+      const orders = await getCompanyPortingOrders(user.companyId);
+
+      return res.json({ orders });
+    } catch (error) {
+      console.error("[Porting] List orders error:", error);
+      return res.status(500).json({ message: "Failed to list porting orders" });
+    }
+  });
+
+  app.get("/api/telnyx/porting/orders/:orderId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getPortingOrderById, getPortingOrder } = await import("./services/telnyx-porting-service");
+      const localOrder = await getPortingOrderById(orderId);
+
+      if (!localOrder || localOrder.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Porting order not found" });
+      }
+
+      let telnyxOrder = null;
+      if (localOrder.telnyxPortingOrderId) {
+        const telnyxResult = await getPortingOrder(localOrder.telnyxPortingOrderId, user.companyId || undefined);
+        if (telnyxResult.success) {
+          telnyxOrder = telnyxResult.portingOrder;
+        }
+      }
+
+      return res.json({ order: localOrder, telnyxOrder });
+    } catch (error) {
+      console.error("[Porting] Get order error:", error);
+      return res.status(500).json({ message: "Failed to get porting order" });
+    }
+  });
+
+  app.get("/api/telnyx/porting/orders/:orderId/foc-dates", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getPortingOrderById, getAllowedFocDates } = await import("./services/telnyx-porting-service");
+      const localOrder = await getPortingOrderById(orderId);
+
+      if (!localOrder || localOrder.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Porting order not found" });
+      }
+
+      if (!localOrder.telnyxPortingOrderId) {
+        return res.status(400).json({ message: "Telnyx order ID not found" });
+      }
+
+      const result = await getAllowedFocDates(localOrder.telnyxPortingOrderId, user.companyId || undefined);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      return res.json({ focWindows: result.focWindows });
+    } catch (error) {
+      console.error("[Porting] Get FOC dates error:", error);
+      return res.status(500).json({ message: "Failed to get FOC dates" });
+    }
+  });
+
+  app.get("/api/telnyx/porting/orders/:orderId/requirements", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getPortingOrderById, getPortingRequirements } = await import("./services/telnyx-porting-service");
+      const localOrder = await getPortingOrderById(orderId);
+
+      if (!localOrder || localOrder.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Porting order not found" });
+      }
+
+      if (!localOrder.telnyxPortingOrderId) {
+        return res.status(400).json({ message: "Telnyx order ID not found" });
+      }
+
+      const result = await getPortingRequirements(localOrder.telnyxPortingOrderId, user.companyId || undefined);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      return res.json({ requirements: result.requirements });
+    } catch (error) {
+      console.error("[Porting] Get requirements error:", error);
+      return res.status(500).json({ message: "Failed to get requirements" });
+    }
+  });
+
+  app.patch("/api/telnyx/porting/orders/:orderId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+      const updateData = req.body;
+
+      const { getPortingOrderById, updatePortingOrder, updateLocalPortingOrder } = await import("./services/telnyx-porting-service");
+      const localOrder = await getPortingOrderById(orderId);
+
+      if (!localOrder || localOrder.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Porting order not found" });
+      }
+
+      if (!localOrder.telnyxPortingOrderId) {
+        return res.status(400).json({ message: "Telnyx order ID not found" });
+      }
+
+      const telnyxParams: any = {};
+      
+      if (updateData.endUser) {
+        telnyxParams.end_user = {
+          admin: {
+            entity_name: updateData.endUser.entityName,
+            auth_person_name: updateData.endUser.authPersonName,
+            billing_phone_number: updateData.endUser.billingPhone,
+            account_number: updateData.endUser.accountNumber,
+            pin_passcode: updateData.endUser.pin,
+          },
+          location: {
+            street_address: updateData.endUser.streetAddress,
+            extended_address: updateData.endUser.extendedAddress,
+            locality: updateData.endUser.locality,
+            administrative_area: updateData.endUser.administrativeArea,
+            postal_code: updateData.endUser.postalCode,
+            country_code: updateData.endUser.countryCode || "US",
+          },
+        };
+      }
+
+      if (updateData.focDatetime) {
+        telnyxParams.activation_settings = {
+          foc_datetime_requested: updateData.focDatetime,
+        };
+      }
+
+      if (updateData.documents) {
+        telnyxParams.documents = updateData.documents;
+      }
+
+      if (updateData.misc) {
+        telnyxParams.misc = updateData.misc;
+      }
+
+      const telnyxResult = await updatePortingOrder(localOrder.telnyxPortingOrderId, telnyxParams, user.companyId || undefined);
+
+      if (!telnyxResult.success) {
+        return res.status(400).json({ 
+          message: telnyxResult.error,
+          validationErrors: telnyxResult.validationErrors,
+        });
+      }
+
+      const localUpdateData: any = {};
+      if (updateData.endUser) {
+        localUpdateData.endUserEntityName = updateData.endUser.entityName;
+        localUpdateData.endUserAuthPersonName = updateData.endUser.authPersonName;
+        localUpdateData.endUserBillingPhone = updateData.endUser.billingPhone;
+        localUpdateData.currentCarrierAccountNumber = updateData.endUser.accountNumber;
+        localUpdateData.currentCarrierPin = updateData.endUser.pin;
+        localUpdateData.streetAddress = updateData.endUser.streetAddress;
+        localUpdateData.extendedAddress = updateData.endUser.extendedAddress;
+        localUpdateData.locality = updateData.endUser.locality;
+        localUpdateData.administrativeArea = updateData.endUser.administrativeArea;
+        localUpdateData.postalCode = updateData.endUser.postalCode;
+        localUpdateData.countryCode = updateData.endUser.countryCode || "US";
+      }
+      if (updateData.focDatetime) {
+        localUpdateData.focDatetimeRequested = new Date(updateData.focDatetime);
+      }
+      if (updateData.loaDocumentId) {
+        localUpdateData.loaDocumentId = updateData.loaDocumentId;
+      }
+      if (updateData.invoiceDocumentId) {
+        localUpdateData.invoiceDocumentId = updateData.invoiceDocumentId;
+      }
+      if (telnyxResult.portingOrder?.status) {
+        localUpdateData.status = telnyxResult.portingOrder.status;
+      }
+
+      const updatedLocalOrder = await updateLocalPortingOrder(orderId, localUpdateData);
+
+      return res.json({ order: updatedLocalOrder, telnyxOrder: telnyxResult.portingOrder });
+    } catch (error) {
+      console.error("[Porting] Update order error:", error);
+      return res.status(500).json({ message: "Failed to update porting order" });
+    }
+  });
+
+  app.post("/api/telnyx/porting/orders/:orderId/submit", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getPortingOrderById, submitPortingOrder, updateLocalPortingOrder } = await import("./services/telnyx-porting-service");
+      const localOrder = await getPortingOrderById(orderId);
+
+      if (!localOrder || localOrder.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Porting order not found" });
+      }
+
+      if (!localOrder.telnyxPortingOrderId) {
+        return res.status(400).json({ message: "Telnyx order ID not found" });
+      }
+
+      const result = await submitPortingOrder(localOrder.telnyxPortingOrderId, user.companyId || undefined);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      await updateLocalPortingOrder(orderId, {
+        status: result.portingOrder?.status || "in_process",
+        submittedAt: new Date(),
+      });
+
+      return res.json({ success: true, telnyxOrder: result.portingOrder });
+    } catch (error) {
+      console.error("[Porting] Submit order error:", error);
+      return res.status(500).json({ message: "Failed to submit porting order" });
+    }
+  });
+
+  app.post("/api/telnyx/porting/orders/:orderId/cancel", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getPortingOrderById, cancelPortingOrder, updateLocalPortingOrder } = await import("./services/telnyx-porting-service");
+      const localOrder = await getPortingOrderById(orderId);
+
+      if (!localOrder || localOrder.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Porting order not found" });
+      }
+
+      if (!localOrder.telnyxPortingOrderId) {
+        return res.status(400).json({ message: "Telnyx order ID not found" });
+      }
+
+      const result = await cancelPortingOrder(localOrder.telnyxPortingOrderId, user.companyId || undefined);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      await updateLocalPortingOrder(orderId, {
+        status: "cancelled",
+        cancelledAt: new Date(),
+      });
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("[Porting] Cancel order error:", error);
+      return res.status(500).json({ message: "Failed to cancel porting order" });
+    }
+  });
+
+  app.get("/api/telnyx/porting/orders/:orderId/loa-template", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getPortingOrderById, downloadLoaTemplate } = await import("./services/telnyx-porting-service");
+      const localOrder = await getPortingOrderById(orderId);
+
+      if (!localOrder || localOrder.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Porting order not found" });
+      }
+
+      if (!localOrder.telnyxPortingOrderId) {
+        return res.status(400).json({ message: "Telnyx order ID not found" });
+      }
+
+      const result = await downloadLoaTemplate(localOrder.telnyxPortingOrderId, user.companyId || undefined);
+
+      if (!result.success || !result.pdfBuffer) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="LOA-${localOrder.telnyxPortingOrderId}.pdf"`);
+      return res.send(result.pdfBuffer);
+    } catch (error) {
+      console.error("[Porting] Download LOA error:", error);
+      return res.status(500).json({ message: "Failed to download LOA template" });
+    }
+  });
+
+  app.post("/api/telnyx/porting/upload-document", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { uploadDocument } = await import("./services/telnyx-porting-service");
+      const result = await uploadDocument(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        user.companyId || undefined
+      );
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      return res.json({ documentId: result.documentId });
+    } catch (error) {
+      console.error("[Porting] Upload document error:", error);
+      return res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
   // ==================== GOOGLE OAUTH ENDPOINTS ====================
   app.get("/api/auth/google", async (req: Request, res: Response) => {
     try {
