@@ -10,6 +10,7 @@ import {
 } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import crypto from "crypto";
+import { mergeQueueService } from "./merge-queue-service";
 
 // US State to Timezone mapping
 const STATE_TIMEZONE_MAP: Record<string, string> = {
@@ -293,6 +294,20 @@ export class LeadCanonicalizerService {
     
     if (existing.length > 0) {
       const existingPoint = existing[0];
+      
+      // DUPLICATE DETECTION: If contact point exists with a DIFFERENT personId, queue for merge
+      if (existingPoint.personId && personId && existingPoint.personId !== personId) {
+        try {
+          await mergeQueueService.checkAndQueueDuplicateForContactPoint(
+            companyId,
+            personId,
+            existingPoint.personId,
+            type
+          );
+        } catch (err) {
+          console.error('[LeadCanonicalizer] Failed to queue duplicate for merge:', err);
+        }
+      }
       
       // Update if new subtype has higher priority
       const existingPriority = SUBTYPE_PRIORITY[existingPoint.subtype] || 0;

@@ -20,6 +20,7 @@ import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
 import { leadCanonicalizerService } from "./services/lead-canonicalizer-service";
+import { mergeQueueService } from "./services/merge-queue-service";
 import { leadDerivedFieldsService } from "./services/lead-derived-fields-service";
 import twilio from "twilio";
 import fetch from "node-fetch";
@@ -45768,6 +45769,111 @@ CRITICAL REMINDERS:
   });
 
 
+  // POST /api/leads/import/csv - Upload and process CSV file through canonical pipeline
+  app.post("/api/leads/import/csv", requireActiveCompany, leadImportUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const userId = user.id;
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No CSV file provided" });
+      }
+
+      const fileName = req.file.originalname;
+      const csvContent = req.file.buffer.toString('utf-8');
+
+      // Parse CSV using stream for memory efficiency
+      const records: any[] = await new Promise((resolve, reject) => {
+        csvParse(csvContent, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+          relax_column_count: true
+        }, (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+      });
+
+      const totalRows = records.length;
+
+      // Create batch record with metadata
+      const [batch] = await db.insert(importLeadBatches).values({
+        companyId,
+        createdBy: userId,
+        fileName,
+        status: 'processing',
+        totalRows,
+        processedRows: 0,
+        errorRows: 0,
+        errors: []
+      }).returning();
+
+      let processedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+      const errors: { row: number; message: string }[] = [];
+      const warnings: { row: number; warnings: any[] }[] = [];
+
+      // Process each row through the canonicalizer
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i];
+        try {
+          const result = await leadCanonicalizerService.processRow(
+            companyId,
+            batch.id,
+            i + 1,
+            row
+          );
+
+          if (result.skippedDuplicate) {
+            skippedCount++;
+          } else {
+            processedCount++;
+          }
+
+          if (result.warnings && result.warnings.length > 0) {
+            warnings.push({ row: i + 1, warnings: result.warnings });
+          }
+        } catch (rowError: any) {
+          errorCount++;
+          errors.push({ row: i + 1, message: rowError.message || 'Unknown error' });
+        }
+      }
+
+      // Update batch with final counts
+      const finalStatus = errorCount === totalRows ? 'failed' : 
+                          errorCount > 0 ? 'completed_with_errors' : 'completed';
+      
+      await db.update(importLeadBatches)
+        .set({
+          status: finalStatus,
+          totalRows,
+          processedRows: processedCount,
+          errorRows: errorCount,
+          errors: errors.slice(0, 100),
+          completedAt: new Date()
+        })
+        .where(eq(importLeadBatches.id, batch.id));
+
+      res.json({
+        batchId: batch.id,
+        fileName,
+        totalRows,
+        processed: processedCount,
+        skipped: skippedCount,
+        errors: errorCount,
+        errorDetails: errors.slice(0, 10),
+        warnings: warnings.slice(0, 10)
+      });
+    } catch (error: any) {
+      console.error("[Lead Import CSV] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to import CSV" });
+    }
+  });
+
+
   // =====================================================
   // OPERATIONAL LEADS - 3-Layer Lead Architecture
   // =====================================================
@@ -46383,5 +46489,108 @@ CRITICAL REMINDERS:
     }
   });
 
+
+  // ============================================================
+  // MERGE QUEUE - Duplicate person detection and resolution
+  // ============================================================
+
+  // GET /api/merge-queue - List pending merge tasks
+  app.get("/api/merge-queue", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      
+      const status = (req.query.status as string) || 'pending';
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      const result = await mergeQueueService.getMergeQueue(companyId, { status, limit, offset });
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Merge Queue] Error fetching queue:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch merge queue" });
+    }
+  });
+
+  // POST /api/merge-queue/:id/resolve - Resolve a merge task (merge or dismiss)
+  app.post("/api/merge-queue/:id/resolve", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const userId = user.id;
+      const { id } = req.params;
+      const { action } = req.body;
+      
+      if (!action || !['merge', 'dismiss'].includes(action)) {
+        return res.status(400).json({ message: "Invalid action. Must be 'merge' or 'dismiss'" });
+      }
+      
+      const result = await mergeQueueService.resolveMerge(id, action, userId);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+      
+      res.json({ success: true, message: `Merge task ${action === 'merge' ? 'merged' : 'dismissed'} successfully` });
+    } catch (error: any) {
+      console.error("[Merge Queue] Error resolving merge:", error);
+      res.status(500).json({ message: error.message || "Failed to resolve merge task" });
+    }
+  });
+
+  // GET /api/merge-queue/:id - Get a single merge task with full details
+  app.get("/api/merge-queue/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { id } = req.params;
+      
+      const result = await mergeQueueService.getMergeQueue(companyId, { status: 'pending', limit: 1000 });
+      const item = result.items.find(i => i.id === id);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Merge queue item not found" });
+      }
+      
+      res.json(item);
+    } catch (error: any) {
+      console.error("[Merge Queue] Error fetching item:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch merge queue item" });
+    }
+  });
+
+  // POST /api/merge-queue/detect/:personId - Run duplicate detection for a specific person
+  app.post("/api/merge-queue/detect/:personId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { personId } = req.params;
+      
+      const { duplicates } = await mergeQueueService.detectDuplicates(companyId, personId);
+      
+      let queued = 0;
+      for (const dup of duplicates) {
+        const result = await mergeQueueService.queueMerge(
+          companyId, 
+          personId, 
+          dup.personId, 
+          dup.reason, 
+          dup.confidence
+        );
+        if (!result.alreadyExists) {
+          queued++;
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        duplicatesFound: duplicates.length,
+        newTasksQueued: queued
+      });
+    } catch (error: any) {
+      console.error("[Merge Queue] Error detecting duplicates:", error);
+      res.status(500).json({ message: error.message || "Failed to detect duplicates" });
+    }
+  });
   return httpServer;
 }

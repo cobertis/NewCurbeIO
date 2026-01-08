@@ -3456,6 +3456,32 @@ export const insertSuppressionListSchema = createInsertSchema(suppressionList).o
 export type InsertSuppressionList = z.infer<typeof insertSuppressionListSchema>;
 export type SuppressionListEntry = typeof suppressionList.$inferSelect;
 
+// Merge Queue - Duplicate person detection for review
+export const mergeQueue = pgTable("merge_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  personIdA: varchar("person_id_a").notNull().references(() => canonicalPersons.id, { onDelete: "cascade" }),
+  personIdB: varchar("person_id_b").notNull().references(() => canonicalPersons.id, { onDelete: "cascade" }),
+  matchReason: text("match_reason").notNull(), // "same_phone", "same_email", "name_match"
+  confidence: integer("confidence").notNull().default(70), // 0-100
+  status: text("status").notNull().default("pending"), // pending, merged, dismissed
+  resolvedBy: varchar("resolved_by").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("merge_queue_company_idx").on(table.companyId),
+  index("merge_queue_status_idx").on(table.status),
+  index("merge_queue_person_a_idx").on(table.personIdA),
+  index("merge_queue_person_b_idx").on(table.personIdB),
+]);
+
+export const insertMergeQueueSchema = createInsertSchema(mergeQueue).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertMergeQueue = z.infer<typeof insertMergeQueueSchema>;
+export type MergeQueue = typeof mergeQueue.$inferSelect;
+
 // Landing page appointment availability settings
 export const appointmentAvailability = pgTable("appointment_availability", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
