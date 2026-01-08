@@ -3111,6 +3111,74 @@ export const landingLeads = pgTable("landing_leads", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ==============================================
+// IMPORTED LEADS (CSV Upload)
+// ==============================================
+
+export const importLeadBatches = pgTable("import_lead_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  
+  fileName: text("file_name").notNull(),
+  status: text("status").notNull().default("processing"), // processing, completed, failed
+  totalRows: integer("total_rows").default(0),
+  processedRows: integer("processed_rows").default(0),
+  errorRows: integer("error_rows").default(0),
+  errors: jsonb("errors").default([]),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const importLeads = pgTable("import_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id").notNull().references(() => importLeadBatches.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  externalId: text("external_id"),
+  
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zip: text("zip"),
+  
+  ageRange: text("age_range"),
+  gender: text("gender"),
+  hasChildren: boolean("has_children"),
+  isHomeowner: boolean("is_homeowner"),
+  isMarried: boolean("is_married"),
+  netWorth: text("net_worth"),
+  incomeRange: text("income_range"),
+  
+  phones: text("phones").array(),
+  emails: text("emails").array(),
+  
+  jobTitle: text("job_title"),
+  companyName: text("company_name"),
+  
+  extraData: jsonb("extra_data").default({}),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertImportLeadBatchSchema = createInsertSchema(importLeadBatches).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+export type InsertImportLeadBatch = z.infer<typeof insertImportLeadBatchSchema>;
+export type ImportLeadBatch = typeof importLeadBatches.$inferSelect;
+
+export const insertImportLeadSchema = createInsertSchema(importLeads).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertImportLead = z.infer<typeof insertImportLeadSchema>;
+export type ImportLead = typeof importLeads.$inferSelect;
+
 // Landing page appointment availability settings
 export const appointmentAvailability = pgTable("appointment_availability", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
