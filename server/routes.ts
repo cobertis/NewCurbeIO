@@ -19,9 +19,6 @@ import { chargeCallUsage, getCallUsageBreakdown, chargeSmsUsage, chargeMmsUsage,
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
-import { leadCanonicalizerService } from "./services/lead-canonicalizer-service";
-import { mergeQueueService } from "./services/merge-queue-service";
-import { leadDerivedFieldsService } from "./services/lead-derived-fields-service";
 import twilio from "twilio";
 import fetch from "node-fetch";
 import { checkPwnedPassword } from "./lib/security/pwnedPassword";
@@ -97,16 +94,12 @@ import {
   insertCampaignTemplateSchema,
   insertCampaignPlaceholderSchema,
   insertImessageCampaignSchema,
-  createCampaignWithDetailsSchema,
-  importLeadBatches,
-  importLeads,
-  InsertImportLead
+  createCampaignWithDetailsSchema
 } from "@shared/schema";
-import { parse as csvParse } from "csv-parse";
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, leadOperational, canonicalPersons, canonicalContactPoints, canonicalCompanyEntities, personCompanyRelations, leadRawRows, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -1213,7 +1206,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   status: messageData.dateRead ? 'read' : 'delivered',
                 });
               }
-              return res.json({ success: true, skipped: true });
+              return res.json({ success: true, message: 'Self-sent message ignored (no pending match)' });
             }
             // Store the message - wrap in try-catch to handle race conditions with duplicate messages
             try {
@@ -1458,11 +1451,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[BlueBubbles Webhook] Unknown event type: ${eventType}`);
       }
       // Always return 200 OK to acknowledge webhook receipt
-      res.json({ success: true });
+      res.json({ success: true, message: "Webhook processed" });
     } catch (error: any) {
       console.error("[BlueBubbles Webhook] Error processing webhook:", error);
       // Still return 200 to prevent webhook retries for processing errors
-      res.json({ success: true });
+      res.json({ success: false, message: "Webhook processing error", error: error.message });
     }
   });
   // Attachment upload endpoint
@@ -1782,7 +1775,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         options.search = search as string;
       }
       const conversations = await storage.getImessageConversationsByCompany(user.companyId, options);
-      res.json({ success: true });
+      res.json({ conversations });
     } catch (error: any) {
       console.error("Error fetching iMessage conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -2063,7 +2056,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
         // Return success with the created message (webhook will update it)
-        res.json({
+        res.json({ 
           success: true, 
           conversation,
           message: optimisticMessage
@@ -2379,7 +2372,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         completed: campaigns.filter(c => c.status === 'completed').length,
         draft: campaigns.filter(c => c.status === 'draft').length,
       };
-      res.json({ success: true });
+      res.json({ campaigns: enrichedCampaigns, stats });
     } catch (error: any) {
       console.error("Error listing iMessage campaigns:", error);
       res.status(500).json({ message: "Failed to list campaigns" });
@@ -2490,7 +2483,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Access denied" });
       }
       // Return wrapped response for consistency with other endpoints
-      res.json({ success: true });
+      res.json({ campaign });
     } catch (error: any) {
       console.error("Error getting iMessage campaign:", error);
       res.status(500).json({ message: "Failed to get campaign" });
@@ -2566,7 +2559,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete campaign" });
       }
-      res.json({ success: true });
+      res.json({ success: true, message: "Campaign deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting iMessage campaign:", error);
       res.status(500).json({ message: "Failed to delete campaign" });
@@ -2675,7 +2668,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentRun && currentRun.status === 'running') {
         await storage.updateImessageCampaignRun(currentRun.id, { status: 'paused' });
       }
-      res.json({ success: true });
+      res.json({ success: true, message: "Campaign paused successfully" });
     } catch (error: any) {
       console.error("Error pausing iMessage campaign:", error);
       res.status(500).json({ message: "Failed to pause campaign" });
@@ -2712,7 +2705,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentRun && currentRun.status === 'paused') {
         await storage.updateImessageCampaignRun(currentRun.id, { status: 'running' });
       }
-      res.json({ success: true });
+      res.json({ success: true, message: "Campaign resumed successfully" });
     } catch (error: any) {
       console.error("Error resuming iMessage campaign:", error);
       res.status(500).json({ message: "Failed to resume campaign" });
@@ -2752,7 +2745,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           completedAt: new Date(),
         });
       }
-      res.json({ success: true });
+      res.json({ success: true, message: "Campaign stopped successfully" });
     } catch (error: any) {
       console.error("Error stopping iMessage campaign:", error);
       res.status(500).json({ message: "Failed to stop campaign" });
@@ -3008,7 +3001,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Log but don't fail the request if notification fails
         console.error('Failed to send consent signed notification:', notificationError);
       }
-      res.json({ success: true });
+      res.json({ consent: signedConsent, message: "Consent signed successfully" });
     } catch (error: any) {
       console.error("Error signing consent:", error);
       res.status(500).json({ message: "Failed to sign consent document" });
@@ -3351,7 +3344,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ipAddress: sessionData.ipAddress || 'Unknown IP',
         };
       });
-      res.json({ success: true });
+      res.json({ sessions: formattedSessions });
     } catch (error) {
       console.error("Error fetching user sessions:", error);
       res.status(500).json({ message: "Failed to fetch sessions" });
@@ -3403,7 +3396,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error("Error destroying current session:", err);
           return res.status(500).json({ message: "Failed to logout from all sessions" });
         }
-        res.json({
+        res.json({ 
           success: true,
           message: "Successfully cleared all sessions and trusted devices"
         });
@@ -3660,7 +3653,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           companyName: newCompany.name,
         },
       });
-      res.json({
+      res.json({ 
         success: true,
         message: "Registration successful! Please check your email to activate your account.",
         companyId: newCompany.id,
@@ -3877,7 +3870,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         })
         .where(eq(users.id, user.id));
       
-      res.json({
+      res.json({ 
         success: true, 
         skippedOnboardingSteps: newSkipped 
       });
@@ -3947,7 +3940,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             .where(eq(users.id, user.id));
         }
         
-        return res.json({
+        return res.json({ 
           success: true, 
           message: "Browser calling already configured",
           extension: extension.extension,
@@ -4047,7 +4040,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       console.log(`[BrowserCalling] Successfully provisioned browser calling for user ${user.id}, extension ${extension.extension}`);
       
-      return res.json({
+      return res.json({ 
         success: true, 
         message: "Browser calling enabled successfully",
         extension: extension.extension,
@@ -4094,7 +4087,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log("[LOCATIONIQ] Got", data.length, "results");
       // Set JSON content type explicitly
       res.setHeader('Content-Type', 'application/json');
-      return res.json({ success: true, skipped: true });
+      return res.json({ results: data });
     } catch (error) {
       console.error("[LOCATIONIQ] Autocomplete error:", error);
       return res.status(500).json({ message: "Failed to fetch address suggestions" });
@@ -4217,7 +4210,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         };
       });
       res.setHeader('Content-Type', 'application/json');
-      return res.json({ success: true, skipped: true });
+      return res.json({ results });
     } catch (error) {
       console.error("[GOOGLE_PLACES] Autocomplete error:", error);
       return res.status(500).json({ message: "Failed to fetch address suggestions" });
@@ -4457,7 +4450,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       // Set JSON content type explicitly
       res.setHeader('Content-Type', 'application/json');
-      return res.json({ success: true, skipped: true });
+      return res.json({ results });
     } catch (error) {
       console.error("[GOOGLE_PLACES] Search error:", error);
       return res.status(500).json({ message: "Failed to fetch business suggestions" });
@@ -4659,7 +4652,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         companyId: user.companyId || undefined,
         metadata: { method },
       });
-      res.json({
+      res.json({ 
         success: true, 
         message: `Verification code sent via ${method}`,
         userId: user.id
@@ -4865,7 +4858,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         email: user.email,
         metadata: { method },
       });
-      res.json({
+      res.json({ 
         success: true, 
         message: `New verification code sent via ${method}`
       });
@@ -4895,7 +4888,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (activationToken.usedAt) {
         return res.status(400).json({ message: "This activation link has already been used" });
       }
-      res.json({
+      res.json({ 
         success: true,
         message: "Token is valid"
       });
@@ -4947,7 +4940,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { notificationService } = await import("./notification-service");
       const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
       await notificationService.notifyUserActivated(userName, user.email, user.id);
-      res.json({
+      res.json({ 
         success: true,
         message: "Account activated successfully"
       });
@@ -4969,14 +4962,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Always return success even if user not found (security best practice)
       // This prevents email enumeration attacks
       if (!user) {
-        return res.json({
+        return res.json({ 
           success: true,
           message: "If an account with that email or username exists, a password reset link has been sent."
         });
       }
       // Check if user is active
       if (user.status !== 'active') {
-        return res.json({
+        return res.json({ 
           success: true,
           message: "If an account with that email or username exists, a password reset link has been sent."
         });
@@ -5040,7 +5033,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Send notifications to admins and superadmins
       const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
       await notificationService.notifyPasswordResetRequested(user.id, user.email, userName);
-      res.json({
+      res.json({ 
         success: true,
         message: "If an account with that email or username exists, a password reset link has been sent."
       });
@@ -5069,7 +5062,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (resetToken.usedAt) {
         return res.status(400).json({ message: "This password reset link has already been used" });
       }
-      res.json({
+      res.json({ 
         success: true,
         message: "Token is valid"
       });
@@ -5150,7 +5143,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Send notifications to user and superadmins
       const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
       await notificationService.notifyPasswordResetCompleted(user.id, user.email, userName);
-      res.json({
+      res.json({ 
         success: true,
         message: "Password reset successfully"
       });
@@ -5230,7 +5223,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     
     try {
       const invitations = await storage.getInvitationsByCompany(currentUser.companyId);
-      res.json({ success: true });
+      res.json({ invitations });
     } catch (error) {
       console.error("[GET INVITATIONS] Error:", error);
       res.status(500).json({ message: "Failed to fetch invitations" });
@@ -5350,7 +5343,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         users = [];
       }
-      res.json({ success: true });
+      res.json({ users });
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
@@ -5483,7 +5476,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       await storage.deleteUser(userId);
       
-      res.json({ success: true });
+      res.json({ message: "User deleted successfully" });
     } catch (error: any) {
       console.error("[DELETE USER] Error:", error);
       res.status(500).json({ message: error.message || "Failed to delete user" });
@@ -5535,7 +5528,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const userId = req.session!.userId!;
       const [user] = await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
-      res.json({ success: true });
+      res.json({ status: user?.agentAvailabilityStatus || "offline" });
     } catch (error) {
       console.error("Error getting availability status:", error);
       res.status(500).json({ message: "Failed to get availability status" });
@@ -5555,7 +5548,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       
       console.log(`[Agent Availability] User ${userId} set status to: ${status}`);
-      res.json({ success: true });
+      res.json({ success: true, status });
     } catch (error) {
       console.error("Error updating availability status:", error);
       res.status(500).json({ message: "Failed to update availability status" });
@@ -5578,15 +5571,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Admins can view users in their company
       // Users can view their own profile
       if (currentUser.role === "superadmin") {
-        return res.json({ success: true, skipped: true });
+        return res.json({ user: targetUser });
       }
       
       if (currentUser.id === targetUserId) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ user: targetUser });
       }
       
       if (currentUser.companyId && targetUser.companyId === currentUser.companyId) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ user: targetUser });
       }
       
       return res.status(403).json({ message: "Forbidden" });
@@ -5612,7 +5605,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       console.log(`[Timezone] User ${user.email} updated timezone to: ${timezone}`);
-      res.json({ success: true });
+      res.json({ success: true, timezone: updatedUser.timezone });
     } catch (error: any) {
       console.error("[Timezone] Error updating timezone:", error);
       res.status(500).json({ message: "Failed to update timezone" });
@@ -5677,7 +5670,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const { password, ...sanitizedUser } = updatedUser;
       console.log(`[User Update] Admin ${currentUser.email} updated user ${targetUser.email}:`, Object.keys(allowedFields));
-      res.json({ success: true });
+      res.json({ user: sanitizedUser });
     } catch (error: any) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: error.message || "Failed to update user" });
@@ -5689,7 +5682,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const currentUser = req.user!;
       if (!currentUser.companyId) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ agents: [] });
       }
       const users = await storage.getUsersByCompany(currentUser.companyId);
       // Return agents with the fields needed for dropdowns
@@ -5701,7 +5694,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         avatar: user.avatar,
         role: user.role,
       }));
-      res.json({ success: true });
+      res.json({ agents });
     } catch (error) {
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
@@ -6161,7 +6154,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }))
         .sort((a, b) => b.policies - a.policies)
         .slice(0, 10);
-      res.json({ success: true });
+      res.json({ carriers });
     } catch (error: any) {
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
@@ -6207,7 +6200,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             agentName
           };
         });
-      res.json({ success: true });
+      res.json({ policies: recentPolicies });
     } catch (error: any) {
       console.error("Error fetching recent policies:", error);
       res.status(500).json({ message: "Failed to fetch recent policies" });
@@ -6220,15 +6213,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       if (currentUser.role === "superadmin") {
         const companies = await storage.getAllCompanies();
-        return res.json({ success: true, skipped: true });
+        return res.json({ companies });
       }
       
       if (currentUser.companyId) {
         const company = await storage.getCompany(currentUser.companyId);
-        return res.json({ success: true, skipped: true });
+        return res.json({ companies: company ? [company] : [] });
       }
       
-      res.json({ success: true });
+      res.json({ companies: [] });
     } catch (error: any) {
       console.error("Error fetching companies:", error);
       res.status(500).json({ message: "Failed to fetch companies" });
@@ -6246,7 +6239,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!company) {
       return res.status(404).json({ message: "Company not found" });
     }
-    res.json({ success: true });
+    res.json({ company });
   });
   // Update company by ID (admin or superadmin)
   app.patch("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6299,7 +6292,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Company not found" });
       }
       
-      res.json({ success: true });
+      res.json({ company: updatedCompany });
     } catch (error: any) {
       console.error("[Company Update] Error:", error);
       res.status(400).json({ message: error.message || "Failed to update company" });
@@ -6334,7 +6327,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         updatedBy: currentUser.email,
       },
     });
-    res.json({ success: true });
+    res.json({ company: updatedCompany });
   });
   app.delete("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -6371,7 +6364,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      res.json({ success: true });
+      res.json({ success: true, message: `Company "${company.name}" and all associated data deleted` });
     } catch (error: any) {
       console.error("[Company Delete] Error:", error);
       res.status(500).json({ message: "Failed to delete company: " + (error.message || "Unknown error") });
@@ -6683,7 +6676,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         emailSettings: {},
       });
     }
-    res.json({ success: true });
+    res.json({ settings });
   });
   // Update company settings (admin or superadmin)
   app.patch("/api/settings/company", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6711,7 +6704,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       const updatedSettings = await storage.updateCompanySettings(companyId, validatedData);
-      res.json({ success: true });
+      res.json({ settings: updatedSettings });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
@@ -6749,7 +6742,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
-      res.json({ success: true });
+      res.json({ user: sanitizedUser });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
@@ -6789,7 +6782,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (Object.keys(updateData).length > 0) {
         await storage.updateUser(user.id, updateData);
       }
-      res.json({
+      res.json({ 
         success: true,
         preferences: {
           emailNotifications: preferences.emailNotifications ?? user.emailNotifications,
@@ -6819,7 +6812,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
-      res.json({ success: true });
+      res.json({ user: sanitizedUser });
     } catch (error: any) {
       console.error("[SIP Update] Error:", error);
       res.status(400).json({ message: error.message || "Failed to update SIP settings" });
@@ -6838,7 +6831,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
-      res.json({ success: true });
+      res.json({ user: sanitizedUser });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
@@ -6861,7 +6854,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "User not found" });
       }
       const { password, ...sanitizedUser } = updatedUser;
-      res.json({ success: true });
+      res.json({ user: sanitizedUser });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
@@ -6876,7 +6869,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const plans = currentUser.role === "superadmin" 
       ? await storage.getAllPlans()
       : await storage.getActivePlans();
-    res.json({ success: true });
+    res.json({ plans });
   });
   // Get plan by ID
   app.get("/api/plans/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6884,7 +6877,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!plan) {
       return res.status(404).json({ message: "Plan not found" });
     }
-    res.json({ success: true });
+    res.json({ plan });
   });
   // Create plan (superadmin only)
   app.post("/api/plans", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6895,7 +6888,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const validatedData = insertPlanSchema.parse(req.body);
       const plan = await storage.createPlan(validatedData);
-      res.json({ success: true });
+      res.json({ plan });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
@@ -6912,7 +6905,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedPlan) {
         return res.status(404).json({ message: "Plan not found" });
       }
-      res.json({ success: true });
+      res.json({ plan: updatedPlan });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
@@ -6938,7 +6931,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         stripeAnnualPriceId: stripeIds.stripeAnnualPriceId,
         stripeSetupFeePriceId: stripeIds.stripeSetupFeePriceId,
       });
-      res.json({
+      res.json({ 
         success: true, 
         plan: updatedPlan,
         message: "Plan synchronized with Stripe successfully"
@@ -6974,7 +6967,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Plan not found" });
       }
       const assignments = await storage.getPlanFeatureAssignments(planId);
-      res.json({ success: true });
+      res.json({ assignments });
     } catch (error: any) {
       console.error("Error fetching plan feature assignments:", error);
       res.status(500).json({ message: "Failed to fetch plan feature assignments" });
@@ -6996,7 +6989,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const assignmentsSchema = z.array(insertPlanFeatureAssignmentSchema.omit({ planId: true }));
       const validatedData = assignmentsSchema.parse(req.body);
       const assignments = await storage.setPlanFeatureAssignments(planId, validatedData);
-      res.json({ success: true });
+      res.json({ assignments });
     } catch (error: any) {
       console.error("Error setting plan feature assignments:", error);
       if (error.name === "ZodError") {
@@ -7026,7 +7019,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!assignment) {
         return res.status(404).json({ message: "Feature assignment not found" });
       }
-      res.json({ success: true });
+      res.json({ assignment });
     } catch (error: any) {
       console.error("Error updating plan feature assignment:", error);
       res.status(500).json({ message: "Failed to update plan feature assignment" });
@@ -7147,7 +7140,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const prices = await listAllStripePrices();
       // Also get current plans from database
       const plans = await storage.getAllPlans();
-      res.json({
+      res.json({ 
         stripePrices: prices,
         currentPlans: plans.map(p => ({
           id: p.id,
@@ -7170,13 +7163,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/plan-features", async (req: Request, res: Response) => {
     // Public endpoint - no auth required for pricing page display
     const features = await storage.getAllPlanFeatures();
-    res.json({ success: true });
+    res.json({ features });
   });
   // Get active plans for public pricing page (no auth required)
   app.get("/api/public/plans", async (req: Request, res: Response) => {
     // Public endpoint - returns only active plans for pricing page
     const plans = await storage.getActivePlans();
-    res.json({ success: true });
+    res.json({ plans });
   });
   // Create plan feature (superadmin only)
   app.post("/api/plan-features", requireAuth, async (req: Request, res: Response) => {
@@ -7187,7 +7180,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const validatedData = insertPlanFeatureSchema.parse(req.body);
       const feature = await storage.createPlanFeature(validatedData);
-      res.json({ success: true });
+      res.json({ feature });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
@@ -7204,7 +7197,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedFeature) {
         return res.status(404).json({ message: "Feature not found" });
       }
-      res.json({ success: true });
+      res.json({ feature: updatedFeature });
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
@@ -7232,11 +7225,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (companyId) {
         // Get invoices for specific company
         const invoices = await storage.getInvoicesByCompany(companyId);
-        res.json({ success: true });
+        res.json({ invoices });
       } else {
         // Get ALL invoices from ALL companies
         const invoices = await storage.getAllInvoices();
-        res.json({ success: true });
+        res.json({ invoices });
       }
     } else {
       // Non-superadmins can only see their company's invoices
@@ -7245,7 +7238,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Company ID required" });
       }
       const invoices = await storage.getInvoicesByCompany(companyId);
-      res.json({ success: true });
+      res.json({ invoices });
     }
   });
   // Get invoice by ID
@@ -7261,7 +7254,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     // Get invoice items
     const items = await storage.getInvoiceItems(invoice.id);
-    res.json({ success: true });
+    res.json({ invoice, items });
   });
   // Get payments (scoped by company for non-superadmins)
   app.get("/api/payments", requireActiveCompany, async (req: Request, res: Response) => {
@@ -7273,7 +7266,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(400).json({ message: "Company ID required" });
     }
     const payments = await storage.getPaymentsByCompany(companyId);
-    res.json({ success: true });
+    res.json({ payments });
   });
   // ===================================================================
   // SUBSCRIPTION & STRIPE CHECKOUT
@@ -7288,7 +7281,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(400).json({ message: "Company ID required" });
     }
     const subscription = await storage.getSubscriptionByCompany(companyId);
-    res.json({ success: true });
+    res.json({ subscription });
   });
   // Assign plan to company (superadmin only) - Creates or updates subscription without Stripe
   app.post("/api/companies/:companyId/subscription", requireActiveCompany, async (req: Request, res: Response) => {
@@ -7421,7 +7414,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             stripeSubscriptionId: stripeSubscription.id,
           },
         });
-        res.json({ success: true });
+        res.json({ subscription: updatedSubscription });
       } else {
         // Create new subscription
         const newSubscription = await storage.createSubscription({
@@ -7441,7 +7434,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             stripeSubscriptionId: stripeSubscription.id,
           },
         });
-        res.json({ success: true });
+        res.json({ subscription: newSubscription });
       }
     } catch (error: any) {
       console.error("Error assigning plan to company:", error);
@@ -7621,7 +7614,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // NEVER send trial notification when updating an existing subscription
         // Trial notification is ONLY sent once when subscription is created for the first time
         // NOT when changing plans, NOT when updating, ONLY on initial creation
-        res.json({ success: true });
+        res.json({ subscription: updatedSubscription });
       } else {
         // Create new subscription
         const newSubscription = await storage.createSubscription({
@@ -7653,7 +7646,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.error('[NOTIFICATION] Failed to send trial started notification:', notifError);
           }
         }
-        res.json({ success: true });
+        res.json({ subscription: newSubscription });
       }
     } catch (error: any) {
       console.error("Error selecting plan:", error);
@@ -7686,7 +7679,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         `${req.headers.origin}/subscription/success`,
         `${req.headers.origin}/subscription/cancel`
       );
-      res.json({ success: true });
+      res.json({ url: session.url });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -7764,7 +7757,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { createCustomerPortalSession } = await import("./stripe");
       const returnUrl = `${req.headers.origin}/billing`;
       const session = await createCustomerPortalSession(customerId, returnUrl);
-      res.json({ success: true });
+      res.json({ url: session.url });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -7827,7 +7820,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const dateB = new Date(b.invoiceDate || b.createdAt);
         return dateB.getTime() - dateA.getTime();
       });
-      res.json({ success: true });
+      res.json({ invoices });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -7864,7 +7857,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         invoice.stripeHostedInvoiceUrl || undefined
       );
       if (emailSent) {
-        res.json({ success: true });
+        res.json({ success: true, message: "Invoice sent successfully" });
       } else {
         res.status(500).json({ message: "Failed to send invoice email" });
       }
@@ -7894,7 +7887,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // User-scoped: admins see only their own payments
       const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
       const payments = await storage.getPaymentsByCompany(companyId, userId);
-      res.json({ success: true });
+      res.json({ payments });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -7923,7 +7916,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .orderBy(desc(callLogs.createdAt))
         .limit(limit);
       
-      res.json({ success: true });
+      res.json({ calls: logs });
     } catch (error: any) {
       console.error("[Billing] Error fetching call logs:", error);
       res.status(500).json({ message: error.message });
@@ -8209,7 +8202,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log('[BILLING] Subscription query for company:', companyId, 'Result:', subscription);
       if (!subscription) {
         console.log('[BILLING] No subscription found for company:', companyId);
-        return res.json({ success: true, skipped: true });
+        return res.json({ subscription: null });
       }
       // SECURITY: Verify subscription belongs to the company
       if (subscription.companyId !== companyId) {
@@ -8220,7 +8213,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Special handling for demo company - skip Stripe API calls
       if (companyId === 'demo-company-001' || subscription.stripeSubscriptionId === 'sub_demo_testing') {
         console.log('[BILLING] Demo company detected, skipping Stripe API call');
-        res.json({
+        res.json({ 
           subscription: {
             ...subscription,
             plan,
@@ -8233,7 +8226,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (subscription.stripeSubscriptionId) {
         const { getSubscriptionDetails } = await import("./stripe");
         const stripeSubscription = await getSubscriptionDetails(subscription.stripeSubscriptionId);
-        res.json({
+        res.json({ 
           subscription: {
             ...subscription,
             plan,
@@ -8242,7 +8235,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       } else {
         // Manual subscription (no Stripe), return local data only
-        res.json({
+        res.json({ 
           subscription: {
             ...subscription,
             plan,
@@ -8369,7 +8362,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         updateData.trialEnd = undefined;
         updateData.trialStart = undefined;
         await storage.updateSubscription(subscription.id, updateData);
-        res.json({ success: true });
+        res.json({ message: "Trial period ended successfully", subscription: updatedSubscription });
       } catch (paymentError: any) {
         // Payment test failed - return error without modifying subscription
         console.error('[SKIP-TRIAL] Payment test failed:', paymentError.message);
@@ -8456,7 +8449,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const message = immediate 
         ? "Plan upgraded successfully with proration"
         : "Plan change scheduled for end of billing period";
-      res.json({ success: true });
+      res.json({ message, subscription: updatedStripeSubscription });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -8493,7 +8486,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await storage.updateSubscription(subscription.id, {
         cancelAtPeriodEnd: cancelAtPeriodEnd !== false,
       });
-      res.json({
+      res.json({ 
         message: cancelAtPeriodEnd !== false 
           ? "Subscription will be cancelled at the end of the billing period" 
           : "Subscription cancelled immediately",
@@ -8544,7 +8537,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await storage.updateSubscription(subscription.id, {
         cancelAtPeriodEnd: false,
       });
-      res.json({
+      res.json({ 
         message: "Subscription reactivated successfully",
         subscription: updatedSubscription 
       });
@@ -8580,7 +8573,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const { applyCoupon } = await import("./stripe");
       const stripeSubscription = await applyCoupon(subscription.stripeSubscriptionId, couponCode);
-      res.json({ success: true });
+      res.json({ message: "Coupon applied successfully", subscription: stripeSubscription });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -8648,7 +8641,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Broadcast notification update via WebSocket
       broadcastNotificationUpdate();
-      res.json({
+      res.json({ 
         message: `${percentOff}% discount applied for ${months} month${months > 1 ? 's' : ''}`,
         discount: {
           percentOff,
@@ -8678,7 +8671,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const subscription = await storage.getSubscriptionByCompany(companyId);
       if (!subscription) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ discount: null });
       }
       // Check for active discount in our database
       const activeDiscount = await storage.getActiveDiscountForCompany(companyId);
@@ -8697,7 +8690,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (activeDiscount) {
               await storage.updateDiscountStatus(activeDiscount.id, 'expired');
             }
-            return res.json({ success: true, skipped: true });
+            return res.json({ discount: null });
           }
           // Discount is still active
           res.json({
@@ -8715,10 +8708,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (activeDiscount) {
             await storage.updateDiscountStatus(activeDiscount.id, 'expired');
           }
-          res.json({ success: true });
+          res.json({ discount: null });
         }
       } else {
-        res.json({ success: true });
+        res.json({ discount: null });
       }
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -8740,7 +8733,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const discounts = await storage.getDiscountHistoryForCompany(companyId);
-      res.json({ success: true });
+      res.json({ discounts });
     } catch (error: any) {
       console.error('[BILLING] Error fetching discount history:', error);
       res.status(500).json({ message: "Failed to fetch discount history" });
@@ -8770,7 +8763,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (activeDiscount) {
         await storage.updateDiscountStatus(activeDiscount.id, 'expired');
       }
-      res.json({ success: true });
+      res.json({ message: "Discount removed successfully" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -8813,7 +8806,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
       console.log('[SYNC-PHONES] Sync completed:', results);
-      res.json({
+      res.json({ 
         message: "Phone number sync completed", 
         results,
       });
@@ -8887,7 +8880,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         expYear: pm.expYear || 0,
         isDefault: pm.isDefault
       }));
-      res.json({ success: true });
+      res.json({ paymentMethods });
     } catch (error: any) {
       console.error('[BILLING] Error fetching payment methods:', error);
       res.status(500).json({ message: error.message });
@@ -8929,7 +8922,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       });
       
-      res.json({
+      res.json({ 
         clientSecret: setupIntent.client_secret,
         customerId: subscriptionCustomerId
       });
@@ -9013,7 +9006,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       console.log(`[BILLING] Added payment method ${paymentMethodId} for user ${currentUser.id}`);
-      res.json({ success: true });
+      res.json({ success: true, message: "Payment method added successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error attaching payment method:', error);
       res.status(500).json({ message: error.message });
@@ -9061,7 +9054,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       
-      res.json({ success: true });
+      res.json({ success: true, message: "Default payment method updated successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error setting default payment method:', error);
       res.status(500).json({ message: error.message });
@@ -9118,7 +9111,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await storage.deleteUserPaymentMethod(paymentMethodId);
       
       console.log(`[BILLING] Deleted payment method ${paymentMethodId} for user ${currentUser.id}`);
-      res.json({ success: true });
+      res.json({ success: true, message: "Payment method deleted successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error deleting payment method:', error);
       res.status(500).json({ message: error.message });
@@ -9145,7 +9138,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // User-scoped: admins see only their own billing address, superadmins can see all
       const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
       const billingAddress = await storage.getBillingAddress(companyId, userId);
-      res.json({ success: true });
+      res.json({ billingAddress });
     } catch (error: any) {
       console.error('[BILLING] Error fetching billing address:', error);
       res.status(500).json({ message: "Failed to fetch billing address" });
@@ -9215,7 +9208,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         console.log('[BILLING] Updated Stripe customer billing information with phone:', subscription.stripeCustomerId);
       }
-      res.json({ success: true });
+      res.json({ billingAddress, message: "Billing address saved successfully" });
     } catch (error: any) {
       console.error('[BILLING] Error saving billing address:', error);
       res.status(500).json({ message: "Failed to save billing address" });
@@ -9261,7 +9254,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { broadcastNotificationUpdate } = await import("./websocket");
       broadcastNotificationUpdate();
       console.log('[FINANCIAL SUPPORT] Ticket created and superadmins notified:', ticket.id);
-      res.json({
+      res.json({ 
         ticket,
         message: "Your request has been submitted. Our team will review it and respond to you within 48 hours." 
       });
@@ -9283,7 +9276,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const tickets = await storage.getAllFinancialSupportTickets();
-      res.json({ success: true });
+      res.json({ tickets });
     } catch (error) {
       console.error('[TICKETS] Error fetching tickets:', error);
       res.status(500).json({ message: "Error fetching tickets" });
@@ -9301,7 +9294,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
-      res.json({ success: true });
+      res.json({ ticket });
     } catch (error) {
       console.error('[TICKETS] Error fetching ticket:', error);
       res.status(500).json({ message: "Error fetching ticket" });
@@ -9371,7 +9364,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // No notifications for pending, under_review, or closed statuses
         }
       }
-      res.json({ success: true });
+      res.json({ ticket: fullTicket });
     } catch (error) {
       console.error('[TICKETS] Error updating ticket:', error);
       res.status(500).json({ message: "Error updating ticket" });
@@ -9614,7 +9607,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         default:
           console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
       }
-      res.json({ success: true });
+      res.json({ received: true });
     } catch (error: any) {
       console.error("Webhook error:", error.message);
       res.status(400).json({ message: `Webhook verification failed: ${error.message}` });
@@ -9633,7 +9626,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { emailService } = await import("./email");
       const isConnected = await emailService.verifyConnection();
       if (isConnected) {
-        res.json({
+        res.json({ 
           success: true, 
           message: "Email service connected successfully" 
         });
@@ -9668,7 +9661,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         "Este es un email de prueba del sistema de notificaciones de Curbe Admin. Si estás recibiendo esto, significa que el sistema de emails está funcionando correctamente."
       );
       if (success) {
-        res.json({
+        res.json({ 
           success: true, 
           message: `Test email sent successfully to ${to}` 
         });
@@ -9691,7 +9684,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       const notifications = await storage.getNotificationsByUser(user.id, limit);
-      res.json({ success: true });
+      res.json({ notifications });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch notifications" });
     }
@@ -9721,7 +9714,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const user = req.user!;
     try {
       const success = await storage.markAllNotificationsAsRead(user.id);
-      res.json({ success: true });
+      res.json({ success });
     } catch (error) {
       res.status(500).json({ message: "Failed to mark all notifications as read" });
     }
@@ -9782,7 +9775,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
-      res.json({ success: true });
+      res.json({ notification });
     } catch (error) {
       res.status(500).json({ message: "Failed to create notification" });
     }
@@ -9833,7 +9826,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: result.broadcast.id,
         metadata: { details: `Broadcast notification sent to ${result.notifications.length} users: ${validatedData.title}` },
       });
-      res.json({
+      res.json({ 
         success: true, 
         count: result.notifications.length,
         message: `Notification sent to ${result.notifications.length} users`,
@@ -9858,7 +9851,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const broadcasts = await storage.getBroadcastHistory(100);
-      res.json({ success: true });
+      res.json({ broadcasts });
     } catch (error) {
       console.error('Get broadcast history error:', error);
       res.status(500).json({ message: "Failed to get broadcast history" });
@@ -9891,7 +9884,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: result.broadcast.id,
         metadata: { details: `Resent broadcast notification to ${result.notifications.length} users: ${broadcast.title}` },
       });
-      res.json({
+      res.json({ 
         success: true, 
         count: result.notifications.length,
         message: `Notification resent to ${result.notifications.length} users`,
@@ -9930,7 +9923,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error('Failed to log delete operation:', logError);
         // Continue anyway - don't fail the delete because of logging
       }
-      res.json({
+      res.json({ 
         success: true, 
         message: "Broadcast deleted successfully"
       });
@@ -9966,7 +9959,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const result = await storage.createNotification(notification);
       // Broadcast to update real-time
       broadcastNotificationUpdate();
-      res.json({ success: true });
+      res.json({ success: true, notification: result });
     } catch (error) {
       console.error('Create missed call notification error:', error);
       res.status(500).json({ message: "Failed to create notification" });
@@ -9981,7 +9974,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const templates = await storage.getEmailTemplates();
-      res.json({ success: true });
+      res.json({ templates });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch email templates" });
     }
@@ -9997,7 +9990,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!template) {
         return res.status(404).json({ message: "Template not found" });
       }
-      res.json({ success: true });
+      res.json({ template });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch email template" });
     }
@@ -10028,7 +10021,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!template) {
         return res.status(404).json({ message: "Template not found" });
       }
-      res.json({ success: true });
+      res.json({ template });
     } catch (error) {
       res.status(400).json({ message: "Invalid template data" });
     }
@@ -10058,7 +10051,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const allFeatures = await storage.getAllFeatures();
-      res.json({ success: true });
+      res.json({ features: allFeatures });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch features" });
     }
@@ -10120,7 +10113,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const companyFeatures = await storage.getCompanyFeatures(req.params.companyId);
-      res.json({ success: true });
+      res.json({ features: companyFeatures });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch company features" });
     }
@@ -10224,7 +10217,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         return log;
       }));
-      res.json({ success: true });
+      res.json({ logs: enrichedLogs });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch audit logs" });
     }
@@ -10248,7 +10241,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         templateSlug: "resend",
       });
       if (success) {
-        res.json({ success: true });
+        res.json({ success: true, message: "Email resent successfully" });
       } else {
         res.status(500).json({ message: "Failed to resend email" });
       }
@@ -10266,7 +10259,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const campaigns = await storage.getAllCampaigns();
-      res.json({ success: true });
+      res.json({ campaigns });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch campaigns" });
     }
@@ -10379,7 +10372,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[CAMPAIGN SEND] Started sending campaign ${req.params.id} in background`);
       // Get updated campaign with "sending" status
       const updatedCampaign = await storage.getCampaign(req.params.id);
-      res.json({
+      res.json({ 
         campaign: updatedCampaign, 
         message: "Campaign is being sent in the background"
       });
@@ -10397,7 +10390,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const smsCampaigns = await storage.getAllSmsCampaigns();
-      res.json({ success: true });
+      res.json({ smsCampaigns });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SMS campaigns" });
     }
@@ -10421,7 +10414,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         targetListId: targetListId || null,
         status: "draft",
       });
-      res.json({ success: true });
+      res.json({ smsCampaign });
     } catch (error) {
       res.status(500).json({ message: "Failed to create SMS campaign" });
     }
@@ -10438,7 +10431,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "SMS campaign not found" });
       }
       const messages = await storage.getCampaignSmsMessages(req.params.id);
-      res.json({ success: true });
+      res.json({ smsCampaign, messages });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SMS campaign" });
     }
@@ -10566,7 +10559,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       })();
       const updatedCampaign = await storage.getSmsCampaign(req.params.id);
-      res.json({
+      res.json({ 
         smsCampaign: updatedCampaign, 
         message: "SMS campaign is being sent in the background"
       });
@@ -10584,7 +10577,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const contacts = await storage.getAllUsers();
-      res.json({ success: true });
+      res.json({ contacts, telnyxPhoneNumbers });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contacts" });
     }
@@ -10632,7 +10625,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return contact;
       });
       console.log(`[CONTACTS UNIFICADOS] Contactos sanitizados y retornando: ${sanitizedContacts.length}`);
-      res.json({ success: true });
+      res.json({ contacts: sanitizedContacts });
     } catch (error) {
       console.error("Error fetching unified contacts:", error);
       res.status(500).json({ message: "Failed to fetch unified contacts" });
@@ -10816,7 +10809,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Contact not found" });
       }
       await storage.deleteManualContact(req.params.id);
-      res.json({ success: true });
+      res.json({ message: "Contact deleted successfully" });
     } catch (error) {
       console.error("[CONTACTS] Error deleting contact:", error);
       res.status(500).json({ message: "Failed to delete contact" });
@@ -11003,7 +10996,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await storage.createUser(userData);
         imported++;
       }
-      res.json({ success: true });
+      res.json({ imported, skipped, total: contacts.length, limitErrors: limitErrors.length > 0 ? limitErrors : undefined });
     } catch (error) {
       console.error("[IMPORT CONTACTS] Error:", error);
       res.status(500).json({ message: "Failed to import contacts" });
@@ -11198,7 +11191,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           new Date()
         );
       }
-      res.json({ success: true });
+      res.json({ success: true, message: "Successfully unsubscribed from emails" });
     } catch (error) {
       res.status(500).json({ message: "Failed to unsubscribe" });
     }
@@ -11224,7 +11217,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
-      res.json({
+      res.json({ 
         success: true, 
         message: subscribed ? "User subscribed to SMS" : "User unsubscribed from SMS",
         user: updatedUser 
@@ -11379,7 +11372,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (status && typeof status === 'string') filters.status = status;
       if (search && typeof search === 'string') filters.search = search;
       const emails = await storage.getCampaignEmails(id, filters);
-      res.json({ success: true });
+      res.json({ emails });
     } catch (error) {
       res.status(500).json({ message: "Failed to get campaign emails" });
     }
@@ -11407,7 +11400,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         limit: 1,
         includeBlacklistOnly: true,
       });
-      res.json({
+      res.json({ 
         lists,
         unassignedCount: unassignedCount.total,
         blacklistCount: blacklistCount.total 
@@ -11485,7 +11478,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Contact list not found" });
       }
-      res.json({ success: true });
+      res.json({ message: "Contact list deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete contact list" });
     }
@@ -11498,7 +11491,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const members = await storage.getListMembers(req.params.id);
-      res.json({ success: true });
+      res.json({ members });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch list members" });
     }
@@ -11570,7 +11563,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Member not found in list" });
       }
-      res.json({ success: true });
+      res.json({ message: "Member removed successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to remove member" });
     }
@@ -11597,7 +11590,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           movedCount++;
         }
       }
-      res.json({
+      res.json({ 
         message: `${movedCount} contacts moved successfully`,
         movedCount,
         totalRequested: contactIds.length
@@ -11616,7 +11609,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const messages = await storage.getAllIncomingSmsMessages();
-      res.json({ success: true });
+      res.json({ incomingSmsMessages: messages });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch incoming SMS messages" });
     }
@@ -11629,7 +11622,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       await storage.markSmsAsRead(req.params.id);
-      res.json({ success: true });
+      res.json({ message: "Message marked as read" });
     } catch (error) {
       res.status(500).json({ message: "Failed to mark message as read" });
     }
@@ -11652,7 +11645,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.removeHeader('ETag');
-      res.json({ success: true });
+      res.json({ conversations });
     } catch (error) {
       console.error("Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -11672,7 +11665,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const conversations = await storage.getChatConversations(companyId);
       // Count conversations (unique users) with unread messages
       const unreadCount = conversations.filter(c => c.unreadCount > 0).length;
-      res.json({ success: true });
+      res.json({ unreadCount });
     } catch (error) {
       console.error("Error fetching unread count:", error);
       res.status(500).json({ message: "Failed to fetch unread count" });
@@ -11713,7 +11706,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.removeHeader('ETag');
-      res.json({ success: true });
+      res.json({ messages });
     } catch (error) {
       console.error("Error fetching conversation messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -11758,7 +11751,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           );
           // Broadcast update to WebSocket clients for real-time updates
           broadcastConversationUpdate();
-          res.json({
+          res.json({ 
             message: "SMS sent successfully",
             messageId: outgoingMessage.id,
             twilioSid: twilioResult.sid
@@ -11796,7 +11789,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Superadmins can optionally filter by companyId via query param
       const companyId = req.query.companyId as string | undefined;
       await storage.markConversationAsRead(phoneNumber, companyId);
-      res.json({ success: true });
+      res.json({ message: "Conversation marked as read" });
     } catch (error) {
       console.error("Error marking conversation as read:", error);
       res.status(500).json({ message: "Failed to mark conversation as read" });
@@ -11889,7 +11882,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { id } = req.params;
       // For deletes, companyId can be null for superadmins (they can delete any note)
       await storage.deleteChatNote(id, currentUser.companyId || undefined);
-      res.json({ success: true });
+      res.json({ message: "Note deleted successfully" });
     } catch (error) {
       console.error("Error deleting chat note:", error);
       res.status(500).json({ message: "Failed to delete note" });
@@ -11917,7 +11910,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const wsService = req.app.get('wsService');
         wsService.broadcastConversationUpdate();
       }
-      res.json({ success: true });
+      res.json({ message: "Conversation deleted successfully" });
     } catch (error) {
       console.error("Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
@@ -12125,7 +12118,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { oepFilter, limit, cursor, agentId, productType, status, effectiveDateFrom, effectiveDateTo, searchTerm, searchFamilyMembers, folderId } = req.query;
     try {
       if (!currentUser.companyId) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ items: [], nextCursor: null });
       }
       // Build pagination options
       const options: Parameters<typeof storage.getQuotesList>[1] = {};
@@ -12241,7 +12234,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ quote });
     } catch (error: any) {
       console.error("Error fetching quote:", error);
       res.status(500).json({ message: "Failed to fetch quote" });
@@ -12274,7 +12267,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
-      res.json({ success: true });
+      res.json({ members: membersWithDetails });
     } catch (error: any) {
       console.error("Error fetching members details:", error);
       res.status(500).json({ message: "Failed to fetch members details" });
@@ -12309,7 +12302,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
-      res.json({ success: true });
+      res.json({ totalIncome });
     } catch (error: any) {
       console.error("Error calculating household income:", error);
       res.status(500).json({ message: "Failed to calculate household income" });
@@ -12444,7 +12437,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       // Return quote with plain text SSN (as stored in database)
-      res.json({ success: true });
+      res.json({ quote: updatedQuote });
     } catch (error: any) {
       console.error("Error updating quote:", error);
       // Return validation errors with proper details
@@ -12487,7 +12480,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Quote deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting quote:", error);
       res.status(500).json({ message: "Failed to delete quote" });
@@ -12531,7 +12524,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: newBlockStatus,
         },
       });
-      res.json({
+      res.json({ 
         quote: updatedQuote, 
         message: newBlockStatus ? "Quote blocked successfully" : "Quote unblocked successfully" 
       });
@@ -12720,7 +12713,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       console.log(`[DUPLICATE QUOTE] Successfully duplicated quote ${id} to ${newQuoteId}`);
-      res.json({
+      res.json({ 
         quote: newQuote,
         message: `Quote duplicated successfully. New Quote ID: ${newQuoteId}`,
       });
@@ -12769,7 +12762,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
-      res.json({ success: true });
+      res.json({ quotes });
     } catch (error: any) {
       console.error("Error fetching quotes by applicant:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
@@ -12789,7 +12782,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "You don't have permission to view this quote" });
       }
       const plans = await storage.listQuotePlans(id, quote.companyId);
-      res.json({ success: true });
+      res.json({ plans });
     } catch (error: any) {
       console.error("Error listing quote plans:", error);
       res.status(500).json({ 
@@ -12836,7 +12829,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           source: newPlan.source,
         },
       });
-      res.json({ success: true });
+      res.json({ plan: newPlan });
     } catch (error: any) {
       console.error("Error adding quote plan:", error);
       res.status(500).json({ 
@@ -12949,7 +12942,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           value: isArchived,
         },
       });
-      res.json({ success: true });
+      res.json({ quote: updatedQuote });
     } catch (error: any) {
       console.error("Error archiving quote:", error);
       res.status(400).json({ message: error.message || "Failed to update quote status" });
@@ -12983,7 +12976,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ members });
     } catch (error: any) {
       console.error("Error getting quote members:", error);
       res.status(500).json({ message: "Failed to get quote members" });
@@ -13024,7 +13017,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ member });
     } catch (error: any) {
       console.error("Error getting quote member:", error);
       res.status(500).json({ message: "Failed to get quote member" });
@@ -13114,7 +13107,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ member: updatedMember });
     } catch (error: any) {
       console.error("Error updating quote member:", error);
       if (error.name === 'ZodError') {
@@ -13163,7 +13156,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Member deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting quote member:", error);
       res.status(500).json({ message: "Failed to delete quote member" });
@@ -13350,7 +13343,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           role: member.role,
         },
       });
-      res.json({ success: true });
+      res.json({ member: updatedMember });
     } catch (error: any) {
       console.error("Error updating member:", error);
       res.status(500).json({ message: "Failed to update member" });
@@ -13396,7 +13389,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           memberName: `${member.firstName} ${member.lastName}`,
         },
       });
-      res.json({ success: true });
+      res.json({ success: true, message: "Member deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member:", error);
       res.status(500).json({ message: "Failed to delete member" });
@@ -13427,7 +13420,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Income information not found" });
       }
       // Income is stored as plain text (not encrypted)
-      res.json({ success: true });
+      res.json({ income });
     } catch (error: any) {
       console.error("Error getting member income:", error);
       res.status(500).json({ message: "Failed to get member income" });
@@ -13469,7 +13462,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             reason: "Empty income value",
           },
         });
-        return res.json({ success: true, skipped: true });
+        return res.json({ deleted: true, message: "Income deleted successfully" });
       }
       // Validate request body (include companyId from member)
       const validatedData = insertQuoteMemberIncomeSchema.parse({
@@ -13490,7 +13483,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ income });
     } catch (error: any) {
       console.error("Error upserting member income:", error);
       if (error.name === 'ZodError') {
@@ -13536,7 +13529,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Income information deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member income:", error);
       res.status(500).json({ message: "Failed to delete member income" });
@@ -13578,7 +13571,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["visaNumber", "greenCardNumber", "i94Number"],
         },
       });
-      res.json({ success: true });
+      res.json({ immigration });
     } catch (error: any) {
       console.error("Error getting member immigration:", error);
       res.status(500).json({ message: "Failed to get member immigration" });
@@ -13622,7 +13615,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ immigration });
     } catch (error: any) {
       console.error("Error upserting member immigration:", error);
       if (error.name === 'ZodError') {
@@ -13668,7 +13661,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Immigration information deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member immigration:", error);
       res.status(500).json({ message: "Failed to delete member immigration" });
@@ -13695,7 +13688,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const documents = await storage.getQuoteMemberDocuments(memberId, quote.companyId);
-      res.json({ success: true });
+      res.json({ documents });
     } catch (error: any) {
       console.error("Error getting member documents:", error);
       res.status(500).json({ message: "Failed to get member documents" });
@@ -13828,7 +13821,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
-      res.json({ success: true });
+      res.json({ document });
     } catch (error: any) {
       console.error("Error getting document:", error);
       res.status(500).json({ message: "Failed to get document" });
@@ -13934,7 +13927,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
@@ -13968,7 +13961,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
-      res.json({ success: true });
+      res.json({ paymentMethods });
     } catch (error: any) {
       console.error("Error getting payment methods:", error);
       res.status(500).json({ message: "Failed to get payment methods" });
@@ -14009,7 +14002,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
-      res.json({ success: true });
+      res.json({ paymentMethod });
     } catch (error: any) {
       console.error("Error getting payment method:", error);
       res.status(500).json({ message: "Failed to get payment method" });
@@ -14102,7 +14095,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ paymentMethod: updated });
     } catch (error: any) {
       console.error("Error updating payment method:", error);
       if (error.name === 'ZodError') {
@@ -14153,7 +14146,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Payment method deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting payment method:", error);
       res.status(500).json({ message: "Failed to delete payment method" });
@@ -14195,7 +14188,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Payment method set as default successfully" });
     } catch (error: any) {
       console.error("Error setting default payment method:", error);
       res.status(500).json({ message: "Failed to set default payment method" });
@@ -14264,7 +14257,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const notes = await storage.getQuoteNotes(quoteId, quote.companyId);
-      res.json({ success: true });
+      res.json({ notes });
     } catch (error: any) {
       console.error("Error fetching quote notes:", error);
       res.status(500).json({ message: "Failed to fetch quote notes" });
@@ -14331,7 +14324,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updates: Object.keys(updateData),
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Quote note updated successfully" });
     } catch (error: any) {
       console.error("Error updating quote note:", error);
       res.status(500).json({ message: "Failed to update quote note" });
@@ -14380,7 +14373,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Quote note deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting quote note:", error);
       res.status(500).json({ message: "Failed to delete quote note" });
@@ -14459,7 +14452,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           uploadedBy: currentUser.email,
         },
       });
-      res.json({
+      res.json({ 
         url: fileUrl,
         filename: req.file.filename,
         originalName: req.file.originalname,
@@ -14526,7 +14519,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         category: category as string | undefined,
         search: q as string | undefined
       });
-      res.json({ success: true });
+      res.json({ documents });
     } catch (error: any) {
       console.error("Error listing quote documents:", error);
       res.status(500).json({ message: "Failed to list documents" });
@@ -14717,7 +14710,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
@@ -14745,7 +14738,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (priority && typeof priority === 'string') filters.priority = priority;
       if (userId && typeof userId === 'string') filters.userId = userId;
       const reminders = await storage.listQuoteReminders(quoteId, quote.companyId, filters);
-      res.json({ success: true });
+      res.json({ reminders });
     } catch (error: any) {
       console.error("Error fetching reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
@@ -14902,7 +14895,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quoteId,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Reminder deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting reminder:", error);
       res.status(500).json({ message: "Failed to delete reminder" });
@@ -15477,7 +15470,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
-      res.json({ success: true });
+      res.json({ reminders: enrichedReminders });
     } catch (error: any) {
       console.error("Error fetching standalone reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
@@ -15622,7 +15615,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           planName: plan.name || 'unknown',
         },
       });
-      res.json({ success: true });
+      res.json({ quote: updatedQuote });
     } catch (error: any) {
       console.error("Error selecting plan:", error);
       res.status(500).json({ message: "Failed to select plan" });
@@ -15661,7 +15654,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           selectedPlan: quote.selectedPlan,
         },
       });
-      res.json({ success: true });
+      res.json({ policy, policyId: policy.id });
     } catch (error: any) {
       console.error("Error submitting quote as policy:", error);
       res.status(500).json({ 
@@ -15721,7 +15714,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (validatedData.status || validatedData.documentsStatus || validatedData.paymentStatus) {
         broadcastNotificationUpdate();
       }
-      res.json({ success: true });
+      res.json({ quote: updatedQuote });
     } catch (error: any) {
       console.error("Error updating quote statuses:", error);
       if (error.name === 'ZodError') {
@@ -15758,7 +15751,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           token: consent.token,
         },
       });
-      res.json({ success: true });
+      res.json({ consent });
     } catch (error: any) {
       console.error("Error generating consent document:", error);
       res.status(500).json({ message: "Failed to generate consent document" });
@@ -15931,7 +15924,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "sent",
         },
       });
-      res.json({ success: true });
+      res.json({ consent: updatedConsent, url: channel === 'link' ? consentUrl : undefined });
     } catch (error: any) {
       console.error("Error sending consent:", error);
       res.status(500).json({ message: "Failed to send consent document" });
@@ -15952,7 +15945,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const consents = await storage.listQuoteConsents(quoteId, quote.companyId);
-      res.json({ success: true });
+      res.json({ consents });
     } catch (error: any) {
       console.error("Error listing consents:", error);
       res.status(500).json({ message: "Failed to list consents" });
@@ -15983,7 +15976,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: consentId,
         companyId: currentUser.companyId || undefined,
       });
-      res.json({ success: true });
+      res.json({ message: "Consent document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
@@ -16332,7 +16325,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId || undefined,
       });
-      res.json({ success: true });
+      res.json({ message: "Folder deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting quote folder:", error);
       res.status(500).json({ message: "Failed to delete quote folder" });
@@ -16371,7 +16364,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           folderId: folderId || null,
         },
       });
-      res.json({
+      res.json({ 
         message: `${count} ${count === 1 ? 'quote' : 'quotes'} moved successfully`,
         count 
       });
@@ -16887,7 +16880,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
-      res.json({ success: true });
+      res.json({ policies });
     } catch (error: any) {
       console.error("Error fetching policies by applicant:", error);
       res.status(500).json({ message: "Failed to fetch policies" });
@@ -16900,7 +16893,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { oepFilter, limit, cursor, agentId, productType, status, effectiveDateFrom, effectiveDateTo, searchTerm, searchFamilyMembers, folderId } = req.query;
     try {
       if (!currentUser.companyId) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ items: [], nextCursor: null });
       }
       // Build pagination options
       const options: Parameters<typeof storage.getPoliciesList>[1] = {};
@@ -17016,7 +17009,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ policy });
     } catch (error: any) {
       console.error("Error fetching policy:", error);
       res.status(500).json({ message: "Failed to fetch policy" });
@@ -17049,7 +17042,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
-      res.json({ success: true });
+      res.json({ members: membersWithDetails });
     } catch (error: any) {
       console.error("Error fetching members details:", error);
       res.status(500).json({ message: "Failed to fetch members details" });
@@ -17084,7 +17077,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
       }
-      res.json({ success: true });
+      res.json({ totalIncome });
     } catch (error: any) {
       console.error("Error calculating household income:", error);
       res.status(500).json({ message: "Failed to calculate household income" });
@@ -17225,7 +17218,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Invalidate dashboard cache
       const { dashboardCache } = await import("./dashboard-cache");
       if (currentUser.companyId) { dashboardCache.invalidateCompany(currentUser.companyId); }
-      res.json({ success: true });
+      res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error updating policy:", error);
       // Return validation errors with proper details
@@ -17417,7 +17410,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       console.log(`[DUPLICATE POLICY] Successfully duplicated policy ${id} to ${newPolicyId}`);
-      res.json({
+      res.json({ 
         policy: newPolicy,
         message: `Policy duplicated successfully. New Policy ID: ${newPolicyId}`,
       });
@@ -17466,7 +17459,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: status,
         },
       });
-      res.json({ success: true });
+      res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error updating policy status:", error);
       res.status(400).json({ message: error.message || "Failed to update policy status" });
@@ -17507,7 +17500,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: isArchived,
         },
       });
-      res.json({ success: true });
+      res.json({ policy: updatedPolicy, message: isArchived ? "Policy archived successfully" : "Policy unarchived successfully" });
     } catch (error: any) {
       console.error("Error updating policy archive status:", error);
       res.status(400).json({ message: error.message || "Failed to update policy archive status" });
@@ -17551,7 +17544,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newValue: newBlockStatus,
         },
       });
-      res.json({
+      res.json({ 
         policy: updatedPolicy, 
         message: newBlockStatus ? "Policy blocked successfully" : "Policy unblocked successfully" 
       });
@@ -17593,7 +17586,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Invalidate dashboard cache
       const { dashboardCache } = await import("./dashboard-cache");
       if (currentUser.companyId) { dashboardCache.invalidateCompany(currentUser.companyId); }
-      res.json({ success: true });
+      res.json({ message: "Policy deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy:", error);
       res.status(500).json({ message: "Failed to delete policy" });
@@ -18031,7 +18024,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           planName: selectedPlan.name,
         },
       });
-      res.json({ success: true });
+      res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error updating policy plan:", error);
       res.status(500).json({ 
@@ -18054,7 +18047,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "You don't have permission to view this policy" });
       }
       const plans = await storage.listPolicyPlans(id, policy.companyId);
-      res.json({ success: true });
+      res.json({ plans });
     } catch (error: any) {
       console.error("Error listing policy plans:", error);
       res.status(500).json({ 
@@ -18101,7 +18094,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           source: newPlan.source,
         },
       });
-      res.json({ success: true });
+      res.json({ plan: newPlan });
     } catch (error: any) {
       console.error("Error adding policy plan:", error);
       res.status(500).json({ 
@@ -18219,7 +18212,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Don't fail the policy update if wallet sync fails
         }
       }
-      res.json({ success: true });
+      res.json({ plan: updatedPlan });
     } catch (error: any) {
       console.error("Error updating policy plan:", error);
       res.status(500).json({ 
@@ -18326,7 +18319,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ members });
     } catch (error: any) {
       console.error("Error getting policy members:", error);
       res.status(500).json({ message: "Failed to get policy members" });
@@ -18367,7 +18360,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["ssn"],
         },
       });
-      res.json({ success: true });
+      res.json({ member });
     } catch (error: any) {
       console.error("Error getting policy member:", error);
       res.status(500).json({ message: "Failed to get policy member" });
@@ -18413,7 +18406,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ member: updatedMember });
     } catch (error: any) {
       console.error("Error updating policy member:", error);
       if (error.name === 'ZodError') {
@@ -18462,7 +18455,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Member deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy member:", error);
       res.status(500).json({ message: "Failed to delete policy member" });
@@ -18623,7 +18616,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           role: member.role,
         },
       });
-      res.json({ success: true });
+      res.json({ member: updatedMember });
     } catch (error: any) {
       console.error("Error updating member:", error);
       res.status(500).json({ message: "Failed to update member" });
@@ -18669,7 +18662,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           memberName: `${member.firstName} ${member.lastName}`,
         },
       });
-      res.json({ success: true });
+      res.json({ success: true, message: "Member deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member:", error);
       res.status(500).json({ message: "Failed to delete member" });
@@ -18700,7 +18693,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Income information not found" });
       }
       // Income is stored as plain text (not encrypted)
-      res.json({ success: true });
+      res.json({ income });
     } catch (error: any) {
       console.error("Error getting member income:", error);
       res.status(500).json({ message: "Failed to get member income" });
@@ -18743,7 +18736,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             reason: "Empty income value",
           },
         });
-        return res.json({ success: true, skipped: true });
+        return res.json({ deleted: true, message: "Income deleted successfully" });
       }
       // Validate request body (include companyId from member)
       const validatedData = insertPolicyMemberIncomeSchema.parse({
@@ -18764,7 +18757,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ income });
     } catch (error: any) {
       console.error("Error upserting member income:", error);
       if (error.name === 'ZodError') {
@@ -18810,7 +18803,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Income information deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member income:", error);
       res.status(500).json({ message: "Failed to delete member income" });
@@ -18852,7 +18845,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["visaNumber", "greenCardNumber", "i94Number"],
         },
       });
-      res.json({ success: true });
+      res.json({ immigration });
     } catch (error: any) {
       console.error("Error getting member immigration:", error);
       res.status(500).json({ message: "Failed to get member immigration" });
@@ -18896,7 +18889,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ immigration });
     } catch (error: any) {
       console.error("Error upserting member immigration:", error);
       if (error.name === 'ZodError') {
@@ -18942,7 +18935,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Immigration information deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting member immigration:", error);
       res.status(500).json({ message: "Failed to delete member immigration" });
@@ -18969,7 +18962,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const documents = await storage.getPolicyMemberDocuments(memberId, policy.companyId);
-      res.json({ success: true });
+      res.json({ documents });
     } catch (error: any) {
       console.error("Error getting member documents:", error);
       res.status(500).json({ message: "Failed to get member documents" });
@@ -19102,7 +19095,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
-      res.json({ success: true });
+      res.json({ document });
     } catch (error: any) {
       console.error("Error getting document:", error);
       res.status(500).json({ message: "Failed to get document" });
@@ -19208,7 +19201,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
@@ -19246,7 +19239,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
-      res.json({ success: true });
+      res.json({ paymentMethods });
     } catch (error: any) {
       console.error("Error getting payment methods:", error);
       res.status(500).json({ message: "Failed to get payment methods" });
@@ -19289,7 +19282,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
-      res.json({ success: true });
+      res.json({ paymentMethod });
     } catch (error: any) {
       console.error("Error getting payment method:", error);
       res.status(500).json({ message: "Failed to get payment method" });
@@ -19385,7 +19378,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ paymentMethod: updated });
     } catch (error: any) {
       console.error("Error updating payment method:", error);
       if (error.name === 'ZodError') {
@@ -19439,7 +19432,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Payment method deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting payment method:", error);
       res.status(500).json({ message: "Failed to delete payment method" });
@@ -19481,7 +19474,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Payment method set as default successfully" });
     } catch (error: any) {
       console.error("Error setting default payment method:", error);
       res.status(500).json({ message: "Failed to set default payment method" });
@@ -19554,7 +19547,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get notes for ALL policies of this client
       const notes = await storage.getPolicyNotes(canonicalPolicyIds, policy.companyId);
-      res.json({ success: true });
+      res.json({ notes });
     } catch (error: any) {
       console.error("Error fetching policy notes:", error);
       res.status(500).json({ message: "Failed to fetch policy notes" });
@@ -19625,7 +19618,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updates: Object.keys(updateData),
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Policy note updated successfully" });
     } catch (error: any) {
       console.error("Error updating policy note:", error);
       res.status(500).json({ message: "Failed to update policy note" });
@@ -19682,7 +19675,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Policy note deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy note:", error);
       res.status(500).json({ message: "Failed to delete policy note" });
@@ -19761,7 +19754,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           uploadedBy: currentUser.email,
         },
       });
-      res.json({
+      res.json({ 
         url: fileUrl,
         filename: req.file.filename,
         originalName: req.file.originalname,
@@ -19796,7 +19789,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         category: category as string | undefined,
         search: q as string | undefined
       });
-      res.json({ success: true });
+      res.json({ documents });
     } catch (error: any) {
       console.error("Error listing policy documents:", error);
       res.status(500).json({ message: "Failed to list documents" });
@@ -19989,7 +19982,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
@@ -20019,7 +20012,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (userId && typeof userId === 'string') filters.userId = userId;
       // Get reminders ONLY for this specific policy
       const reminders = await storage.listPolicyReminders(policyId, policy.companyId, filters);
-      res.json({ success: true });
+      res.json({ reminders });
     } catch (error: any) {
       console.error("Error fetching reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
@@ -20176,7 +20169,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           policyId,
         },
       });
-      res.json({ success: true });
+      res.json({ message: "Reminder deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting reminder:", error);
       res.status(500).json({ message: "Failed to delete reminder" });
@@ -20338,7 +20331,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           planName: plan.name || 'unknown',
         },
       });
-      res.json({ success: true });
+      res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error selecting plan:", error);
       res.status(500).json({ message: "Failed to select plan" });
@@ -20457,7 +20450,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           code: "PLAN_NOT_FOUND"
         });
       }
-      res.json({
+      res.json({ 
         plan: foundPlan,
         household_aptc: householdAptc,
         household_csr: householdCsr
@@ -20662,7 +20655,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (validatedData.status || validatedData.documentsStatus || validatedData.paymentStatus) {
         broadcastNotificationUpdate();
       }
-      res.json({ success: true });
+      res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error updating policy statuses:", error);
       if (error.name === 'ZodError') {
@@ -20699,7 +20692,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           token: consent.token,
         },
       });
-      res.json({ success: true });
+      res.json({ consent });
     } catch (error: any) {
       console.error("Error generating consent document:", error);
       res.status(500).json({ message: "Failed to generate consent document" });
@@ -20872,7 +20865,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "sent",
         },
       });
-      res.json({ success: true });
+      res.json({ consent: updatedConsent, url: channel === 'link' ? consentUrl : undefined });
     } catch (error: any) {
       console.error("Error sending consent:", error);
       res.status(500).json({ message: "Failed to send consent document" });
@@ -20897,7 +20890,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get consents for ALL policies of this client
       const consents = await storage.listPolicyConsents(canonicalPolicyIds, policy.companyId);
-      res.json({ success: true });
+      res.json({ consents });
     } catch (error: any) {
       console.error("Error listing consents:", error);
       res.status(500).json({ message: "Failed to list consents" });
@@ -20928,7 +20921,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: consentId,
         companyId: currentUser.companyId || undefined,
       });
-      res.json({ success: true });
+      res.json({ message: "Consent document deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
@@ -21048,7 +21041,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId || undefined,
       });
-      res.json({ success: true });
+      res.json({ message: "Folder deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting policy folder:", error);
       res.status(500).json({ message: "Failed to delete policy folder" });
@@ -21087,7 +21080,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           folderId: folderId || null,
         },
       });
-      res.json({
+      res.json({ 
         message: `${count} ${count === 1 ? 'policy' : 'policies'} moved successfully`,
         count 
       });
@@ -21105,7 +21098,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const currentUser = req.user!;
     try {
       const landingPages = await storage.getLandingPagesByUser(currentUser.id, currentUser.companyId!);
-      res.json({ success: true });
+      res.json({ landingPages });
     } catch (error: any) {
       console.error("Error fetching landing pages:", error);
       res.status(500).json({ message: "Failed to fetch landing pages" });
@@ -21117,7 +21110,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const { slug } = req.params;
     try {
       const isAvailable = await storage.checkSlugAvailability(slug, currentUser.id);
-      res.json({ success: true });
+      res.json({ available: isAvailable });
     } catch (error: any) {
       console.error("Error checking slug availability:", error);
       res.status(500).json({ message: "Failed to check slug availability" });
@@ -21138,7 +21131,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Get blocks for this landing page
       const blocks = await storage.getBlocksByLandingPage(id);
-      res.json({ success: true });
+      res.json({ landingPage, blocks });
     } catch (error: any) {
       console.error("Error fetching landing page:", error);
       res.status(500).json({ message: "Failed to fetch landing page" });
@@ -21171,7 +21164,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const blocks = allBlocks.filter(block => block.isVisible);
       // Get company data (including logo) for public display
       const company = await storage.getCompany(landingPage.companyId);
-      res.json({
+      res.json({ 
         landingPage, 
         blocks,
         company: company ? { logo: company.logo, name: company.name } : null
@@ -21252,7 +21245,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ landingPage });
     } catch (error: any) {
       console.error("Error updating landing page:", error);
       if (error.name === "ZodError") {
@@ -21289,7 +21282,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ message: "Landing page deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting landing page:", error);
       res.status(500).json({ message: "Failed to delete landing page" });
@@ -21310,7 +21303,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       const blocks = await storage.getBlocksByLandingPage(id);
-      res.json({ success: true });
+      res.json({ blocks });
     } catch (error: any) {
       console.error("Error fetching blocks:", error);
       res.status(500).json({ message: "Failed to fetch blocks" });
@@ -21388,7 +21381,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: blockId,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ block });
     } catch (error: any) {
       console.error("Error updating block:", error);
       if (error.name === "ZodError") {
@@ -21429,7 +21422,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: blockId,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ message: "Block deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting block:", error);
       res.status(500).json({ message: "Failed to delete block" });
@@ -21463,7 +21456,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: landingPageId,
         companyId: currentUser.companyId,
       });
-      res.json({ success: true });
+      res.json({ message: "Blocks reordered successfully" });
     } catch (error: any) {
       console.error("Error reordering blocks:", error);
       res.status(500).json({ message: "Failed to reorder blocks" });
@@ -21508,7 +21501,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           blockCount: blocks.length,
         },
       });
-      res.json({
+      res.json({ 
         message: "Blocks synced successfully", 
         blocks: syncedBlocks 
       });
@@ -21539,7 +21532,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           referer: req.get('referer'),
         },
       });
-      res.json({ success: true });
+      res.json({ message: "View tracked successfully" });
     } catch (error: any) {
       console.error("Error tracking view:", error);
       res.status(500).json({ message: "Failed to track view" });
@@ -21566,7 +21559,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
-      res.json({ success: true });
+      res.json({ message: "Click tracked successfully" });
     } catch (error: any) {
       console.error("Error tracking click:", error);
       res.status(500).json({ message: "Failed to track click" });
@@ -21592,7 +21585,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         eventType: eventType as string | undefined,
         limit: limit ? parseInt(limit as string) : undefined,
       });
-      res.json({ success: true });
+      res.json({ analytics });
     } catch (error: any) {
       console.error("Error fetching analytics:", error);
       res.status(500).json({ message: "Failed to fetch analytics" });
@@ -21662,7 +21655,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
       });
-      res.json({ success: true });
+      res.json({ leads });
     } catch (error: any) {
       console.error("Error fetching leads:", error);
       res.status(500).json({ message: "Failed to fetch leads" });
@@ -21726,7 +21719,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         offset: offset ? parseInt(offset as string) : undefined,
         status: status as string | undefined,
       });
-      res.json({ success: true });
+      res.json({ appointments });
     } catch (error: any) {
       console.error("Error fetching appointments:", error);
       res.status(500).json({ message: "Failed to fetch appointments" });
@@ -21755,7 +21748,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-      res.json({
+      res.json({ 
         message: "Appointment status updated successfully",
         appointment 
       });
@@ -21785,7 +21778,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Get available slots
       const slots = await storage.getAvailableSlots(blockId, date);
-      res.json({
+      res.json({ 
         date,
         availableSlots: slots 
       });
@@ -21929,7 +21922,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         offset: offset ? parseInt(offset as string) : undefined,
         search: search as string | undefined,
       });
-      res.json({ success: true });
+      res.json({ leads });
     } catch (error: any) {
       console.error("Error fetching landing leads:", error);
       res.status(500).json({ message: "Failed to fetch leads" });
@@ -21946,7 +21939,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
       });
-      res.json({ success: true });
+      res.json({ appointments });
     } catch (error: any) {
       console.error("Error fetching landing appointments:", error);
       res.status(500).json({ message: "Failed to fetch appointments" });
@@ -21982,7 +21975,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedAppointment) {
         return res.status(500).json({ message: "Failed to update appointment" });
       }
-      res.json({ success: true });
+      res.json({ appointment: updatedAppointment });
     } catch (error: any) {
       console.error("Error updating landing appointment:", error);
       if (error.name === 'ZodError') {
@@ -22019,7 +22012,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Delete the appointment
       await storage.deleteLandingAppointment(id);
-      res.json({ success: true });
+      res.json({ message: "Appointment deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting landing appointment:", error);
       res.status(500).json({ message: "Failed to delete appointment" });
@@ -22100,7 +22093,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           dateOverrides: [],
         });
       }
-      res.json({ success: true });
+      res.json({ availability });
     } catch (error: any) {
       console.error("Error fetching appointment availability:", error);
       res.status(500).json({ message: "Failed to fetch appointment availability" });
@@ -22125,7 +22118,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           userId: currentUser.id,
         });
       }
-      res.json({
+      res.json({ 
         message: "Configuración de disponibilidad actualizada exitosamente",
         availability 
       });
@@ -22665,7 +22658,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: "inactive",
         billingStatus: "cancelled",
       });
-      res.json({ success: true });
+      res.json({ message: "Phone number deactivated successfully" });
     } catch (error: any) {
       console.error("Error deactivating phone number:", error);
       res.status(500).json({ message: "Failed to deactivate phone number" });
@@ -23471,7 +23464,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // Broadcast thread deletion via WebSocket
       broadcastBulkvsThreadUpdate(user.id, null);
-      res.json({ success: true });
+      res.json({ success: true, message: "Thread deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting thread:", error);
       res.status(500).json({ message: "Failed to delete thread" });
@@ -23606,7 +23599,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         })
       );
-      res.json({ success: true });
+      res.json({ tasks: enrichedTasks });
     } catch (error: any) {
       console.error("Error listing tasks:", error);
       res.status(500).json({ message: "Failed to list tasks" });
@@ -23784,7 +23777,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         details: existingTask ? `Deleted task: ${existingTask.title}` : "Deleted task",
       });
-      res.json({ success: true });
+      res.json({ success: true, message: "Task deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task" });
@@ -23998,7 +23991,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const allImages = await storage.getAllBirthdayImages();
       const activeImages = allImages.filter(img => img.isActive);
-      res.json({ success: true });
+      res.json({ images: activeImages });
     } catch (error: any) {
       console.error("Error fetching active birthday images:", error);
       res.status(500).json({ message: "Failed to fetch birthday images" });
@@ -24089,7 +24082,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - Superadmin only" });
       }
       const images = await storage.getAllBirthdayImages();
-      res.json({ success: true });
+      res.json({ images });
     } catch (error: any) {
       console.error("Error fetching birthday images:", error);
       res.status(500).json({ message: "Failed to fetch birthday images" });
@@ -24181,7 +24174,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         entityId: id,
         details: image ? `Deleted birthday image: ${image.name}` : "Deleted birthday image",
       });
-      res.json({ success: true });
+      res.json({ success: true, message: "Birthday image deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting birthday image:", error);
       res.status(500).json({ message: "Failed to delete birthday image" });
@@ -24253,7 +24246,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const history = user.role === "superadmin" 
         ? await storage.getBirthdayGreetingHistory(user.companyId)
         : await storage.getBirthdayGreetingHistory(user.companyId, user.id);
-      res.json({ success: true });
+      res.json({ history });
     } catch (error: any) {
       console.error("Error fetching birthday greeting history:", error);
       res.status(500).json({ message: "Failed to fetch birthday greeting history" });
@@ -24268,13 +24261,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const user = (req as any).user;
       if (!user || !user.companyId) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ hasAccess: false, reason: "no_company" });
       }
       
       // Check if company has iMessage feature enabled
       const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ hasAccess: false, reason: "feature_not_enabled" });
       }
       
       // Check if iMessage is enabled in company settings
@@ -24284,13 +24277,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } || {};
       
       if (!imessageSettings.isEnabled) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ hasAccess: false, reason: "imessage_not_enabled" });
       }
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ hasAccess: true });
     } catch (error: any) {
       console.error("Error checking iMessage access:", error);
-      return res.json({ success: true, skipped: true });
+      return res.json({ hasAccess: false, reason: "error" });
     }
   });
   // GET /api/imessage/settings - Get iMessage settings for company (superadmin only)
@@ -24497,7 +24490,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
       const conversations = await storage.getImessageConversations(user.companyId);
-      res.json({ success: true });
+      res.json({ conversations });
     } catch (error: any) {
       console.error("Error fetching iMessage conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -24523,7 +24516,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         parseInt(limit as string),
         parseInt(offset as string)
       );
-      res.json({ success: true });
+      res.json({ messages });
     } catch (error: any) {
       console.error("Error fetching iMessage messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -24623,7 +24616,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           lastMessageFromMe: true,
         });
       }
-      res.json({ success: true });
+      res.json({ message, conversationId: conversation.id });
     } catch (error: any) {
       console.error("Error sending iMessage:", error);
       res.status(500).json({ message: "Failed to send message", error: error.message });
@@ -24976,7 +24969,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ instance: null, connected: false });
       }
       // Use fetchInstances to get complete instance info
       try {
@@ -25044,7 +25037,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.log("[WhatsApp] Could not fetch QR code");
             }
           }
-          return res.json({
+          return res.json({ 
             instance: { 
               ...instance, 
               status: connectionStatus, 
@@ -25060,7 +25053,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await db.update(whatsappInstances)
           .set({ qrCode: null, status: "disconnected", updatedAt: new Date() })
           .where(eq(whatsappInstances.id, instance.id));
-        return res.json({
+        return res.json({ 
           instance: { ...instance, qrCode: null, status: "disconnected" },
           connected: false,
           needsReconnect: true
@@ -25071,7 +25064,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await db.update(whatsappInstances)
           .set({ qrCode: null, status: "disconnected", updatedAt: new Date() })
           .where(eq(whatsappInstances.id, instance.id));
-        return res.json({
+        return res.json({ 
           instance: { ...instance, qrCode: null, status: "disconnected" },
           connected: false,
           needsReconnect: true
@@ -25280,7 +25273,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         where: eq(whatsappInstances.companyId, user.companyId),
       });
       if (!instance) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ total: 0 });
       }
       await db
         .select({ total: sql<number>`COUNT(*) FILTER (WHERE ${whatsappConversations.unreadCount} > 0)` })
@@ -25292,7 +25285,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           )
         );
       const total = Number(result[0]?.total || 0);
-      res.json({ success: true });
+      res.json({ total });
     } catch (error: any) {
       console.error("[WhatsApp] Error getting unread count:", error);
       res.status(500).json({ message: "Failed to get unread count" });
@@ -25349,7 +25342,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(whatsappConversations.instanceId, instance.id),
           eq(whatsappConversations.remoteJid, remoteJid)
         ));
-      res.json({ success: true });
+      res.json({ profilePicUrl, contactId });
     } catch (error: any) {
       console.error("[WhatsApp] Error fetching profile picture:", error);
       res.status(500).json({ message: "Failed to fetch profile picture" });
@@ -25409,7 +25402,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(whatsappConversations.instanceId, instance.id),
           eq(whatsappConversations.remoteJid, remoteJid)
         ));
-      res.json({
+      res.json({ 
         contactId, 
         pushName: profile.pushName,
         businessPhone: profile.businessPhone,
@@ -25534,7 +25527,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Delete conversation
       await db.delete(whatsappConversations).where(eq(whatsappConversations.id, id));
       console.log(`[WhatsApp] Deleted conversation ${id} and its messages`);
-      res.json({ success: true });
+      res.json({ success: true, message: "Conversation deleted" });
     } catch (error: any) {
       console.error("[WhatsApp] Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
@@ -25605,7 +25598,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }).returning();
       broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
-      res.json({ success: true });
+      res.json({ success: true, message });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending message:", error);
       res.status(500).json({ message: error.message || "Failed to send" });
@@ -25693,7 +25686,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }).returning();
       broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
-      res.json({ success: true });
+      res.json({ success: true, message });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending media:", error);
       res.status(500).json({ message: error.message || "Failed to send media" });
@@ -25768,7 +25761,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
-      res.json({ success: true });
+      res.json({ success: true, message });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending audio:", error);
       res.status(500).json({ message: error.message || "Failed to send audio" });
@@ -25880,7 +25873,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       // If already has media URL, return it
       if (message.mediaUrl) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ mediaUrl: message.mediaUrl });
       }
       // Get instance
       await db.query.whatsappInstances.findFirst({
@@ -25904,7 +25897,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await db.update(whatsappMessages)
         .set({ mediaUrl })
         .where(eq(whatsappMessages.id, messageId));
-      res.json({ success: true });
+      res.json({ mediaUrl });
     } catch (error: any) {
       console.error("[WhatsApp] Error downloading media:", error);
       res.status(500).json({ message: error.message || "Failed to download media" });
@@ -26462,7 +26455,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updated++;
         }
       }
-      res.json({ success: true });
+      res.json({ success: true, synced, updated, total: chats.length });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing chats:", error);
       res.status(500).json({ message: "Failed to sync chats" });
@@ -26537,7 +26530,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           newCount++;
         }
       }
-      res.json({ success: true });
+      res.json({ synced: newCount });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing messages:", error);
       res.status(500).json({ message: "Failed to sync messages" });
@@ -26621,7 +26614,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error(`[WhatsApp] Error syncing messages for ${conversation.remoteJid}:`, chatError);
         }
       }
-      res.json({ success: true });
+      res.json({ synced: totalSynced, chatUpdates });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing all messages:", error);
       res.status(500).json({ message: "Failed to sync messages" });
@@ -26653,7 +26646,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         ),
       });
       if (unreadMessages.length === 0) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ marked: 0 });
       }
       // For @lid contacts, resolve to phone-based JID for Evolution API
       let evolutionJid = remoteJid;
@@ -26690,7 +26683,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(whatsappConversations.remoteJid, remoteJid)
         ));
       broadcastWhatsAppChatUpdate(user.companyId);
-      res.json({ success: true });
+      res.json({ marked: unreadMessages.length });
     } catch (error: any) {
       console.error("[WhatsApp] Mark read error:", error);
       res.status(500).json({ message: "Failed to mark messages as read" });
@@ -26767,7 +26760,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { appId, whatsappConfigId, facebookConfigId, instagramConfigId } = await credentialProvider.getMeta();
       // Return only the config_id (same for all if using one app)
       const configId = whatsappConfigId || facebookConfigId || instagramConfigId;
-      return res.json({
+      return res.json({ 
         appId, 
         configId,
         whatsappConfigId: whatsappConfigId || configId,
@@ -26843,7 +26836,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       authUrl.searchParams.set("config_id", configId);
       // NOTE: Do NOT use scope= when using config_id (Facebook Login for Business)
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[WhatsApp OAuth] Start error:", error);
       return res.status(500).json({ error: "Failed to start OAuth flow" });
@@ -27106,7 +27099,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
       }
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, wabaId, phoneNumber: phoneNumberE164 });
       
     } catch (error) {
       console.error("[WhatsApp OAuth] Exchange code error:", error);
@@ -27578,7 +27571,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   app.get("/api/integrations/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
     
     const user = req.user as any;
-    if (!user.companyId) return res.json({ success: true, skipped: true });
+    if (!user.companyId) return res.json({ connected: false, connection: null });
     const connection = await db.query.channelConnections.findFirst({
       where: and(
         eq(channelConnections.companyId, user.companyId),
@@ -27587,11 +27580,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     });
     
     if (!connection) {
-      return res.json({ success: true, skipped: true });
+      return res.json({ connected: false, connection: null });
     }
     
     // Return connection info without the encrypted token
-    return res.json({
+    return res.json({ 
       connected: connection.status === "active",
       connection: {
         id: connection.id,
@@ -27608,7 +27601,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/whatsapp/connections - List all active WhatsApp connections for company
   app.get("/api/integrations/whatsapp/connections", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user as any;
-    if (!user.companyId) return res.json({ success: true, skipped: true });
+    if (!user.companyId) return res.json({ connections: [] });
     const connections = await db.query.channelConnections.findMany({
       where: and(
         eq(channelConnections.companyId, user.companyId),
@@ -27627,7 +27620,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       connectedAt: conn.connectedAt,
     }));
     
-    return res.json({ success: true, skipped: true });
+    return res.json({ connections: safeConnections });
   });
 
   // GET /api/integrations/whatsapp/phone-status - Check real phone number status from Meta Graph API
@@ -28014,7 +28007,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       });
     }
     
-    return res.json({ success: true, skipped: true });
+    return res.json({ success: true });
   });
 
   // POST /api/integrations/whatsapp/disconnect - Disconnect WhatsApp
@@ -28043,7 +28036,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       })
       .where(eq(channelConnections.id, connection.id));
     
-    return res.json({ success: true, skipped: true });
+    return res.json({ success: true });
   });
 
   // DELETE /api/integrations/whatsapp/disconnect - Disconnect WhatsApp (legacy support)
@@ -28070,7 +28063,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       })
       .where(eq(channelConnections.id, connection.id));
     
-    return res.json({ success: true, skipped: true });
+    return res.json({ success: true });
   });
 
 
@@ -28221,7 +28214,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(updateRes.status).json({ error: (error as any).error?.message || "Failed to update profile" });
       }
 
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, message: "Profile updated successfully" });
     } catch (error: any) {
       console.error("[WhatsApp Profile] Error:", error);
       return res.status(500).json({ error: error.message || "Internal server error" });
@@ -28333,7 +28326,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(updateRes.status).json({ error: (error as any).error?.message || "Failed to update profile photo" });
       }
 
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, message: "Profile photo updated successfully" });
     } catch (error: any) {
       console.error("[WhatsApp Photo] Error:", error);
       return res.status(500).json({ error: error.message || "Internal server error" });
@@ -29817,7 +29810,7 @@ CRITICAL REMINDERS:
       authUrl.searchParams.set("scope", META_INSTAGRAM_SCOPES);
       authUrl.searchParams.set("state", nonce);
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[Instagram OAuth] Start error:", error);
       return res.status(500).json({ error: "Failed to start OAuth flow" });
@@ -30102,7 +30095,7 @@ CRITICAL REMINDERS:
       }
       
       console.log(`[Instagram SDK] Connected @${igAccount.username} for company ${user.companyId}`);
-      return res.json({
+      return res.json({ 
         success: true, 
         igUserId: igAccountId, 
         igUsername: igAccount.username,
@@ -30125,7 +30118,7 @@ CRITICAL REMINDERS:
         )
       });
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ connection: connection || null });
     } catch (error) {
       console.error("[Instagram] Status error:", error);
       return res.status(500).json({ error: "Failed to get Instagram status" });
@@ -30157,7 +30150,7 @@ CRITICAL REMINDERS:
         .where(eq(channelConnections.id, connection.id));
       
       console.log(`[Instagram] Disconnected for company ${user.companyId}`);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error) {
       console.error("[Instagram] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect Instagram" });
@@ -30217,7 +30210,7 @@ CRITICAL REMINDERS:
       }
       authUrl.searchParams.set("state", nonce);
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[Facebook OAuth] Start error:", error);
       return res.status(500).json({ error: "Failed to start OAuth flow" });
@@ -30493,7 +30486,7 @@ CRITICAL REMINDERS:
       }
       
       console.log(`[Facebook SDK] Connected page ${pageName} (${pageId}) for company ${user.companyId}`);
-      return res.json({
+      return res.json({ 
         success: true, 
         pageId, 
         pageName,
@@ -30516,7 +30509,7 @@ CRITICAL REMINDERS:
         )
       });
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ connection: connection || null });
     } catch (error) {
       console.error("[Facebook] Status error:", error);
       return res.status(500).json({ error: "Failed to get Facebook status" });
@@ -30549,7 +30542,7 @@ CRITICAL REMINDERS:
         .where(eq(channelConnections.id, connection.id));
       
       console.log(`[Facebook] Disconnected for company ${user.companyId}`);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error) {
       console.error("[Facebook] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect Facebook" });
@@ -30600,7 +30593,7 @@ CRITICAL REMINDERS:
       authUrl.searchParams.set("scope", TIKTOK_SCOPES);
       authUrl.searchParams.set("state", nonce);
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[TikTok OAuth] Start error:", error);
       return res.status(500).json({ error: "Failed to start OAuth flow" });
@@ -30785,7 +30778,7 @@ CRITICAL REMINDERS:
         )
       });
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ connection: connection || null });
     } catch (error) {
       console.error("[TikTok] Status error:", error);
       return res.status(500).json({ error: "Failed to get TikTok status" });
@@ -30841,7 +30834,7 @@ CRITICAL REMINDERS:
         .where(eq(channelConnections.id, connection.id));
       
       console.log(`[TikTok] Disconnected for company ${user.companyId}`);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error) {
       console.error("[TikTok] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect TikTok" });
@@ -31172,7 +31165,7 @@ CRITICAL REMINDERS:
       
       const data = await response.json() as any;
       console.log("[Telegram] Webhook setup response:", data);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: data.ok, webhookUrl, response: data });
     } catch (error: any) {
       console.error("[Telegram] Webhook setup error:", error);
       return res.status(500).json({ error: "Failed to setup webhook", details: error.message });
@@ -31217,7 +31210,7 @@ CRITICAL REMINDERS:
       });
       
       const deepLink = `https://t.me/${botUsername}?start=${code}`;
-      return res.json({ success: true, skipped: true });
+      return res.json({ deepLink, code, expiresAt: expiresAt.toISOString() });
     } catch (error: any) {
       console.error("[Telegram] Start error:", error);
       return res.status(500).json({ error: "Failed to generate connect code" });
@@ -31237,7 +31230,7 @@ CRITICAL REMINDERS:
         orderBy: [desc(telegramChatLinks.linkedAt)]
       });
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ connected: chats.length > 0, chats });
     } catch (error: any) {
       console.error("[Telegram] Status error:", error);
       return res.status(500).json({ error: "Failed to get Telegram status" });
@@ -31259,7 +31252,7 @@ CRITICAL REMINDERS:
           eq(telegramChatLinks.chatId, chatId)
         ));
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[Telegram] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect chat" });
@@ -31327,7 +31320,7 @@ CRITICAL REMINDERS:
       });
       
       console.log(`[Telegram] User ${user.id} set up bot @${botUsername}`);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, botUsername, botFirstName });
     } catch (error: any) {
       console.error("[Telegram] Setup bot error:", error);
       return res.status(500).json({ error: "Failed to setup bot", details: error.message });
@@ -31361,7 +31354,7 @@ CRITICAL REMINDERS:
       await db.delete(userTelegramBots).where(eq(userTelegramBots.userId, user.id));
       
       console.log(`[Telegram] User ${user.id} removed bot @${userBot.botUsername}`);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[Telegram] Remove bot error:", error);
       return res.status(500).json({ error: "Failed to remove bot" });
@@ -31378,7 +31371,7 @@ CRITICAL REMINDERS:
       });
       
       if (!userBot) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ hasBot: false, botUsername: null, botFirstName: null, isActive: false });
       }
       
       
@@ -31787,7 +31780,7 @@ CRITICAL REMINDERS:
         })
         .where(eq(telegramConversations.id, conversation.id));
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, message });
     } catch (error: any) {
       console.error("[Telegram] Send message error:", error);
       return res.status(500).json({ error: "Failed to send message" });
@@ -31952,7 +31945,7 @@ CRITICAL REMINDERS:
         .from(voicemails)
         .where(and(...unreadConditions));
       
-      res.json({ success: true });
+      res.json({ voicemails: userVoicemails, unreadCount: unreadCount?.count || 0 });
     } catch (error: any) {
       console.error("[Voicemails] List error:", error);
       res.status(500).json({ message: "Failed to fetch voicemails" });
@@ -32160,7 +32153,7 @@ CRITICAL REMINDERS:
       }
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
-      res.json({ success: true });
+      res.json({ wallet });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
       res.status(500).json({ message: "Failed to get wallet" });
@@ -32179,7 +32172,7 @@ CRITICAL REMINDERS:
       const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ transactions: [], total: 0 });
       }
       const transactions = await getWalletTransactions(wallet.id, limit, offset);
       
@@ -32202,7 +32195,7 @@ CRITICAL REMINDERS:
         })
       );
       
-      res.json({ success: true });
+      res.json({ transactions: enrichedTransactions });
     } catch (error: any) {
       console.error("[Wallet] Error getting transactions:", error);
       res.status(500).json({ message: "Failed to get transactions" });
@@ -32226,7 +32219,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(400).json({ message: result.error });
       }
-      res.json({
+      res.json({ 
         success: true, 
         transaction: result.transaction,
         newBalance: result.newBalance 
@@ -32257,7 +32250,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(400).json({ message: result.error });
       }
-      res.json({
+      res.json({ 
         success: true, 
         transaction: result.transaction,
         newBalance: result.newBalance 
@@ -32278,9 +32271,9 @@ CRITICAL REMINDERS:
       const wallet = await getOrCreateWallet(user.companyId, user.id);
       
       if (!wallet) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ balance: "0.0000", currency: "USD" });
       }
-      res.json({
+      res.json({ 
         balance: wallet.balance, 
         currency: wallet.currency,
         autoRecharge: wallet.autoRecharge
@@ -32360,7 +32353,7 @@ CRITICAL REMINDERS:
       }
       console.log(`[Wallet Top-Up] Successfully added $${amount} to wallet for company ${user.companyId}`);
       
-      res.json({
+      res.json({ 
         success: true,
         newBalance: depositResult.newBalance,
         amount: amount,
@@ -32412,7 +32405,7 @@ CRITICAL REMINDERS:
         .where(eq(wallets.id, wallet.id));
       console.log(`[Wallet] Auto-recharge ${enabled ? 'enabled' : 'disabled'} for company ${user.companyId}`);
       
-      res.json({
+      res.json({ 
         success: true,
         autoRecharge: enabled,
         autoRechargeThreshold: enabled ? threshold.toFixed(4) : null,
@@ -32560,7 +32553,7 @@ CRITICAL REMINDERS:
         };
       });
       
-      res.json({ success: true });
+      res.json({ numbers });
     } catch (error: any) {
       console.error("[Phone System] Error getting phone numbers:", error);
       res.status(500).json({ message: "Failed to get phone numbers" });
@@ -33213,7 +33206,7 @@ CRITICAL REMINDERS:
       }
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
-      res.json({ success: true });
+      res.json({ wallet });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
       res.status(500).json({ message: "Failed to get wallet" });
@@ -33232,7 +33225,7 @@ CRITICAL REMINDERS:
       const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ transactions: [], total: 0 });
       }
       const transactions = await getWalletTransactions(wallet.id, limit, offset);
       
@@ -33255,7 +33248,7 @@ CRITICAL REMINDERS:
         })
       );
       
-      res.json({ success: true });
+      res.json({ transactions: enrichedTransactions });
     } catch (error: any) {
       console.error("[Wallet] Error getting transactions:", error);
       res.status(500).json({ message: "Failed to get transactions" });
@@ -33279,7 +33272,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(400).json({ message: result.error });
       }
-      res.json({
+      res.json({ 
         success: true, 
         transaction: result.transaction,
         newBalance: result.newBalance 
@@ -33310,7 +33303,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(400).json({ message: result.error });
       }
-      res.json({
+      res.json({ 
         success: true, 
         transaction: result.transaction,
         newBalance: result.newBalance 
@@ -33331,9 +33324,9 @@ CRITICAL REMINDERS:
       const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ balance: "0.0000", currency: "USD" });
       }
-      res.json({
+      res.json({ 
         balance: wallet.balance, 
         currency: wallet.currency,
         autoRecharge: wallet.autoRecharge
@@ -33357,7 +33350,7 @@ CRITICAL REMINDERS:
       const { secretsService } = await import("./services/secrets-service");
       const credentials = await secretsService.listCredentials();
       
-      res.json({ success: true });
+      res.json({ credentials });
     } catch (error: any) {
       console.error("[System Credentials] Error listing:", error);
       res.status(500).json({ message: "Failed to list credentials" });
@@ -33536,7 +33529,7 @@ CRITICAL REMINDERS:
           ]
         },
       ];
-      res.json({ success: true });
+      res.json({ providers: providerConfigs, apiProviders });
     } catch (error: any) {
       console.error("[System Credentials] Error getting providers:", error);
       res.status(500).json({ message: "Failed to get providers" });
@@ -33555,7 +33548,7 @@ CRITICAL REMINDERS:
         credentialId as string | undefined,
         limit ? parseInt(limit as string) : 50
       );
-      res.json({ success: true });
+      res.json({ auditLog });
     } catch (error: any) {
       console.error("[System Credentials] Error getting audit:", error);
       res.status(500).json({ message: "Failed to get audit log" });
@@ -33625,7 +33618,7 @@ CRITICAL REMINDERS:
       }
       const decryptedValue = secretsService.decrypt(credential.encryptedValue, credential.iv);
       await logRevealAttempt(true);
-      res.json({ success: true });
+      res.json({ value: decryptedValue });
     } catch (error: any) {
       console.error("[System Credentials] Error revealing:", error);
       await logRevealAttempt(false, "internal_error");
@@ -33661,7 +33654,7 @@ CRITICAL REMINDERS:
         const { reinitializeEmailService } = await import("./email");
         await reinitializeEmailService();
       }
-      res.json({
+      res.json({ 
         success: true,
         credential: {
           id: credential.id,
@@ -33707,7 +33700,7 @@ CRITICAL REMINDERS:
         .returning();
       const { credentialProvider } = await import("./services/credential-provider");
       credentialProvider.invalidate(updated.provider as any, updated.keyName);
-      res.json({ success: true });
+      res.json({ success: true, credential: updated });
     } catch (error: any) {
       console.error("[System Credentials] Error updating:", error);
       res.status(500).json({ message: "Failed to update credential" });
@@ -33767,7 +33760,7 @@ CRITICAL REMINDERS:
         await secretsService.deleteCredential(credential.id, user.id);
         credentialProvider.invalidate(credential.provider as any, credential.keyName);
       }
-      res.json({ success: true });
+      res.json({ success: true, deletedCount: credentialsToDelete.length });
     } catch (error: any) {
       console.error("[System Credentials] Error bulk deleting:", error);
       res.status(500).json({ message: "Failed to delete credentials" });
@@ -33853,7 +33846,7 @@ CRITICAL REMINDERS:
         return res.status(500).json({ message: "Failed to rotate credential" });
       }
       credentialProvider.invalidate(rotated.provider as any, rotated.keyName);
-      res.json({
+      res.json({ 
         success: true,
         credential: {
           id: rotated.id,
@@ -33880,7 +33873,7 @@ CRITICAL REMINDERS:
       const { systemConfigService } = await import("./services/system-config");
       await systemConfigService.initialize();
       const config = await systemConfigService.getPublicConfig();
-      res.json({ success: true });
+      res.json({ config });
     } catch (error: any) {
       console.error("[System Config] Error getting public config:", error);
       res.status(500).json({ message: "Failed to get public config" });
@@ -33892,10 +33885,10 @@ CRITICAL REMINDERS:
     try {
       const { credentialProvider } = await import("./services/credential-provider");
       const stripeCredentials = await credentialProvider.getStripe();
-      res.json({ success: true });
+      res.json({ publishableKey: stripeCredentials.publishableKey || null });
     } catch (error: any) {
       console.error("[System Config] Error getting Stripe publishable key:", error);
-      res.json({ success: true });
+      res.json({ publishableKey: null });
     }
   });
   // GET /api/system-config - List all config (superadmin only)
@@ -33909,7 +33902,7 @@ CRITICAL REMINDERS:
       const { systemConfigService } = await import("./services/system-config");
       await systemConfigService.initialize();
       const configs = await systemConfigService.getAll();
-      res.json({ success: true });
+      res.json({ configs });
     } catch (error: any) {
       console.error("[System Config] Error listing configs:", error);
       res.status(500).json({ message: "Failed to list configs" });
@@ -34002,7 +33995,7 @@ CRITICAL REMINDERS:
       const companyId = currentUser.companyId;
       
       if (!companyId) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ numbers: [] });
       }
       
       // Load global pricing to use configured rates instead of Telnyx rates
@@ -34114,7 +34107,7 @@ CRITICAL REMINDERS:
         telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,
       }));
       
-      res.json({ success: true });
+      res.json({ numbers: numbersWithCompliance });
     } catch (error) {
       console.error("[SMS-Voice] Error fetching numbers:", error);
       res.status(500).json({ message: "Failed to fetch phone numbers" });
@@ -34157,7 +34150,7 @@ CRITICAL REMINDERS:
         .set({ displayName: displayName.trim() || null })
         .where(eq(telnyxPhoneNumbers.id, id));
       
-      res.json({ success: true });
+      res.json({ success: true, message: "Display name updated" });
     } catch (error) {
       console.error("[Telnyx] Error updating phone number display name:", error);
       res.status(500).json({ message: "Failed to update display name" });
@@ -34198,7 +34191,7 @@ CRITICAL REMINDERS:
         return res.status(500).json({ message: result.error || "Failed to release phone number" });
       }
       
-      res.json({
+      res.json({ 
         success: true, 
         message: `Phone number ${phoneNumber.phoneNumber} has been released. Monthly billing will stop.` 
       });
@@ -34256,7 +34249,7 @@ CRITICAL REMINDERS:
       const result = await updateCnamListing(telnyxPhoneId, companyId, true, sanitizedCnam);
       
       if (result.success) {
-        res.json({
+        res.json({ 
           success: true, 
           message: `Caller ID name set to "${result.cnamName}". It may take 3-5 business days to propagate across all carriers.`,
           callerIdName: result.cnamName
@@ -34384,7 +34377,7 @@ CRITICAL REMINDERS:
         source: "telnyx",
       };
       
-      res.json({ success: true });
+      res.json({ verification: flattened });
     } catch (error: any) {
       console.error("[Telnyx TFV] Error fetching verification request by phone:", error);
       res.status(500).json({ message: "Failed to fetch verification request" });
@@ -34452,7 +34445,7 @@ CRITICAL REMINDERS:
         sample_messages: trafficProfile.sample_messages || raw.sample_messages || [],
       };
       
-      res.json({ success: true });
+      res.json({ verification: flattened });
     } catch (error: any) {
       console.error("[Telnyx] Error fetching verification request:", error);
       res.status(500).json({ message: "Failed to fetch verification request" });
@@ -34466,7 +34459,7 @@ CRITICAL REMINDERS:
       
       // Superadmin always has access
       if (currentUser.role === 'superadmin') {
-        return res.json({ success: true, skipped: true });
+        return res.json({ hasAccess: true, isOwner: true, reason: 'superadmin' });
       }
       
       // Get the telephony settings for user's company
@@ -34476,7 +34469,7 @@ CRITICAL REMINDERS:
       
       // No phone system configured - only admins can activate (and become owner)
       if (!settings) {
-        return res.json({
+        return res.json({ 
           hasAccess: currentUser.role === 'admin',
           isOwner: false, 
           reason: currentUser.role === 'admin' ? 'admin_can_activate' : 'not_activated' 
@@ -34486,7 +34479,7 @@ CRITICAL REMINDERS:
       // Check if user is the owner
       const isOwner = settings.ownerUserId === currentUser.id;
       
-      res.json({
+      res.json({ 
         hasAccess: isOwner, 
         isOwner,
         reason: isOwner ? 'owner' : 'not_owner',
@@ -34698,7 +34691,7 @@ CRITICAL REMINDERS:
       } else {
         console.log(`[10DLC Brand] Charged $${BRAND_REGISTRATION_FEE.toFixed(2)} for brand registration. New balance: $${chargeResult.newBalance}`);
       }
-            res.json({ success: true });
+            res.json({ success: true, brand: newBrand });
     } catch (error: any) {
       console.error("Error creating brand:", error);
       res.status(500).json({ message: error.message });
@@ -34769,19 +34762,19 @@ CRITICAL REMINDERS:
               .set({ telnyxMessagingProfileId: profile.id, updatedAt: new Date() })
               .where(eq(wallets.id, wallet.id));
             
-            return res.json({ success: true, skipped: true });
+            return res.json({ exists: true, profile });
           }
         }
         
-        return res.json({ success: true, skipped: true });
+        return res.json({ exists: false, profile: null });
       }
       
       if (!wallet?.telnyxMessagingProfileId) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ exists: false, profile: null });
       }
       
       if (!telnyxApiKey) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ exists: true, profile: { id: wallet.telnyxMessagingProfileId } });
       }
       
       const response = await fetch(`https://api.telnyx.com/v2/messaging_profiles/${wallet.telnyxMessagingProfileId}`, {
@@ -34790,11 +34783,11 @@ CRITICAL REMINDERS:
       });
       
       if (!response.ok) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ exists: true, profile: { id: wallet.telnyxMessagingProfileId } });
       }
       
       const result = await response.json();
-      res.json({ success: true });
+      res.json({ exists: true, profile: result.data });
     } catch (error: any) {
       console.error("Error fetching messaging profile:", error);
       res.status(500).json({ message: error.message });
@@ -34882,7 +34875,7 @@ CRITICAL REMINDERS:
       }
         console.log(`[Messaging Profile] Saved to wallet ${wallet.id}: ${profileId}`);
       
-      res.json({ success: true });
+      res.json({ success: true, profile: result.data });
     } catch (error: any) {
       console.error("Error creating messaging profile:", error);
       res.status(500).json({ message: error.message });
@@ -34967,7 +34960,7 @@ CRITICAL REMINDERS:
       console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ campaigns: [] });
       }
       
       // If no brandId provided, first fetch all brands for this account
@@ -35007,7 +35000,7 @@ CRITICAL REMINDERS:
           }
           
           console.log("[10DLC Campaigns] Total campaigns found:", allCampaigns.length);
-          return res.json({ success: true, skipped: true });
+          return res.json({ campaigns: allCampaigns });
         }
       }
       
@@ -35021,13 +35014,13 @@ CRITICAL REMINDERS:
       if (!response.ok) {
         const error = await response.json();
         console.error("[10DLC Campaigns] Error fetching campaigns:", error);
-        return res.json({ success: true, skipped: true });
+        return res.json({ campaigns: [] });
       }
       
       const result = await response.json();
       console.log("[10DLC Campaigns] Response:", JSON.stringify(result, null, 2));
       
-      res.json({ success: true });
+      res.json({ campaigns: result.records || result.data || [] });
     } catch (error: any) {
       console.error("Error fetching 10DLC campaigns:", error);
       res.status(500).json({ message: error.message });
@@ -35158,7 +35151,7 @@ CRITICAL REMINDERS:
       } else {
         console.log(`[10DLC Campaign] Charged $${CAMPAIGN_REVIEW_FEE.toFixed(2)} for campaign review. New balance: $${chargeResult.newBalance}`);
       }
-      res.json({ success: true });
+      res.json({ success: true, campaign: result.data || result });
     } catch (error: any) {
       console.error("Error creating 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35190,7 +35183,7 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
-      res.json({ success: true });
+      res.json({ campaign: result.data || result });
     } catch (error: any) {
       console.error("Error fetching 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35262,7 +35255,7 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign] Updated:", result);
-      res.json({ success: true });
+      res.json({ success: true, campaign: result.data || result });
     } catch (error: any) {
       console.error("Error updating 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35305,7 +35298,7 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign] Appeal submitted:", result);
-      res.json({ success: true });
+      res.json({ success: true, campaign: result.data || result });
     } catch (error: any) {
       console.error("Error appealing 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35385,7 +35378,7 @@ CRITICAL REMINDERS:
       }
       
       console.log("[10DLC Campaign Numbers] Final count:", allNumbers.length, "numbers with messaging profile");
-      res.json({ success: true });
+      res.json({ phoneNumbers: allNumbers });
     } catch (error: any) {
       console.error("Error fetching campaign phone numbers:", error);
       res.status(500).json({ message: error.message });
@@ -35497,7 +35490,7 @@ CRITICAL REMINDERS:
         return res.status(400).json({ message: errors[0]?.error || "Failed to assign phone numbers", errors });
       }
       
-      res.json({ success: true });
+      res.json({ success: true, assigned: results, errors });
     } catch (error: any) {
       console.error("Error assigning phone numbers to campaign:", error);
       res.status(500).json({ message: error.message });
@@ -35726,7 +35719,7 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
-      res.json({ success: true });
+      res.json({ verification: result.data });
     } catch (error: any) {
       console.error("[Toll-Free Verification] Error:", error);
       res.status(500).json({ message: error.message });
@@ -35802,7 +35795,7 @@ CRITICAL REMINDERS:
       }
       
       const result = await response.json();
-      res.json({ success: true });
+      res.json({ agent: result.data });
     } catch (error: any) {
       console.error("[RCS] Error fetching agent:", error);
       res.status(500).json({ message: error.message });
@@ -35840,7 +35833,7 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Agent updated:", agentId);
-      res.json({ success: true });
+      res.json({ agent: result.data });
     } catch (error: any) {
       console.error("[RCS] Error updating agent:", error);
       res.status(500).json({ message: error.message });
@@ -35887,7 +35880,7 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Capabilities checked for:", phoneNumber);
-      res.json({ success: true });
+      res.json({ capabilities: result.data });
     } catch (error: any) {
       console.error("[RCS] Error checking capabilities:", error);
       res.status(500).json({ message: error.message });
@@ -35937,7 +35930,7 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Test number added successfully:", result.data);
-      res.json({ success: true });
+      res.json({ testNumber: result.data });
     } catch (error: any) {
       console.error("[RCS] Error adding test number:", error);
       res.status(500).json({ message: error.message });
@@ -36035,7 +36028,7 @@ CRITICAL REMINDERS:
       
       const result = await response.json();
       console.log("[RCS] Message sent to:", to, "via agent:", agentId);
-      res.json({ success: true });
+      res.json({ message: result.data });
     } catch (error: any) {
       console.error("[RCS] Error sending message:", error);
       res.status(500).json({ message: error.message });
@@ -36047,7 +36040,7 @@ CRITICAL REMINDERS:
       const currentUser = req.user as User;
       
       if (!currentUser.companyId) {
-        return res.json({
+        return res.json({ 
           hasAssignedNumber: false, 
           canMakeCalls: false,
           hasPbxExtension: false,
@@ -36091,7 +36084,7 @@ CRITICAL REMINDERS:
           });
           
           if (anyCompanyNumber) {
-            return res.json({
+            return res.json({ 
               hasAssignedNumber: true, 
               canMakeCalls: true,
               phoneNumber: anyCompanyNumber.phoneNumber,
@@ -36104,7 +36097,7 @@ CRITICAL REMINDERS:
       }
       
       if (assignedNumber) {
-        return res.json({
+        return res.json({ 
           hasAssignedNumber: true, 
           canMakeCalls: true,
           phoneNumber: assignedNumber.phoneNumber,
@@ -36116,7 +36109,7 @@ CRITICAL REMINDERS:
       
       // Check if user has only a PBX extension (no Telnyx number)
       if (userExtension) {
-        return res.json({
+        return res.json({ 
           hasAssignedNumber: false, 
           canMakeCalls: true,
           hasPbxExtension: true,
@@ -36126,7 +36119,7 @@ CRITICAL REMINDERS:
       }
       
       // User has no assigned number or extension
-      res.json({
+      res.json({ 
         hasAssignedNumber: false, 
         canMakeCalls: false,
         hasPbxExtension: false,
@@ -36229,7 +36222,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Search error:", error);
       res.status(500).json({ message: "Failed to search phone numbers" });
@@ -36352,7 +36345,7 @@ CRITICAL REMINDERS:
       } else {
         console.log("[Provisioning] Skipping auto-provision for company:", user.companyId, "- already completed");
       }
-      res.json({
+      res.json({ 
         success: true, 
         orderId: result.orderId,
         phoneNumber: result.phoneNumber,
@@ -36382,7 +36375,7 @@ CRITICAL REMINDERS:
         if (!result.success) {
           return res.status(500).json({ message: result.error });
         }
-        return res.json({ success: true, skipped: true });
+        return res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
       }
       
       // Sync phone numbers from Telnyx to local DB before returning
@@ -36396,7 +36389,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ numbers: result.numbers, totalCount: result.numbers?.length || 0 });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Get numbers error:", error);
       res.status(500).json({ message: "Failed to get phone numbers" });
@@ -36422,7 +36415,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ success: false, error: result.error });
       }
-      res.json({ success: true });
+      res.json({ success: true, connectionId: result.connectionId, message: "Phone number successfully assigned to credential connection" });
     } catch (error: any) {
       console.error("[Telnyx Repair] Error:", error);
       res.status(500).json({ message: "Failed to repair phone number connection" });
@@ -36831,7 +36824,7 @@ CRITICAL REMINDERS:
       }
       const { listE911Addresses } = await import("./services/telnyx-e911-service");
       const addresses = await listE911Addresses(user.companyId);
-      res.json({ success: true });
+      res.json({ addresses });
     } catch (error: any) {
       console.error("[E911 API] List addresses error:", error);
       res.status(500).json({ message: "Failed to list E911 addresses" });
@@ -36865,7 +36858,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ success: true, addressId: result.addressId, telnyxAddressId: result.telnyxAddressId });
     } catch (error: any) {
       console.error("[E911 API] Create address error:", error);
       res.status(500).json({ message: "Failed to create E911 address" });
@@ -36904,7 +36897,7 @@ CRITICAL REMINDERS:
       }
       const { getPhoneNumbersWithE911Status } = await import("./services/telnyx-e911-service");
       const numbers = await getPhoneNumbersWithE911Status(user.companyId);
-      res.json({ success: true });
+      res.json({ numbers });
     } catch (error: any) {
       console.error("[E911 API] Get phone numbers error:", error);
       res.status(500).json({ message: "Failed to get phone numbers with E911 status" });
@@ -37016,7 +37009,7 @@ CRITICAL REMINDERS:
       }
       const result = await response.json();
       console.log("[Telnyx Caller ID Lookup] Update successful:", result.data?.caller_id_name_enabled);
-      res.json({ success: true });
+      res.json({ success: true, enabled: result.data?.caller_id_name_enabled });
     } catch (error: any) {
       console.error("[Telnyx Caller ID Lookup] Update error:", error);
       res.status(500).json({ message: "Failed to update caller ID lookup settings" });
@@ -37038,7 +37031,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ success: true, enabled: result.enabled, pin: result.pin });
     } catch (error: any) {
       console.error("[Telnyx Voicemail] Get settings error:", error);
       res.status(500).json({ message: "Failed to get voicemail settings" });
@@ -37361,7 +37354,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({
+      res.json({ 
         success: true, 
         managedAccountId: result.managedAccountId,
         message: "Managed account setup successfully" 
@@ -37389,7 +37382,7 @@ CRITICAL REMINDERS:
       const { getCompanyManagedAccountId, getManagedAccount, clearCompanyTelnyxConfig } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(targetCompanyId);
       if (!managedAccountId) {
-        return res.json({
+        return res.json({ 
           configured: false, 
           message: "No managed account configured for this company" 
         });
@@ -37410,7 +37403,7 @@ CRITICAL REMINDERS:
       if (!accountDetails.success || !accountDetails.managedAccount) {
         console.log(`[Telnyx Managed] Account ${managedAccountId} not found in Telnyx, clearing local config for company ${targetCompanyId}`);
         await clearCompanyTelnyxConfig(targetCompanyId);
-        return res.json({
+        return res.json({ 
           configured: false, 
           message: "Phone system account was disabled. Please set up again." 
         });
@@ -37420,12 +37413,12 @@ CRITICAL REMINDERS:
       if (account.status === "disabled" || account.status === "deleted" || account.status === "suspended") {
         console.log(`[Telnyx Managed] Account ${managedAccountId} is disabled (status: ${account.status}), clearing local config for company ${targetCompanyId}`);
         await clearCompanyTelnyxConfig(targetCompanyId);
-        return res.json({
+        return res.json({ 
           configured: false, 
           message: "Phone system account was disabled. Please set up again." 
         });
       }
-      res.json({
+      res.json({ 
         configured: true, 
         managedAccountId,
         accountDetails: account
@@ -37449,7 +37442,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ accounts: result.accounts });
     } catch (error: any) {
       console.error("[Telnyx Managed] List error:", error);
       res.status(500).json({ message: "Failed to list managed accounts" });
@@ -37470,7 +37463,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ success: true, message: "Managed account disabled" });
     } catch (error: any) {
       console.error("[Telnyx Managed] Disable error:", error);
       res.status(500).json({ message: "Failed to disable managed account" });
@@ -37490,7 +37483,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ success: true, message: "Managed account enabled" });
     } catch (error: any) {
       console.error("[Telnyx Managed] Enable error:", error);
       res.status(500).json({ message: "Failed to enable managed account" });
@@ -37693,7 +37686,7 @@ CRITICAL REMINDERS:
       const { invalidatePricingCache } = await import('./services/pricing-config');
       invalidatePricingCache();
       console.log("[Global Pricing] Updated by user:", user.id);
-      res.json({ success: true });
+      res.json({ success: true, message: "Pricing configuration updated successfully" });
     } catch (error: any) {
       console.error("[Global Pricing] PUT error:", error);
       res.status(500).json({ message: "Failed to update pricing configuration" });
@@ -37720,7 +37713,7 @@ CRITICAL REMINDERS:
       // Check if already provisioned
       const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId, user.id);
       if (existingStatus?.status === "completed") {
-        return res.json({
+        return res.json({ 
           success: true, 
           message: "WebRTC infrastructure already provisioned",
           status: existingStatus 
@@ -37738,7 +37731,7 @@ CRITICAL REMINDERS:
         .catch(err => {
           console.error("[Provisioning] Error for company:", user.companyId, err);
         });
-      res.json({
+      res.json({ 
         success: true, 
         message: "WebRTC provisioning started. This may take a few seconds." 
       });
@@ -37760,7 +37753,7 @@ CRITICAL REMINDERS:
       const userId = (user.role === 'superadmin' || user.role === 'admin') ? undefined : user.id;
       const status = await telephonyProvisioningService.getProvisioningStatus(user.companyId, userId);
       if (!status) {
-        return res.json({
+        return res.json({ 
           provisioned: false,
           status: "not_started",
           message: "WebRTC infrastructure not yet provisioned" 
@@ -37805,7 +37798,7 @@ CRITICAL REMINDERS:
       // Trigger provisioning
       const result = await telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id);
       if (result.success) {
-        res.json({
+        res.json({ 
           success: true, 
           message: "WebRTC infrastructure provisioned successfully",
           texmlAppId: result.texmlAppId,
@@ -37835,7 +37828,7 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.repairPhoneNumberRouting(user.companyId, user.id);
       if (result.success) {
-        res.json({
+        res.json({ 
           success: true, 
           message: `Phone number routing repaired successfully. ${result.repairedCount} numbers updated.`,
           repairedCount: result.repairedCount
@@ -37863,7 +37856,7 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.fixTexmlWebhooks(user.companyId, user.id);
       if (result.success) {
-        res.json({
+        res.json({ 
           success: true, 
           message: "TeXML webhooks fixed successfully. Inbound calls will now route to WebRTC clients."
         });
@@ -37898,7 +37891,7 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.repairSipUriCalling(user.companyId, user.id);
       if (result.success) {
-        res.json({
+        res.json({ 
           success: true, 
           message: "SIP URI calling enabled successfully. Inbound calls can now reach WebRTC clients."
         });
@@ -37924,7 +37917,7 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.repairSrtpSettings(user.companyId, user.id);
       if (result.success) {
-        res.json({
+        res.json({ 
           success: true, 
           message: "SRTP disabled successfully. Outbound WebRTC calls should now work."
         });
@@ -37949,7 +37942,7 @@ CRITICAL REMINDERS:
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.repairHDCodecs(user.companyId, user.id);
       if (result.success) {
-        res.json({
+        res.json({ 
           success: true,
           message: "HD codecs configured successfully. Voice quality will now use G.722 HD audio."
         });
@@ -38153,7 +38146,7 @@ CRITICAL REMINDERS:
       const { updateCredentialConnectionForWebRTC } = await import("./services/telnyx-e911-service");
       const result = await updateCredentialConnectionForWebRTC(user.companyId);
       if (result.success) {
-        res.json({
+        res.json({ 
           success: true, 
           message: "WebRTC configuration updated successfully. Codecs: OPUS, G722, G711U, G711A. Encryption: SRTP enabled." 
         });
@@ -38253,7 +38246,7 @@ CRITICAL REMINDERS:
           skipped++;
         }
       }
-      res.json({
+      res.json({ 
         success: true, 
         message: `Synced ${synced} recordings, skipped ${skipped}`,
         totalRecordings: recordings.length,
@@ -38781,17 +38774,17 @@ CRITICAL REMINDERS:
       }
       if (primaryResult.status === 'fulfilled' && primaryResult.value.ok) {
         console.log("[Call Control Hangup] Call terminated successfully:", callControlIdToHangup);
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true, message: "Call terminated via Call Control API" });
       } else if (primaryResult.status === 'fulfilled') {
         const errorText = await primaryResult.value.text();
         console.error("[Call Control Hangup] API error:", primaryResult.value.status, errorText);
         if (primaryResult.value.status === 404 || primaryResult.value.status === 422) {
-          return res.json({ success: true, skipped: true });
+          return res.json({ success: true, message: "Call already ended" });
         }
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: false, message: "API error: " + primaryResult.value.status });
       } else {
         console.error("[Call Control Hangup] Request failed:", primaryResult.reason);
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: false, message: "Request failed" });
       }
     } catch (error: any) {
       console.error("[Call Control Hangup] Error:", error);
@@ -38828,7 +38821,7 @@ CRITICAL REMINDERS:
       if (!activeCall) {
         console.log("[WebRTC Server Hangup] No active call found for sipUsername:", credential.sipUsername);
         // Even if no active call is tracked, respond success so client can clean up
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true, message: "No active call to hang up" });
       }
       console.log("[WebRTC Server Hangup] Hanging up PSTN call:", {
         sipUsername: credential.sipUsername,
@@ -38846,7 +38839,7 @@ CRITICAL REMINDERS:
         if (!telnyxApiKey) {
           console.error("[WebRTC Server Hangup] Telnyx API key not configured in system credentials");
           activeCallsMap.delete(credential.sipUsername);
-          return res.json({ success: true, skipped: true });
+          return res.json({ success: false, message: "Telnyx API key not configured" });
         }
         
         // Clean the API key
@@ -38867,16 +38860,16 @@ CRITICAL REMINDERS:
         if (hangupResponse.ok) {
           console.log("[WebRTC Server Hangup] PSTN call terminated successfully:", activeCall.callSid);
           activeCallsMap.delete(credential.sipUsername);
-          return res.json({ success: true, skipped: true });
+          return res.json({ success: true, message: "PSTN call terminated" });
         } else {
           const errorText = await hangupResponse.text();
           console.error("[WebRTC Server Hangup] Telnyx API error:", hangupResponse.status, errorText);
           // Keep the call in activeCallsMap for retry
-          return res.json({ success: true, skipped: true });
+          return res.json({ success: false, message: "Telnyx API error: " + hangupResponse.status });
         }
       } catch (apiError: any) {
         console.error("[WebRTC Server Hangup] API call failed:", apiError);
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: false, message: "API call failed: " + (apiError.message || "Unknown error") });
       }
     } catch (error: any) {
       console.error("[WebRTC Server Hangup] Error:", error);
@@ -38922,7 +38915,7 @@ CRITICAL REMINDERS:
           .where(eq(callLogs.id, existingLog.id));
         
         console.log("[WebRTC] Updated call log:", existingLog.id, "status:", status);
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true, id: existingLog.id, updated: true });
       }
       // Try to match contact by phone number - handle null phones safely
       const normalizedFrom = fromNumber.replace(/\D/g, '').slice(-10);
@@ -38971,7 +38964,7 @@ CRITICAL REMINDERS:
       }
       await db.insert(callLogs).values(insertValues).returning();
       console.log("[WebRTC] Created call log:", newLog.id, "direction:", direction, "to:", toNumber);
-      res.json({ success: true });
+      res.json({ success: true, id: newLog.id, created: true });
     } catch (error: any) {
       console.error("[WebRTC] Call log error:", error);
       res.status(500).json({ message: "Failed to log call" });
@@ -38990,7 +38983,7 @@ CRITICAL REMINDERS:
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-      res.json({ success: true });
+      res.json({ addresses: result.addresses || [] });
     } catch (error: any) {
       console.error("[E911] Get addresses error:", error);
       res.status(500).json({ message: "Failed to get emergency addresses" });
@@ -39007,18 +39000,18 @@ CRITICAL REMINDERS:
       const { phoneNumber } = req.params;
       
       if (!phoneNumber) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ found: false });
       }
       
       if (!user.companyId) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ found: false });
       }
       
       // Normalize phone number (keep only last 10 digits)
       const normalizedPhone = phoneNumber.replace(/\D/g, '').slice(-10);
       
       if (normalizedPhone.length < 10) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ found: false });
       }
       
       // Wrap each lookup in try/catch to prevent any single failure from crashing
@@ -39116,11 +39109,11 @@ CRITICAL REMINDERS:
       }
       
       // Not found - always return 200 OK
-      res.json({ success: true });
+      res.json({ found: false });
     } catch (error: any) {
       // CRITICAL: Never return 500 for caller lookup - just return not found
       console.error("[Caller Lookup] Unexpected error (returning 200):", error.message);
-      res.json({ success: true });
+      res.json({ found: false });
     }
   });
   // GET /api/call-logs - Get call history for user (user-scoped)
@@ -39230,7 +39223,7 @@ CRITICAL REMINDERS:
         
         return log;
       }));
-      res.json({ success: true });
+      res.json({ logs: enrichedLogs });
     } catch (error: any) {
       console.error("[Call Logs] Get error:", error);
       res.status(500).json({ message: "Failed to get call history" });
@@ -39282,7 +39275,7 @@ CRITICAL REMINDERS:
           endedAt: endedAt ? new Date(endedAt) : null,
         })
         .returning();
-      res.json({ success: true });
+      res.json({ success: true, id: log.id, log });
     } catch (error: any) {
       console.error("[Call Logs] Create error:", error);
       res.status(500).json({ message: "Failed to create call log" });
@@ -39354,7 +39347,7 @@ CRITICAL REMINDERS:
             .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)))
             .returning();
           broadcastNewCallLog(user.companyId, updated as any);
-          return res.json({ success: true, skipped: true });
+          return res.json({ success: true, log: updated });
         }
         
         console.log(`[Call Logs] WebRTC call ended - charging to wallet with unified billing. ID: ${id}, Duration: ${duration || existingLog.duration}s`);
@@ -39398,7 +39391,7 @@ CRITICAL REMINDERS:
         .returning();
       // Broadcast the updated call log
       broadcastNewCallLog(user.companyId, updated as any);
-      res.json({ success: true });
+      res.json({ success: true, log: updated });
     } catch (error: any) {
       console.error("[Call Logs] Update error:", error);
       res.status(500).json({ message: "Failed to update call log" });
@@ -39627,7 +39620,7 @@ CRITICAL REMINDERS:
         console.log(`[Call Recording] Recording active with announcement for call ${telnyxCallControlId}`);
         // Save the recording language to the database
       await db.update(callLogs).set({ recordingLanguage: language }).where(eq(callLogs.id, callLog.id));
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true });
       } else {
         const errorText = await recordResponse.text();
         console.error(`[Call Recording] Failed to start recording for call ${telnyxCallControlId}:`, errorText);
@@ -39754,7 +39747,7 @@ CRITICAL REMINDERS:
       console.log("[Recording Proxy] Method 2 - Telnyx API status:", response.status);
             if (response.ok) {
         console.log(`[Call Recording] Stopped recording for call ${telnyxCallControlId}`);
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true });
       } else {
         const errorText = await response.text();
         console.error(`[Call Recording] Failed to stop recording for call ${telnyxCallControlId}:`, errorText);
@@ -39797,7 +39790,7 @@ CRITICAL REMINDERS:
           eq(voicemails.companyId, user.companyId),
           eq(voicemails.status, "new")
         ));
-      res.json({
+      res.json({ 
         voicemails: messages,
         unreadCount: unreadCount?.count || 0
       });
@@ -39832,7 +39825,7 @@ CRITICAL REMINDERS:
           eq(voicemails.companyId, user.companyId)
         ))
         .returning();
-      res.json({ success: true });
+      res.json({ success: true, voicemail: updated });
     } catch (error: any) {
       console.error("[Voicemails] Update error:", error);
       res.status(500).json({ message: "Failed to update voicemail" });
@@ -40059,7 +40052,7 @@ CRITICAL REMINDERS:
         console.error("[DEPLOY] Deployment failed:", err);
       });
       
-      res.json({
+      res.json({ 
         message: "Deployment started", 
         jobId: job.id,
         success: true
@@ -40086,7 +40079,7 @@ CRITICAL REMINDERS:
       
       const [latestJob] = jobs;
       
-      res.json({
+      res.json({ 
         jobs,
         currentStatus: latestJob?.status || "idle",
         lastDeployment: latestJob || null
@@ -40192,7 +40185,7 @@ CRITICAL REMINDERS:
         
         console.log(`[PBX] IVR greeting audio uploaded for company ${user.companyId}: ${filename}`);
         
-        return res.json({
+        return res.json({ 
           success: true, 
           settings 
         });
@@ -40233,7 +40226,7 @@ CRITICAL REMINDERS:
       
       console.log(`[PBX] IVR greeting audio deleted for company ${user.companyId}`);
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, settings });
     } catch (error: any) {
       console.error("[PBX] Error deleting IVR greeting:", error);
       return res.status(500).json({ error: error.message });
@@ -40277,7 +40270,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       await pbxService.deleteQueue(user.companyId, req.params.queueId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error deleting queue:", error);
       return res.status(500).json({ error: error.message });
@@ -40311,7 +40304,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       await pbxService.removeQueueMember(user.companyId, req.params.queueId, req.params.userId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error removing queue member:", error);
       return res.status(500).json({ error: error.message });
@@ -40326,7 +40319,7 @@ CRITICAL REMINDERS:
         return res.status(400).json({ error: "memberIds must be an array" });
       }
       await pbxService.syncQueueMembers(user.companyId, req.params.queueId, memberIds);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error syncing queue members:", error);
       return res.status(500).json({ error: error.message });
@@ -40378,7 +40371,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       await pbxService.removeQueueAd(user.companyId, req.params.adId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error deleting queue ad:", error);
       return res.status(500).json({ error: error.message });
@@ -40419,7 +40412,7 @@ CRITICAL REMINDERS:
         return res.status(400).json({ error: "audioFileIds must be an array" });
       }
       await pbxService.syncQueueHoldMusic(user.companyId, req.params.queueId, audioFileIds);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error syncing queue hold music:", error);
       return res.status(500).json({ error: error.message });
@@ -40445,7 +40438,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       await pbxService.removeQueueHoldMusic(user.companyId, req.params.holdMusicId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error deleting queue hold music:", error);
       return res.status(500).json({ error: error.message });
@@ -40510,10 +40503,10 @@ CRITICAL REMINDERS:
       const hungUp = await callControlWebhookService.hangupActiveCallBySipUsername(sipUsername);
       
       if (hungUp) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true, message: "Call hung up via Call Control API (normal_clearing)" });
       } else {
         // No active call found - this is fine, the call may have ended already
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: false, message: "No active call found for this SIP username" });
       }
     } catch (error: any) {
       console.error("[PBX Hangup] Error:", error);
@@ -40537,10 +40530,10 @@ CRITICAL REMINDERS:
       const rejected = await callControlWebhookService.rejectIncomingCallBySipUsername(sipUsername);
       
       if (rejected) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true, message: "Call rejected via Call Control API (SIP 603)" });
       } else {
         // No active call found for this SIP username - let frontend fallback to SDK hangup
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: false, message: "No active incoming call found for this SIP username" });
       }
     } catch (error: any) {
       console.error("[PBX Reject] Error:", error);
@@ -40582,7 +40575,7 @@ CRITICAL REMINDERS:
         createdAt: new Date(),
       });
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, message: 'Call auto-rejected and logged' });
     } catch (error: any) {
       console.error("[PBX Auto-Reject] Error:", error);
       return res.status(500).json({ success: false, error: error.message });
@@ -40593,7 +40586,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       const nextExtension = await pbxService.getNextExtensionNumber(user.companyId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ nextExtension });
     } catch (error: any) {
       console.error("[PBX] Error getting next extension:", error);
       return res.status(500).json({ error: error.message });
@@ -40689,7 +40682,7 @@ CRITICAL REMINDERS:
       }
       
       console.log(`[PBX] Provisioned independent SIP connection for extension ${extension.extension}: ${sipResult.sipUsername}`);
-      return res.json({
+      return res.json({ 
         success: true, 
         sipUsername: sipResult.sipUsername,
         sipDomain: sipResult.sipDomain,
@@ -40868,7 +40861,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       await pbxService.deleteExtension(user.companyId, req.params.extensionId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error deleting extension:", error);
       return res.status(500).json({ error: error.message });
@@ -40893,7 +40886,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       const extension = await pbxService.getNextIvrExtension(user.companyId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ extension });
     } catch (error: any) {
       console.error("[PBX] Error getting next IVR extension:", error);
       return res.status(500).json({ error: error.message });
@@ -40943,7 +40936,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       await pbxService.deleteIvr(user.companyId, req.params.ivrId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error deleting IVR:", error);
       return res.status(500).json({ error: error.message });
@@ -40990,7 +40983,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       await pbxService.deleteIvrMenuOption(user.companyId, req.params.optionId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error deleting IVR menu option:", error);
       return res.status(500).json({ error: error.message });
@@ -41030,7 +41023,7 @@ CRITICAL REMINDERS:
         useTextToSpeech: false,
       });
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, audioUrl, ivr: updatedIvr });
     } catch (error: any) {
       console.error("[PBX] Error uploading IVR greeting:", error);
       return res.status(500).json({ error: error.message });
@@ -41056,7 +41049,7 @@ CRITICAL REMINDERS:
         greetingAudioUrl: null,
         greetingMediaName: null,
       });
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, ivr: updatedIvr });
     } catch (error: any) {
       console.error("[PBX] Error deleting IVR greeting:", error);
       return res.status(500).json({ error: error.message });
@@ -41115,7 +41108,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       await pbxService.deleteMenuOption(user.companyId, req.params.optionId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error deleting menu option:", error);
       return res.status(500).json({ error: error.message });
@@ -41149,7 +41142,7 @@ CRITICAL REMINDERS:
     try {
       const user = req.user as User;
       await pbxService.deleteAudioFile(user.companyId, req.params.fileId);
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX] Error deleting audio file:", error);
       return res.status(500).json({ error: error.message });
@@ -41191,7 +41184,7 @@ CRITICAL REMINDERS:
       // Check if it's the IVR extension
       const settings = await pbxService.getPbxSettings(user.companyId);
       if (settings?.ivrEnabled && settings.ivrExtension === extension) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ type: "ivr", extension });
       }
       
       // Check if it's a queue extension
@@ -41205,7 +41198,7 @@ CRITICAL REMINDERS:
         ));
       
       if (queue) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ type: "queue", extension, queueId: queue.id, name: queue.name });
       }
       
       // Check if it's a user extension
@@ -41219,11 +41212,11 @@ CRITICAL REMINDERS:
         ));
       
       if (userExt) {
-        return res.json({ success: true, skipped: true });
+        return res.json({ type: "user", extension, userId: userExt.userId, online: false });
       }
       
       // Extension not found
-      return res.json({ success: true, skipped: true });
+      return res.json({ type: "unknown", extension });
     } catch (error: any) {
       console.error("[PBX] Error checking extension:", error);
       return res.status(500).json({ error: error.message });
@@ -41253,7 +41246,7 @@ CRITICAL REMINDERS:
         name: q.name,
       }));
       
-      return res.json({ success: true, skipped: true });
+      return res.json({ ivrExtension, queues });
     } catch (error: any) {
       console.error("[PBX] Error getting special extensions:", error);
       return res.status(500).json({ error: error.message });
@@ -41341,7 +41334,7 @@ CRITICAL REMINDERS:
       const data = await response.json();
       console.log(`[PBX Internal Call] Initiated ${targetType} call for user ${user.id}:`, data.data?.call_control_id);
       
-      return res.json({
+      return res.json({ 
         success: true, 
         callControlId: data.data?.call_control_id,
         targetType
@@ -41415,7 +41408,7 @@ CRITICAL REMINDERS:
         });
         return { ...audio, usage };
       }));
-      return res.json({ success: true, skipped: true });
+      return res.json({ audioFiles: audioFilesWithUsage });
     } catch (error: any) {
       console.error("[PBX Audio] List error:", error);
       return res.status(500).json({ message: "Failed to get audio files" });
@@ -41486,7 +41479,7 @@ CRITICAL REMINDERS:
             telnyxMediaId: uploadResult.mediaId,
           })
           .returning();
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true, audioFile });
       } catch (error: any) {
         console.error("[PBX Audio] Upload error:", error);
         return res.status(500).json({ message: "Failed to upload audio file" });
@@ -41525,7 +41518,7 @@ CRITICAL REMINDERS:
         .set(updateData)
         .where(eq(pbxAudioFiles.id, audioId))
         .returning();
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true, audioFile: updated });
     } catch (error: any) {
       console.error("[PBX Audio] Update error:", error);
       return res.status(500).json({ message: "Failed to update audio file" });
@@ -41622,7 +41615,7 @@ CRITICAL REMINDERS:
       await db
         .delete(pbxAudioFiles)
         .where(eq(pbxAudioFiles.id, audioId));
-      return res.json({ success: true, skipped: true });
+      return res.json({ success: true });
     } catch (error: any) {
       console.error("[PBX Audio] Delete error:", error);
       return res.status(500).json({ message: "Failed to delete audio file" });
@@ -41884,7 +41877,7 @@ CRITICAL REMINDERS:
       });
       
       console.log("[Inbox] Returning", conversations.length, "conversations for company", companyId);
-      res.json({ success: true });
+      res.json({ conversations });
     } catch (error: any) {
       console.error("[Inbox] Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -41918,7 +41911,7 @@ CRITICAL REMINDERS:
           .from(telnyxMessages)
           .where(eq(telnyxMessages.conversationId, id))
           .orderBy(asc(telnyxMessages.createdAt));
-        return res.json({
+        return res.json({ 
           conversation: { ...telnyxConv, channel: 'sms' }, 
           messages: messages.map(m => ({
             ...m,
@@ -41948,7 +41941,7 @@ CRITICAL REMINDERS:
           .from(imessageMessagesTable)
           .where(eq(imessageMessagesTable.conversationId, id))
           .orderBy(asc(imessageMessagesTable.dateSent));
-        return res.json({
+        return res.json({ 
           conversation: { 
             ...imessageConv, 
             channel: 'imessage',
@@ -43646,7 +43639,7 @@ CRITICAL REMINDERS:
             eq(telnyxConversations.companyId, companyId)
           ));
         
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true });
       }
       
       // Try iMessage conversation
@@ -43675,7 +43668,7 @@ CRITICAL REMINDERS:
             eq(imessageConversationsTable.companyId, companyId)
           ));
         
-        return res.json({ success: true, skipped: true });
+        return res.json({ success: true });
       }
       
     } catch (error: any) {
@@ -43737,7 +43730,7 @@ CRITICAL REMINDERS:
       // Broadcast update to clients
       broadcastConversationUpdate(companyId, id);
       
-      res.json({ success: true });
+      res.json({ conversation: updated });
     } catch (error: any) {
       console.error("[Inbox] Error updating human agent mode:", error);
       res.status(500).json({ message: "Failed to update human agent mode" });
@@ -43790,7 +43783,7 @@ CRITICAL REMINDERS:
       // Broadcast update to clients
       broadcastConversationUpdate(companyId, id);
       
-      res.json({ success: true });
+      res.json({ conversation: updated });
     } catch (error: any) {
       console.error("[Inbox] Error updating conversation AI settings:", error);
       res.status(500).json({ message: "Failed to update AI settings" });
@@ -43852,7 +43845,7 @@ CRITICAL REMINDERS:
       
       
       console.log(`[LiveChat] Agent ${userId} (${agentName}) accepted chat ${id}`);
-      res.json({
+      res.json({ 
         success: true, 
         conversationId: id,
         agent: {
@@ -44032,7 +44025,7 @@ CRITICAL REMINDERS:
         wsService.broadcastConversationUpdate();
       }
       
-      res.json({ success: true });
+      res.json({ success: true, message: "Conversation deleted successfully" });
     } catch (error: any) {
       console.error("[Inbox] Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
@@ -44138,7 +44131,7 @@ CRITICAL REMINDERS:
         .orderBy(desc(complianceApplications.createdAt))
         .limit(1);
       
-      res.json({ success: true });
+      res.json({ application: application || null });
     } catch (error: any) {
       console.error("[Compliance] Error getting current application:", error);
       res.status(500).json({ message: "Failed to get current application" });
@@ -44161,7 +44154,7 @@ CRITICAL REMINDERS:
         .from(complianceApplications)
         .where(eq(complianceApplications.companyId, user.companyId));
       
-      res.json({ success: true });
+      res.json({ applications });
     } catch (error: any) {
       console.error("[Compliance] Error listing applications:", error);
       res.status(500).json({ message: error.message || "Failed to list applications" });
@@ -44205,7 +44198,7 @@ CRITICAL REMINDERS:
           .limit(1);
       }
       
-      res.json({ success: true });
+      res.json({ application: application || null });
     } catch (error: any) {
       console.error("[Compliance] Error getting active application:", error);
       res.status(500).json({ message: "Failed to get active application" });
@@ -45029,7 +45022,7 @@ CRITICAL REMINDERS:
       console.log(`[Compliance Upload] File saved: ${file.filename}, URL: ${publicUrl}`);
       
       // Return the public URL that carriers can access without login
-      res.json({ success: true });
+      res.json({ url: publicUrl });
     } catch (error: any) {
       console.error("[Compliance Upload] Error:", error);
       res.status(500).json({ message: error.message || "Upload failed" });
@@ -45080,7 +45073,7 @@ CRITICAL REMINDERS:
         }
       }
 
-      res.json({ success: true });
+      res.json({ slots });
     } catch (error: any) {
       console.error("[RecordingMedia] Error listing media:", error);
       res.status(500).json({ message: "Failed to list recording media" });
@@ -45289,7 +45282,7 @@ CRITICAL REMINDERS:
       }
       
       console.log(`[Force Routing] Number ${phoneNumber.phoneNumber} now routed to Call Control App ${telSettings.callControlAppId}`);
-      res.json({ success: true });
+      res.json({ success: true, message: `Phone number ${phoneNumber.phoneNumber} now using Call Control App` });
     } catch (error: any) {
       console.error("[Force Routing] Error:", error);
       res.status(500).json({ message: error.message || "Failed to force routing" });
@@ -45491,1436 +45484,5 @@ CRITICAL REMINDERS:
     }
   });
 
-
-  // ==============================================
-  // CSV LEAD IMPORT ENDPOINTS
-  // ==============================================
-
-  // Helper to parse multi-value fields (comma-separated)
-  const parseMultiValue = (value: string | undefined): string[] => {
-    if (!value) return [];
-    return value.split(',').map(v => v.trim()).filter(v => v && v !== '');
-  };
-
-  // Helper to parse Y/N to boolean
-  const parseYesNo = (value: string | undefined): boolean | null => {
-    if (!value) return null;
-    const upper = value.trim().toUpperCase();
-    if (upper === 'Y' || upper === 'YES' || upper === '1' || upper === 'TRUE') return true;
-    if (upper === 'N' || upper === 'NO' || upper === '0' || upper === 'FALSE') return false;
-    return null;
-  };
-
-  // Known CSV columns that map to specific fields
-  const KNOWN_CSV_COLUMNS = new Set([
-    'UUID', 'FIRST_NAME', 'LAST_NAME', 'PERSONAL_ADDRESS', 'PERSONAL_CITY',
-    'PERSONAL_STATE', 'PERSONAL_ZIP', 'AGE_RANGE', 'GENDER', 'CHILDREN',
-    'HOMEOWNER', 'MARRIED', 'NET_WORTH', 'INCOME_RANGE', 'MOBILE_PHONE',
-    'DIRECT_NUMBER', 'PERSONAL_PHONE', 'PERSONAL_EMAILS', 'BUSINESS_EMAIL',
-    'JOB_TITLE', 'COMPANY_NAME'
-  ]);
-
-  // Setup multer for CSV file upload
-  const leadImportUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
-    fileFilter: (req, file, cb) => {
-      if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
-        cb(null, true);
-      } else {
-        cb(new Error('Only CSV files are allowed'));
-      }
-    }
-  });
-
-  // POST /api/leads/import - Upload CSV file and process leads
-  app.post("/api/leads/import", requireActiveCompany, leadImportUpload.single('file'), async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const userId = user.id;
-
-      if (!req.file) {
-        return res.status(400).json({ message: "No CSV file provided" });
-      }
-
-      const fileName = req.file.originalname;
-      const csvContent = req.file.buffer.toString('utf-8');
-
-      // Create batch record
-      const [batch] = await db.insert(importLeadBatches).values({
-        companyId,
-        createdBy: userId,
-        fileName,
-        status: 'processing',
-        totalRows: 0,
-        processedRows: 0,
-        errorRows: 0,
-        errors: []
-      }).returning();
-
-      // Parse CSV
-      const records: any[] = await new Promise((resolve, reject) => {
-        csvParse(csvContent, {
-          columns: true,
-          skip_empty_lines: true,
-          trim: true,
-          relax_column_count: true
-        }, (err, data) => {
-          if (err) reject(err);
-          else resolve(data);
-        });
-      });
-
-      const totalRows = records.length;
-      let processedRows = 0;
-      let errorRows = 0;
-      const errors: { row: number; message: string }[] = [];
-
-      // Process each row
-      for (let i = 0; i < records.length; i++) {
-        const row = records[i];
-        try {
-          // Collect phone numbers from multiple columns
-          const phones: string[] = [
-            ...parseMultiValue(row['MOBILE_PHONE']),
-            ...parseMultiValue(row['DIRECT_NUMBER']),
-            ...parseMultiValue(row['PERSONAL_PHONE'])
-          ].filter(p => p.length > 0);
-
-          // Collect emails from multiple columns
-          const emails: string[] = [
-            ...parseMultiValue(row['PERSONAL_EMAILS']),
-            ...parseMultiValue(row['BUSINESS_EMAIL'])
-          ].filter(e => e.length > 0);
-
-          // Collect extra data (columns not in known set)
-          const extraData: Record<string, any> = {};
-          for (const [key, value] of Object.entries(row)) {
-            if (!KNOWN_CSV_COLUMNS.has(key) && value) {
-              extraData[key] = value;
-            }
-          }
-
-          const leadData: InsertImportLead = {
-            batchId: batch.id,
-            companyId,
-            externalId: row['UUID'] || null,
-            firstName: row['FIRST_NAME'] || null,
-            lastName: row['LAST_NAME'] || null,
-            address: row['PERSONAL_ADDRESS'] || null,
-            city: row['PERSONAL_CITY'] || null,
-            state: row['PERSONAL_STATE'] || null,
-            zip: row['PERSONAL_ZIP'] || null,
-            ageRange: row['AGE_RANGE'] || null,
-            gender: row['GENDER'] || null,
-            hasChildren: parseYesNo(row['CHILDREN']),
-            isHomeowner: parseYesNo(row['HOMEOWNER']),
-            isMarried: parseYesNo(row['MARRIED']),
-            netWorth: row['NET_WORTH'] || null,
-            incomeRange: row['INCOME_RANGE'] || null,
-            phones: phones.length > 0 ? phones : null,
-            emails: emails.length > 0 ? emails : null,
-            jobTitle: row['JOB_TITLE'] || null,
-            companyName: row['COMPANY_NAME'] || null,
-            extraData: Object.keys(extraData).length > 0 ? extraData : {}
-          };
-
-          await db.insert(importLeads).values(leadData);
-          processedRows++;
-        } catch (rowError: any) {
-          errorRows++;
-          errors.push({ row: i + 1, message: rowError.message || 'Unknown error' });
-        }
-      }
-
-      // Update batch status
-      await db.update(importLeadBatches)
-        .set({
-          status: errorRows === totalRows ? 'failed' : 'completed',
-          totalRows,
-          processedRows,
-          errorRows,
-          errors,
-          completedAt: new Date()
-        })
-        .where(eq(importLeadBatches.id, batch.id));
-
-      res.json({
-        batchId: batch.id,
-        fileName,
-        totalRows,
-        processedRows,
-        errorRows,
-        errors: errors.slice(0, 10) // Return first 10 errors
-      });
-    } catch (error: any) {
-      console.error("[Lead Import] Error:", error);
-      res.status(500).json({ message: error.message || "Failed to import leads" });
-    }
-  });
-
-  // GET /api/leads/import/batches - List all import batches for the company
-  app.get("/api/leads/import/batches", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-
-      const batches = await db.select()
-        .from(importLeadBatches)
-        .where(eq(importLeadBatches.companyId, companyId))
-        .orderBy(desc(importLeadBatches.createdAt));
-
-      res.json(batches);
-    } catch (error: any) {
-      console.error("[Lead Import] Error fetching batches:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch batches" });
-    }
-  });
-
-  // GET /api/leads/import - List leads with pagination and filters
-  app.get("/api/leads/import", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { batchId, search, page = '1', limit = '50' } = req.query;
-
-      const pageNum = Math.max(1, parseInt(page as string) || 1);
-      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
-      const offset = (pageNum - 1) * limitNum;
-
-      // Build where conditions
-      const conditions = [eq(importLeads.companyId, companyId)];
-
-      if (batchId) {
-        conditions.push(eq(importLeads.batchId, batchId as string));
-      }
-
-      if (search) {
-        const searchTerm = `%${search}%`;
-        conditions.push(
-          or(
-            sql`${importLeads.firstName} ILIKE ${searchTerm}`,
-            sql`${importLeads.lastName} ILIKE ${searchTerm}`,
-            sql`${importLeads.emails}::text ILIKE ${searchTerm}`,
-            sql`${importLeads.phones}::text ILIKE ${searchTerm}`
-          )!
-        );
-      }
-
-      // Get total count
-      const [{ count: totalCount }] = await db.select({ count: count() })
-        .from(importLeads)
-        .where(and(...conditions));
-
-      // Get leads
-      const leads = await db.select()
-        .from(importLeads)
-        .where(and(...conditions))
-        .orderBy(desc(importLeads.createdAt))
-        .limit(limitNum)
-        .offset(offset);
-
-      res.json({
-        leads,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total: Number(totalCount),
-          totalPages: Math.ceil(Number(totalCount) / limitNum)
-        }
-      });
-    } catch (error: any) {
-      console.error("[Lead Import] Error fetching leads:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch leads" });
-    }
-  });
-
-  // DELETE /api/leads/import/batches/:batchId - Delete a batch and all its leads
-  app.delete("/api/leads/import/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { batchId } = req.params;
-
-      // Verify batch belongs to company
-      const [batch] = await db.select()
-        .from(importLeadBatches)
-        .where(and(
-          eq(importLeadBatches.id, batchId),
-          eq(importLeadBatches.companyId, companyId)
-        ));
-
-      if (!batch) {
-        return res.status(404).json({ message: "Batch not found" });
-      }
-
-      // Delete leads first (cascade should handle this, but explicit is safer)
-      await db.delete(importLeads).where(eq(importLeads.batchId, batchId));
-
-      // Delete batch
-      await db.delete(importLeadBatches).where(eq(importLeadBatches.id, batchId));
-
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("[Lead Import] Error deleting batch:", error);
-      res.status(500).json({ message: error.message || "Failed to delete batch" });
-    }
-  });
-
-
-  // POST /api/leads/import/csv - Upload and process CSV file through canonical pipeline
-  app.post("/api/leads/import/csv", requireActiveCompany, leadImportUpload.single('file'), async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const userId = user.id;
-
-      if (!req.file) {
-        return res.status(400).json({ message: "No CSV file provided" });
-      }
-
-      const fileName = req.file.originalname;
-      const csvContent = req.file.buffer.toString('utf-8');
-
-      // Parse CSV using stream for memory efficiency
-      const records: any[] = await new Promise((resolve, reject) => {
-        csvParse(csvContent, {
-          columns: true,
-          skip_empty_lines: true,
-          trim: true,
-          relax_column_count: true
-        }, (err, data) => {
-          if (err) reject(err);
-          else resolve(data);
-        });
-      });
-
-      const totalRows = records.length;
-
-      // Create batch record with metadata
-      const [batch] = await db.insert(importLeadBatches).values({
-        companyId,
-        createdBy: userId,
-        fileName,
-        status: 'processing',
-        totalRows,
-        processedRows: 0,
-        errorRows: 0,
-        errors: []
-      }).returning();
-
-      let processedCount = 0;
-      let skippedCount = 0;
-      let errorCount = 0;
-      const errors: { row: number; message: string }[] = [];
-      const warnings: { row: number; warnings: any[] }[] = [];
-
-      // Process each row through the canonicalizer
-      for (let i = 0; i < records.length; i++) {
-        const row = records[i];
-        try {
-          const result = await leadCanonicalizerService.processRow(
-            companyId,
-            batch.id,
-            i + 1,
-            row
-          );
-
-          if (result.skippedDuplicate) {
-            skippedCount++;
-          } else {
-            processedCount++;
-          }
-
-          if (result.warnings && result.warnings.length > 0) {
-            warnings.push({ row: i + 1, warnings: result.warnings });
-          }
-        } catch (rowError: any) {
-          errorCount++;
-          errors.push({ row: i + 1, message: rowError.message || 'Unknown error' });
-        }
-      }
-
-      // Update batch with final counts
-      const finalStatus = errorCount === totalRows ? 'failed' : 
-                          errorCount > 0 ? 'completed_with_errors' : 'completed';
-      
-      await db.update(importLeadBatches)
-        .set({
-          status: finalStatus,
-          totalRows,
-          processedRows: processedCount,
-          errorRows: errorCount,
-          errors: errors.slice(0, 100),
-          completedAt: new Date()
-        })
-        .where(eq(importLeadBatches.id, batch.id));
-
-      res.json({
-        batchId: batch.id,
-        fileName,
-        totalRows,
-        processed: processedCount,
-        skipped: skippedCount,
-        errors: errorCount,
-        errorDetails: errors.slice(0, 10),
-        warnings: warnings.slice(0, 10)
-      });
-    } catch (error: any) {
-      console.error("[Lead Import CSV] Error:", error);
-      res.status(500).json({ message: error.message || "Failed to import CSV" });
-    }
-  });
-
-
-  // =====================================================
-  // OPERATIONAL LEADS - 3-Layer Lead Architecture
-  // =====================================================
-
-  // GET /api/leads/operational - Get leads from lead_operational with joins
-  app.get("/api/leads/operational", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      
-      // Parse query parameters
-      const page = Math.max(1, parseInt(req.query.page as string) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
-      const offset = (page - 1) * limit;
-      
-      const { batchId, minScore, status, state, zip, onlyContactable, excludeDnc, search } = req.query;
-      
-      // Build where conditions
-      const conditions = [eq(leadOperational.companyId, companyId)];
-      
-      if (batchId) {
-        conditions.push(eq(leadOperational.lastBatchId, batchId as string));
-      }
-      
-      if (minScore) {
-        conditions.push(gte(leadOperational.contactabilityScore, parseInt(minScore as string)));
-      }
-      
-      if (status) {
-        conditions.push(eq(leadOperational.status, status as any));
-      }
-
-      if (zip) {
-        conditions.push(ilike(canonicalPersons.zip, `${zip}%`));
-      }
-      
-      if (excludeDnc === 'true') {
-        // Exclude leads where all phones are DNC (riskFlags contains dnc_all: true)
-        conditions.push(sql`NOT (${leadOperational.riskFlags}->>'dnc_all')::boolean`);
-      }
-      
-      if (onlyContactable === 'true') {
-        conditions.push(ne(leadOperational.recommendedNextAction, 'UNCONTACTABLE'));
-      }
-      
-      // Get leads with person data joined
-      const leadsQuery = db.select({
-        id: leadOperational.id,
-        personId: leadOperational.personId,
-        status: leadOperational.status,
-        ownerUserId: leadOperational.ownerUserId,
-        ownerName: users.username,
-        lastBatchId: leadOperational.lastBatchId,
-        bestPhoneToCall: leadOperational.bestPhoneToCall,
-        bestPhoneForSms: leadOperational.bestPhoneForSms,
-        bestEmail: leadOperational.bestEmail,
-        timezone: leadOperational.timezone,
-        contactabilityScore: leadOperational.contactabilityScore,
-        riskFlags: leadOperational.riskFlags,
-        recommendedNextAction: leadOperational.recommendedNextAction,
-        lastContactAttemptAt: leadOperational.lastContactAttemptAt,
-        lastContactOutcome: leadOperational.lastContactOutcome,
-        totalContactAttempts: leadOperational.totalContactAttempts,
-        createdAt: leadOperational.createdAt,
-        updatedAt: leadOperational.updatedAt,
-        // Person data
-        firstName: canonicalPersons.firstName,
-        lastName: canonicalPersons.lastName,
-        personState: canonicalPersons.state,
-        city: canonicalPersons.city,
-        zip: canonicalPersons.zip,
-        ageRange: canonicalPersons.ageRange,
-        gender: canonicalPersons.gender
-      })
-      .from(leadOperational)
-      .innerJoin(canonicalPersons, and(eq(leadOperational.personId, canonicalPersons.id), eq(canonicalPersons.companyId, companyId)))
-      .leftJoin(users, eq(leadOperational.ownerUserId, users.id))
-      .where(and(...conditions));
-      
-      // Apply state filter on person
-      if (state) {
-        conditions.push(eq(canonicalPersons.state, state as string));
-      }
-      
-      // Apply search filter on person name
-      if (search) {
-        const searchTerm = `%${(search as string).toLowerCase()}%`;
-        conditions.push(or(
-          sql`lower(${canonicalPersons.firstName}) like ${searchTerm}`,
-          sql`lower(${canonicalPersons.lastName}) like ${searchTerm}`
-        )!);
-      }
-      
-      // Execute count and data queries
-      const [countResult] = await db.select({ count: count() })
-        .from(leadOperational)
-        .innerJoin(canonicalPersons, and(eq(leadOperational.personId, canonicalPersons.id), eq(canonicalPersons.companyId, companyId)))
-      .leftJoin(users, eq(leadOperational.ownerUserId, users.id))
-      .where(and(...conditions));
-      
-      const leads = await db.select({
-        id: leadOperational.id,
-        personId: leadOperational.personId,
-        status: leadOperational.status,
-        ownerUserId: leadOperational.ownerUserId,
-        ownerName: users.username,
-        lastBatchId: leadOperational.lastBatchId,
-        bestPhoneToCall: leadOperational.bestPhoneToCall,
-        bestPhoneForSms: leadOperational.bestPhoneForSms,
-        bestEmail: leadOperational.bestEmail,
-        timezone: leadOperational.timezone,
-        contactabilityScore: leadOperational.contactabilityScore,
-        riskFlags: leadOperational.riskFlags,
-        recommendedNextAction: leadOperational.recommendedNextAction,
-        lastContactAttemptAt: leadOperational.lastContactAttemptAt,
-        lastContactOutcome: leadOperational.lastContactOutcome,
-        totalContactAttempts: leadOperational.totalContactAttempts,
-        createdAt: leadOperational.createdAt,
-        updatedAt: leadOperational.updatedAt,
-        firstName: canonicalPersons.firstName,
-        lastName: canonicalPersons.lastName,
-        personState: canonicalPersons.state,
-        city: canonicalPersons.city,
-        zip: canonicalPersons.zip,
-        ageRange: canonicalPersons.ageRange,
-        gender: canonicalPersons.gender
-      })
-      .from(leadOperational)
-      .innerJoin(canonicalPersons, and(eq(leadOperational.personId, canonicalPersons.id), eq(canonicalPersons.companyId, companyId)))
-      .leftJoin(users, eq(leadOperational.ownerUserId, users.id))
-      .where(and(...conditions))
-      .orderBy(desc(leadOperational.contactabilityScore))
-      .limit(limit)
-      .offset(offset);
-      
-      // Fetch best contact point values for each lead
-      const leadIds = leads.map(l => l.id);
-      const contactPointIds = leads.flatMap(l => [l.bestPhoneToCall, l.bestPhoneForSms, l.bestEmail].filter(Boolean)) as string[];
-      
-      let contactPointMap: Record<string, any> = {};
-      if (contactPointIds.length > 0) {
-        const contactPoints = await db.select()
-          .from(canonicalContactPoints)
-          .where(and(
-            eq(canonicalContactPoints.companyId, companyId),
-            inArray(canonicalContactPoints.id, contactPointIds)
-          ));
-        contactPointMap = Object.fromEntries(contactPoints.map(cp => [cp.id, cp]));
-      }
-      
-      // Enrich leads with contact point values
-      const enrichedLeads = leads.map(lead => ({
-        ...lead,
-        ownerName: lead.ownerName,
-        bestPhoneToCallValue: lead.bestPhoneToCall ? contactPointMap[lead.bestPhoneToCall]?.value : null,
-        bestPhoneForSmsValue: lead.bestPhoneForSms ? contactPointMap[lead.bestPhoneForSms]?.value : null,
-        bestEmailValue: lead.bestEmail ? contactPointMap[lead.bestEmail]?.value : null
-      }));
-      
-      res.json({
-        leads: enrichedLeads,
-        pagination: {
-          page,
-          limit,
-          total: countResult?.count || 0,
-          totalPages: Math.ceil((countResult?.count || 0) / limit)
-        }
-      });
-    } catch (error: any) {
-      console.error("[Operational Leads] Error fetching leads:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch operational leads" });
-    }
-  });
-
-  // GET /api/leads/operational/:id - Get single lead with all contact points, person data, and employer info
-  app.get("/api/leads/operational/:id", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { id } = req.params;
-      
-      // Get lead with person data
-      const [lead] = await db.select({
-        id: leadOperational.id,
-        personId: leadOperational.personId,
-        status: leadOperational.status,
-        ownerUserId: leadOperational.ownerUserId,
-        ownerName: users.username,
-        lastBatchId: leadOperational.lastBatchId,
-        bestPhoneToCall: leadOperational.bestPhoneToCall,
-        bestPhoneForSms: leadOperational.bestPhoneForSms,
-        bestEmail: leadOperational.bestEmail,
-        timezone: leadOperational.timezone,
-        contactabilityScore: leadOperational.contactabilityScore,
-        riskFlags: leadOperational.riskFlags,
-        recommendedNextAction: leadOperational.recommendedNextAction,
-        lastContactAttemptAt: leadOperational.lastContactAttemptAt,
-        lastContactOutcome: leadOperational.lastContactOutcome,
-        totalContactAttempts: leadOperational.totalContactAttempts,
-        createdAt: leadOperational.createdAt,
-        updatedAt: leadOperational.updatedAt
-      })
-      .from(leadOperational)
-      .where(and(
-        eq(leadOperational.id, id),
-        eq(leadOperational.companyId, companyId)
-      ))
-      .limit(1);
-      
-      if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
-      }
-      
-      // Get person data
-      const [person] = await db.select()
-        .from(canonicalPersons)
-        .where(and(eq(canonicalPersons.id, lead.personId), eq(canonicalPersons.companyId, companyId)))
-        .limit(1);
-
-      // Get owner name if exists
-      let ownerName = null;
-      if (lead.ownerUserId) {
-        const [owner] = await db.select({ username: users.username })
-          .from(users)
-          .where(eq(users.id, lead.ownerUserId))
-          .limit(1);
-        ownerName = owner?.username || null;
-      }
-      
-      // Get all contact points for this person
-      const contactPoints = await db.select()
-        .from(canonicalContactPoints)
-        .where(and(
-          eq(canonicalContactPoints.companyId, companyId),
-          eq(canonicalContactPoints.personId, lead.personId)
-        ));
-      
-      // Get employer relations
-      const employerRelations = await db.select({
-        relationId: personCompanyRelations.id,
-        jobTitle: personCompanyRelations.jobTitle,
-        department: personCompanyRelations.department,
-        seniority: personCompanyRelations.seniority,
-        employerId: canonicalCompanyEntities.id,
-        employerName: canonicalCompanyEntities.name,
-        employerDomain: canonicalCompanyEntities.domain,
-        employerIndustry: canonicalCompanyEntities.industry,
-        employerEmployeeCount: canonicalCompanyEntities.employeeCount,
-        employerRevenue: canonicalCompanyEntities.revenue
-      })
-      .from(personCompanyRelations)
-      .innerJoin(canonicalCompanyEntities, eq(personCompanyRelations.companyEntityId, canonicalCompanyEntities.id))
-      .where(and(eq(personCompanyRelations.personId, lead.personId), eq(personCompanyRelations.companyId, companyId)));
-      
-      res.json({
-        lead,
-        person,
-        contactPoints,
-        employers: employerRelations
-      });
-    } catch (error: any) {
-      console.error("[Operational Leads] Error fetching lead:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch lead" });
-    }
-  });
-
-  // POST /api/leads/operational/:id/recompute - Recompute derived fields for a specific lead
-  app.post("/api/leads/operational/:id/recompute", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { id } = req.params;
-      
-      // Get lead
-      const [lead] = await db.select()
-        .from(leadOperational)
-        .where(and(
-          eq(leadOperational.id, id),
-          eq(leadOperational.companyId, companyId)
-        ))
-        .limit(1);
-      
-      if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
-      }
-      
-      // Recompute derived fields
-      const derived = await leadDerivedFieldsService.computeDerivedFields(companyId, lead.personId);
-      
-      // Update lead_operational
-      await db.update(leadOperational)
-        .set({
-          bestPhoneToCall: derived.bestPhoneToCall,
-          bestPhoneForSms: derived.bestPhoneForSms,
-          bestEmail: derived.bestEmail,
-          timezone: derived.timezone,
-          contactabilityScore: derived.contactabilityScore,
-          riskFlags: derived.riskFlags,
-          recommendedNextAction: derived.recommendedNextAction,
-          updatedAt: new Date()
-        })
-        .where(eq(leadOperational.id, id));
-      
-      res.json({
-        success: true,
-        derived
-      });
-    } catch (error: any) {
-      console.error("[Operational Leads] Error recomputing lead:", error);
-      res.status(500).json({ message: error.message || "Failed to recompute lead" });
-    }
-  });
-
-
-  // GET /api/leads/operational/batches - List all import batches for operational leads
-  app.get("/api/leads/operational/batches", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      
-      // Get unique batches from leadRawRows
-      const batches = await db.select({
-        id: leadRawRows.batchId,
-        fileName: leadRawRows.source,
-        totalRows: sql<number>`count(*)::int`,
-        importedAt: sql<string>`min(\${leadRawRows.importedAt})`,
-      })
-        .from(leadRawRows)
-        .where(eq(leadRawRows.companyId, companyId))
-        .groupBy(leadRawRows.batchId, leadRawRows.source)
-        .orderBy(sql`min(\${leadRawRows.importedAt}) desc`);
-      
-      res.json({ batches });
-    } catch (error: any) {
-      console.error("[Operational Leads] Error fetching batches:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch batches" });
-    }
-  });
-
-  // DELETE /api/leads/operational/batches/:batchId - Delete batch and all associated data
-  app.delete("/api/leads/operational/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { batchId } = req.params;
-      
-      // Verify batch exists and belongs to company
-      const [batch] = await db.select({ id: leadRawRows.batchId })
-        .from(leadRawRows)
-        .where(and(
-          eq(leadRawRows.batchId, batchId),
-          eq(leadRawRows.companyId, companyId)
-        ))
-        .limit(1);
-      
-      if (!batch) {
-        return res.status(404).json({ message: "Batch not found" });
-      }
-      
-      // Get all person IDs from this batch to clean up
-      const personsInBatch = await db.selectDistinct({ personId: leadRawRows.personId })
-        .from(leadRawRows)
-        .where(and(
-          eq(leadRawRows.batchId, batchId),
-          eq(leadRawRows.companyId, companyId),
-          isNotNull(leadRawRows.personId)
-        ));
-      
-      const personIds = personsInBatch.map(p => p.personId).filter(Boolean) as string[];
-      
-      // Delete in order (respecting foreign key constraints):
-      // 1. Delete operational leads for these persons
-      if (personIds.length > 0) {
-        await db.delete(leadOperational)
-          .where(and(
-            eq(leadOperational.companyId, companyId),
-            inArray(leadOperational.personId, personIds)
-          ));
-      }
-      
-      // 2. Delete contact points for these persons
-      if (personIds.length > 0) {
-        await db.delete(canonicalContactPoints)
-          .where(and(
-            eq(canonicalContactPoints.companyId, companyId),
-            inArray(canonicalContactPoints.personId, personIds)
-          ));
-      }
-      
-      // 3. Delete person-company relations
-      if (personIds.length > 0) {
-        await db.delete(personCompanyRelations)
-          .where(and(
-            eq(personCompanyRelations.companyId, companyId),
-            inArray(personCompanyRelations.personId, personIds)
-          ));
-      }
-      
-      // 4. Delete canonical persons
-      if (personIds.length > 0) {
-        await db.delete(canonicalPersons)
-          .where(and(
-            eq(canonicalPersons.companyId, companyId),
-            inArray(canonicalPersons.id, personIds)
-          ));
-      }
-      
-      // 5. Delete raw rows
-      await db.delete(leadRawRows)
-        .where(and(
-          eq(leadRawRows.batchId, batchId),
-          eq(leadRawRows.companyId, companyId)
-        ));
-      
-      console.log(`[Operational Leads] Deleted batch \${batchId} with \${personIds.length} persons`);
-      res.json({ success: true, deletedPersons: personIds.length });
-    } catch (error: any) {
-      console.error("[Operational Leads] Error deleting batch:", error);
-      res.status(500).json({ message: error.message || "Failed to delete batch" });
-    }
-  });
-
-  // GET /api/leads/operational/batches - List all batches from the 3-layer system
-  app.get("/api/leads/operational/batches", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      
-      // Get distinct batches from leadRawRows with counts
-      const batches = await db.select({
-        id: leadRawRows.batchId,
-        fileName: sql<string>`MAX(${leadRawRows.rawJson}->>'filename')`,
-        totalRows: sql<number>`COUNT(*)::int`,
-        createdAt: sql<string>`MIN(${leadRawRows.importedAt})`,
-        status: sql<string>`'completed'`
-      })
-        .from(leadRawRows)
-        .where(eq(leadRawRows.companyId, companyId))
-        .groupBy(leadRawRows.batchId)
-        .orderBy(sql`MIN(${leadRawRows.importedAt}) DESC`);
-      
-      res.json({ batches });
-    } catch (error: any) {
-      console.error("[Operational Leads] Error fetching batches:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch batches" });
-    }
-  });
-
-  // DELETE /api/leads/operational/batches/:batchId - Delete a batch and all related data
-  app.delete("/api/leads/operational/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { batchId } = req.params;
-
-      // Verify batch exists and belongs to company
-      const [batchExists] = await db.select({ count: sql<number>`count(*)::int` })
-        .from(leadRawRows)
-        .where(and(
-          eq(leadRawRows.batchId, batchId),
-          eq(leadRawRows.companyId, companyId)
-        ));
-
-      if (!batchExists || batchExists.count === 0) {
-        return res.status(404).json({ message: "Batch not found" });
-      }
-
-      // Get all person IDs from raw rows in this batch
-      const personIds = await db.selectDistinct({ personId: canonicalPersons.id })
-        .from(canonicalPersons)
-        .where(and(
-          eq(canonicalPersons.companyId, companyId),
-          eq(canonicalPersons.firstRawRowId, sql`(SELECT id FROM lead_raw_rows WHERE batch_id = ${batchId} AND company_id = ${companyId} LIMIT 1)`)
-        ));
-
-      // Delete operational leads for persons in this batch
-      for (const { personId } of personIds) {
-        if (personId) {
-          await db.delete(leadOperational).where(and(
-            eq(leadOperational.personId, personId),
-            eq(leadOperational.companyId, companyId)
-          ));
-        }
-      }
-
-      // Delete contact points associated with this batch
-      await db.delete(canonicalContactPoints).where(and(
-        eq(canonicalContactPoints.batchId, batchId),
-        eq(canonicalContactPoints.companyId, companyId)
-      ));
-
-      // Delete raw rows
-      await db.delete(leadRawRows).where(and(
-        eq(leadRawRows.batchId, batchId),
-        eq(leadRawRows.companyId, companyId)
-      ));
-
-      // Clean up orphaned persons (persons with no contact points)
-      await db.execute(sql`
-        DELETE FROM canonical_persons 
-        WHERE company_id = ${companyId}
-        AND id NOT IN (
-          SELECT DISTINCT person_id FROM canonical_contact_points 
-          WHERE company_id = ${companyId} AND person_id IS NOT NULL
-        )
-      `);
-
-      res.json({ success: true, message: "Batch deleted successfully" });
-    } catch (error: any) {
-      console.error("[Operational Leads] Error deleting batch:", error);
-      res.status(500).json({ message: error.message || "Failed to delete batch" });
-    }
-  });
-
-
-  // GET /api/leads/operational/batches - List all import batches for operational leads
-  app.get("/api/leads/operational/batches", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      
-      // Get unique batches from leadRawRows
-      const batches = await db.select({
-        id: leadRawRows.batchId,
-        fileName: leadRawRows.source,
-        totalRows: sql<number>`count(*)::int`,
-        importedAt: sql<string>`min(\${leadRawRows.importedAt})`,
-      })
-        .from(leadRawRows)
-        .where(eq(leadRawRows.companyId, companyId))
-        .groupBy(leadRawRows.batchId, leadRawRows.source)
-        .orderBy(sql`min(\${leadRawRows.importedAt}) desc`);
-      
-      res.json({ batches });
-    } catch (error: any) {
-      console.error("[Operational Leads] Error fetching batches:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch batches" });
-    }
-  });
-
-  // DELETE /api/leads/operational/batches/:batchId - Delete batch and all associated data
-  app.delete("/api/leads/operational/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { batchId } = req.params;
-      
-      // Verify batch exists and belongs to company
-      const [batch] = await db.select({ id: leadRawRows.batchId })
-        .from(leadRawRows)
-        .where(and(
-          eq(leadRawRows.batchId, batchId),
-          eq(leadRawRows.companyId, companyId)
-        ))
-        .limit(1);
-      
-      if (!batch) {
-        return res.status(404).json({ message: "Batch not found" });
-      }
-      
-      // Get all person IDs from this batch to clean up
-      const personsInBatch = await db.selectDistinct({ personId: leadRawRows.personId })
-        .from(leadRawRows)
-        .where(and(
-          eq(leadRawRows.batchId, batchId),
-          eq(leadRawRows.companyId, companyId),
-          isNotNull(leadRawRows.personId)
-        ));
-      
-      const personIds = personsInBatch.map(p => p.personId).filter(Boolean) as string[];
-      
-      // Delete in order (respecting foreign key constraints):
-      // 1. Delete operational leads for these persons
-      if (personIds.length > 0) {
-        await db.delete(leadOperational)
-          .where(and(
-            eq(leadOperational.companyId, companyId),
-            inArray(leadOperational.personId, personIds)
-          ));
-      }
-      
-      // 2. Delete contact points for these persons
-      if (personIds.length > 0) {
-        await db.delete(canonicalContactPoints)
-          .where(and(
-            eq(canonicalContactPoints.companyId, companyId),
-            inArray(canonicalContactPoints.personId, personIds)
-          ));
-      }
-      
-      // 3. Delete person-company relations
-      if (personIds.length > 0) {
-        await db.delete(personCompanyRelations)
-          .where(and(
-            eq(personCompanyRelations.companyId, companyId),
-            inArray(personCompanyRelations.personId, personIds)
-          ));
-      }
-      
-      // 4. Delete canonical persons
-      if (personIds.length > 0) {
-        await db.delete(canonicalPersons)
-          .where(and(
-            eq(canonicalPersons.companyId, companyId),
-            inArray(canonicalPersons.id, personIds)
-          ));
-      }
-      
-      // 5. Delete raw rows
-      await db.delete(leadRawRows)
-        .where(and(
-          eq(leadRawRows.batchId, batchId),
-          eq(leadRawRows.companyId, companyId)
-        ));
-      
-      console.log(`[Operational Leads] Deleted batch \${batchId} with \${personIds.length} persons`);
-      res.json({ success: true, deletedPersons: personIds.length });
-    } catch (error: any) {
-      console.error("[Operational Leads] Error deleting batch:", error);
-      res.status(500).json({ message: error.message || "Failed to delete batch" });
-    }
-  });
-  // =====================================================
-  // CONTACT POINTS - Manage contact points
-  // =====================================================
-
-  // POST /api/contact-points/:id/opt-out - Mark a contact point as opted out
-  app.post("/api/contact-points/:id/opt-out", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { id } = req.params;
-      
-      // Verify contact point belongs to company
-      const [cp] = await db.select()
-        .from(canonicalContactPoints)
-        .where(and(
-          eq(canonicalContactPoints.id, id),
-          eq(canonicalContactPoints.companyId, companyId)
-        ))
-        .limit(1);
-      
-      if (!cp) {
-        return res.status(404).json({ message: "Contact point not found" });
-      }
-      
-      // Update opted out status
-      await db.update(canonicalContactPoints)
-        .set({
-          optedOut: true,
-          updatedAt: new Date()
-        })
-        .where(eq(canonicalContactPoints.id, id));
-      
-      // If contact point is linked to a person, recompute that person's lead
-      if (cp.personId) {
-        const [lead] = await db.select()
-          .from(leadOperational)
-          .where(and(
-            eq(leadOperational.companyId, companyId),
-            eq(leadOperational.personId, cp.personId)
-          ))
-          .limit(1);
-        
-        if (lead) {
-          const derived = await leadDerivedFieldsService.computeDerivedFields(companyId, cp.personId);
-          await db.update(leadOperational)
-            .set({
-              bestPhoneToCall: derived.bestPhoneToCall,
-              bestPhoneForSms: derived.bestPhoneForSms,
-              bestEmail: derived.bestEmail,
-              contactabilityScore: derived.contactabilityScore,
-              riskFlags: derived.riskFlags,
-              recommendedNextAction: derived.recommendedNextAction,
-              updatedAt: new Date()
-            })
-            .where(eq(leadOperational.id, lead.id));
-        }
-      }
-      
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("[Contact Points] Error opting out:", error);
-      res.status(500).json({ message: error.message || "Failed to opt out contact point" });
-    }
-  });
-
-  // POST /api/contact-points/:id/mark-invalid - Mark a contact point as invalid
-  app.post("/api/contact-points/:id/mark-invalid", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { id } = req.params;
-      
-      // Verify contact point belongs to company
-      const [cp] = await db.select()
-        .from(canonicalContactPoints)
-        .where(and(
-          eq(canonicalContactPoints.id, id),
-          eq(canonicalContactPoints.companyId, companyId)
-        ))
-        .limit(1);
-      
-      if (!cp) {
-        return res.status(404).json({ message: "Contact point not found" });
-      }
-      
-      // Update validity
-      await db.update(canonicalContactPoints)
-        .set({
-          isValid: false,
-          updatedAt: new Date()
-        })
-        .where(eq(canonicalContactPoints.id, id));
-      
-      // If contact point is linked to a person, recompute that person's lead
-      if (cp.personId) {
-        const [lead] = await db.select()
-          .from(leadOperational)
-          .where(and(
-            eq(leadOperational.companyId, companyId),
-            eq(leadOperational.personId, cp.personId)
-          ))
-          .limit(1);
-        
-        if (lead) {
-          const derived = await leadDerivedFieldsService.computeDerivedFields(companyId, cp.personId);
-          await db.update(leadOperational)
-            .set({
-              bestPhoneToCall: derived.bestPhoneToCall,
-              bestPhoneForSms: derived.bestPhoneForSms,
-              bestEmail: derived.bestEmail,
-              contactabilityScore: derived.contactabilityScore,
-              riskFlags: derived.riskFlags,
-              recommendedNextAction: derived.recommendedNextAction,
-              updatedAt: new Date()
-            })
-            .where(eq(leadOperational.id, lead.id));
-        }
-      }
-      
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("[Contact Points] Error marking invalid:", error);
-      res.status(500).json({ message: error.message || "Failed to mark contact point as invalid" });
-    }
-  });
-
-  // POST /api/contact-points/:id/set-primary - Set a contact point as primary for call/sms/email usage
-  app.post("/api/contact-points/:id/set-primary", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { id } = req.params;
-      const { usage } = req.body; // 'call', 'sms', or 'email'
-      
-      if (!usage || !['call', 'sms', 'email'].includes(usage)) {
-        return res.status(400).json({ message: "Invalid usage type. Must be 'call', 'sms', or 'email'" });
-      }
-      
-      // Verify contact point belongs to company
-      const [cp] = await db.select()
-        .from(canonicalContactPoints)
-        .where(and(
-          eq(canonicalContactPoints.id, id),
-          eq(canonicalContactPoints.companyId, companyId)
-        ))
-        .limit(1);
-      
-      if (!cp) {
-        return res.status(404).json({ message: "Contact point not found" });
-      }
-      
-      if (!cp.personId) {
-        return res.status(400).json({ message: "Contact point is not linked to a person" });
-      }
-      
-      // Permission check using centralized compliance service
-      const permissionCheck = await leadDerivedFieldsService.isContactPointPermitted(companyId, id);
-      if (!permissionCheck.permitted) {
-        return res.status(403).json({ 
-          message: permissionCheck.reason,
-          reason: "not_permitted" 
-        });
-      }
-      
-      // Validate type matches usage
-      if (usage === 'email' && cp.type !== 'email') {
-        return res.status(400).json({ message: "Cannot set a phone as primary email" });
-      }
-      if ((usage === 'call' || usage === 'sms') && cp.type !== 'phone') {
-        return res.status(400).json({ message: "Cannot set an email as primary phone" });
-      }
-      
-      // Get lead for this person
-      const [lead] = await db.select()
-        .from(leadOperational)
-        .where(and(
-          eq(leadOperational.companyId, companyId),
-          eq(leadOperational.personId, cp.personId)
-        ))
-        .limit(1);
-      
-      if (!lead) {
-        return res.status(404).json({ message: "No operational lead found for this person" });
-      }
-      
-      // Update the appropriate best field
-      const updateField: Record<string, any> = { updatedAt: new Date() };
-      if (usage === 'call') {
-        updateField.bestPhoneToCall = id;
-      } else if (usage === 'sms') {
-        updateField.bestPhoneForSms = id;
-      } else if (usage === 'email') {
-        updateField.bestEmail = id;
-      }
-      
-      await db.update(leadOperational)
-        .set(updateField)
-        .where(eq(leadOperational.id, lead.id));
-      
-      // Recompute derived fields after mutation
-      await leadDerivedFieldsService.upsertLeadOperational(companyId, cp.personId, lead.lastBatchId || '');
-      
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("[Contact Points] Error setting primary:", error);
-      res.status(500).json({ message: error.message || "Failed to set primary contact point" });
-    }
-  });
-
-  // POST /api/leads/import/process-canonical - Process an existing batch through the new canonical pipeline
-  app.post("/api/leads/import/process-canonical", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { batchId } = req.body;
-      
-      if (!batchId) {
-        return res.status(400).json({ message: "batchId is required" });
-      }
-      
-      // Verify batch belongs to company
-      const [batch] = await db.select()
-        .from(importLeadBatches)
-        .where(and(
-          eq(importLeadBatches.id, batchId),
-          eq(importLeadBatches.companyId, companyId)
-        ))
-        .limit(1);
-      
-      if (!batch) {
-        return res.status(404).json({ message: "Batch not found" });
-      }
-      
-      // Get all leads from import_leads for this batch
-      const leads = await db.select()
-        .from(importLeads)
-        .where(eq(importLeads.batchId, batchId));
-      
-      if (leads.length === 0) {
-        return res.status(400).json({ message: "No leads found in this batch" });
-      }
-      
-      let processed = 0;
-      let errors = 0;
-      let skippedDuplicates = 0;
-      const warnings: any[] = [];
-      
-      for (let i = 0; i < leads.length; i++) {
-        const lead = leads[i];
-        try {
-          // Build row object from the import lead
-          const row: Record<string, any> = {
-            FIRST_NAME: lead.firstName,
-            LAST_NAME: lead.lastName,
-            MOBILE_PHONE: lead.mobilePhones,
-            MOBILE_PHONE_DNC: lead.mobilePhoneDnc,
-            DIRECT_NUMBER: lead.directNumbers,
-            DIRECT_NUMBER_DNC: lead.directNumberDnc,
-            PERSONAL_PHONE: lead.personalPhones,
-            PERSONAL_PHONE_DNC: lead.personalPhoneDnc,
-            BUSINESS_EMAIL: lead.businessEmails,
-            PERSONAL_EMAIL: lead.personalEmails,
-            VERIFIED_EMAILS: lead.verifiedEmails,
-            ADDRESS: lead.address,
-            CITY: lead.city,
-            STATE: lead.state,
-            ZIP: lead.zip,
-            GENDER: lead.gender,
-            AGE_RANGE: lead.ageRange,
-            HAS_CHILDREN: lead.hasChildren,
-            IS_HOMEOWNER: lead.isHomeowner,
-            IS_MARRIED: lead.isMarried,
-            NET_WORTH: lead.netWorth,
-            INCOME_RANGE: lead.incomeRange,
-            COMPANY: lead.companyName,
-            JOB_TITLE: lead.jobTitle,
-            SENIORITY: lead.seniority,
-            DEPARTMENT: lead.department,
-            INDUSTRY: lead.industry,
-            EMPLOYEE_COUNT: lead.employeeCount,
-            COMPANY_REVENUE: lead.companyRevenue,
-            COMPANY_DOMAIN: lead.companyDomain
-          };
-          
-          // Process through canonicalizer
-          const result = await leadCanonicalizerService.processRow(companyId, batchId, i + 1, row);
-          
-          // Skip duplicate rows (idempotency protection)
-          if (result.skippedDuplicate) {
-            skippedDuplicates++;
-            continue;
-          }
-          
-          if (result.warnings.length > 0) {
-            warnings.push({ row: i + 1, warnings: result.warnings });
-          }
-          
-          // Create/update lead_operational (only if not skipped)
-          if (result.personId) {
-            await leadDerivedFieldsService.upsertLeadOperational(companyId, result.personId, batchId);
-          }
-          
-          processed++;
-        } catch (err: any) {
-          console.error(`[Process Canonical] Error processing row ${i + 1}:`, err);
-          errors++;
-        }
-      }
-      
-      res.json({
-        success: true,
-        processed,
-        skippedDuplicates,
-        errors,
-        warnings: warnings.slice(0, 100), // Limit warnings in response
-        totalWarnings: warnings.length
-      });
-    } catch (error: any) {
-      console.error("[Process Canonical] Error:", error);
-      res.status(500).json({ message: error.message || "Failed to process batch through canonical pipeline" });
-    }
-  });
-
-
-  // ============================================================
-  // MERGE QUEUE - Duplicate person detection and resolution
-  // ============================================================
-
-  // GET /api/merge-queue - List pending merge tasks
-  app.get("/api/merge-queue", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      
-      const status = (req.query.status as string) || 'pending';
-      const limit = parseInt(req.query.limit as string) || 50;
-      const offset = parseInt(req.query.offset as string) || 0;
-      
-      const result = await mergeQueueService.getMergeQueue(companyId, { status, limit, offset });
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("[Merge Queue] Error fetching queue:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch merge queue" });
-    }
-  });
-
-  // POST /api/merge-queue/:id/resolve - Resolve a merge task (merge or dismiss)
-  app.post("/api/merge-queue/:id/resolve", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const userId = user.id;
-      const { id } = req.params;
-      const { action } = req.body;
-      
-      if (!action || !['merge', 'dismiss'].includes(action)) {
-        return res.status(400).json({ message: "Invalid action. Must be 'merge' or 'dismiss'" });
-      }
-      
-      const result = await mergeQueueService.resolveMerge(id, action, userId);
-      
-      if (!result.success) {
-        return res.status(400).json({ message: result.error });
-      }
-      
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("[Merge Queue] Error resolving merge:", error);
-      res.status(500).json({ message: error.message || "Failed to resolve merge task" });
-    }
-  });
-
-  // GET /api/merge-queue/:id - Get a single merge task with full details
-  app.get("/api/merge-queue/:id", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { id } = req.params;
-      
-      const result = await mergeQueueService.getMergeQueue(companyId, { status: 'pending', limit: 1000 });
-      const item = result.items.find(i => i.id === id);
-      
-      if (!item) {
-        return res.status(404).json({ message: "Merge queue item not found" });
-      }
-      
-      res.json(item);
-    } catch (error: any) {
-      console.error("[Merge Queue] Error fetching item:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch merge queue item" });
-    }
-  });
-
-  // POST /api/merge-queue/detect/:personId - Run duplicate detection for a specific person
-  app.post("/api/merge-queue/detect/:personId", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      const companyId = user.companyId;
-      const { personId } = req.params;
-      
-      const { duplicates } = await mergeQueueService.detectDuplicates(companyId, personId);
-      
-      let queued = 0;
-      for (const dup of duplicates) {
-        const result = await mergeQueueService.queueMerge(
-          companyId, 
-          personId, 
-          dup.personId, 
-          dup.reason, 
-          dup.confidence
-        );
-        if (!result.alreadyExists) {
-          queued++;
-        }
-      }
-      
-      res.json({
-        success: true, 
-        duplicatesFound: duplicates.length,
-        newTasksQueued: queued
-      });
-    } catch (error: any) {
-      console.error("[Merge Queue] Error detecting duplicates:", error);
-      res.status(500).json({ message: error.message || "Failed to detect duplicates" });
-    }
-  });
   return httpServer;
 }
