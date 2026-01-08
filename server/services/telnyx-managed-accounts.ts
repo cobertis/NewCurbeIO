@@ -258,23 +258,24 @@ export async function getManagedAccount(accountId: string): Promise<GetManagedAc
 }
 
 /**
- * Regenerate API token for a managed account.
- * Use this when the token was not saved during initial creation.
+ * Create a new API key for a managed account.
+ * This creates a real API key that starts with KEY... which is required for Telnyx API calls.
+ * The api_token from account creation is NOT the same as an API key.
  */
-export async function regenerateManagedAccountToken(accountId: string): Promise<{
+export async function createManagedAccountApiKey(accountId: string): Promise<{
   success: boolean;
-  apiToken?: string;
+  apiKey?: string;
   error?: string;
 }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
+    const masterApiKey = await getTelnyxMasterApiKey();
 
-    console.log(`[Telnyx Managed] Regenerating API token for account: ${accountId}`);
+    console.log(`[Telnyx Managed] Creating API key for managed account: ${accountId}`);
 
-    const response = await fetch(`${TELNYX_API_BASE}/managed_accounts/${accountId}/actions/generate_authentication_token`, {
+    const response = await fetch(`${TELNYX_API_BASE}/managed_accounts/${accountId}/api_keys`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
+        "Authorization": `Bearer ${masterApiKey}`,
         "Content-Type": "application/json",
         "Accept": "application/json",
       },
@@ -283,34 +284,60 @@ export async function regenerateManagedAccountToken(accountId: string): Promise<
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Telnyx Managed] Token regeneration error: ${response.status} - ${errorText}`);
+      console.error(`[Telnyx Managed] API key creation error: ${response.status} - ${errorText}`);
       return {
         success: false,
-        error: `Failed to regenerate token: ${response.status} - ${errorText}`,
+        error: `Failed to create API key: ${response.status} - ${errorText}`,
       };
     }
 
     const result = await response.json();
-    const apiToken = result.data?.api_token || result.data?.api_key;
+    const apiKey = result.data?.api_key;
     
-    console.log(`[Telnyx Managed] API token regenerated successfully for account: ${accountId}`);
+    if (!apiKey || !apiKey.startsWith('KEY')) {
+      console.error(`[Telnyx Managed] Invalid API key returned:`, apiKey?.substring(0, 10));
+      return {
+        success: false,
+        error: "Invalid API key format returned from Telnyx",
+      };
+    }
+    
+    console.log(`[Telnyx Managed] API key created successfully for account: ${accountId}, prefix: ${apiKey.substring(0, 10)}...`);
 
     return {
       success: true,
-      apiToken,
+      apiKey,
     };
   } catch (error) {
-    console.error("[Telnyx Managed] Token regeneration error:", error);
+    console.error("[Telnyx Managed] API key creation error:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to regenerate token",
+      error: error instanceof Error ? error.message : "Failed to create API key",
     };
   }
 }
 
 /**
- * Ensure a company has a valid Telnyx API token.
- * If missing, regenerate it from Telnyx and save to wallet.
+ * @deprecated Use createManagedAccountApiKey instead. This returns temporary tokens, not API keys.
+ */
+export async function regenerateManagedAccountToken(accountId: string): Promise<{
+  success: boolean;
+  apiToken?: string;
+  error?: string;
+}> {
+  // Redirect to the correct function
+  const result = await createManagedAccountApiKey(accountId);
+  return {
+    success: result.success,
+    apiToken: result.apiKey,
+    error: result.error,
+  };
+}
+
+/**
+ * Ensure a company has a valid Telnyx API KEY (not token).
+ * API keys start with 'KEY' and are required for Telnyx API calls.
+ * If missing or invalid, create a new one.
  * If account doesn't exist (404), create a new managed account.
  */
 export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
@@ -328,8 +355,15 @@ export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
       return { success: false, error: "No wallet found for company" };
     }
 
-    if (wallet.telnyxApiToken) {
+    // Check if we have a valid API key (must start with KEY)
+    if (wallet.telnyxApiToken && wallet.telnyxApiToken.startsWith('KEY')) {
+      console.log(`[Telnyx Managed] Company ${companyId} has valid API key: ${wallet.telnyxApiToken.substring(0, 10)}...`);
       return { success: true, apiToken: wallet.telnyxApiToken };
+    }
+
+    // If we have an invalid token (not starting with KEY), we need to create a real API key
+    if (wallet.telnyxApiToken && !wallet.telnyxApiToken.startsWith('KEY')) {
+      console.log(`[Telnyx Managed] Company ${companyId} has invalid token (not a KEY), will create new API key`);
     }
 
     // Get company info for creating new account if needed
@@ -342,30 +376,30 @@ export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
       return { success: false, error: "Company not found" };
     }
 
-    // If there's an existing account ID, try to regenerate token
+    // If there's an existing account ID, try to create an API key for it
     if (wallet.telnyxAccountId) {
-      console.log(`[Telnyx Managed] Company ${companyId} missing API token, regenerating...`);
+      console.log(`[Telnyx Managed] Creating API key for existing account: ${wallet.telnyxAccountId}`);
       
-      const regenerateResult = await regenerateManagedAccountToken(wallet.telnyxAccountId);
+      const createKeyResult = await createManagedAccountApiKey(wallet.telnyxAccountId);
       
-      if (regenerateResult.success && regenerateResult.apiToken) {
+      if (createKeyResult.success && createKeyResult.apiKey) {
         await db
           .update(wallets)
           .set({
-            telnyxApiToken: regenerateResult.apiToken,
+            telnyxApiToken: createKeyResult.apiKey,
             updatedAt: new Date(),
           })
           .where(eq(wallets.id, wallet.id));
 
-        console.log(`[Telnyx Managed] API token saved to wallet ${wallet.id}`);
-        return { success: true, apiToken: regenerateResult.apiToken };
+        console.log(`[Telnyx Managed] API key saved to wallet ${wallet.id}: ${createKeyResult.apiKey.substring(0, 10)}...`);
+        return { success: true, apiToken: createKeyResult.apiKey };
       }
 
       // If 404, the account doesn't exist - we need to create a new one
-      if (regenerateResult.error?.includes("404")) {
+      if (createKeyResult.error?.includes("404")) {
         console.log(`[Telnyx Managed] Account ${wallet.telnyxAccountId} not found, creating new managed account...`);
       } else {
-        return { success: false, error: regenerateResult.error || "Failed to regenerate token" };
+        return { success: false, error: createKeyResult.error || "Failed to create API key" };
       }
     }
 
@@ -379,24 +413,36 @@ export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
       return { success: false, error: createResult.error || "Failed to create managed account" };
     }
 
-    const apiToken = createResult.managedAccount.api_token || createResult.managedAccount.api_key;
+    // Now create an API key for the new account
+    console.log(`[Telnyx Managed] Creating API key for new account: ${createResult.managedAccount.id}`);
+    const createKeyResult = await createManagedAccountApiKey(createResult.managedAccount.id);
     
+    if (!createKeyResult.success || !createKeyResult.apiKey) {
+      // Save account ID at least, so we can retry key creation later
+      await db
+        .update(wallets)
+        .set({
+          telnyxAccountId: createResult.managedAccount.id,
+          telnyxApiToken: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.id, wallet.id));
+      
+      return { success: false, error: createKeyResult.error || "Failed to create API key for new account" };
+    }
+
     await db
       .update(wallets)
       .set({
         telnyxAccountId: createResult.managedAccount.id,
-        telnyxApiToken: apiToken || null,
+        telnyxApiToken: createKeyResult.apiKey,
         updatedAt: new Date(),
       })
       .where(eq(wallets.id, wallet.id));
 
-    console.log(`[Telnyx Managed] New managed account ${createResult.managedAccount.id} saved to wallet ${wallet.id}`);
+    console.log(`[Telnyx Managed] New account ${createResult.managedAccount.id} with API key saved to wallet ${wallet.id}`);
 
-    if (!apiToken) {
-      return { success: false, error: "Managed account created but API token not available yet. Please try again in a moment." };
-    }
-
-    return { success: true, apiToken };
+    return { success: true, apiToken: createKeyResult.apiKey };
   } catch (error) {
     console.error("[Telnyx Managed] Ensure token error:", error);
     return {
