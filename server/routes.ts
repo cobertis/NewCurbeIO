@@ -34634,20 +34634,24 @@ CRITICAL REMINDERS:
         
         if (appsToSync.length > 0) {
           const { getTelnyxMasterApiKey } = await import("./services/telnyx-numbers-service");
+          const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
           const apiKey = await getTelnyxMasterApiKey();
+          const managedAccountId = await getCompanyManagedAccountId(companyId);
           
           for (const app of appsToSync) {
             if (!app.telnyxVerificationRequestId) continue;
             try {
-              console.log(`[TF Verification Sync] Checking Telnyx for app ${app.id}, request ID: ${app.telnyxVerificationRequestId}`);
+              console.log(`[TF Verification Sync] Checking Telnyx for app ${app.id}, request ID: ${app.telnyxVerificationRequestId}, managedAccount: ${managedAccountId || 'MASTER'}`);
+              const syncHeaders = {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              };
+              if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+                syncHeaders["x-managed-account-id"] = managedAccountId;
+              }
               const response = await fetch(
                 `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/${app.telnyxVerificationRequestId}`,
-                {
-                  headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json",
-                  },
-                }
+                { headers: syncHeaders }
               );
               
               console.log(`[TF Verification Sync] Telnyx response status: ${response.status}`);
@@ -34663,7 +34667,7 @@ CRITICAL REMINDERS:
                   const normalizedStatus = telnyxStatus.toLowerCase().replace(/\s+/g, '_');
                   switch (normalizedStatus) {
                     case "verified":
-                      mappedStatus = "verified";
+                      mappedStatus = "approved";
                       break;
                     case "rejected":
                       mappedStatus = "rejected";
