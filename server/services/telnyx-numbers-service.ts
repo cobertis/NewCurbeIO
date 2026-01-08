@@ -6,6 +6,7 @@ import { assignPhoneNumberToCredentialConnection } from "./telnyx-e911-service";
 import { getCompanyTelnyxAccountId, getCompanyTelnyxApiToken } from "./wallet-service";
 import { getCompanyMessagingProfileId } from "./telnyx-manager-service";
 import { loadGlobalPricing } from "./pricing-config";
+import { ensureCompanyTelnyxToken } from "./telnyx-managed-accounts";
 
 // Helper to check if a phone number is toll-free based on its number or type
 function isTollFreeNumber(phoneNumber: string, numberType?: string | null): boolean {
@@ -28,6 +29,33 @@ export async function getTelnyxMasterApiKey(): Promise<string> {
   apiKey = apiKey.trim().replace(/[\r\n\t]/g, '');
   console.log(`[Telnyx] API key loaded, prefix: ${apiKey.substring(0, 10)}..., length: ${apiKey.length}, last char code: ${apiKey.charCodeAt(apiKey.length - 1)}`);
   return apiKey;
+}
+
+/**
+ * CRITICAL: Get company's managed account API key for Telnyx operations.
+ * All company-specific Telnyx operations MUST use managed account API key.
+ * API keys MUST start with 'KEY' - if not, create a new one.
+ */
+export async function getRequiredCompanyTelnyxApiKey(companyId: string): Promise<string> {
+  let apiKey = await getCompanyTelnyxApiToken(companyId);
+  
+  // Validate that the key is a real Telnyx API key (must start with KEY)
+  if (!apiKey || !apiKey.startsWith('KEY')) {
+    console.log(`[Telnyx Numbers] No valid API key for company ${companyId} (current: ${apiKey?.substring(0, 10) || 'none'}), creating new one...`);
+    const ensureResult = await ensureCompanyTelnyxToken(companyId);
+    if (!ensureResult.success || !ensureResult.apiToken) {
+      throw new Error(ensureResult.error || "Company Telnyx account not configured. Please set up your Telnyx managed account first.");
+    }
+    apiKey = ensureResult.apiToken;
+  }
+
+  // Final validation
+  if (!apiKey.startsWith('KEY')) {
+    throw new Error(`Invalid Telnyx API key format. Expected KEY..., got: ${apiKey.substring(0, 10)}...`);
+  }
+  
+  console.log(`[Telnyx Numbers] Using company API key: ${apiKey.substring(0, 12)}...`);
+  return apiKey.trim().replace(/[\r\n\t]/g, '');
 }
 
 // Helper function to check if managed account header should be included
@@ -278,29 +306,17 @@ export async function purchasePhoneNumber(
   companyId: string
 ): Promise<PurchaseNumberResult> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-
-    // Get the company's shared Telnyx managed account ID
-    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
-
-    if (!managedAccountId) {
-      return {
-        success: false,
-        error: "Company Telnyx account not found. Please setup phone system first.",
-      };
-    }
+    // CRITICAL: Use company's managed account API key, not master key
+    // This ensures the number is purchased into the company's Telnyx managed account
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
-    console.log(`[Telnyx Numbers] Purchasing ${phoneNumber} for company ${companyId}${managedAccountId ? ` (managed account: ${managedAccountId})` : ''}`);
+    console.log(`[Telnyx Numbers] Purchasing ${phoneNumber} for company ${companyId} using managed account API key`);
 
-    // Build headers - include managed account header if available
+    // Use company's API key directly - no managed account header needed
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
-    
-    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-      headers["x-managed-account-id"] = managedAccountId;
-    }
 
     const response = await fetch(`${TELNYX_API_BASE}/number_orders`, {
       method: "POST",
@@ -493,22 +509,12 @@ export async function updateCnamListing(
   cnamName?: string
 ): Promise<CnamUpdateResult> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    // Get the company's shared Telnyx account ID
-    const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
-    
-    if (!telnyxAccountId) {
-      return {
-        success: false,
-        error: "Company Telnyx account not found"
-      };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      ...(telnyxAccountId && telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": telnyxAccountId} : {}),
     };
     
     // Get the actual cnam_listing_details value
@@ -614,22 +620,12 @@ export async function getCnamSettings(
   phoneNumber?: string;
 }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    // Get the company's shared Telnyx account ID
-    const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
-    
-    if (!telnyxAccountId) {
-      return {
-        success: false,
-        error: "Company Telnyx account not found"
-      };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      ...(telnyxAccountId && telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": telnyxAccountId} : {}),
     };
     
     // First get basic phone number info
@@ -701,7 +697,8 @@ export async function getVoiceSettings(
   callerIdNameEnabled?: boolean;
 }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     // First, look up the Telnyx phone number ID from our database
     // phoneNumberId could be either our internal ID or the Telnyx ID
@@ -724,17 +721,9 @@ export async function getVoiceSettings(
       return { success: false, error: "Telnyx phone number ID not found" };
     }
     
-    // Get the company's shared Telnyx account ID
-    const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
-    
-    if (!telnyxAccountId) {
-      return { success: false, error: "Company Telnyx account not found" };
-    }
-    
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      ...(telnyxAccountId && telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": telnyxAccountId} : {}),
     };
     
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${telnyxPhoneId}/voice`, {
@@ -814,17 +803,12 @@ export async function getPhoneNumberRoutingConfig(
   callControlAppName?: string;
 }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
-    
-    if (!telnyxAccountId) {
-      return { success: false, error: "Company Telnyx account not found" };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      ...(telnyxAccountId && telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": telnyxAccountId} : {}),
     };
     
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
@@ -868,21 +852,12 @@ export async function updateCallRecording(
   channels: "single" | "dual" = "single"
 ): Promise<{ success: boolean; error?: string; inboundEnabled?: boolean; outboundEnabled?: boolean }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-    
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company wallet or Telnyx account not found" };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     // Update inbound call recording on the phone number
@@ -977,21 +952,12 @@ export async function updateSpamProtection(
   mode: "disabled" | "reject_calls" | "flag_calls"
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-    
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company wallet or Telnyx account not found" };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     const payload = {
@@ -1030,21 +996,12 @@ export async function getVoicemailSettings(
   companyId: string
 ): Promise<{ success: boolean; enabled?: boolean; pin?: string; error?: string }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-    
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company wallet or Telnyx account not found" };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
@@ -1084,16 +1041,8 @@ export async function updateVoicemailSettings(
   pin: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-    
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company wallet or Telnyx account not found" };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
     // Validate PIN is 4 digits
     if (enabled && (!pin || !/^\d{4}$/.test(pin))) {
@@ -1103,7 +1052,6 @@ export async function updateVoicemailSettings(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     // Telnyx API expects pin as string "1234", not integer
@@ -1158,29 +1106,13 @@ export async function getCompanyPhoneNumbers(companyId: string): Promise<{
   error?: string;
 }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-
-    if (!wallet?.telnyxAccountId) {
-      return {
-        success: true,
-        numbers: [],
-      };
-    }
-
-    // Use managed account header to get numbers for this company's account
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
     };
-    
-    if (wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT") {
-      headers["x-managed-account-id"] = wallet.telnyxAccountId;
-    }
 
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers`, {
       method: "GET",
@@ -1336,21 +1268,12 @@ export async function syncPhoneNumbersFromTelnyx(companyId: string): Promise<{
   error?: string;
 }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-
-    if (!wallet?.telnyxAccountId) {
-      return { success: true, syncedCount: 0 };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
 
     // Get all numbers from Telnyx
@@ -1419,16 +1342,8 @@ export async function syncBillingFeaturesToTelnyx(
   cnamEnabled?: boolean
 ): Promise<{ success: boolean; syncedCount: number; errors: string[] }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-    
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, syncedCount: 0, errors: ["Company wallet or Telnyx account not found"] };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     // Get all phone numbers for this company
     const numbers = await db
@@ -1444,7 +1359,6 @@ export async function syncBillingFeaturesToTelnyx(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     const errors: string[] = [];
@@ -1561,70 +1475,57 @@ export async function updateNumberVoiceSettings(
     
     // If recording or CNAM changed, sync to Telnyx API
     if (typeof settings.recordingEnabled === 'boolean' || typeof settings.cnamLookupEnabled === 'boolean') {
-      const apiKey = await getTelnyxMasterApiKey();
+      // CRITICAL: Use company's managed account API key for company-owned resources
+      const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
       
-      const [wallet] = await db
-        .select()
-        .from(wallets)
-        .where(eq(wallets.companyId, companyId));
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
       
-      if (wallet?.telnyxAccountId) {
-        const headers: Record<string, string> = {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
+      const payload: Record<string, any> = {};
+      
+      if (typeof settings.recordingEnabled === 'boolean') {
+        payload.call_recording = {
+          inbound_call_recording_enabled: settings.recordingEnabled,
+          inbound_call_recording_format: "mp3",
+          inbound_call_recording_channels: "single",
         };
+      }
+      
+      if (typeof settings.cnamLookupEnabled === 'boolean') {
+        // caller_id_name_enabled is for INBOUND CNAM lookup (seeing who's calling you)
+        // cnam_listing_enabled is for OUTBOUND (your name when you call others)
+        payload.caller_id_name_enabled = settings.cnamLookupEnabled;
+      }
+      
+      if (Object.keys(payload).length > 0) {
+        const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}/voice`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify(payload),
+        });
         
-        const payload: Record<string, any> = {};
-        
-        if (typeof settings.recordingEnabled === 'boolean') {
-          payload.call_recording = {
-            inbound_call_recording_enabled: settings.recordingEnabled,
-            inbound_call_recording_format: "mp3",
-            inbound_call_recording_channels: "single",
-          };
-        }
-        
-        if (typeof settings.cnamLookupEnabled === 'boolean') {
-          // caller_id_name_enabled is for INBOUND CNAM lookup (seeing who's calling you)
-          // cnam_listing_enabled is for OUTBOUND (your name when you call others)
-          payload.caller_id_name_enabled = settings.cnamLookupEnabled;
-        }
-        
-        if (Object.keys(payload).length > 0) {
-          const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}/voice`, {
-            method: "PATCH",
-            headers,
-            body: JSON.stringify(payload),
-          });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[Voice Settings] Telnyx sync failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
-          } else {
-            console.log(`[Voice Settings] Synced ${phoneNumber.phoneNumber} to Telnyx`);
-          }
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[Voice Settings] Telnyx sync failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
+        } else {
+          console.log(`[Voice Settings] Synced ${phoneNumber.phoneNumber} to Telnyx`);
         }
       }
     }
     
     // If voicemail settings changed, sync to Telnyx API
     if (typeof settings.voicemailEnabled === 'boolean' || settings.voicemailPin) {
-      const apiKey = await getTelnyxMasterApiKey();
+      // CRITICAL: Use company's managed account API key for company-owned resources
+      const apiKeyVoicemail = await getRequiredCompanyTelnyxApiKey(companyId);
       
-      const [wallet] = await db
-        .select()
-        .from(wallets)
-        .where(eq(wallets.companyId, companyId));
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKeyVoicemail}`,
+        "Content-Type": "application/json",
+      };
       
-      if (wallet?.telnyxAccountId) {
-        const headers: Record<string, string> = {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
-        };
-        
-        // Get current voicemail settings from local DB (just updated)
+      // Get current voicemail settings from local DB (just updated)
         const [updatedNumber] = await db
           .select()
           .from(telnyxPhoneNumbers)
@@ -1688,7 +1589,6 @@ export async function updateNumberVoiceSettings(
             console.log(`[Voicemail] Disabled/Not configured for ${phoneNumber.phoneNumber} - settings saved locally`);
           }
         }
-      }
     }
     
     // CRITICAL: If ivrId changed, automatically sync routing to Telnyx
@@ -1696,19 +1596,15 @@ export async function updateNumberVoiceSettings(
     // IVR disabled ("unassigned" or null) -> route to Credential Connection (for direct SIP with simultaneous_ringing)
     if (settings.ivrId !== undefined) {
       try {
-        const apiKey = await getTelnyxMasterApiKey();
+        // CRITICAL: Use company's managed account API key for company-owned resources
+        const apiKeyRouting = await getRequiredCompanyTelnyxApiKey(companyId);
         
         const [telSettings] = await db
           .select()
           .from(telephonySettings)
           .where(eq(telephonySettings.companyId, companyId));
         
-        const [wallet] = await db
-          .select()
-          .from(wallets)
-          .where(eq(wallets.companyId, companyId));
-        
-        if (wallet?.telnyxAccountId && telSettings) {
+        if (telSettings) {
           // ALWAYS use Call Control App for ALL calls - this allows us to handle voicemail
           // with custom greetings when calls are not answered
           let targetConnectionId: string | null = telSettings.callControlAppId || null;
@@ -1716,9 +1612,8 @@ export async function updateNumberVoiceSettings(
           
           if (targetConnectionId) {
             const headers: Record<string, string> = {
-              "Authorization": `Bearer ${apiKey}`,
+              "Authorization": `Bearer ${apiKeyRouting}`,
               "Content-Type": "application/json",
-              ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
             };
             
             // ALWAYS use call_control_application_id for all calls
@@ -1781,7 +1676,8 @@ export async function syncVoiceSettingsFromTelnyx(
   };
 }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     // Get the phone number from our database
     const [phoneNumber] = await db
@@ -1793,20 +1689,9 @@ export async function syncVoiceSettingsFromTelnyx(
       return { success: false, error: "Phone number not found in database" };
     }
     
-    // Get the company's Telnyx account ID
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-    
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company Telnyx account not found" };
-    }
-    
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     // Get voice settings from Telnyx
@@ -1875,13 +1760,9 @@ export async function assignMessagingProfileToAllNumbers(companyId: string): Pro
   let failed = 0;
 
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     const messagingProfileId = await getCompanyMessagingProfileId(companyId);
-
-    if (!managedAccountId) {
-      return { success: false, updated: 0, failed: 0, errors: ["Company Telnyx account not found"] };
-    }
 
     if (!messagingProfileId) {
       return { success: false, updated: 0, failed: 0, errors: ["Company messaging profile not found"] };
@@ -1891,10 +1772,6 @@ export async function assignMessagingProfileToAllNumbers(companyId: string): Pro
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
-
-    if (managedAccountId !== "MASTER_ACCOUNT") {
-      headers["x-managed-account-id"] = managedAccountId;
-    }
 
     const companyNumbers = await db
       .select()
@@ -1984,7 +1861,8 @@ export async function getVoicemailStatus(
   companyId: string
 ): Promise<VoicemailStatusResult> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     // Get the Telnyx phone number ID from our database
     // phoneNumberId is our internal UUID, we need the Telnyx ID
@@ -2005,24 +1883,10 @@ export async function getVoicemailStatus(
     
     const telnyxId = phoneNumberRecord[0].telnyxPhoneNumberId;
     
-    // Get the company's managed account ID
-    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
-    
-    if (!managedAccountId) {
-      return {
-        success: false,
-        error: "Company Telnyx account not found"
-      };
-    }
-    
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
     };
-    
-    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-      headers["x-managed-account-id"] = managedAccountId;
-    }
     
     // GET /v2/phone_numbers/{phone_number_id}/voicemail - correct endpoint per Telnyx API docs
     const url = `${TELNYX_API_BASE}/phone_numbers/${telnyxId}/voicemail`;
@@ -2125,25 +1989,13 @@ export async function ensureVoicemailBox(
   phoneNumber?: string
 ): Promise<EnsureVoicemailBoxResult> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
-    
-    if (!managedAccountId) {
-      return {
-        success: false,
-        error: "Company Telnyx account not found"
-      };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
-    
-    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-      headers["x-managed-account-id"] = managedAccountId;
-    }
     
     // First, check if a voicemail box already exists for this connection
     console.log(`[Telnyx Voicemail] Checking existing voicemail boxes for connection ${connectionId}`);
@@ -2153,7 +2005,6 @@ export async function ensureVoicemailBox(
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Accept": "application/json",
-        ...(managedAccountId && managedAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": managedAccountId} : {}),
       },
     });
     
@@ -2224,22 +2075,13 @@ async function getPhoneNumberConnectionId(
   companyId: string
 ): Promise<{ success: boolean; connectionId?: string; phoneNumber?: string; error?: string }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
-    
-    if (!managedAccountId) {
-      return { success: false, error: "Company Telnyx account not found" };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
     };
-    
-    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-      headers["x-managed-account-id"] = managedAccountId;
-    }
     
     // Get voice settings which includes connection_id
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
@@ -2279,7 +2121,8 @@ export async function enableVoicemail(
   options?: EnableVoicemailOptions
 ): Promise<EnableVoicemailResult> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     // Get the Telnyx phone number ID from our database
     const phoneNumberRecord = await db.select({
@@ -2297,16 +2140,6 @@ export async function enableVoicemail(
     
     const telnyxId = phoneNumberRecord[0].telnyxPhoneNumberId;
     
-    // Get the company's managed account ID
-    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
-    
-    if (!managedAccountId) {
-      return {
-        success: false,
-        error: "Company Telnyx account not found"
-      };
-    }
-    
     // Generate a 4-digit PIN for voicemail access
     const pin = Math.floor(1000 + Math.random() * 9000).toString();
     
@@ -2320,10 +2153,6 @@ export async function enableVoicemail(
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
-    
-    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-      headers["x-managed-account-id"] = managedAccountId;
-    }
     
     console.log(`[Telnyx Voicemail] Enabling voicemail for telnyxId: ${telnyxId} with PIN: ${pin}`);
     
@@ -2363,17 +2192,8 @@ export async function releasePhoneNumber(
   companyId: string
 ): Promise<ReleaseNumberResult> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    // Get the company's managed account ID
-    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
-    
-    if (!managedAccountId) {
-      return {
-        success: false,
-        error: "Company Telnyx account not found.",
-      };
-    }
+    // CRITICAL: Use company's managed account API key for company-owned resources
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
     
     // First, get the phone number details from local DB
     const [localNumber] = await db
@@ -2394,10 +2214,6 @@ export async function releasePhoneNumber(
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
-    
-    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-      headers["x-managed-account-id"] = managedAccountId;
-    }
     
     // Delete the phone number from Telnyx
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
