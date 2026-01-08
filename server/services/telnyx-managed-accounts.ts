@@ -84,7 +84,18 @@ export async function createManagedAccount(
 
     const result = await response.json();
     const accountId = result.data?.id;
-    console.log(`[Telnyx Managed] Managed account created:`, accountId);
+    const creationApiKey = result.data?.api_key;
+    console.log(`[Telnyx Managed] Managed account created: ${accountId}`);
+    console.log(`[Telnyx Managed] API key from creation response: ${creationApiKey ? creationApiKey.substring(0, 15) + '...' : 'NOT PRESENT'}`);
+    
+    // If API key is present in creation response, return immediately
+    if (accountId && creationApiKey && creationApiKey.startsWith('KEY')) {
+      console.log(`[Telnyx Managed] Using API key from creation response`);
+      return {
+        success: true,
+        managedAccount: result.data,
+      };
+    }
 
     if (!accountId) {
       return {
