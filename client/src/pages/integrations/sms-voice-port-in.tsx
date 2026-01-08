@@ -29,7 +29,8 @@ import {
   XCircle,
   FileText,
   Trash2,
-  Loader2
+  Loader2,
+  Pencil
 } from "lucide-react";
 
 interface PortingOrder {
@@ -136,6 +137,11 @@ function OrderDetailsSheet({
   const details = orderDetails?.order || order;
   const telnyxOrder = orderDetails?.telnyxOrder;
 
+  const handleEditOrder = () => {
+    onOpenChange(false);
+    window.location.href = `/porting/transfer?orderId=${details.id}&edit=true`;
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto" data-testid="sheet-order-details">
@@ -157,10 +163,23 @@ function OrderDetailsSheet({
           <div className="mt-6 space-y-6">
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Status</h4>
-              <div className="flex items-center gap-3">
-                {getStatusBadge(details.status)}
-                {details.lastError && (
-                  <span className="text-sm text-red-600" data-testid="text-last-error">{details.lastError}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getStatusBadge(details.status)}
+                  {details.lastError && (
+                    <span className="text-sm text-red-600" data-testid="text-last-error">{details.lastError}</span>
+                  )}
+                </div>
+                {details.status === "draft" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditOrder}
+                    data-testid="button-edit-order-sheet"
+                  >
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
                 )}
               </div>
             </div>
@@ -534,20 +553,31 @@ export default function SmsVoicePortIn() {
                             View
                           </Button>
                           {order.status === "draft" && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleDeleteOrder(order)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                              disabled={deleteMutation.isPending}
-                              data-testid={`button-delete-order-${order.id}`}
-                            >
-                              {deleteMutation.isPending && orderToDelete?.id === order.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => window.location.href = `/porting/transfer?orderId=${order.id}&edit=true`}
+                                data-testid={`button-edit-order-${order.id}`}
+                              >
+                                <Pencil className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleDeleteOrder(order)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                                disabled={deleteMutation.isPending}
+                                data-testid={`button-delete-order-${order.id}`}
+                              >
+                                {deleteMutation.isPending && orderToDelete?.id === order.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>

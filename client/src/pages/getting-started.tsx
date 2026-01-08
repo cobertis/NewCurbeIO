@@ -86,7 +86,15 @@ export default function GettingStarted() {
     enabled: !!sessionData?.user && sessionData?.user?.role === "admin",
   });
 
+  const { data: portingOrdersData } = useQuery<{ orders: any[] }>({
+    queryKey: ["/api/telnyx/porting/orders"],
+    enabled: !!sessionData?.user,
+  });
+
   const activeApplication = complianceData?.application;
+  const draftPortingOrder = portingOrdersData?.orders?.find(
+    (order: any) => order.status === "draft" || order.status === "in_progress"
+  );
   const subscription = subscriptionData?.subscription;
   const selectedPlan = subscription?.plan;
   const { toast } = useToast();
@@ -560,19 +568,61 @@ export default function GettingStarted() {
 
                 {/* Port existing number */}
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Port your existing number</h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Transfer your current phone number to Curbe.io. Keep your same number while gaining access to all platform features.
-                  </p>
-                  <Button 
-                      size="sm" 
-                      onClick={() => setLocation("/porting/transfer")} 
-                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
-                      data-testid="button-start-porting"
-                    >
-                      Start porting
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">Port your existing number</h4>
+                    {draftPortingOrder && (
+                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        In Progress
+                      </Badge>
+                    )}
+                  </div>
+                  {draftPortingOrder ? (
+                    <>
+                      <div className="mb-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Numbers being ported:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(draftPortingOrder.phoneNumbers || []).slice(0, 2).map((phone: string, idx: number) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {formatPhoneNumber(phone)}
+                            </Badge>
+                          ))}
+                          {(draftPortingOrder.phoneNumbers || []).length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{(draftPortingOrder.phoneNumbers || []).length - 2} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        You have a porting order in progress. Continue where you left off.
+                      </p>
+                      <Button 
+                        size="sm" 
+                        onClick={() => setLocation(`/porting/transfer?orderId=${draftPortingOrder.id}`)} 
+                        className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                        data-testid="button-continue-porting"
+                      >
+                        Continue porting
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        Transfer your current phone number to Curbe.io. Keep your same number while gaining access to all platform features.
+                      </p>
+                      <Button 
+                        size="sm" 
+                        onClick={() => setLocation("/porting/transfer")} 
+                        className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                        data-testid="button-start-porting"
+                      >
+                        Start porting
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </AccordionContent>

@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { useLocation, Link } from 'wouter';
+import { useLocation, Link, useSearch } from 'wouter';
 import SignatureCanvas from 'react-signature-canvas';
 import { 
   Phone, 
@@ -196,9 +196,14 @@ function PortingStepIndicator({ currentStep }: { currentStep: number }) {
 
 export default function PortingTransfer() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
+  const urlParams = new URLSearchParams(searchString);
+  const orderIdFromUrl = urlParams.get('orderId');
+  const isEditMode = urlParams.get('edit') === 'true';
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<WizardStep>('enter-numbers');
   const [phoneNumbersInput, setPhoneNumbersInput] = useState('');
+  const [isLoadingExistingOrder, setIsLoadingExistingOrder] = useState(!!orderIdFromUrl);
 
   const formatUsPhoneInput = (value: string): string => {
     const lines = value.split('\n');
@@ -277,6 +282,88 @@ export default function PortingTransfer() {
       postalCode: '',
     },
   });
+
+  const { data: existingOrderData, isLoading: isLoadingOrder } = useQuery({
+    queryKey: ['/api/telnyx/porting/orders', orderIdFromUrl],
+    queryFn: async () => {
+      const response = await fetch(`/api/telnyx/porting/orders/${orderIdFromUrl}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch order');
+      }
+      return response.json();
+    },
+    enabled: !!orderIdFromUrl,
+  });
+
+  useEffect(() => {
+    if (orderIdFromUrl && existingOrderData && !isLoadingOrder) {
+      const { order, telnyxOrder } = existingOrderData;
+      
+      if (order) {
+        const normalizedOrder = {
+          ...(telnyxOrder || {}),
+          id: order.telnyxPortingOrderId || order.id,
+          localId: order.id,
+          phone_numbers: order.phoneNumbers || [],
+          statusText: typeof order.status === 'object' ? order.status.value : (order.status || 'draft'),
+        };
+        
+        setPortingOrder(normalizedOrder as any);
+        setPortableNumbers(order.phoneNumbers || []);
+        
+        if (order.endUserInfo) {
+          const info = order.endUserInfo;
+          endUserForm.reset({
+            entityName: info.entityName || '',
+            authPersonName: info.authPersonName || '',
+            billingPhone: info.billingPhone || '',
+            accountNumber: info.accountNumber || '',
+            pin: info.pin || '',
+            streetAddress: info.streetAddress || '',
+            streetAddress2: info.extendedAddress || '',
+            city: info.locality || '',
+            state: info.administrativeArea || '',
+            postalCode: info.postalCode || '',
+          });
+          setEndUserInfo({
+            entityName: info.entityName || '',
+            authPersonName: info.authPersonName || '',
+            billingPhone: info.billingPhone || '',
+            accountNumber: info.accountNumber || '',
+            pin: info.pin || '',
+            streetAddress: info.streetAddress || '',
+            streetAddress2: info.extendedAddress || '',
+            city: info.locality || '',
+            state: info.administrativeArea || '',
+            postalCode: info.postalCode || '',
+          });
+        }
+        
+        if (order.focDatetimeRequested) {
+          setSelectedFocDate(order.focDatetimeRequested);
+        }
+        
+        const status = order.status || 'draft';
+        if (status === 'draft') {
+          if (isEditMode) {
+            setCurrentStep('end-user-info');
+          } else if (order.endUserInfo) {
+            setCurrentStep('upload-documents');
+          } else if (order.phoneNumbers?.length > 0) {
+            setCurrentStep('end-user-info');
+          } else {
+            setCurrentStep('enter-numbers');
+          }
+        } else {
+          setCurrentStep('review-submit');
+        }
+      }
+      
+      setIsLoadingExistingOrder(false);
+    }
+  }, [orderIdFromUrl, existingOrderData, isLoadingOrder, isEditMode]);
 
   const checkPortabilityMutation = useMutation({
     mutationFn: async (phoneNumbers: string[]) => {
@@ -783,6 +870,10 @@ export default function PortingTransfer() {
         return 'Continue';
     }
   };
+
+  if (isLoadingExistingOrder || (orderIdFromUrl && isLoadingOrder)) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">
