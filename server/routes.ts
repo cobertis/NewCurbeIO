@@ -4931,6 +4931,41 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  app.delete("/api/telnyx/porting/orders/:orderId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getPortingOrderById, deletePortingOrder, deleteLocalPortingOrder } = await import("./services/telnyx-porting-service");
+      const localOrder = await getPortingOrderById(orderId);
+
+      if (!localOrder || localOrder.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Porting order not found" });
+      }
+
+      if (localOrder.status !== "draft") {
+        return res.status(400).json({ message: "Only draft orders can be deleted" });
+      }
+
+      if (localOrder.telnyxPortingOrderId) {
+        const result = await deletePortingOrder(localOrder.telnyxPortingOrderId, user.companyId!);
+        if (!result.success) {
+          console.error("[Porting] Telnyx delete failed, but continuing with local deletion:", result.error);
+        }
+      }
+
+      const localResult = await deleteLocalPortingOrder(orderId);
+      if (!localResult.success) {
+        return res.status(500).json({ message: localResult.error });
+      }
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("[Porting] Delete order error:", error);
+      return res.status(500).json({ message: "Failed to delete porting order" });
+    }
+  });
+
   app.get("/api/telnyx/porting/orders/:orderId/loa-template", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;

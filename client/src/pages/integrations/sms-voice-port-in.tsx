@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,9 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SettingsLayout } from "@/components/settings-layout";
 import { PortingWizard } from "@/components/PortingWizard";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   ChevronRight, 
   Plus, 
@@ -24,7 +27,9 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  FileText
+  FileText,
+  Trash2,
+  Loader2
 } from "lucide-react";
 
 interface PortingOrder {
@@ -356,6 +361,8 @@ export default function SmsVoicePortIn() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<PortingOrder | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<PortingOrder | null>(null);
+  const { toast } = useToast();
 
   const { data: ordersData, isLoading, refetch } = useQuery<{ orders: PortingOrder[] }>({
     queryKey: ["/api/telnyx/porting/orders"],
@@ -363,9 +370,42 @@ export default function SmsVoicePortIn() {
 
   const orders = ordersData?.orders || [];
 
+  const deleteMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await apiRequest("DELETE", `/api/telnyx/porting/orders/${orderId}`);
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Order deleted",
+        description: "The draft porting order has been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/porting/orders"] });
+      setOrderToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete failed",
+        description: error.message || "Failed to delete the porting order.",
+        variant: "destructive",
+      });
+      setOrderToDelete(null);
+    },
+  });
+
   const handleViewOrder = (order: PortingOrder) => {
     setSelectedOrder(order);
     setDetailsOpen(true);
+  };
+
+  const handleDeleteOrder = (order: PortingOrder) => {
+    setOrderToDelete(order);
+  };
+
+  const confirmDelete = () => {
+    if (orderToDelete) {
+      deleteMutation.mutate(orderToDelete.id);
+    }
   };
 
   const handleWizardClose = () => {
@@ -483,15 +523,33 @@ export default function SmsVoicePortIn() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleViewOrder(order)}
-                          data-testid={`button-view-order-${order.id}`}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewOrder(order)}
+                            data-testid={`button-view-order-${order.id}`}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          {order.status === "draft" && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteOrder(order)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                              disabled={deleteMutation.isPending}
+                              data-testid={`button-delete-order-${order.id}`}
+                            >
+                              {deleteMutation.isPending && orderToDelete?.id === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -513,6 +571,50 @@ export default function SmsVoicePortIn() {
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
       />
+
+      <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
+        <AlertDialogContent data-testid="dialog-delete-confirmation">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Draft Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this draft porting order? This action cannot be undone.
+              {orderToDelete && orderToDelete.phoneNumbers.length > 0 && (
+                <div className="mt-2 text-sm font-mono">
+                  {orderToDelete.phoneNumbers.slice(0, 3).map((phone, idx) => (
+                    <div key={idx}>{formatPhoneNumber(phone)}</div>
+                  ))}
+                  {orderToDelete.phoneNumbers.length > 3 && (
+                    <div>+{orderToDelete.phoneNumbers.length - 3} more</div>
+                  )}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              disabled={deleteMutation.isPending}
+              data-testid="button-cancel-delete"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SettingsLayout>
   );
 }

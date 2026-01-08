@@ -453,6 +453,67 @@ export async function cancelPortingOrder(
   }
 }
 
+export interface DeletePortingOrderResponse {
+  success: boolean;
+  error?: string;
+}
+
+export async function deletePortingOrder(
+  portingOrderId: string,
+  companyId: string
+): Promise<DeletePortingOrderResponse> {
+  try {
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
+
+    console.log(`[Telnyx Porting] Deleting porting order: ${portingOrderId} using managed account`);
+
+    const response = await fetch(`${TELNYX_API_BASE}/porting_orders/${portingOrderId}`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Porting] Delete order error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to delete porting order: ${response.status} - ${errorText}`,
+      };
+    }
+
+    console.log(`[Telnyx Porting] Porting order deleted successfully from Telnyx`);
+    return { success: true };
+  } catch (error) {
+    console.error("[Telnyx Porting] Delete order error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete porting order",
+    };
+  }
+}
+
+export async function deleteLocalPortingOrder(orderId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log(`[Telnyx Porting] Deleting local porting order: ${orderId}`);
+    
+    await db
+      .delete(telnyxPortingOrders)
+      .where(eq(telnyxPortingOrders.id, orderId));
+    
+    console.log(`[Telnyx Porting] Local porting order deleted successfully`);
+    return { success: true };
+  } catch (error) {
+    console.error("[Telnyx Porting] Delete local order error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete local porting order",
+    };
+  }
+}
+
 export interface GetPortingRequirementsResponse {
   success: boolean;
   requirements?: any[];
