@@ -128,6 +128,7 @@ interface OperationalLead {
   bestPhoneValue: string | null;
   bestSmsValue: string | null;
   bestEmailValue: string | null;
+  ownerName?: string | null;
 }
 
 interface OperationalLeadDetails extends OperationalLead {
@@ -162,6 +163,7 @@ export default function Leads() {
   const [opMinScore, setOpMinScore] = useState<number>(0);
   const [opStatusFilter, setOpStatusFilter] = useState<string>("all");
   const [opStateFilter, setOpStateFilter] = useState<string>("all");
+  const [opZipFilter, setOpZipFilter] = useState<string>("");
   const [opOnlyContactable, setOpOnlyContactable] = useState<boolean>(false);
   const [opExcludeDnc, setOpExcludeDnc] = useState<boolean>(false);
   const [opSearch, setOpSearch] = useState<string>("");
@@ -215,6 +217,7 @@ export default function Leads() {
       excludeDnc: opExcludeDnc || undefined,
       hasMobileValid: opHasMobileValid || undefined,
       hasVerifiedEmail: opHasVerifiedEmail || undefined,
+      zip: opZipFilter || undefined,
       riskFlags: opSelectedRiskFlags.length > 0 ? opSelectedRiskFlags.join(",") : undefined,
       search: opSearch || undefined,
       page: opPage,
@@ -1268,6 +1271,13 @@ export default function Leads() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <Input 
+                    placeholder="Filter by ZIP..."
+                    value={opZipFilter}
+                    onChange={(e) => { setOpZipFilter(e.target.value); setOpPage(1); }}
+                    className="w-32"
+                    data-testid="input-op-zip-filter"
+                  />
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-6">
@@ -1371,6 +1381,7 @@ export default function Leads() {
                           <TableHead>Best Contact</TableHead>
                           <TableHead>Score</TableHead>
                           <TableHead>Risk Flags</TableHead>
+                          <TableHead>Owner</TableHead>
                           <TableHead>Batch</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Actions</TableHead>
@@ -1433,6 +1444,7 @@ export default function Leads() {
                                     )}
                                   </div>
                                 </TableCell>
+                                <TableCell>{lead.ownerName || 'Unassigned'}</TableCell>
                                 <TableCell data-testid={`cell-batch-${lead.id}`}>
                                   <div className="text-sm">{lead.batchFileName || '-'}</div>
                                   {lead.batchImportedAt && (
