@@ -298,13 +298,16 @@ export default function PortingTransfer() {
       });
     },
     onSuccess: (data) => {
-      if (data.success && data.portingOrders?.length > 0) {
-        setPortingOrder(data.portingOrders[0]);
+      if (data.order && data.telnyxOrder) {
+        setPortingOrder({ ...data.telnyxOrder, localId: data.order.id });
+        setCurrentStep('create-order');
+      } else if (data.order) {
+        setPortingOrder({ id: data.order.telnyxPortingOrderId || data.order.id, localId: data.order.id, status: { value: data.order.status || 'draft' } } as any);
         setCurrentStep('create-order');
       } else {
         toast({
           title: 'Error',
-          description: data.error || 'Failed to create porting order',
+          description: data.message || 'Failed to create porting order',
           variant: 'destructive',
         });
       }
@@ -320,11 +323,14 @@ export default function PortingTransfer() {
 
   const updateOrderMutation = useMutation({
     mutationFn: async (data: { endUser?: any; documents?: any; focDatetime?: string }) => {
-      return apiRequest('PATCH', `/api/telnyx/porting/orders/${portingOrder?.id}`, data);
+      const orderId = (portingOrder as any)?.localId || portingOrder?.id;
+      return apiRequest('PATCH', `/api/telnyx/porting/orders/${orderId}`, data);
     },
     onSuccess: (data) => {
-      if (data.success) {
-        setPortingOrder(data.portingOrder);
+      if (data.order && data.telnyxOrder) {
+        setPortingOrder({ ...data.telnyxOrder, localId: data.order.id });
+      } else if (data.order) {
+        setPortingOrder(prev => prev ? { ...prev, ...data.order } : data.order);
       }
     },
     onError: (error: Error) => {
@@ -338,7 +344,8 @@ export default function PortingTransfer() {
 
   const getFocDatesMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/telnyx/porting/orders/${portingOrder?.id}/foc-dates`, {
+      const orderId = (portingOrder as any)?.localId || portingOrder?.id;
+      const response = await fetch(`/api/telnyx/porting/orders/${orderId}/foc-dates`, {
         credentials: 'include',
       });
       if (!response.ok) {
@@ -347,7 +354,7 @@ export default function PortingTransfer() {
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.success && data.focWindows) {
+      if (data.focWindows) {
         setFocWindows(data.focWindows);
       }
     },
@@ -362,7 +369,8 @@ export default function PortingTransfer() {
 
   const submitOrderMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', `/api/telnyx/porting/orders/${portingOrder?.id}/submit`, {});
+      const orderId = (portingOrder as any)?.localId || portingOrder?.id;
+      return apiRequest('POST', `/api/telnyx/porting/orders/${orderId}/submit`, {});
     },
     onSuccess: (data) => {
       if (data.success) {
@@ -375,7 +383,7 @@ export default function PortingTransfer() {
       } else {
         toast({
           title: 'Error',
-          description: data.error || 'Failed to submit order',
+          description: data.message || 'Failed to submit order',
           variant: 'destructive',
         });
       }
