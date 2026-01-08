@@ -310,7 +310,7 @@ export default function PortingTransfer() {
         const normalizedOrder = {
           id: data.order.telnyxPortingOrderId || data.order.id,
           localId: data.order.id,
-          statusText: data.order.status || 'draft',
+          statusText: typeof data.order.status === 'object' ? data.order.status.value : (data.order.status || 'draft'),
         } as any;
         setPortingOrder(normalizedOrder);
         setCurrentStep('create-order');
@@ -779,7 +779,7 @@ export default function PortingTransfer() {
                         <Separator />
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-muted-foreground">Status</span>
-                          <Badge variant="outline">{portingOrder.status}</Badge>
+                          <Badge variant="outline">{(portingOrder as any).statusText || (typeof portingOrder.status === 'object' ? (portingOrder.status as any).value : portingOrder.status)}</Badge>
                         </div>
                         <Separator />
                         <div className="flex items-center justify-between">
@@ -1166,7 +1166,7 @@ export default function PortingTransfer() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Status:</span>
-                          <Badge variant="outline">{portingOrder?.status}</Badge>
+                          <Badge variant="outline">{(portingOrder as any)?.statusText || (typeof portingOrder?.status === 'object' ? (portingOrder.status as any).value : portingOrder?.status)}</Badge>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Numbers:</span>
