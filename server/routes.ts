@@ -46187,6 +46187,315 @@ CRITICAL REMINDERS:
     }
   });
 
+
+  // GET /api/leads/operational/batches - List all import batches for operational leads
+  app.get("/api/leads/operational/batches", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      
+      // Get unique batches from leadRawRows
+      const batches = await db.select({
+        id: leadRawRows.batchId,
+        fileName: leadRawRows.source,
+        totalRows: sql<number>`count(*)::int`,
+        importedAt: sql<string>`min(\${leadRawRows.importedAt})`,
+      })
+        .from(leadRawRows)
+        .where(eq(leadRawRows.companyId, companyId))
+        .groupBy(leadRawRows.batchId, leadRawRows.source)
+        .orderBy(sql`min(\${leadRawRows.importedAt}) desc`);
+      
+      res.json({ batches });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error fetching batches:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch batches" });
+    }
+  });
+
+  // DELETE /api/leads/operational/batches/:batchId - Delete batch and all associated data
+  app.delete("/api/leads/operational/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { batchId } = req.params;
+      
+      // Verify batch exists and belongs to company
+      const [batch] = await db.select({ id: leadRawRows.batchId })
+        .from(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!batch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      
+      // Get all person IDs from this batch to clean up
+      const personsInBatch = await db.selectDistinct({ personId: leadRawRows.personId })
+        .from(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId),
+          isNotNull(leadRawRows.personId)
+        ));
+      
+      const personIds = personsInBatch.map(p => p.personId).filter(Boolean) as string[];
+      
+      // Delete in order (respecting foreign key constraints):
+      // 1. Delete operational leads for these persons
+      if (personIds.length > 0) {
+        await db.delete(leadOperational)
+          .where(and(
+            eq(leadOperational.companyId, companyId),
+            inArray(leadOperational.personId, personIds)
+          ));
+      }
+      
+      // 2. Delete contact points for these persons
+      if (personIds.length > 0) {
+        await db.delete(canonicalContactPoints)
+          .where(and(
+            eq(canonicalContactPoints.companyId, companyId),
+            inArray(canonicalContactPoints.personId, personIds)
+          ));
+      }
+      
+      // 3. Delete person-company relations
+      if (personIds.length > 0) {
+        await db.delete(personCompanyRelations)
+          .where(and(
+            eq(personCompanyRelations.companyId, companyId),
+            inArray(personCompanyRelations.personId, personIds)
+          ));
+      }
+      
+      // 4. Delete canonical persons
+      if (personIds.length > 0) {
+        await db.delete(canonicalPersons)
+          .where(and(
+            eq(canonicalPersons.companyId, companyId),
+            inArray(canonicalPersons.id, personIds)
+          ));
+      }
+      
+      // 5. Delete raw rows
+      await db.delete(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId)
+        ));
+      
+      console.log(`[Operational Leads] Deleted batch \${batchId} with \${personIds.length} persons`);
+      res.json({ success: true, deletedPersons: personIds.length });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error deleting batch:", error);
+      res.status(500).json({ message: error.message || "Failed to delete batch" });
+    }
+  });
+
+  // GET /api/leads/operational/batches - List all batches from the 3-layer system
+  app.get("/api/leads/operational/batches", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      
+      // Get distinct batches from leadRawRows with counts
+      const batches = await db.select({
+        id: leadRawRows.batchId,
+        fileName: sql<string>`MAX(${leadRawRows.rawJson}->>'filename')`,
+        totalRows: sql<number>`COUNT(*)::int`,
+        createdAt: sql<string>`MIN(${leadRawRows.importedAt})`,
+        status: sql<string>`'completed'`
+      })
+        .from(leadRawRows)
+        .where(eq(leadRawRows.companyId, companyId))
+        .groupBy(leadRawRows.batchId)
+        .orderBy(sql`MIN(${leadRawRows.importedAt}) DESC`);
+      
+      res.json({ batches });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error fetching batches:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch batches" });
+    }
+  });
+
+  // DELETE /api/leads/operational/batches/:batchId - Delete a batch and all related data
+  app.delete("/api/leads/operational/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { batchId } = req.params;
+
+      // Verify batch exists and belongs to company
+      const [batchExists] = await db.select({ count: sql<number>`count(*)::int` })
+        .from(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId)
+        ));
+
+      if (!batchExists || batchExists.count === 0) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+
+      // Get all person IDs from raw rows in this batch
+      const personIds = await db.selectDistinct({ personId: canonicalPersons.id })
+        .from(canonicalPersons)
+        .where(and(
+          eq(canonicalPersons.companyId, companyId),
+          eq(canonicalPersons.firstRawRowId, sql`(SELECT id FROM lead_raw_rows WHERE batch_id = ${batchId} AND company_id = ${companyId} LIMIT 1)`)
+        ));
+
+      // Delete operational leads for persons in this batch
+      for (const { personId } of personIds) {
+        if (personId) {
+          await db.delete(leadOperational).where(and(
+            eq(leadOperational.personId, personId),
+            eq(leadOperational.companyId, companyId)
+          ));
+        }
+      }
+
+      // Delete contact points associated with this batch
+      await db.delete(canonicalContactPoints).where(and(
+        eq(canonicalContactPoints.batchId, batchId),
+        eq(canonicalContactPoints.companyId, companyId)
+      ));
+
+      // Delete raw rows
+      await db.delete(leadRawRows).where(and(
+        eq(leadRawRows.batchId, batchId),
+        eq(leadRawRows.companyId, companyId)
+      ));
+
+      // Clean up orphaned persons (persons with no contact points)
+      await db.execute(sql`
+        DELETE FROM canonical_persons 
+        WHERE company_id = ${companyId}
+        AND id NOT IN (
+          SELECT DISTINCT person_id FROM canonical_contact_points 
+          WHERE company_id = ${companyId} AND person_id IS NOT NULL
+        )
+      `);
+
+      res.json({ success: true, message: "Batch deleted successfully" });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error deleting batch:", error);
+      res.status(500).json({ message: error.message || "Failed to delete batch" });
+    }
+  });
+
+
+  // GET /api/leads/operational/batches - List all import batches for operational leads
+  app.get("/api/leads/operational/batches", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      
+      // Get unique batches from leadRawRows
+      const batches = await db.select({
+        id: leadRawRows.batchId,
+        fileName: leadRawRows.source,
+        totalRows: sql<number>`count(*)::int`,
+        importedAt: sql<string>`min(\${leadRawRows.importedAt})`,
+      })
+        .from(leadRawRows)
+        .where(eq(leadRawRows.companyId, companyId))
+        .groupBy(leadRawRows.batchId, leadRawRows.source)
+        .orderBy(sql`min(\${leadRawRows.importedAt}) desc`);
+      
+      res.json({ batches });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error fetching batches:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch batches" });
+    }
+  });
+
+  // DELETE /api/leads/operational/batches/:batchId - Delete batch and all associated data
+  app.delete("/api/leads/operational/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { batchId } = req.params;
+      
+      // Verify batch exists and belongs to company
+      const [batch] = await db.select({ id: leadRawRows.batchId })
+        .from(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!batch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      
+      // Get all person IDs from this batch to clean up
+      const personsInBatch = await db.selectDistinct({ personId: leadRawRows.personId })
+        .from(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId),
+          isNotNull(leadRawRows.personId)
+        ));
+      
+      const personIds = personsInBatch.map(p => p.personId).filter(Boolean) as string[];
+      
+      // Delete in order (respecting foreign key constraints):
+      // 1. Delete operational leads for these persons
+      if (personIds.length > 0) {
+        await db.delete(leadOperational)
+          .where(and(
+            eq(leadOperational.companyId, companyId),
+            inArray(leadOperational.personId, personIds)
+          ));
+      }
+      
+      // 2. Delete contact points for these persons
+      if (personIds.length > 0) {
+        await db.delete(canonicalContactPoints)
+          .where(and(
+            eq(canonicalContactPoints.companyId, companyId),
+            inArray(canonicalContactPoints.personId, personIds)
+          ));
+      }
+      
+      // 3. Delete person-company relations
+      if (personIds.length > 0) {
+        await db.delete(personCompanyRelations)
+          .where(and(
+            eq(personCompanyRelations.companyId, companyId),
+            inArray(personCompanyRelations.personId, personIds)
+          ));
+      }
+      
+      // 4. Delete canonical persons
+      if (personIds.length > 0) {
+        await db.delete(canonicalPersons)
+          .where(and(
+            eq(canonicalPersons.companyId, companyId),
+            inArray(canonicalPersons.id, personIds)
+          ));
+      }
+      
+      // 5. Delete raw rows
+      await db.delete(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId)
+        ));
+      
+      console.log(`[Operational Leads] Deleted batch \${batchId} with \${personIds.length} persons`);
+      res.json({ success: true, deletedPersons: personIds.length });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error deleting batch:", error);
+      res.status(500).json({ message: error.message || "Failed to delete batch" });
+    }
+  });
   // =====================================================
   // CONTACT POINTS - Manage contact points
   // =====================================================
