@@ -31,11 +31,12 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 **Key Features:**
 - **Core Management:** User, Company, Quotes & Policies, Consent Documents, Tasks & Reminders, Plan Features, User Seat Limits.
 - **Communication:** Email, SMS/MMS, iMessage, WhatsApp, RCS, Telegram, TikTok.
-- **Billing & Integrations:** Stripe, Telnyx Phone System (full white-label telephony, WebRTC, E911 management, call control application routing).
+- **Billing & Integrations:** Stripe, Telnyx Phone System (full white-label telephony, WebRTC, E911 management, call control application routing, phone number port-in).
 - **Automation & Analytics:** Birthday Automation, Dashboard Analytics ("Policy Journeys"), Email Processing.
 - **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label), Wallet System (Apple Wallet + Google Wallet).
 - **Manual Call Recording:** Supports multi-language announcements (English/Spanish), integrates with WebPhone UI, uses specific API endpoints for start/stop, stores MP3 recordings, and offers Super Admin control for announcement media.
 - **Voicemail Activation:** WebPhone Voicemail tab automatically detects if voicemail is enabled for selected number. If not, shows activation UI that creates a Telnyx voicemail box and configures the number to forward to voicemail. Uses `ensureVoicemailBox()` and `enableVoicemail()` in telnyx-numbers-service. API: `GET/POST /api/voicemail/status|enable/:phoneNumberId`.
+- **Phone Number Port-In:** Multi-step wizard in Phone System page for porting existing numbers from other carriers. Workflow includes portability check, order creation, end-user info collection (business name, authorized person, carrier account details, service address), document upload (LOA and carrier invoice), FOC date selection, and order submission. Uses Telnyx Porting API via `telnyx-porting-service.ts`. Webhook handler at `/webhooks/telnyx/porting` for status updates. Database: `telnyx_porting_orders` table. API: `/api/telnyx/porting/*`.
 - **Unified Usage Billing System:** All billable services (voice, SMS, MMS, DIDs, E911, port-out, recording, CNAM) are tracked and charged through `usage-billing-service.ts`. Uses `usage_items` table with resource type, dual pricing (customer/internal), and optional references. Helper functions: `chargeCallUsage()`, `chargeSmsUsage()`, `chargeMmsUsage()`, `chargeDidMonthly()`, `chargeE911()`, `chargePortOut()`. All rates from `telnyxGlobalPricing` table.
 - **Wallet System:** Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, APNs, and a "Cenicienta Strategy" for lock-screen persistence.
 - **Pulse AI (Intelligent CRM Engine):**
