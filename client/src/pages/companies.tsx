@@ -18,7 +18,7 @@ import { useState, useRef, useEffect } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { formatForDisplay, formatPhoneInput } from "@shared/phone";
-import { GeoapifyAddressAutocomplete } from "@/components/geoapify-address-autocomplete";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { BusinessAutocomplete } from "@/components/business-autocomplete";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Switch } from "@/components/ui/switch";
@@ -832,7 +832,7 @@ export default function Companies() {
                   control={createForm.control}
                   name="company.address"
                   render={({ field }) => (
-                    <GeoapifyAddressAutocomplete
+                    <AddressAutocomplete
                       value={field.value}
                       onChange={field.onChange}
                       onAddressSelect={(address) => {

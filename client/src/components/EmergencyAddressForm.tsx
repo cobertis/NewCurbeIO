@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GeoapifyAddressAutocomplete } from "@/components/geoapify-address-autocomplete";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, MapPin, Shield, AlertTriangle, CheckCircle } from "lucide-react";
@@ -275,7 +275,7 @@ export function EmergencyAddressForm({
                 <FormItem>
                   <FormLabel>Street Address</FormLabel>
                   <FormControl>
-                    <GeoapifyAddressAutocomplete
+                    <GooglePlacesAddressAutocomplete
                       value={field.value}
                       onChange={field.onChange}
                       onAddressSelect={handleAddressSelect}

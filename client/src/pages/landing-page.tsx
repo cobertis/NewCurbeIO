@@ -120,7 +120,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
-import { GeoapifyAddressAutocomplete } from "@/components/geoapify-address-autocomplete";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { MapBlockDisplay } from "@/components/map-block-display";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { PublicBlock } from "@/components/public-block-renderer";
@@ -3250,7 +3250,7 @@ export default function LandingPageBuilder() {
                 <>
                   <div>
                     <Label className="mb-2 block">Address</Label>
-                    <GeoapifyAddressAutocomplete
+                    <GooglePlacesAddressAutocomplete
                       value={editingBlock.content.address || ""}
                       onChange={(value) =>
                         setEditingBlock({

@@ -4063,74 +4063,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-
-  // ==================== GEOAPIFY AUTOCOMPLETE ====================
-  app.get("/api/geoapify/autocomplete", async (req: Request, res: Response) => {
-    try {
-      const { q } = req.query;
-      
-      if (!q || typeof q !== 'string') {
-        return res.status(400).json({ message: "Query parameter 'q' is required" });
-      }
-      
-      if (q.length < 3) {
-        return res.json({ results: [] });
-      }
-
-      const { credentialProvider } = await import("./services/credential-provider");
-      const { apiKey } = await credentialProvider.getGeoapify();
-      
-      if (!apiKey) {
-        console.error("[GEOAPIFY] API KEY not configured");
-        return res.status(503).json({ 
-          message: "Address autocomplete not configured", 
-          requiresApiKey: true, 
-          suggestion: "Please configure Geoapify API key in System Settings" 
-        });
-      }
-
-      const url = new URL("https://api.geoapify.com/v1/geocode/autocomplete");
-      url.searchParams.set("apiKey", apiKey);
-      url.searchParams.set("text", q);
-      url.searchParams.set("limit", "5");
-      url.searchParams.set("filter", "countrycode:us");
-      url.searchParams.set("type", "street");
-      url.searchParams.set("format", "json");
-
-      const response = await fetch(url.toString());
-      
-      if (!response.ok) {
-        console.error("[GEOAPIFY] API error:", response.status, response.statusText);
-        return res.status(response.status).json({ message: "Failed to fetch address suggestions" });
-      }
-      
-      const data = await response.json();
-
-      const results = (data.results || []).map((result: any) => ({
-        place_id: result.place_id || result.properties?.place_id || \`geo_\${Date.now()}_\${Math.random().toString(36).substr(2, 9)}\`,
-        display_name: result.formatted || '',
-        address: {
-          house_number: result.housenumber || '',
-          road: result.street || '',
-          city: result.city || result.town || result.village || '',
-          county: result.county || '',
-          state: result.state || '',
-          state_code: result.state_code || '',
-          postcode: result.postcode || '',
-          country: result.country || 'United States',
-          country_code: result.country_code || 'us',
-        },
-        lat: result.lat,
-        lon: result.lon,
-      }));
-
-      res.json({ results });
-    } catch (error) {
-      console.error("[GEOAPIFY] Autocomplete error:", error);
-      return res.status(500).json({ message: "Failed to fetch address suggestions" });
-    }
-  });
-
   // ==================== LOCATIONIQ AUTOCOMPLETE ====================
   app.get("/api/locationiq/autocomplete", async (req: Request, res: Response) => {
     try {
@@ -4963,19 +4895,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (activationToken.usedAt) {
         return res.status(400).json({ message: "This activation link has already been used" });
       }
-      
-      // Get the user to check if they already have a password
-      const user = await storage.getUser(activationToken.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Return whether user already has password (self-registered) or needs to create one (admin-invited)
       res.json({
         success: true,
-        message: "Token is valid",
-        hasPassword: !!user.password,
-        email: user.email
+        message: "Token is valid"
       });
     } catch (error) {
       console.error("Error validating activation token:", error);
@@ -45848,7 +45770,6 @@ CRITICAL REMINDERS:
 
 
   // POST /api/leads/import/csv - Upload and process CSV file through canonical pipeline
-  // ASYNC BACKGROUND PROCESSING: Returns immediately, processes in batches in background
   app.post("/api/leads/import/csv", requireActiveCompany, leadImportUpload.single('file'), async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
@@ -45877,11 +45798,7 @@ CRITICAL REMINDERS:
 
       const totalRows = records.length;
 
-      if (totalRows === 0) {
-        return res.status(400).json({ message: "CSV file is empty or has no valid rows" });
-      }
-
-      // Create batch record with metadata - status: 'processing'
+      // Create batch record with metadata
       const [batch] = await db.insert(importLeadBatches).values({
         companyId,
         createdBy: userId,
@@ -45893,106 +45810,63 @@ CRITICAL REMINDERS:
         errors: []
       }).returning();
 
-      // IMMEDIATELY RETURN - don't wait for processing
-      res.json({
-        batchId: batch.id,
-        fileName,
-        totalRows,
-        status: 'processing',
-        message: `Import started. Processing ${totalRows} leads in background.`
-      });
-
-      // BACKGROUND PROCESSING - Process in batches of 50 rows
-      const BATCH_SIZE = 50;
       let processedCount = 0;
       let skippedCount = 0;
       let errorCount = 0;
       const errors: { row: number; message: string }[] = [];
+      const warnings: { row: number; warnings: any[] }[] = [];
 
-      const processBatch = async (startIndex: number) => {
-        const endIndex = Math.min(startIndex + BATCH_SIZE, records.length);
-        
-        for (let i = startIndex; i < endIndex; i++) {
-          const row = records[i];
-          try {
-            const result = await leadCanonicalizerService.processRow(
-              companyId,
-              batch.id,
-              i + 1,
-              row
-            );
-
-            if (result.skippedDuplicate) {
-              skippedCount++;
-            } else {
-              processedCount++;
-            }
-          } catch (rowError: any) {
-            errorCount++;
-            if (errors.length < 100) {
-              errors.push({ row: i + 1, message: rowError.message || 'Unknown error' });
-            }
-          }
-        }
-
-        // Update batch progress after each batch of rows
-        await db.update(importLeadBatches)
-          .set({
-            processedRows: processedCount + skippedCount,
-            errorRows: errorCount,
-            errors: errors.slice(0, 100)
-          })
-          .where(eq(importLeadBatches.id, batch.id));
-
-        // Process next batch if there are more rows
-        if (endIndex < records.length) {
-          setImmediate(() => {
-            processBatch(endIndex).catch(async (err) => {
-              console.error(`[Lead Import CSV] Error in batch processing:`, err);
-              try {
-                await db.update(importLeadBatches)
-                  .set({ status: 'failed', errors: [...errors.slice(0, 99), { row: endIndex, message: err.message || 'Processing error' }], completedAt: new Date() })
-                  .where(eq(importLeadBatches.id, batch.id));
-              } catch (updateErr) {
-                console.error(`[Lead Import CSV] Failed to mark batch as failed:`, updateErr);
-              }
-            });
-          });
-        } else {
-          // All rows processed - update final status
-          const finalStatus = errorCount === totalRows ? 'failed' : 
-                              errorCount > 0 ? 'completed_with_errors' : 'completed';
-          
-          await db.update(importLeadBatches)
-            .set({
-              status: finalStatus,
-              processedRows: processedCount + skippedCount,
-              errorRows: errorCount,
-              errors: errors.slice(0, 100),
-              completedAt: new Date()
-            })
-            .where(eq(importLeadBatches.id, batch.id));
-
-          console.log(`[Lead Import CSV] Batch ${batch.id} completed: ${processedCount} processed, ${skippedCount} skipped, ${errorCount} errors`);
-        }
-      };
-
-      // Start background processing with error handling
-      setImmediate(() => processBatch(0).catch(async (err) => {
-        console.error(`[Lead Import CSV] Fatal error processing batch ${batch.id}:`, err);
+      // Process each row through the canonicalizer
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i];
         try {
-          await db.update(importLeadBatches)
-            .set({
-              status: 'failed',
-              errors: [{ row: 0, message: err.message || 'Unexpected processing error' }],
-              completedAt: new Date()
-            })
-            .where(eq(importLeadBatches.id, batch.id));
-        } catch (updateErr) {
-          console.error(`[Lead Import CSV] Failed to mark batch ${batch.id} as failed:`, updateErr);
-        }
-      }));
+          const result = await leadCanonicalizerService.processRow(
+            companyId,
+            batch.id,
+            i + 1,
+            row
+          );
 
+          if (result.skippedDuplicate) {
+            skippedCount++;
+          } else {
+            processedCount++;
+          }
+
+          if (result.warnings && result.warnings.length > 0) {
+            warnings.push({ row: i + 1, warnings: result.warnings });
+          }
+        } catch (rowError: any) {
+          errorCount++;
+          errors.push({ row: i + 1, message: rowError.message || 'Unknown error' });
+        }
+      }
+
+      // Update batch with final counts
+      const finalStatus = errorCount === totalRows ? 'failed' : 
+                          errorCount > 0 ? 'completed_with_errors' : 'completed';
+      
+      await db.update(importLeadBatches)
+        .set({
+          status: finalStatus,
+          totalRows,
+          processedRows: processedCount,
+          errorRows: errorCount,
+          errors: errors.slice(0, 100),
+          completedAt: new Date()
+        })
+        .where(eq(importLeadBatches.id, batch.id));
+
+      res.json({
+        batchId: batch.id,
+        fileName,
+        totalRows,
+        processed: processedCount,
+        skipped: skippedCount,
+        errors: errorCount,
+        errorDetails: errors.slice(0, 10),
+        warnings: warnings.slice(0, 10)
+      });
     } catch (error: any) {
       console.error("[Lead Import CSV] Error:", error);
       res.status(500).json({ message: error.message || "Failed to import CSV" });
@@ -46320,22 +46194,17 @@ CRITICAL REMINDERS:
       const user = req.user as any;
       const companyId = user.companyId;
       
-      // Get batches from importLeadBatches table
+      // Get unique batches from leadRawRows
       const batches = await db.select({
-        id: importLeadBatches.id,
-        fileName: importLeadBatches.fileName,
-        status: importLeadBatches.status,
-        totalRows: importLeadBatches.totalRows,
-        processedRows: importLeadBatches.processedRows,
-        errorRows: importLeadBatches.errorRows,
-        errors: importLeadBatches.errors,
-        createdAt: importLeadBatches.createdAt,
-        completedAt: importLeadBatches.completedAt,
-        createdBy: importLeadBatches.createdBy,
+        id: leadRawRows.batchId,
+        fileName: leadRawRows.source,
+        totalRows: sql<number>`count(*)::int`,
+        importedAt: sql<string>`min(\${leadRawRows.importedAt})`,
       })
-        .from(importLeadBatches)
-        .where(eq(importLeadBatches.companyId, companyId))
-        .orderBy(sql`${importLeadBatches.createdAt} DESC`);
+        .from(leadRawRows)
+        .where(eq(leadRawRows.companyId, companyId))
+        .groupBy(leadRawRows.batchId, leadRawRows.source)
+        .orderBy(sql`min(\${leadRawRows.importedAt}) desc`);
       
       res.json({ batches });
     } catch (error: any) {
@@ -46427,6 +46296,206 @@ CRITICAL REMINDERS:
     }
   });
 
+  // GET /api/leads/operational/batches - List all batches from the 3-layer system
+  app.get("/api/leads/operational/batches", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      
+      // Get distinct batches from leadRawRows with counts
+      const batches = await db.select({
+        id: leadRawRows.batchId,
+        fileName: sql<string>`MAX(${leadRawRows.rawJson}->>'filename')`,
+        totalRows: sql<number>`COUNT(*)::int`,
+        createdAt: sql<string>`MIN(${leadRawRows.importedAt})`,
+        status: sql<string>`'completed'`
+      })
+        .from(leadRawRows)
+        .where(eq(leadRawRows.companyId, companyId))
+        .groupBy(leadRawRows.batchId)
+        .orderBy(sql`MIN(${leadRawRows.importedAt}) DESC`);
+      
+      res.json({ batches });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error fetching batches:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch batches" });
+    }
+  });
+
+  // DELETE /api/leads/operational/batches/:batchId - Delete a batch and all related data
+  app.delete("/api/leads/operational/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { batchId } = req.params;
+
+      // Verify batch exists and belongs to company
+      const [batchExists] = await db.select({ count: sql<number>`count(*)::int` })
+        .from(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId)
+        ));
+
+      if (!batchExists || batchExists.count === 0) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+
+      // Get all person IDs from raw rows in this batch
+      const personIds = await db.selectDistinct({ personId: canonicalPersons.id })
+        .from(canonicalPersons)
+        .where(and(
+          eq(canonicalPersons.companyId, companyId),
+          eq(canonicalPersons.firstRawRowId, sql`(SELECT id FROM lead_raw_rows WHERE batch_id = ${batchId} AND company_id = ${companyId} LIMIT 1)`)
+        ));
+
+      // Delete operational leads for persons in this batch
+      for (const { personId } of personIds) {
+        if (personId) {
+          await db.delete(leadOperational).where(and(
+            eq(leadOperational.personId, personId),
+            eq(leadOperational.companyId, companyId)
+          ));
+        }
+      }
+
+      // Delete contact points associated with this batch
+      await db.delete(canonicalContactPoints).where(and(
+        eq(canonicalContactPoints.batchId, batchId),
+        eq(canonicalContactPoints.companyId, companyId)
+      ));
+
+      // Delete raw rows
+      await db.delete(leadRawRows).where(and(
+        eq(leadRawRows.batchId, batchId),
+        eq(leadRawRows.companyId, companyId)
+      ));
+
+      // Clean up orphaned persons (persons with no contact points)
+      await db.execute(sql`
+        DELETE FROM canonical_persons 
+        WHERE company_id = ${companyId}
+        AND id NOT IN (
+          SELECT DISTINCT person_id FROM canonical_contact_points 
+          WHERE company_id = ${companyId} AND person_id IS NOT NULL
+        )
+      `);
+
+      res.json({ success: true, message: "Batch deleted successfully" });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error deleting batch:", error);
+      res.status(500).json({ message: error.message || "Failed to delete batch" });
+    }
+  });
+
+
+  // GET /api/leads/operational/batches - List all import batches for operational leads
+  app.get("/api/leads/operational/batches", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      
+      // Get unique batches from leadRawRows
+      const batches = await db.select({
+        id: leadRawRows.batchId,
+        fileName: leadRawRows.source,
+        totalRows: sql<number>`count(*)::int`,
+        importedAt: sql<string>`min(\${leadRawRows.importedAt})`,
+      })
+        .from(leadRawRows)
+        .where(eq(leadRawRows.companyId, companyId))
+        .groupBy(leadRawRows.batchId, leadRawRows.source)
+        .orderBy(sql`min(\${leadRawRows.importedAt}) desc`);
+      
+      res.json({ batches });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error fetching batches:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch batches" });
+    }
+  });
+
+  // DELETE /api/leads/operational/batches/:batchId - Delete batch and all associated data
+  app.delete("/api/leads/operational/batches/:batchId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { batchId } = req.params;
+      
+      // Verify batch exists and belongs to company
+      const [batch] = await db.select({ id: leadRawRows.batchId })
+        .from(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!batch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      
+      // Get all person IDs from this batch to clean up
+      const personsInBatch = await db.selectDistinct({ personId: leadRawRows.personId })
+        .from(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId),
+          isNotNull(leadRawRows.personId)
+        ));
+      
+      const personIds = personsInBatch.map(p => p.personId).filter(Boolean) as string[];
+      
+      // Delete in order (respecting foreign key constraints):
+      // 1. Delete operational leads for these persons
+      if (personIds.length > 0) {
+        await db.delete(leadOperational)
+          .where(and(
+            eq(leadOperational.companyId, companyId),
+            inArray(leadOperational.personId, personIds)
+          ));
+      }
+      
+      // 2. Delete contact points for these persons
+      if (personIds.length > 0) {
+        await db.delete(canonicalContactPoints)
+          .where(and(
+            eq(canonicalContactPoints.companyId, companyId),
+            inArray(canonicalContactPoints.personId, personIds)
+          ));
+      }
+      
+      // 3. Delete person-company relations
+      if (personIds.length > 0) {
+        await db.delete(personCompanyRelations)
+          .where(and(
+            eq(personCompanyRelations.companyId, companyId),
+            inArray(personCompanyRelations.personId, personIds)
+          ));
+      }
+      
+      // 4. Delete canonical persons
+      if (personIds.length > 0) {
+        await db.delete(canonicalPersons)
+          .where(and(
+            eq(canonicalPersons.companyId, companyId),
+            inArray(canonicalPersons.id, personIds)
+          ));
+      }
+      
+      // 5. Delete raw rows
+      await db.delete(leadRawRows)
+        .where(and(
+          eq(leadRawRows.batchId, batchId),
+          eq(leadRawRows.companyId, companyId)
+        ));
+      
+      console.log(`[Operational Leads] Deleted batch \${batchId} with \${personIds.length} persons`);
+      res.json({ success: true, deletedPersons: personIds.length });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error deleting batch:", error);
+      res.status(500).json({ message: error.message || "Failed to delete batch" });
+    }
+  });
   // =====================================================
   // CONTACT POINTS - Manage contact points
   // =====================================================

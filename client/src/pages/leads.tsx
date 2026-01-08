@@ -1,13 +1,8 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { format, formatDistanceToNow } from "date-fns";
-import { 
-  Search, CheckCircle, XCircle, Trash2, Users, ChevronDown, Mail, Phone, 
-  MessageSquare, AlertTriangle, Ban, ShieldOff, Zap, PhoneCall, Star, Info, 
-  FileJson, Building, Filter, X, Upload, FileSpreadsheet, Calendar, Loader2, 
-  AlertCircle, MoreHorizontal, ChevronRight, Plus, SlidersHorizontal, ArrowUpDown,
-  UserCheck, PhoneOff, MailCheck, UserX, Download, RefreshCw
-} from "lucide-react";
+import { format } from "date-fns";
+import { Search, CheckCircle, XCircle, Trash2, Users, ChevronDown, Mail, Phone, MessageSquare, AlertTriangle, Ban, ShieldOff, Zap, PhoneCall, Star, Info, FileJson, Building, Filter, X, Upload, FileSpreadsheet, Calendar, Loader2 } from "lucide-react";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,10 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
@@ -57,7 +50,6 @@ interface OperationalLead {
   riskFlags: {
     dnc_all?: boolean;
     no_valid_phone?: boolean;
-    no_valid_email?: boolean;
     all_opted_out?: boolean;
     [key: string]: boolean | undefined;
   };
@@ -103,15 +95,6 @@ interface ImportBatch {
   createdAt: string;
 }
 
-const statusOptions = [
-  { value: "new", label: "New" },
-  { value: "contacted", label: "Contacted" },
-  { value: "qualified", label: "Qualified" },
-  { value: "nurturing", label: "Nurturing" },
-  { value: "converted", label: "Converted" },
-  { value: "lost", label: "Lost" },
-];
-
 export default function Leads() {
   const { toast } = useToast();
   
@@ -133,22 +116,15 @@ export default function Leads() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [rawImportDialogOpen, setRawImportDialogOpen] = useState(false);
   const [rawImportData, setRawImportData] = useState<any>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [deleteBatchDialogOpen, setDeleteBatchDialogOpen] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<ImportBatch | null>(null);
   const [csvUploadDialogOpen, setCsvUploadDialogOpen] = useState(false);
   const [uploadingCsv, setUploadingCsv] = useState(false);
-  const [sortBy, setSortBy] = useState<string>("score_desc");
-  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: batchesData, isLoading: isLoadingBatches } = useQuery<{ batches: ImportBatch[] }>({
     queryKey: ["/api/leads/operational/batches"],
-    refetchInterval: (query) => {
-      const batches = query.state.data?.batches || [];
-      const hasProcessing = batches.some(b => b.status === 'processing');
-      return hasProcessing ? 3000 : false;
-    },
   });
 
   const { data: operationalLeadsData, isLoading: isLoadingLeads } = useQuery<{ leads: OperationalLead[], total: number }>({
@@ -237,42 +213,65 @@ export default function Leads() {
     },
   });
 
-  const batches = batchesData?.batches || [];
-  const leads = operationalLeadsData?.leads || [];
-  const totalLeads = operationalLeadsData?.total || 0;
-
-  const kpis = useMemo(() => {
-    const total = totalLeads;
-    const contactable = leads.filter(l => l.recommendedNextAction !== 'UNCONTACTABLE').length;
-    const dncBlocked = leads.filter(l => l.riskFlags?.dnc_all).length;
-    const noPhone = leads.filter(l => l.riskFlags?.no_valid_phone).length;
-    const validEmail = leads.filter(l => l.bestEmail).length;
-    return { total, contactable, dncBlocked, noPhone, validEmail };
-  }, [leads, totalLeads]);
-
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (minScore > 0) count++;
-    if (statusFilter !== "all") count++;
-    if (stateFilter !== "all") count++;
-    if (zipFilter) count++;
-    if (onlyContactable) count++;
-    if (excludeDnc) count++;
-    if (hasMobileValid) count++;
-    if (hasVerifiedEmail) count++;
-    if (selectedRiskFlags.length > 0) count++;
-    return count;
-  }, [minScore, statusFilter, stateFilter, zipFilter, onlyContactable, excludeDnc, hasMobileValid, hasVerifiedEmail, selectedRiskFlags]);
+  const handleCsvUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingCsv(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/leads/import/csv', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        toast({ 
+          title: "CSV Import Started", 
+          description: `Processing ${data.totalRows || 'your'} leads. They will appear shortly.`
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/leads/operational/batches"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/leads/operational"] });
+        setCsvUploadDialogOpen(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else {
+        const error = await response.json();
+        toast({ title: "Import Failed", description: error.message || "Failed to import CSV", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("CSV upload error:", error);
+      toast({ title: "Import Failed", description: "An error occurred during CSV upload", variant: "destructive" });
+    } finally {
+      setUploadingCsv(false);
+    }
+  };
 
   const fetchLeadDetails = async (leadId: string) => {
     try {
-      const response = await fetch(`/api/leads/operational/${leadId}`, { credentials: "include" });
+      const response = await fetch(`/api/leads/operational/${leadId}`, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
-        setLeadDetails(data.lead);
+        setLeadDetails({ ...data.lead, contactPoints: data.contactPoints || [], employerName: data.employers?.[0]?.employerName, jobTitle: data.employers?.[0]?.jobTitle, ...data.person });
       }
     } catch (error) {
-      console.error("Failed to fetch lead details:", error);
+      console.error("Failed to fetch lead details", error);
+    }
+  };
+
+  const fetchRawImport = async (leadId: string) => {
+    try {
+      const response = await fetch(`/api/leads/operational/${leadId}/raw`, { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setRawImportData(data);
+        setRawImportDialogOpen(true);
+      } else {
+        const error = await response.json();
+        toast({ title: "Error", description: error.message || "Failed to fetch raw import data", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Failed to fetch raw import data", error);
+      toast({ title: "Error", description: "Failed to fetch raw import data", variant: "destructive" });
     }
   };
 
@@ -282,74 +281,24 @@ export default function Leads() {
     await fetchLeadDetails(leadId);
   };
 
-  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    setUploadingCsv(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    
-    try {
-      const response = await fetch("/api/leads/import", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-      
-      if (response.ok) {
-        toast({ title: "Import started", description: "Your CSV is being processed in the background." });
-        queryClient.invalidateQueries({ queryKey: ["/api/leads/operational/batches"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/leads/operational"] });
-        setCsvUploadDialogOpen(false);
-      } else {
-        const error = await response.json();
-        toast({ title: "Import failed", description: error.message, variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Import failed", description: "Network error", variant: "destructive" });
-    } finally {
-      setUploadingCsv(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
+  const batches = batchesData?.batches || [];
+  const leads = operationalLeadsData?.leads || [];
+  const totalLeads = operationalLeadsData?.total || 0;
+  const totalPages = Math.ceil(totalLeads / 50);
+  const uniqueStates = Array.from(new Set(leads.map(l => l.personState).filter(Boolean))) as string[];
 
-  const getScoreBadge = (score: number) => {
-    if (score >= 80) return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 text-[10px] px-1.5">{score}</Badge>;
-    if (score >= 50) return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 text-[10px] px-1.5">{score}</Badge>;
-    if (score >= 20) return <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 text-[10px] px-1.5">{score}</Badge>;
-    return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 text-[10px] px-1.5">{score}</Badge>;
-  };
-
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case 'new': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
-      case 'contacted': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300';
-      case 'qualified': return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
-      case 'nurturing': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300';
-      case 'converted': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
-      case 'lost': return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const getRiskBadges = (flags: OperationalLead['riskFlags']) => {
-    const badges = [];
-    if (flags?.dnc_all) badges.push(<Tooltip key="dnc"><TooltipTrigger><Ban className="h-3 w-3 text-red-500" /></TooltipTrigger><TooltipContent>DNC</TooltipContent></Tooltip>);
-    if (flags?.no_valid_phone) badges.push(<Tooltip key="nophone"><TooltipTrigger><PhoneOff className="h-3 w-3 text-orange-500" /></TooltipTrigger><TooltipContent>No valid phone</TooltipContent></Tooltip>);
-    if (flags?.all_opted_out) badges.push(<Tooltip key="optout"><TooltipTrigger><ShieldOff className="h-3 w-3 text-gray-500" /></TooltipTrigger><TooltipContent>Opted out</TooltipContent></Tooltip>);
-    return badges;
-  };
-
-  const maskValue = (value: string | null, type: 'phone' | 'email') => {
-    if (!value) return '-';
-    if (type === 'phone') return value.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
-    if (type === 'email') {
-      const [local, domain] = value.split('@');
-      return local.slice(0, 2) + '***@' + domain;
-    }
-    return value;
-  };
+  const selectedBatch = batches.find(b => b.id === batchFilter);
+  const activeFiltersCount = [
+    minScore > 0,
+    statusFilter !== "all",
+    stateFilter !== "all",
+    zipFilter !== "",
+    onlyContactable,
+    excludeDnc,
+    hasMobileValid,
+    hasVerifiedEmail,
+    selectedRiskFlags.length > 0
+  ].filter(Boolean).length;
 
   const clearAllFilters = () => {
     setMinScore(0);
@@ -361,542 +310,964 @@ export default function Leads() {
     setHasMobileValid(false);
     setHasVerifiedEmail(false);
     setSelectedRiskFlags([]);
-    setBatchFilter("all");
-    setSearch("");
+    setPage(1);
   };
 
-  const SkeletonRow = () => (
-    <TableRow className="h-[48px]">
-      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-14" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-6" /></TableCell>
-    </TableRow>
-  );
+  const maskValue = (value: string | null, type: 'phone' | 'email'): string => {
+    if (!value) return '-';
+    if (type === 'phone') {
+      if (value.length <= 4) return value;
+      return value.slice(0, -4).replace(/./g, '*') + value.slice(-4);
+    }
+    const [local, domain] = value.split('@');
+    if (!domain) return value;
+    return local.slice(0, 2) + '***@' + domain;
+  };
+
+  const getScoreDisplay = (score: number) => {
+    const color = score >= 70 ? 'bg-green-500' : score >= 40 ? 'bg-yellow-500' : 'bg-red-500';
+    const textColor = score >= 70 ? 'text-green-700 dark:text-green-300' : score >= 40 ? 'text-yellow-700 dark:text-yellow-300' : 'text-red-700 dark:text-red-300';
+    return (
+      <div className="flex items-center gap-2 min-w-[100px]">
+        <Progress value={score} className={`h-2 flex-1 [&>div]:${color}`} />
+        <span className={`text-xs font-semibold ${textColor} w-8`}>{score}</span>
+      </div>
+    );
+  };
+
+  const getRiskFlagChips = (riskFlags: OperationalLead['riskFlags']) => {
+    const chips = [];
+    if (riskFlags?.dnc_all) {
+      chips.push(
+        <Badge key="dnc" variant="destructive" className="gap-1 text-xs" data-testid="badge-risk-dnc">
+          <Ban className="h-3 w-3" /> DNC
+        </Badge>
+      );
+    }
+    if (riskFlags?.no_valid_phone) {
+      chips.push(
+        <Badge key="no-phone" variant="secondary" className="gap-1 text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200" data-testid="badge-risk-no-phone">
+          <ShieldOff className="h-3 w-3" /> No Phone
+        </Badge>
+      );
+    }
+    if (riskFlags?.all_opted_out) {
+      chips.push(
+        <Badge key="opted-out" variant="secondary" className="gap-1 text-xs bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200" data-testid="badge-risk-opted-out">
+          <X className="h-3 w-3" /> Opted Out
+        </Badge>
+      );
+    }
+    return chips.length > 0 ? chips : <span className="text-xs text-muted-foreground">—</span>;
+  };
+
+  const getBestContactDisplay = (lead: OperationalLead) => {
+    if (lead.bestPhoneToCall && lead.bestPhoneValue) {
+      return { icon: <PhoneCall className="h-4 w-4 text-green-600" />, value: maskValue(lead.bestPhoneValue, 'phone'), tooltip: 'Best phone for calling' };
+    }
+    if (lead.bestPhoneForSms && lead.bestSmsValue) {
+      return { icon: <MessageSquare className="h-4 w-4 text-blue-600" />, value: maskValue(lead.bestSmsValue, 'phone'), tooltip: 'Best phone for SMS' };
+    }
+    if (lead.bestEmail && lead.bestEmailValue) {
+      return { icon: <Mail className="h-4 w-4 text-purple-600" />, value: maskValue(lead.bestEmailValue, 'email'), tooltip: 'Best email' };
+    }
+    return { icon: <AlertTriangle className="h-4 w-4 text-muted-foreground" />, value: 'No contact', tooltip: 'No valid contact method' };
+  };
+
+  const getContactBlockedReason = (lead: OperationalLead, type: 'call' | 'sms' | 'email'): string | null => {
+    if (type === 'call' && !lead.bestPhoneToCall) {
+      if (lead.riskFlags?.dnc_all) return "Blocked: DNC";
+      if (lead.riskFlags?.no_valid_phone) return "No valid phone";
+      return "No phone available";
+    }
+    if (type === 'sms' && !lead.bestPhoneForSms) {
+      if (lead.riskFlags?.all_opted_out) return "Opted out";
+      if (lead.riskFlags?.no_valid_phone) return "No valid phone";
+      return "No SMS permitted";
+    }
+    if (type === 'email' && !lead.bestEmail) {
+      return "No valid email";
+    }
+    return null;
+  };
+
+  const getPipelineStatusBadge = (status: string) => {
+    const config: Record<string, { label: string; className: string }> = {
+      new: { label: "New", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200" },
+      contacted: { label: "Contacted", className: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200" },
+      qualified: { label: "Qualified", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200" },
+      nurturing: { label: "Nurturing", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200" },
+      converted: { label: "Converted", className: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200" },
+      lost: { label: "Lost", className: "bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-200" },
+    };
+    const c = config[status] || config.new;
+    return <Badge className={c.className}>{c.label}</Badge>;
+  };
 
   return (
-    <TooltipProvider>
-      <div className="h-screen flex flex-col bg-background">
-        {/* TOP BAR - sticky h-14 */}
-        <div className="h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex items-center px-6 gap-4" data-testid="leads-topbar">
-          <div className="flex items-center gap-2 min-w-[140px]">
-            <h1 className="font-semibold text-lg">Leads</h1>
-            <Badge variant="secondary" className="text-xs">{totalLeads}</Badge>
+    <div className="container mx-auto p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight" data-testid="page-title">Leads</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {totalLeads} lead{totalLeads !== 1 ? 's' : ''} {batchFilter !== "all" && selectedBatch ? `from ${selectedBatch.fileName}` : 'total'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={() => setCsvUploadDialogOpen(true)}
+            className="gap-2"
+            data-testid="button-import-csv"
+          >
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
+          <Select value={batchFilter} onValueChange={(v) => { setBatchFilter(v); setPage(1); }}>
+            <SelectTrigger className="w-[200px]" data-testid="select-batch-filter">
+              <SelectValue placeholder="All Batches" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Batches</SelectItem>
+              {batches.map((batch) => (
+                <SelectItem key={batch.id} value={batch.id}>
+                  {batch.fileName} ({batch.totalRows})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Batch Management Panel */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold flex items-center gap-2" data-testid="section-batches">
+              <FileSpreadsheet className="h-4 w-4" />
+              Import Batches
+            </h3>
+            <Badge variant="outline" className="text-xs">{batches.length} batch{batches.length !== 1 ? 'es' : ''}</Badge>
           </div>
-          
-          <div className="flex-1 max-w-[520px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9"
-                data-testid="input-search-leads"
-              />
+          {isLoadingBatches ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2 ml-auto">
-            <Button size="sm" onClick={() => setCsvUploadDialogOpen(true)} data-testid="button-import-csv">
-              <Upload className="h-4 w-4 mr-1.5" />
-              Import CSV
-            </Button>
-            <Button size="sm" variant="outline" data-testid="button-create-lead">
-              <Plus className="h-4 w-4 mr-1.5" />
-              Create Lead
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline" className="gap-1.5">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Batch
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => setBatchFilter("all")}>
-                  All batches
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {batches.map(b => (
-                  <DropdownMenuItem key={b.id} onClick={() => setBatchFilter(b.id)}>
-                    <span className="truncate flex-1">{b.fileName}</span>
-                    <Badge variant="secondary" className="ml-2 text-[10px]">{b.totalRows}</Badge>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* KPI CHIPS - compact row */}
-        <div className="h-10 border-b bg-muted/30 flex items-center px-6 gap-3" data-testid="leads-kpi-bar">
-          <div className="flex items-center gap-1.5 text-xs">
-            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">Total:</span>
-            <span className="font-medium">{kpis.total}</span>
-          </div>
-          <Separator orientation="vertical" className="h-4" />
-          <div className="flex items-center gap-1.5 text-xs">
-            <UserCheck className="h-3.5 w-3.5 text-green-600" />
-            <span className="text-muted-foreground">Contactable:</span>
-            <span className="font-medium text-green-600">{kpis.contactable}</span>
-          </div>
-          <Separator orientation="vertical" className="h-4" />
-          <div className="flex items-center gap-1.5 text-xs">
-            <Ban className="h-3.5 w-3.5 text-red-500" />
-            <span className="text-muted-foreground">DNC:</span>
-            <span className="font-medium text-red-500">{kpis.dncBlocked}</span>
-          </div>
-          <Separator orientation="vertical" className="h-4" />
-          <div className="flex items-center gap-1.5 text-xs">
-            <PhoneOff className="h-3.5 w-3.5 text-orange-500" />
-            <span className="text-muted-foreground">No Phone:</span>
-            <span className="font-medium text-orange-500">{kpis.noPhone}</span>
-          </div>
-          <Separator orientation="vertical" className="h-4" />
-          <div className="flex items-center gap-1.5 text-xs">
-            <MailCheck className="h-3.5 w-3.5 text-blue-600" />
-            <span className="text-muted-foreground">Valid Email:</span>
-            <span className="font-medium text-blue-600">{kpis.validEmail}</span>
-          </div>
-        </div>
-
-        {/* MAIN GRID - 12 columns */}
-        <div className="flex-1 overflow-hidden">
-          <div className="max-w-screen-2xl mx-auto px-6 py-4 h-full">
-            <div className="grid grid-cols-12 gap-4 h-full">
-              
-              {/* SIDEBAR - col-span-3 */}
-              <div className="col-span-3 min-w-[280px]">
-                <div className="h-[calc(100vh-152px)] bg-muted/20 border rounded-lg flex flex-col">
-                  <div className="p-3 border-b flex items-center justify-between">
+          ) : batches.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <FileSpreadsheet className="h-10 w-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No batches imported yet</p>
+              <p className="text-xs mt-1">Click "Import CSV" to upload your first batch of leads</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {batches.map((batch) => (
+                <div 
+                  key={batch.id} 
+                  className={`flex items-center justify-between p-3 rounded-lg border ${batchFilter === batch.id ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'}`}
+                  data-testid={`batch-item-${batch.id}`}
+                >
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="font-medium text-sm">Import Batches</h2>
-                      <Badge variant="secondary" className="text-[10px]">{batches.length}</Badge>
+                      <span className="font-medium text-sm truncate" title={batch.fileName}>{batch.fileName}</span>
+                      <Badge variant={batch.status === 'completed' ? 'default' : batch.status === 'processing' ? 'secondary' : 'destructive'} className="text-xs">
+                        {batch.status}
+                      </Badge>
                     </div>
-                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setCsvUploadDialogOpen(true)}>
-                      <Upload className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {batch.totalRows} rows
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(batch.createdAt), 'MMM d, yyyy h:mm a')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-2">
+                    {batchFilter !== batch.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setBatchFilter(batch.id); setPage(1); }}
+                        className="h-7 text-xs"
+                        data-testid={`button-filter-batch-${batch.id}`}
+                      >
+                        Filter
+                      </Button>
+                    )}
+                    {batchFilter === batch.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setBatchFilter("all")}
+                        className="h-7 text-xs"
+                        data-testid={`button-clear-batch-filter-${batch.id}`}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setBatchToDelete(batch); setDeleteBatchDialogOpen(true); }}
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      data-testid={`button-delete-batch-${batch.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  
-                  <div className="flex-1 overflow-auto p-2">
-                    {isLoadingBatches ? (
-                      <div className="space-y-2">
-                        {[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
-                      </div>
-                    ) : batches.length === 0 ? (
-                      <div className="p-3 text-center">
-                        <p className="text-xs text-muted-foreground mb-2">No batches imported yet</p>
-                        <Button size="sm" variant="outline" onClick={() => setCsvUploadDialogOpen(true)} className="h-7 text-xs">
-                          <Upload className="h-3 w-3 mr-1" />
-                          Import CSV
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        {batches.map(batch => {
-                          const successRate = batch.totalRows > 0 ? Math.round(((batch.processedRows || 0) - (batch.errorRows || 0)) / batch.totalRows * 100) : 0;
-                          return (
-                            <div
-                              key={batch.id}
-                              className={`p-2.5 rounded-md cursor-pointer transition-colors ${
-                                selectedBatchId === batch.id || batchFilter === batch.id
-                                  ? 'bg-primary/10 border border-primary/30'
-                                  : 'hover:bg-muted/50 border border-transparent'
-                              }`}
-                              onClick={() => {
-                                setSelectedBatchId(batch.id);
-                                setBatchFilter(batch.id);
-                              }}
-                              data-testid={`batch-item-${batch.id}`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium truncate" title={batch.fileName}>{batch.fileName}</p>
-                                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                                    {format(new Date(batch.createdAt), "MMM d, h:mm a")}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  {batch.status === 'processing' ? (
-                                    <Badge variant="secondary" className="text-[10px] px-1.5 gap-1">
-                                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                                      {batch.totalRows > 0 ? Math.round((batch.processedRows || 0) / batch.totalRows * 100) : 0}%
-                                    </Badge>
-                                  ) : batch.status === 'failed' ? (
-                                    <Badge variant="destructive" className="text-[10px] px-1.5">Failed</Badge>
-                                  ) : (
-                                    <Badge variant="secondary" className="text-[10px] px-1.5 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
-                                      {successRate}%
-                                    </Badge>
-                                  )}
-                                  <span className="text-[10px] text-muted-foreground">{batch.totalRows}</span>
-                                </div>
-                              </div>
-                              {batch.status === 'processing' && (
-                                <Progress value={batch.totalRows > 0 ? (batch.processedRows || 0) / batch.totalRows * 100 : 0} className="h-1 mt-2" />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
                 </div>
-              </div>
-
-              {/* MAIN CONTENT - col-span-9 */}
-              <div className="col-span-9">
-                <div className="h-[calc(100vh-152px)] border rounded-lg flex flex-col bg-background">
-                  {/* Table header bar */}
-                  <div className="p-3 border-b flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setFiltersOpen(true)}>
-                        <SlidersHorizontal className="h-3.5 w-3.5" />
-                        Filters
-                        {activeFiltersCount > 0 && (
-                          <Badge className="h-4 w-4 p-0 flex items-center justify-center text-[10px]">{activeFiltersCount}</Badge>
-                        )}
-                      </Button>
-                      <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger className="h-8 w-[140px] text-xs">
-                          <ArrowUpDown className="h-3 w-3 mr-1" />
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="score_desc">Score (High)</SelectItem>
-                          <SelectItem value="score_asc">Score (Low)</SelectItem>
-                          <SelectItem value="created_desc">Newest</SelectItem>
-                          <SelectItem value="created_asc">Oldest</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {activeFiltersCount > 0 && (
-                      <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={clearAllFilters}>
-                        <X className="h-3 w-3" />
-                        Clear filters
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Table container with scroll */}
-                  <div className="flex-1 overflow-auto">
-                    <Table>
-                      <TableHeader className="sticky top-0 bg-background z-10">
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead className="w-[200px]">Lead</TableHead>
-                          <TableHead className="w-[100px]">Contact</TableHead>
-                          <TableHead className="w-[50px] text-center">Score</TableHead>
-                          <TableHead className="w-[90px]">Status</TableHead>
-                          <TableHead className="w-[80px]">Owner</TableHead>
-                          <TableHead className="w-[70px]">Created</TableHead>
-                          <TableHead className="w-[40px]"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {/* Empty state - inline, not centered */}
-                        {!isLoadingLeads && leads.length === 0 && (
-                          <>
-                            <TableRow className="hover:bg-transparent">
-                              <TableCell colSpan={7} className="p-4">
-                                <div className="flex items-start gap-4">
-                                  <div className="flex-1">
-                                    <p className="text-sm font-medium mb-1">No leads yet</p>
-                                    <p className="text-xs text-muted-foreground mb-3">Import a CSV file to start managing your leads.</p>
-                                    <div className="flex items-center gap-2">
-                                      <Button size="sm" onClick={() => setCsvUploadDialogOpen(true)}>
-                                        <Upload className="h-3.5 w-3.5 mr-1.5" />
-                                        Import CSV
-                                      </Button>
-                                      <Button size="sm" variant="outline" asChild>
-                                        <a href="/api/leads/sample-csv" download>
-                                          <Download className="h-3.5 w-3.5 mr-1.5" />
-                                          Download sample
-                                        </a>
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
-                                    <div className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-600" />Validation</div>
-                                    <div className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-600" />Phone verify</div>
-                                    <div className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-600" />DNC check</div>
-                                    <div className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-600" />Scoring</div>
-                                  </div>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                            {/* Skeleton rows to fill space */}
-                            {[1,2,3,4,5,6,7,8].map(i => <SkeletonRow key={i} />)}
-                          </>
-                        )}
-
-                        {/* Loading state - skeleton rows */}
-                        {isLoadingLeads && (
-                          <>
-                            {[1,2,3,4,5,6,7,8,9,10].map(i => <SkeletonRow key={i} />)}
-                          </>
-                        )}
-
-                        {/* Actual data rows */}
-                        {!isLoadingLeads && leads.map((lead) => {
-                          const riskBadges = getRiskBadges(lead.riskFlags);
-                          return (
-                            <TableRow 
-                              key={lead.id} 
-                              className="h-[48px] cursor-pointer hover:bg-muted/50"
-                              onClick={() => openLeadDrawer(lead.id)}
-                              data-testid={`lead-row-${lead.id}`}
-                            >
-                              <TableCell className="py-2">
-                                <div>
-                                  <p className="font-medium text-sm truncate max-w-[180px]" title={`${lead.firstName || ''} ${lead.lastName || ''}`.trim() || 'Unknown'}>
-                                    {lead.firstName || lead.lastName ? `${lead.firstName || ''} ${lead.lastName || ''}`.trim() : 'Unknown'}
-                                  </p>
-                                  <p className="text-[11px] text-muted-foreground truncate max-w-[180px]">
-                                    {[lead.city, lead.personState].filter(Boolean).join(', ') || '-'}
-                                  </p>
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-2">
-                                <div className="flex items-center gap-1">
-                                  {lead.bestPhoneToCall && (
-                                    <Tooltip><TooltipTrigger><PhoneCall className="h-3.5 w-3.5 text-green-600" /></TooltipTrigger><TooltipContent>Call available</TooltipContent></Tooltip>
-                                  )}
-                                  {lead.bestPhoneForSms && (
-                                    <Tooltip><TooltipTrigger><MessageSquare className="h-3.5 w-3.5 text-blue-600" /></TooltipTrigger><TooltipContent>SMS available</TooltipContent></Tooltip>
-                                  )}
-                                  {lead.bestEmail && (
-                                    <Tooltip><TooltipTrigger><Mail className="h-3.5 w-3.5 text-purple-600" /></TooltipTrigger><TooltipContent>Email available</TooltipContent></Tooltip>
-                                  )}
-                                  {riskBadges.length > 0 && <div className="flex gap-0.5 ml-1">{riskBadges}</div>}
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-2 text-center">
-                                {getScoreBadge(lead.contactabilityScore)}
-                              </TableCell>
-                              <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
-                                <Select 
-                                  value={lead.status} 
-                                  onValueChange={(value) => updateLeadStatusMutation.mutate({ id: lead.id, status: value })}
-                                >
-                                  <SelectTrigger className="h-6 text-[10px] border-0 bg-transparent hover:bg-muted p-0 px-1 w-auto" data-testid={`select-status-${lead.id}`}>
-                                    <Badge className={`${getStatusBadgeClass(lead.status)} text-[10px] px-1.5`}>
-                                      {statusOptions.find(s => s.value === lead.status)?.label || lead.status}
-                                    </Badge>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {statusOptions.map((opt) => (
-                                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell className="py-2">
-                                <span className="text-xs text-muted-foreground truncate block max-w-[70px]" title={lead.ownerName || 'Unassigned'}>
-                                  {lead.ownerName || '-'}
-                                </span>
-                              </TableCell>
-                              <TableCell className="py-2 text-[11px] text-muted-foreground">
-                                {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: false })}
-                              </TableCell>
-                              <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                      <MoreHorizontal className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => openLeadDrawer(lead.id)}>View details</DropdownMenuItem>
-                                    {lead.bestPhoneToCall && <DropdownMenuItem><PhoneCall className="h-3.5 w-3.5 mr-1.5" />Call</DropdownMenuItem>}
-                                    {lead.bestPhoneForSms && <DropdownMenuItem><MessageSquare className="h-3.5 w-3.5 mr-1.5" />SMS</DropdownMenuItem>}
-                                    {lead.bestEmail && <DropdownMenuItem><Mail className="h-3.5 w-3.5 mr-1.5" />Email</DropdownMenuItem>}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Pagination */}
-                  {totalLeads > 50 && (
-                    <div className="p-3 border-t flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        Showing {(page - 1) * 50 + 1}-{Math.min(page * 50, totalLeads)} of {totalLeads}
-                      </p>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Prev</Button>
-                        <Button size="sm" variant="outline" disabled={page * 50 >= totalLeads} onClick={() => setPage(p => p + 1)}>Next</Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+              ))}
             </div>
-          </div>
-        </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Filters Sheet */}
-        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-          <SheetContent side="right" className="w-[320px]">
-            <SheetHeader>
-              <SheetTitle>Filters</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4 space-y-4">
-              <div>
-                <Label className="text-xs">Min Score: {minScore}</Label>
-                <Slider value={[minScore]} onValueChange={([v]) => setMinScore(v)} max={100} step={10} className="mt-2" />
-              </div>
-              <div>
-                <Label className="text-xs">Status</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, phone, email, location..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="pl-10"
+                data-testid="input-search"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className="gap-2"
+              data-testid="button-toggle-filters"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </Button>
+            {activeFiltersCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} data-testid="button-clear-filters">
+                Clear all
+              </Button>
+            )}
+          </div>
+
+          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <CollapsibleContent className="space-y-4 pt-4 border-t">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                  <SelectTrigger data-testid="select-status-filter">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    {statusOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="contacted">Contacted</SelectItem>
+                    <SelectItem value="qualified">Qualified</SelectItem>
+                    <SelectItem value="nurturing">Nurturing</SelectItem>
+                    <SelectItem value="converted">Converted</SelectItem>
+                    <SelectItem value="lost">Lost</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setPage(1); }}>
+                  <SelectTrigger data-testid="select-state-filter">
+                    <SelectValue placeholder="All States" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All States</SelectItem>
+                    {uniqueStates.map((state) => (
+                      <SelectItem key={state} value={state}>{state}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input 
+                  placeholder="Filter by ZIP..."
+                  value={zipFilter}
+                  onChange={(e) => { setZipFilter(e.target.value); setPage(1); }}
+                  data-testid="input-zip-filter"
+                />
+                <div className="flex items-center gap-3">
+                  <Label className="text-sm whitespace-nowrap">Min Score: {minScore}</Label>
+                  <Slider
+                    value={[minScore]}
+                    onValueChange={(v) => { setMinScore(v[0]); setPage(1); }}
+                    max={100}
+                    step={5}
+                    className="flex-1"
+                    data-testid="slider-min-score"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
+              
+              <div className="flex flex-wrap items-center gap-4 md:gap-6">
                 <div className="flex items-center gap-2">
-                  <Checkbox id="contactable" checked={onlyContactable} onCheckedChange={(c) => setOnlyContactable(!!c)} />
-                  <Label htmlFor="contactable" className="text-xs">Only contactable</Label>
+                  <Checkbox id="only-contactable" checked={onlyContactable} onCheckedChange={(c) => { setOnlyContactable(!!c); setPage(1); }} data-testid="checkbox-only-contactable" />
+                  <Label htmlFor="only-contactable" className="text-sm cursor-pointer">Only Contactable</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Checkbox id="excludeDnc" checked={excludeDnc} onCheckedChange={(c) => setExcludeDnc(!!c)} />
-                  <Label htmlFor="excludeDnc" className="text-xs">Exclude DNC</Label>
+                  <Checkbox id="exclude-dnc" checked={excludeDnc} onCheckedChange={(c) => { setExcludeDnc(!!c); setPage(1); }} data-testid="checkbox-exclude-dnc" />
+                  <Label htmlFor="exclude-dnc" className="text-sm cursor-pointer">Exclude DNC</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Checkbox id="hasMobile" checked={hasMobileValid} onCheckedChange={(c) => setHasMobileValid(!!c)} />
-                  <Label htmlFor="hasMobile" className="text-xs">Has valid mobile</Label>
+                  <Checkbox id="has-mobile-valid" checked={hasMobileValid} onCheckedChange={(c) => { setHasMobileValid(!!c); setPage(1); }} data-testid="checkbox-has-mobile-valid" />
+                  <Label htmlFor="has-mobile-valid" className="text-sm cursor-pointer">Has Mobile</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Checkbox id="hasEmail" checked={hasVerifiedEmail} onCheckedChange={(c) => setHasVerifiedEmail(!!c)} />
-                  <Label htmlFor="hasEmail" className="text-xs">Has verified email</Label>
+                  <Checkbox id="has-verified-email" checked={hasVerifiedEmail} onCheckedChange={(c) => { setHasVerifiedEmail(!!c); setPage(1); }} data-testid="checkbox-has-verified-email" />
+                  <Label htmlFor="has-verified-email" className="text-sm cursor-pointer">Verified Email</Label>
                 </div>
               </div>
-              <Button variant="outline" className="w-full" onClick={clearAllFilters}>Clear all</Button>
-            </div>
-          </SheetContent>
-        </Sheet>
+              
+              <div className="flex flex-wrap items-center gap-4">
+                <Label className="text-sm font-medium">Risk Flags:</Label>
+                {[
+                  { id: 'dnc_all', label: 'DNC All' },
+                  { id: 'no_valid_phone', label: 'No Valid Phone' },
+                  { id: 'no_valid_email', label: 'No Valid Email' },
+                  { id: 'all_opted_out', label: 'All Opted Out' },
+                ].map((flag) => (
+                  <div key={flag.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`risk-flag-${flag.id}`}
+                      checked={selectedRiskFlags.includes(flag.id)}
+                      onCheckedChange={(c) => {
+                        if (c) {
+                          setSelectedRiskFlags([...selectedRiskFlags, flag.id]);
+                        } else {
+                          setSelectedRiskFlags(selectedRiskFlags.filter(f => f !== flag.id));
+                        }
+                        setPage(1);
+                      }}
+                      data-testid={`checkbox-risk-flag-${flag.id}`}
+                    />
+                    <Label htmlFor={`risk-flag-${flag.id}`} className="text-sm cursor-pointer">{flag.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
 
-        {/* Lead Details Drawer */}
-        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-          <SheetContent side="right" className="w-[400px] sm:w-[500px]">
-            <SheetHeader>
-              <SheetTitle>Lead Details</SheetTitle>
-            </SheetHeader>
-            {leadDetails ? (
-              <ScrollArea className="h-[calc(100vh-100px)] mt-4">
-                <div className="space-y-4 pr-4">
-                  <div>
-                    <h3 className="font-medium">{leadDetails.firstName} {leadDetails.lastName}</h3>
-                    <p className="text-sm text-muted-foreground">{[leadDetails.city, leadDetails.personState, leadDetails.zip].filter(Boolean).join(', ')}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge className={getStatusBadgeClass(leadDetails.status)}>{leadDetails.status}</Badge>
-                    {getScoreBadge(leadDetails.contactabilityScore)}
-                  </div>
-                  <Separator />
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Contact Points</h4>
-                    <div className="space-y-2">
-                      {leadDetails.contactPoints.map(cp => (
-                        <div key={cp.id} className="flex items-center justify-between p-2 bg-muted/50 rounded text-sm">
-                          <div className="flex items-center gap-2">
-                            {cp.type === 'phone' ? <Phone className="h-3.5 w-3.5" /> : <Mail className="h-3.5 w-3.5" />}
-                            <span className="truncate max-w-[200px]">{cp.value}</span>
-                            {cp.isValid && <CheckCircle className="h-3 w-3 text-green-600" />}
-                            {cp.dncStatus === 'yes' && <Ban className="h-3 w-3 text-red-500" />}
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><MoreHorizontal className="h-3 w-3" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              {!cp.optedOut && <DropdownMenuItem onClick={() => optOutMutation.mutate(cp.id)}>Mark opted out</DropdownMenuItem>}
-                              {cp.isValid && <DropdownMenuItem onClick={() => markInvalidMutation.mutate(cp.id)}>Mark invalid</DropdownMenuItem>}
-                              {cp.type === 'phone' && <DropdownMenuItem onClick={() => setPrimaryMutation.mutate({ contactPointId: cp.id, usageType: 'call' })}>Set as primary (call)</DropdownMenuItem>}
-                              {cp.type === 'email' && <DropdownMenuItem onClick={() => setPrimaryMutation.mutate({ contactPointId: cp.id, usageType: 'email' })}>Set as primary</DropdownMenuItem>}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+      {/* Leads Table */}
+      <TooltipProvider>
+        {isLoadingLeads || isLoadingBatches ? (
+          <div className="flex items-center justify-center py-20">
+            <LoadingSpinner fullScreen={false} message="Loading leads..." />
+          </div>
+        ) : leads.length === 0 ? (
+          <Card className="py-16">
+            <CardContent className="text-center">
+              <Zap className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+              <h3 className="text-xl font-semibold mb-2" data-testid="text-no-leads">No leads found</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                {search || activeFiltersCount > 0 
+                  ? "No leads match your current filters. Try adjusting your search criteria." 
+                  : "Import leads from a CSV file to get started. Leads will be processed with contactability insights automatically."}
+              </p>
+              {activeFiltersCount > 0 && (
+                <Button variant="outline" onClick={clearAllFilters} className="mt-4" data-testid="button-clear-filters-empty">
+                  Clear all filters
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="rounded-lg border bg-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Lead</TableHead>
+                      <TableHead className="font-semibold hidden md:table-cell">Best Contact</TableHead>
+                      <TableHead className="font-semibold w-[120px]">Score</TableHead>
+                      <TableHead className="font-semibold hidden lg:table-cell">Risk</TableHead>
+                      <TableHead className="font-semibold hidden xl:table-cell">Batch</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {leads.map((lead) => {
+                      const bestContact = getBestContactDisplay(lead);
+                      return (
+                        <TableRow
+                          key={lead.id}
+                          data-testid={`row-lead-${lead.id}`}
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => openLeadDrawer(lead.id)}
+                        >
+                          <TableCell data-testid={`cell-lead-name-${lead.id}`}>
+                            <div className="font-medium">
+                              {[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {[lead.city, lead.personState].filter(Boolean).join(', ') || '-'}
+                              {lead.zip && ` ${lead.zip}`}
+                            </div>
+                          </TableCell>
+                          <TableCell data-testid={`cell-best-contact-${lead.id}`} className="hidden md:table-cell">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-2">
+                                  {bestContact.icon}
+                                  <span className="font-mono text-sm">{bestContact.value}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent><p>{bestContact.tooltip}</p></TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell data-testid={`cell-score-${lead.id}`}>
+                            {getScoreDisplay(lead.contactabilityScore)}
+                          </TableCell>
+                          <TableCell data-testid={`cell-risk-${lead.id}`} className="hidden lg:table-cell">
+                            <div className="flex flex-wrap gap-1">
+                              {getRiskFlagChips(lead.riskFlags)}
+                            </div>
+                          </TableCell>
+                          <TableCell data-testid={`cell-batch-${lead.id}`} className="hidden xl:table-cell">
+                            <span className="text-xs text-muted-foreground truncate max-w-[150px] block">
+                              {lead.batchFileName || '-'}
+                            </span>
+                          </TableCell>
+                          <TableCell data-testid={`cell-status-${lead.id}`}>
+                            <Select
+                              value={lead.status}
+                              onValueChange={(v) => {
+                                updateLeadStatusMutation.mutate({ id: lead.id, status: v });
+                              }}
+                            >
+                              <SelectTrigger className="h-7 w-auto border-0 p-0 focus:ring-0" data-testid={`select-status-${lead.id}`} onClick={(e) => e.stopPropagation()}>
+                                {getPipelineStatusBadge(lead.status)}
+                              </SelectTrigger>
+                              <SelectContent onClick={(e) => e.stopPropagation()}>
+                                <SelectItem value="new">New</SelectItem>
+                                <SelectItem value="contacted">Contacted</SelectItem>
+                                <SelectItem value="qualified">Qualified</SelectItem>
+                                <SelectItem value="nurturing">Nurturing</SelectItem>
+                                <SelectItem value="converted">Converted</SelectItem>
+                                <SelectItem value="lost">Lost</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant={lead.bestPhoneToCall ? "default" : "ghost"}
+                                    disabled={!lead.bestPhoneToCall}
+                                    className={`h-8 w-8 p-0 ${lead.bestPhoneToCall ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                                    data-testid={`button-call-${lead.id}`}
+                                  >
+                                    <PhoneCall className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {lead.bestPhoneToCall ? 'Call' : getContactBlockedReason(lead, 'call')}
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant={lead.bestPhoneForSms ? "default" : "ghost"}
+                                    disabled={!lead.bestPhoneForSms}
+                                    className={`h-8 w-8 p-0 ${lead.bestPhoneForSms ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                                    data-testid={`button-sms-${lead.id}`}
+                                  >
+                                    <MessageSquare className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {lead.bestPhoneForSms ? 'SMS' : getContactBlockedReason(lead, 'sms')}
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant={lead.bestEmail ? "default" : "ghost"}
+                                    disabled={!lead.bestEmail}
+                                    className={`h-8 w-8 p-0 ${lead.bestEmail ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}`}
+                                    data-testid={`button-email-${lead.id}`}
+                                  >
+                                    <Mail className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {lead.bestEmail ? 'Email' : getContactBlockedReason(lead, 'email')}
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-sm text-muted-foreground" data-testid="text-pagination-info">
+                  Showing {((page - 1) * 50) + 1} - {Math.min(page * 50, totalLeads)} of {totalLeads} leads
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    data-testid="button-prev-page"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    data-testid="button-next-page"
+                  >
+                    Next
+                  </Button>
                 </div>
-              </ScrollArea>
-            ) : (
-              <div className="flex items-center justify-center h-40">
-                <Loader2 className="h-6 w-6 animate-spin" />
               </div>
             )}
-          </SheetContent>
-        </Sheet>
+          </>
+        )}
+      </TooltipProvider>
 
-        {/* CSV Upload Dialog */}
-        <Dialog open={csvUploadDialogOpen} onOpenChange={setCsvUploadDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Import Leads from CSV</DialogTitle>
-              <DialogDescription>Upload a CSV file with your leads data.</DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
+      {/* Delete Batch Confirmation Dialog */}
+      <AlertDialog open={deleteBatchDialogOpen} onOpenChange={setDeleteBatchDialogOpen}>
+        <AlertDialogContent data-testid="dialog-delete-batch">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Batch</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the batch "{batchToDelete?.fileName}"? This will permanently remove all {batchToDelete?.totalRows} leads, their contact points, and raw import data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-batch">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => batchToDelete && deleteBatchMutation.mutate(batchToDelete.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteBatchMutation.isPending}
+              data-testid="button-confirm-delete-batch"
+            >
+              {deleteBatchMutation.isPending ? "Deleting..." : "Delete Batch"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Lead Detail Drawer */}
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent className="w-full sm:max-w-xl overflow-hidden" data-testid="drawer-lead-detail">
+          <SheetHeader className="pb-4 border-b">
+            <SheetTitle className="text-xl" data-testid="drawer-lead-name">
+              {leadDetails ? `${leadDetails.firstName || ''} ${leadDetails.lastName || ''}`.trim() || 'Lead Details' : 'Loading...'}
+            </SheetTitle>
+            <SheetDescription>
+              {leadDetails && (
+                <span className="flex items-center gap-2">
+                  {[leadDetails.city, leadDetails.personState, leadDetails.zip].filter(Boolean).join(', ')}
+                  {leadDetails.ownerName && <span className="text-xs">• Owner: {leadDetails.ownerName}</span>}
+                </span>
+              )}
+            </SheetDescription>
+          </SheetHeader>
+          {!leadDetails ? (
+            <div className="flex items-center justify-center h-64">
+              <LoadingSpinner fullScreen={false} />
+            </div>
+          ) : (
+            <ScrollArea className="h-[calc(100vh-140px)] pr-4">
+              <div className="space-y-6 py-4">
+                {/* Score Display */}
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Contactability Score</span>
+                    <span className={`text-lg font-bold ${leadDetails.contactabilityScore >= 70 ? 'text-green-600' : leadDetails.contactabilityScore >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {leadDetails.contactabilityScore}/100
+                    </span>
+                  </div>
+                  <Progress 
+                    value={leadDetails.contactabilityScore} 
+                    className={`h-3 ${leadDetails.contactabilityScore >= 70 ? '[&>div]:bg-green-500' : leadDetails.contactabilityScore >= 40 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-red-500'}`}
+                  />
+                  <div className="flex flex-wrap gap-1 mt-3">
+                    {getRiskFlagChips(leadDetails.riskFlags)}
+                  </div>
+                </div>
+
+                {/* Action Panel */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="flex flex-col items-center gap-1">
+                    <Button
+                      size="lg"
+                      variant={leadDetails.bestPhoneToCall ? "default" : "outline"}
+                      disabled={!leadDetails.bestPhoneToCall}
+                      className={`w-full h-14 ${leadDetails.bestPhoneToCall ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                      data-testid="drawer-action-call"
+                    >
+                      <PhoneCall className="h-5 w-5 mr-2" />
+                      CALL
+                    </Button>
+                    {!leadDetails.bestPhoneToCall && (
+                      <span className="text-xs text-muted-foreground text-center">{getContactBlockedReason(leadDetails, 'call')}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <Button
+                      size="lg"
+                      variant={leadDetails.bestPhoneForSms ? "default" : "outline"}
+                      disabled={!leadDetails.bestPhoneForSms}
+                      className={`w-full h-14 ${leadDetails.bestPhoneForSms ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                      data-testid="drawer-action-sms"
+                    >
+                      <MessageSquare className="h-5 w-5 mr-2" />
+                      SMS
+                    </Button>
+                    {!leadDetails.bestPhoneForSms && (
+                      <span className="text-xs text-muted-foreground text-center">{getContactBlockedReason(leadDetails, 'sms')}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <Button
+                      size="lg"
+                      variant={leadDetails.bestEmail ? "default" : "outline"}
+                      disabled={!leadDetails.bestEmail}
+                      className={`w-full h-14 ${leadDetails.bestEmail ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}`}
+                      data-testid="drawer-action-email"
+                    >
+                      <Mail className="h-5 w-5 mr-2" />
+                      EMAIL
+                    </Button>
+                    {!leadDetails.bestEmail && (
+                      <span className="text-xs text-muted-foreground text-center">{getContactBlockedReason(leadDetails, 'email')}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Contact Points Table */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold flex items-center gap-2" data-testid="section-contact-points">
+                    <Phone className="h-4 w-4" />
+                    Contact Points
+                  </h4>
+                  {leadDetails.contactPoints && leadDetails.contactPoints.length > 0 ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/30">
+                            <TableHead className="w-8">Type</TableHead>
+                            <TableHead>Value</TableHead>
+                            <TableHead className="w-16">Valid</TableHead>
+                            <TableHead className="w-20">DNC</TableHead>
+                            <TableHead className="w-24">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {leadDetails.contactPoints.map((cp: ContactPoint) => (
+                            <TableRow key={cp.id} data-testid={`drawer-contact-point-${cp.id}`}>
+                              <TableCell>
+                                {cp.type === 'phone' ? (
+                                  <Phone className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <Mail className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </TableCell>
+                              <TableCell className="font-mono text-sm" data-testid={`contact-value-${cp.id}`}>
+                                <div>{cp.value}</div>
+                                <div className="text-xs text-muted-foreground capitalize">{cp.subtype}</div>
+                              </TableCell>
+                              <TableCell>
+                                {cp.isValid ? (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {cp.dncStatus === 'yes' ? (
+                                  <Badge variant="destructive" className="text-xs">DNC</Badge>
+                                ) : cp.optedOut ? (
+                                  <Badge variant="secondary" className="text-xs">Out</Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-800 text-xs">OK</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  {!cp.optedOut && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => optOutMutation.mutate(cp.id)} data-testid={`button-optout-${cp.id}`}>
+                                          <Ban className="h-3 w-3" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Mark as opted out</TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  {cp.isValid && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => markInvalidMutation.mutate(cp.id)} data-testid={`button-invalid-${cp.id}`}>
+                                          <ShieldOff className="h-3 w-3" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Mark as invalid</TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setPrimaryMutation.mutate({ contactPointId: cp.id, usageType: cp.type === 'phone' ? 'call' : 'email' })} data-testid={`button-primary-${cp.id}`}>
+                                        <Star className="h-3 w-3" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Set as primary</TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground p-4 text-center bg-muted/30 rounded-lg">No contact points available</p>
+                  )}
+                </div>
+
+                {/* Insights Panel */}
+                <Collapsible open={showDemographics} onOpenChange={setShowDemographics}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-between hover:bg-muted/50" data-testid="button-toggle-insights">
+                      <span className="flex items-center gap-2">
+                        <Info className="h-4 w-4" />
+                        Insights & Demographics
+                      </span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${showDemographics ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-2">
+                    {leadDetails.employerName && (
+                      <div className="p-3 bg-muted/30 rounded-lg" data-testid="section-employment">
+                        <h5 className="text-sm font-medium flex items-center gap-2 mb-2">
+                          <Building className="h-4 w-4" />
+                          Employment
+                        </h5>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Company:</span>
+                            <span className="ml-2">{leadDetails.employerName}</span>
+                          </div>
+                          {leadDetails.jobTitle && (
+                            <div>
+                              <span className="text-muted-foreground">Title:</span>
+                              <span className="ml-2">{leadDetails.jobTitle}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-3 bg-muted/30 rounded-lg" data-testid="section-demographics">
+                      <h5 className="text-sm font-medium flex items-center gap-2 mb-2">
+                        <Users className="h-4 w-4" />
+                        Demographics
+                        <Badge variant="outline" className="text-xs ml-auto">Inferred</Badge>
+                      </h5>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {leadDetails.gender && (
+                          <div>
+                            <span className="text-muted-foreground">Gender:</span>
+                            <span className="ml-2 capitalize">{leadDetails.gender}</span>
+                          </div>
+                        )}
+                        {leadDetails.ageRange && (
+                          <div>
+                            <span className="text-muted-foreground">Age:</span>
+                            <span className="ml-2">{leadDetails.ageRange}</span>
+                          </div>
+                        )}
+                        {leadDetails.hasChildren !== null && (
+                          <div>
+                            <span className="text-muted-foreground">Has Children:</span>
+                            <span className="ml-2">{leadDetails.hasChildren ? 'Yes' : 'No'}</span>
+                          </div>
+                        )}
+                        {leadDetails.isHomeowner !== null && (
+                          <div>
+                            <span className="text-muted-foreground">Homeowner:</span>
+                            <span className="ml-2">{leadDetails.isHomeowner ? 'Yes' : 'No'}</span>
+                          </div>
+                        )}
+                        {leadDetails.isMarried !== null && (
+                          <div>
+                            <span className="text-muted-foreground">Married:</span>
+                            <span className="ml-2">{leadDetails.isMarried ? 'Yes' : 'No'}</span>
+                          </div>
+                        )}
+                        {leadDetails.netWorth && (
+                          <div>
+                            <span className="text-muted-foreground">Net Worth:</span>
+                            <span className="ml-2">{leadDetails.netWorth}</span>
+                          </div>
+                        )}
+                        {leadDetails.incomeRange && (
+                          <div>
+                            <span className="text-muted-foreground">Income:</span>
+                            <span className="ml-2">{leadDetails.incomeRange}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* View Raw Import (Admin Only) */}
+                {isAdmin && (
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => expandedLead && fetchRawImport(expandedLead)}
+                      className="w-full"
+                      data-testid="button-view-raw-import"
+                    >
+                      <FileJson className="h-4 w-4 mr-2" />
+                      View Raw Import Row
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Raw Import Data Dialog */}
+      <Dialog open={rawImportDialogOpen} onOpenChange={setRawImportDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto" data-testid="dialog-raw-import">
+          <DialogHeader>
+            <DialogTitle>Raw Import Data</DialogTitle>
+            <DialogDescription>
+              Original data from CSV import for {rawImportData?.person?.firstName} {rawImportData?.person?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          {rawImportData?.rawRow ? (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                <span>Row #: {rawImportData.rawRow.rowNumber}</span>
+                <span className="ml-4">Imported: {rawImportData.rawRow.importedAt ? format(new Date(rawImportData.rawRow.importedAt), 'PPpp') : '-'}</span>
+              </div>
+              <pre className="p-4 bg-muted rounded-lg overflow-x-auto text-xs" data-testid="raw-import-json">
+                {JSON.stringify(rawImportData.rawRow.rawJson, null, 2)}
+              </pre>
+              {rawImportData.rawRow.parseWarnings && Object.keys(rawImportData.rawRow.parseWarnings).length > 0 && (
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                  <h5 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">Parse Warnings</h5>
+                  <pre className="text-xs text-yellow-700 dark:text-yellow-300">
+                    {JSON.stringify(rawImportData.rawRow.parseWarnings, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No raw import data found for this lead.</p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRawImportDialogOpen(false)} data-testid="button-close-raw-import">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CSV Upload Dialog */}
+      <Dialog open={csvUploadDialogOpen} onOpenChange={setCsvUploadDialogOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-csv-upload">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              Import Leads from CSV
+            </DialogTitle>
+            <DialogDescription>
+              Upload a CSV file containing your leads. The system will automatically process and enrich the data with contactability insights.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv"
-                onChange={handleCsvUpload}
+                accept=".csv,text/csv"
                 className="hidden"
-              />
-              <Button 
-                variant="outline" 
-                className="w-full h-24 border-dashed"
-                onClick={() => fileInputRef.current?.click()}
+                id="csv-upload-input"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleCsvUpload(file);
+                }}
                 disabled={uploadingCsv}
+                data-testid="input-csv-file"
+              />
+              <label 
+                htmlFor="csv-upload-input" 
+                className={`flex flex-col items-center gap-3 cursor-pointer ${uploadingCsv ? 'opacity-50 pointer-events-none' : ''}`}
               >
                 {uploadingCsv ? (
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <>
+                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                    <span className="text-sm font-medium">Uploading...</span>
+                  </>
                 ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <Upload className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-sm">Click to upload CSV</span>
-                  </div>
+                  <>
+                    <Upload className="h-10 w-10 text-muted-foreground" />
+                    <div>
+                      <span className="text-sm font-medium text-primary">Click to upload</span>
+                      <span className="text-sm text-muted-foreground"> or drag and drop</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">CSV files only (max 50MB)</span>
+                  </>
                 )}
-              </Button>
+              </label>
             </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Batch Dialog */}
-        <AlertDialog open={deleteBatchDialogOpen} onOpenChange={setDeleteBatchDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete batch?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete all leads from "{batchToDelete?.fileName}". This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                className="bg-red-600 hover:bg-red-700"
-                onClick={() => batchToDelete && deleteBatchMutation.mutate(batchToDelete.id)}
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </TooltipProvider>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p className="font-medium">Expected columns:</p>
+              <p>first_name, last_name, email, phone, mobile, city, state, zip</p>
+              <p className="italic">Additional columns will be preserved in raw import data.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setCsvUploadDialogOpen(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}
+              disabled={uploadingCsv}
+              data-testid="button-cancel-csv-upload"
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

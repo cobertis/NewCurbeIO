@@ -36,7 +36,7 @@ import PulseAiSettings from "@/pages/pulse-ai-settings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
-import { GeoapifyAddressAutocomplete } from "@/components/geoapify-address-autocomplete";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format, parseISO } from "date-fns";
 import { useTabsState } from "@/hooks/use-tabs-state";
@@ -1523,7 +1523,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2 md:col-span-2">
-                        <GeoapifyAddressAutocomplete
+                        <GooglePlacesAddressAutocomplete
                           value={addressValue}
                           onChange={(value) => {
                             setAddressValue(value);

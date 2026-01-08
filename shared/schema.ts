@@ -6144,7 +6144,6 @@ export const apiProviders = [
   "tiktok",
   "telegram",
   "aws_ses",
-  "geoapify",
 ] as const;
 export type ApiProvider = typeof apiProviders[number];
 
