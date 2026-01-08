@@ -6639,8 +6639,8 @@ export const brandStatusEnum = pgEnum("brand_status", [
 
 export const telnyxBrands = pgTable("telnyx_brands", {
   id: serial("id").primaryKey(),
-  companyId: varchar("company_id", { length: 255 }).references(() => companies.id).notNull(),
-  userId: varchar("user_id", { length: 255 }).references(() => users.id).notNull(),
+  companyId: varchar("company_id", { length: 255 }).references(() => companies.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
   
   // Telnyx/TCR identifiers
   brandId: varchar("brand_id", { length: 255 }).unique(),

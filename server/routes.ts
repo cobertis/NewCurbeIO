@@ -6875,14 +6875,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     
     try {
-      // First invalidate all sessions for users of this company
       await storage.invalidateCompanySessions(companyId);
       
-      // Delete the company - cascade delete will remove all related records
-      // (users, quotes, policies, conversations, etc.) due to foreign key constraints
-      const deleted = await storage.deleteCompany(companyId);
-      if (!deleted) {
-        return res.status(500).json({ message: "Failed to delete company" });
+      const { deleteCompanyDeep } = await import("./services/company-cleanup");
+      const cleanupResult = await deleteCompanyDeep(companyId);
+      
+      const dbDeleteStep = cleanupResult.steps.find(s => s.step === "delete_company_from_db");
+      const dbDeleteSucceeded = dbDeleteStep?.success === true;
+      
+      if (!dbDeleteSucceeded) {
+        console.error("[Company Delete] Database deletion failed:", cleanupResult.errors);
+        return res.status(500).json({ 
+          message: "Failed to delete company from database", 
+          errors: cleanupResult.errors,
+          steps: cleanupResult.steps,
+        });
       }
       
       await logger.logCrud({
@@ -6894,10 +6901,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         metadata: {
           name: company.name,
           deletedBy: currentUser.email,
+          cleanupSteps: cleanupResult.steps,
+          cleanupErrors: cleanupResult.errors,
         },
       });
       
-      res.json({ success: true, message: `Company "${company.name}" and all associated data deleted` });
+      res.json({ 
+        success: true, 
+        message: `Company "${company.name}" and all associated data deleted`,
+        steps: cleanupResult.steps,
+        errors: cleanupResult.errors.length > 0 ? cleanupResult.errors : undefined,
+      });
     } catch (error: any) {
       console.error("[Company Delete] Error:", error);
       res.status(500).json({ message: "Failed to delete company: " + (error.message || "Unknown error") });
