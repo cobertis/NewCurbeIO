@@ -4895,9 +4895,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (activationToken.usedAt) {
         return res.status(400).json({ message: "This activation link has already been used" });
       }
+      
+      // Get the user to check if they already have a password
+      const user = await storage.getUser(activationToken.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Return whether user already has password (self-registered) or needs to create one (admin-invited)
       res.json({
         success: true,
-        message: "Token is valid"
+        message: "Token is valid",
+        hasPassword: !!user.password,
+        email: user.email
       });
     } catch (error) {
       console.error("Error validating activation token:", error);

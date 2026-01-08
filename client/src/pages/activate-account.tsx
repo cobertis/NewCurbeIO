@@ -18,6 +18,8 @@ export default function ActivateAccount() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -30,7 +32,6 @@ export default function ActivateAccount() {
       return;
     }
 
-    // Validate token first
     const validateToken = async () => {
       try {
         const response = await fetch(`/api/auth/validate-activation-token?token=${tokenParam}`, {
@@ -39,7 +40,14 @@ export default function ActivateAccount() {
         });
 
         if (response.ok) {
+          const data = await response.json();
           setToken(tokenParam);
+          setHasPassword(data.hasPassword || false);
+          setUserEmail(data.email || null);
+          
+          if (data.hasPassword) {
+            await activateWithoutPassword(tokenParam);
+          }
         } else {
           const error = await response.json();
           setErrorMessage(error.message || "This activation link is invalid or has expired");
@@ -53,6 +61,34 @@ export default function ActivateAccount() {
 
     validateToken();
   }, []);
+
+  const activateWithoutPassword = async (tokenValue: string) => {
+    setIsActivating(true);
+    try {
+      const response = await fetch("/api/auth/activate-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ token: tokenValue }),
+      });
+
+      if (response.ok) {
+        setIsSuccess(true);
+        toast({
+          title: "Account activated!",
+          description: "Your email has been verified. You can now sign in.",
+          duration: 3000,
+        });
+      } else {
+        const error = await response.json();
+        setErrorMessage(error.message || "This activation link is invalid or has expired");
+      }
+    } catch (error) {
+      setErrorMessage("An error occurred while activating your account");
+    } finally {
+      setIsActivating(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,11 +139,11 @@ export default function ActivateAccount() {
     }
   };
 
-  if (isValidating) {
+  if (isValidating || (hasPassword && isActivating)) {
     return (
       <AuthShell
-        title="Validating..."
-        subtitle="Please wait while we verify your activation link"
+        title={hasPassword ? "Activating..." : "Validating..."}
+        subtitle={hasPassword ? "Please wait while we activate your account" : "Please wait while we verify your activation link"}
         footer={<div />}
       >
         <div className="flex flex-col items-center justify-center py-12">
@@ -130,7 +166,10 @@ export default function ActivateAccount() {
             <Check className="w-10 h-10 text-green-600" />
           </div>
           <p className="text-center text-[14px] text-gray-500 mb-6 leading-relaxed max-w-sm">
-            Thank you for setting up your password. Your account is now active and ready to use.
+            {hasPassword 
+              ? "Your email has been verified. Your account is now active and ready to use."
+              : "Thank you for setting up your password. Your account is now active and ready to use."
+            }
           </p>
           <Button
             onClick={() => setLocation("/login")}
@@ -186,7 +225,6 @@ export default function ActivateAccount() {
     );
   }
 
-  // Show password setup form
   return (
     <AuthShell
       title="Set your password"
@@ -206,6 +244,14 @@ export default function ActivateAccount() {
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {userEmail && (
+          <div className="bg-gray-50 rounded-lg p-3 mb-2">
+            <p className="text-[13px] text-gray-600">
+              Setting password for: <span className="font-medium">{userEmail}</span>
+            </p>
+          </div>
+        )}
+        
         <div className="space-y-2">
           <Label htmlFor="password" className="text-[13px] font-medium text-gray-700">
             Password
