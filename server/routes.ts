@@ -3934,7 +3934,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Just enable SIP on user if not already
         if (!user.sipEnabled) {
-        const phoneNumbersRaw = await db
+        await db
             .update(users)
             .set({ sipEnabled: true })
             .where(eq(users.id, user.id));
@@ -3967,7 +3967,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Step 5: Persist SIP credentials to the extension record
       console.log(`[BrowserCalling] Persisting SIP credentials to extension ${extension.id}...`);
-      const phoneNumbersRaw = await db
+      await db
         .update(pbxExtensions)
         .set({
           telnyxCredentialConnectionId: sipResult.credentialConnectionId,
@@ -3978,7 +3978,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(eq(pbxExtensions.id, extension.id));
 
       // Step 6: Enable SIP on user
-      const phoneNumbersRaw = await db
+      await db
         .update(users)
         .set({ sipEnabled: true })
         .where(eq(users.id, user.id));
@@ -3986,7 +3986,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Step 7: Assign company's phone numbers to the credential connection
       console.log(`[BrowserCalling] Assigning phone numbers to credential connection...`);
       try {
-      const phoneNumbersRaw = await db
+      const companyPhones = await db
           .select()
           .from(telnyxPhoneNumbers)
           .where(eq(telnyxPhoneNumbers.companyId, user.companyId));
@@ -4015,7 +4015,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                     }
                   );
 
-                  if (updateResponse.ok) {            const phoneNumbersRaw = await db
+                  if (updateResponse.ok) { await db
                       .update(telnyxPhoneNumbers)
                       .set({ 
                         connectionId: sipResult.credentialConnectionId,
@@ -8570,7 +8570,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 console.log("[Recording Proxy] Method 2a - Found recording:", recording.id, "media_url:", downloadUrl ? "yes" : "no");
                 
                 // Save the recording_id for future use
-                if (recording.id && !callLog.recordingId) {            const phoneNumbersRaw = await db
+                if (recording.id && !callLog.recordingId) { await db
                     .update(callLogs)
                     .set({ recordingId: recording.id })
                     .where(eq(callLogs.id, callLog.id));
@@ -8617,7 +8617,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.log("[Recording Proxy] Method 2b - Found recording:", recording.id, "media_url:", downloadUrl ? "yes" : "no");
               
               // Save the recording_id for future use
-              if (recording.id && !callLog.recordingId) {            const phoneNumbersRaw = await db
+              if (recording.id && !callLog.recordingId) { await db
                   .update(callLogs)
                   .set({ recordingId: recording.id })
                   .where(eq(callLogs.id, callLog.id));
@@ -32494,7 +32494,7 @@ CRITICAL REMINDERS:
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-      const phoneNumbersRaw = await db
+      await db
         .update(voicemails)
         .set({ 
           status: 'read',
@@ -32522,7 +32522,7 @@ CRITICAL REMINDERS:
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-      const phoneNumbersRaw = await db
+      await db
         .update(voicemails)
         .set({ 
           status: 'deleted',
@@ -32927,7 +32927,7 @@ CRITICAL REMINDERS:
       // Update wallet auto-recharge settings
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
-      const phoneNumbersRaw = await db
+      await db
         .update(wallets)
         .set({
           autoRecharge: enabled,
@@ -33226,7 +33226,7 @@ CRITICAL REMINDERS:
           const fromE164 = from?.replace(/\D/g, '') || '';
           const toE164 = to?.replace(/\D/g, '') || '';
           
-          if (fromE164 && toE164) {            const phoneNumbersRaw = await db
+          if (fromE164 && toE164) { await db
               .select()
               .from(callLogs)
               .where(eq(callLogs.direction, 'outbound'))
@@ -33239,7 +33239,7 @@ CRITICAL REMINDERS:
               
               if ((callFrom.includes(fromE164) || fromE164.includes(callFrom)) &&
                   (callTo.includes(toE164) || toE164.includes(callTo))) {
-                  const phoneNumbersRaw = await db
+                  await db
                   .update(callLogs)
                   .set({ telnyxCallId: call_control_id })
                   .where(eq(callLogs.id, recentCall.id));
@@ -33277,7 +33277,7 @@ CRITICAL REMINDERS:
               .from(callLogs)
               .where(eq(callLogs.telnyxCallId, call_control_id));
             
-            if (callLog) {            const phoneNumbersRaw = await db
+            if (callLog) { await db
                 .update(callLogs)
                 .set({ 
                   recordingId: recordingId,
@@ -33289,7 +33289,7 @@ CRITICAL REMINDERS:
               console.log(`[Telnyx Voice Status] Updated call log ${callLog.id} with recording URL and duration: ${recordingDurationSeconds}s`);
             } else {
               // No call log found, try updating by telnyxCallId
-      const phoneNumbersRaw = await db
+      await db
                 .update(callLogs)
                 .set({ 
                   recordingId: recordingId, 
@@ -34285,7 +34285,7 @@ CRITICAL REMINDERS:
       const updates: any = { updatedAt: new Date(), updatedBy: user.id };
       if (description !== undefined) updates.description = description;
       if (isActive !== undefined) updates.isActive = isActive;
-      const phoneNumbersRaw = await db
+      await db
         .update(systemApiCredentials)
         .set(updates)
         .where(eq(systemApiCredentials.id, id))
@@ -34737,7 +34737,7 @@ CRITICAL REMINDERS:
       }
       
       // Update the display name
-      const phoneNumbersRaw = await db
+      await db
         .update(telnyxPhoneNumbers)
         .set({ displayName: displayName.trim() || null })
         .where(eq(telnyxPhoneNumbers.id, id));
@@ -35349,7 +35349,7 @@ CRITICAL REMINDERS:
             console.log(`[Messaging Profile] Found existing profile ${profile.id}, syncing to wallet ${wallet.id}`);
             
             // Save to wallet
-      const phoneNumbersRaw = await db
+      await db
               .update(wallets)
               .set({ telnyxMessagingProfileId: profile.id, updatedAt: new Date() })
               .where(eq(wallets.id, wallet.id));
@@ -35417,7 +35417,7 @@ CRITICAL REMINDERS:
       }
       
       // Check if profile already exists
-      const phoneNumbersRaw = await db
+      const [wallet] = await db
         .select()
         .from(wallets)
         .where(and(eq(wallets.companyId, companyId!), isNotNull(wallets.telnyxAccountId)));
@@ -35460,7 +35460,7 @@ CRITICAL REMINDERS:
       
       // Save to wallet
       if (wallet) {
-      const phoneNumbersRaw = await db
+      await db
           .update(wallets)
           .set({ telnyxMessagingProfileId: profileId, updatedAt: new Date() })
           .where(eq(wallets.id, wallet.id));
@@ -35509,7 +35509,7 @@ CRITICAL REMINDERS:
       }
       
       // Clear from wallet
-      const phoneNumbersRaw = await db
+      await db
         .update(wallets)
         .set({ telnyxMessagingProfileId: null, updatedAt: new Date() })
         .where(eq(wallets.id, wallet.id));
@@ -37122,7 +37122,7 @@ CRITICAL REMINDERS:
           return res.status(404).json({ message: "Target user not found or not in the same company" });
         }
         // Get the user's extension to find their SIP connection
-      const phoneNumbersRaw = await db
+      const [userExtension] = await db
           .select({ connectionId: pbxExtensions.telnyxCredentialConnectionId })
           .from(pbxExtensions)
           .where(and(
@@ -37167,7 +37167,7 @@ CRITICAL REMINDERS:
               console.log(`[Telnyx Assign] Successfully updated connection in Telnyx to ${targetConnectionId}`);
               
               // Update local database with new connection ID
-      const phoneNumbersRaw = await db
+      await db
                 .update(telnyxPhoneNumbers)
                 .set({ connectionId: targetConnectionId })
                 .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
@@ -37181,7 +37181,7 @@ CRITICAL REMINDERS:
       // Capture previous owner before update for unassignment notification
       const previousOwnerId = phoneNumber.ownerUserId;
       // Update the phone number's ownerUserId
-      const phoneNumbersRaw = await db
+      await db
         .update(telnyxPhoneNumbers)
         .set({ 
           ownerUserId: userId || null,
@@ -38827,7 +38827,7 @@ CRITICAL REMINDERS:
           )
           .limit(1);
         if (matchingCalls.length > 0) {
-        const phoneNumbersRaw = await db
+        await db
             .update(callLogs)
             .set({ recordingUrl: mp3Url })
             .where(eq(callLogs.id, matchingCalls[0].id));
@@ -39781,7 +39781,7 @@ CRITICAL REMINDERS:
           }
           
           // Fallback: look up policy by client phone number
-      const phoneNumbersRaw = await db
+      const [matchingPolicy] = await db
             .select({
               id: policies.id,
               clientFirstName: policies.clientFirstName,
@@ -39920,7 +39920,7 @@ CRITICAL REMINDERS:
       if (isCallEnding && hasDuration && callNotBilled) {
         // Atomically try to claim billing rights by setting a marker cost value
         // Only one request will succeed in updating where cost IS NULL or < 0.01
-      const phoneNumbersRaw = await db
+      await db
           .update(callLogs)
           .set({ cost: "-1" }) // Temporary marker indicating billing in progress
           .where(and(
@@ -39933,7 +39933,7 @@ CRITICAL REMINDERS:
         if (!claimedLog) {
           console.log(`[Call Logs] Billing already claimed by another request, skipping duplicate charge for: ${id}`);
           // Another request already claimed billing, just update the call log
-      const phoneNumbersRaw = await db
+      await db
             .update(callLogs)
             .set(updateData)
             .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)))
@@ -39976,7 +39976,7 @@ CRITICAL REMINDERS:
           updateData.cost = "0.0000";
         }
       }
-      const phoneNumbersRaw = await db
+      await db
         .update(callLogs)
         .set(updateData)
         .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)))
@@ -40145,7 +40145,7 @@ CRITICAL REMINDERS:
       }
       
       // Query the database for the active media with type='start' and the selected language
-      const phoneNumbersRaw = await db
+      const [startMedia] = await db
         .select()
         .from(recordingAnnouncementMedia)
         .where(and(
@@ -40286,7 +40286,7 @@ CRITICAL REMINDERS:
       const recordingLanguage = callLog.recordingLanguage || 'en';
       
       // Query the database for the active stop media with the recorded language
-      const phoneNumbersRaw = await db
+      const [stopMedia] = await db
         .select()
         .from(recordingAnnouncementMedia)
         .where(and(
@@ -40375,7 +40375,7 @@ CRITICAL REMINDERS:
         .orderBy(desc(voicemails.receivedAt))
         .limit(parsedLimit);
       // Get unread count
-      const phoneNumbersRaw = await db
+      const [unreadCount] = await db
         .select({ count: count() })
         .from(voicemails)
         .where(and(
@@ -40409,7 +40409,7 @@ CRITICAL REMINDERS:
           updateData.readAt = new Date();
         }
       }
-      const phoneNumbersRaw = await db
+      await db
         .update(voicemails)
         .set(updateData)
         .where(and(
@@ -40585,7 +40585,7 @@ CRITICAL REMINDERS:
           jobId: existingJob.id 
         });
       }
-      const phoneNumbersRaw = await db
+      const [job] = await db
         .insert(deploymentJobs)
         .values({
           triggeredBy: "github_webhook",
@@ -40631,7 +40631,7 @@ CRITICAL REMINDERS:
           inProgress: true
         });
       }
-      const phoneNumbersRaw = await db
+      const [job] = await db
         .insert(deploymentJobs)
         .values({
           triggeredBy: user.email || "superadmin",
@@ -41794,7 +41794,7 @@ CRITICAL REMINDERS:
       }
       
       // Check if it's a user extension
-      const phoneNumbersRaw = await db
+      const [userExt] = await db
         .select()
         .from(pbxExtensions)
         .where(and(
@@ -41864,7 +41864,7 @@ CRITICAL REMINDERS:
       }
       
       // Get company's main phone number for outbound caller ID
-      const phoneNumbersRaw = await db
+      const [phoneNumber] = await db
         .select()
         .from(telnyxPhoneNumbers)
         .where(eq(telnyxPhoneNumbers.companyId, user.companyId));
@@ -41874,7 +41874,7 @@ CRITICAL REMINDERS:
       }
       
       // Get Call Control App ID from telephony settings
-      const phoneNumbersRaw = await db
+      const [settings] = await db
         .select({ callControlAppId: telephonySettings.callControlAppId })
         .from(telephonySettings)
         .where(eq(telephonySettings.companyId, user.companyId));
@@ -41970,7 +41970,7 @@ CRITICAL REMINDERS:
         });
         
         // Check Queues using this audio as hold music
-      const phoneNumbersRaw = await db
+      const queuesUsingAsHoldMusic = await db
           .select({ id: pbxQueues.id, name: pbxQueues.name })
           .from(pbxQueues)
           .where(and(
@@ -41982,7 +41982,7 @@ CRITICAL REMINDERS:
           usage.push({ type: 'queue_hold_music', name: queue.name, id: queue.id });
         });
         // Check Queue Ads (announcements) using this audio
-      const phoneNumbersRaw = await db
+      const queueAdsUsingAudio = await db
           .select({ 
             adId: pbxQueueAds.id,
             queueId: pbxQueueAds.queueId,
@@ -42105,7 +42105,7 @@ CRITICAL REMINDERS:
       if (audioType !== undefined && ['greeting', 'hold_music', 'announcement', 'voicemail_greeting'].includes(audioType)) {
         updateData.audioType = audioType;
       }
-      const phoneNumbersRaw = await db
+      await db
         .update(pbxAudioFiles)
         .set(updateData)
         .where(eq(pbxAudioFiles.id, audioId))
@@ -42136,14 +42136,14 @@ CRITICAL REMINDERS:
         return res.status(404).json({ message: "Audio file not found" });
       }
       // Check if audio is in use
-      const phoneNumbersRaw = await db
+      const ivrsUsingAsGreeting = await db
         .select({ id: pbxIvrs.id })
         .from(pbxIvrs)
         .where(and(
           eq(pbxIvrs.companyId, user.companyId),
           eq(pbxIvrs.greetingAudioUrl, existing.fileUrl)
         ));
-        const phoneNumbersRaw = await db
+        const queuesUsingAsHoldMusic = await db
         .select({ id: pbxQueues.id })
         .from(pbxQueues)
         .where(and(
@@ -42165,7 +42165,7 @@ CRITICAL REMINDERS:
         // Force delete: clear references in IVRs
         if (ivrsUsingAsGreeting.length > 0) {
           console.log(`[PBX Audio] Force delete: clearing ${ivrsUsingAsGreeting.length} IVR references`);
-          const phoneNumbersRaw = await db
+          await db
             .update(pbxIvrs)
             .set({ greetingAudioUrl: null, telnyxMediaName: null, updatedAt: new Date() })
             .where(and(
@@ -42204,7 +42204,7 @@ CRITICAL REMINDERS:
         }
       }
       // Delete from database
-      const phoneNumbersRaw = await db
+      await db
         .delete(pbxAudioFiles)
         .where(eq(pbxAudioFiles.id, audioId));
       return res.json({ success: true });
@@ -42528,7 +42528,7 @@ CRITICAL REMINDERS:
           .set({ unreadCount: 0, updatedAt: new Date() })
           .where(eq(imessageConversationsTable.id, id));
         // Fetch messages
-      const phoneNumbersRaw = await db
+      const messages = await db
           .select()
           .from(imessageMessagesTable)
           .where(eq(imessageMessagesTable.conversationId, id))
@@ -42655,7 +42655,7 @@ CRITICAL REMINDERS:
         telnyxMessageId = telnyxData?.data?.id || null;
       }
       // Create message record
-      const phoneNumbersRaw = await db
+      await db
         .insert(telnyxMessages)
         .values({
           conversationId: conversation.id,
@@ -42797,7 +42797,7 @@ CRITICAL REMINDERS:
       }
 
       // Save message to database
-      const phoneNumbersRaw = await db
+      await db
         .insert(telnyxMessages)
         .values({
           conversationId: conversation.id,
@@ -42932,7 +42932,7 @@ CRITICAL REMINDERS:
       }
 
       // Create message record
-      const phoneNumbersRaw = await db
+      await db
         .insert(telnyxMessages)
         .values({
           conversationId: conversation.id,
@@ -43164,7 +43164,7 @@ CRITICAL REMINDERS:
               .returning();
             
             // Update conversation
-      const phoneNumbersRaw = await db
+      await db
               .update(imessageConversationsTable)
               .set({
                 lastMessageText: (text?.substring(0, 100) || (sentAttachments.length > 0 ? "(attachment)" : "")),
@@ -43384,7 +43384,7 @@ CRITICAL REMINDERS:
               .returning();
             
             // Update conversation
-            const lastMsgPreview = text ? text.substring(0, 100) : (hasMedia ? "[Media]" : "");            const phoneNumbersRaw = await db
+            const lastMsgPreview = text ? text.substring(0, 100) : (hasMedia ? "[Media]" : ""); await db
               .set({ lastMessage: lastMsgPreview, lastMessageAt: new Date(), updatedAt: new Date() })
               .where(eq(telnyxConversations.id, id));
             
@@ -43690,7 +43690,7 @@ CRITICAL REMINDERS:
               .returning();
             
             // Update conversation
-      const phoneNumbersRaw = await db
+      await db
               .set({
                 lastMessage: (text || "(attachment)").substring(0, 100),
                 lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
@@ -43731,7 +43731,7 @@ CRITICAL REMINDERS:
               .returning();
             
             // Update conversation
-      const phoneNumbersRaw = await db
+      await db
               .set({ 
                 lastMessage: (text || "(attachment)").substring(0, 100), 
                 lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null, 
@@ -43842,7 +43842,7 @@ CRITICAL REMINDERS:
             console.log("[Inbox Facebook] Message sent successfully:", fbData.message_id);
 
             // Save message to database
-      const phoneNumbersRaw = await db
+      await db
               .insert(telnyxMessages)
               .values({
                 conversationId: id,
@@ -43861,7 +43861,7 @@ CRITICAL REMINDERS:
               .returning();
 
             // Update conversation
-      const phoneNumbersRaw = await db
+      await db
               .set({ 
                 lastMessage: (text || "(attachment)").substring(0, 100), 
                 lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null, 
@@ -44548,7 +44548,7 @@ CRITICAL REMINDERS:
           sentAt: new Date(),
         })
         .returning();
-        const phoneNumbersRaw = await db
+        await db
         .set({ 
           lastMessage: `📞 Call button sent`, 
           lastMessageAt: new Date(), 
@@ -44824,7 +44824,7 @@ CRITICAL REMINDERS:
       }
       
       // Get company info for context
-      const phoneNumbersRaw = await db
+      const [companyInfo] = await db
         .select()
         .from(companies)
         .where(eq(companies.id, user.companyId))
@@ -45368,7 +45368,7 @@ CRITICAL REMINDERS:
       }
       
       // Regular update (not submission)
-      const phoneNumbersRaw = await db
+      const [updated] = await db
         .update(complianceApplications)
         .set({
           ...req.body,
