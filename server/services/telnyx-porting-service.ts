@@ -9,20 +9,27 @@ const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 /**
  * CRITICAL: All Telnyx operations MUST use managed account API key.
  * Never fall back to master key - each company has their own Telnyx managed account.
- * If token is missing but account exists, it will be regenerated automatically.
+ * API keys MUST start with 'KEY' - if not, create a new one.
  */
 async function getRequiredCompanyTelnyxApiKey(companyId: string): Promise<string> {
   let apiKey = await getCompanyTelnyxApiToken(companyId);
   
-  if (!apiKey) {
-    console.log(`[Telnyx Porting] No API token found for company ${companyId}, attempting to regenerate...`);
+  // Validate that the key is a real Telnyx API key (must start with KEY)
+  if (!apiKey || !apiKey.startsWith('KEY')) {
+    console.log(`[Telnyx Porting] No valid API key for company ${companyId} (current: ${apiKey?.substring(0, 10) || 'none'}), creating new one...`);
     const ensureResult = await ensureCompanyTelnyxToken(companyId);
     if (!ensureResult.success || !ensureResult.apiToken) {
       throw new Error(ensureResult.error || "Company Telnyx account not configured. Please set up your Telnyx managed account first.");
     }
     apiKey = ensureResult.apiToken;
   }
+
+  // Final validation
+  if (!apiKey.startsWith('KEY')) {
+    throw new Error(`Invalid Telnyx API key format. Expected KEY..., got: ${apiKey.substring(0, 10)}...`);
+  }
   
+  console.log(`[Telnyx Porting] Using API key: ${apiKey.substring(0, 12)}...`);
   return apiKey.trim().replace(/[\r\n\t]/g, '');
 }
 
