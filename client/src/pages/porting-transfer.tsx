@@ -344,26 +344,48 @@ export default function PortingTransfer() {
     },
   });
 
-  const parsePhoneNumbers = (input: string): string[] => {
+  const parseUsPhoneNumbers = (input: string): { valid: string[]; invalid: string[] } => {
     const lines = input.split(/[\n,;]+/).map(line => line.trim()).filter(Boolean);
-    return lines.map(formatPhoneNumber).filter(num => {
-      const cleaned = num.replace(/\D/g, '');
-      return cleaned.length >= 10 && cleaned.length <= 15;
-    });
+    const valid: string[] = [];
+    const invalid: string[] = [];
+    
+    for (const line of lines) {
+      const cleaned = line.replace(/\D/g, '');
+      if (cleaned.length === 10) {
+        valid.push(`+1${cleaned}`);
+      } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        valid.push(`+${cleaned}`);
+      } else {
+        invalid.push(line);
+      }
+    }
+    
+    return { valid, invalid };
   };
 
   const handleEnterNumbersNext = () => {
-    const numbers = parsePhoneNumbers(phoneNumbersInput);
-    if (numbers.length === 0) {
+    const { valid, invalid } = parseUsPhoneNumbers(phoneNumbersInput);
+    
+    if (invalid.length > 0) {
       toast({
-        title: 'Invalid Input',
-        description: 'Please enter at least one valid phone number',
+        title: 'Invalid US Phone Numbers',
+        description: `The following are not valid US numbers: ${invalid.slice(0, 3).join(', ')}${invalid.length > 3 ? ` and ${invalid.length - 3} more` : ''}`,
         variant: 'destructive',
       });
       return;
     }
-    setParsedPhoneNumbers(numbers);
-    checkPortabilityMutation.mutate(numbers);
+    
+    if (valid.length === 0) {
+      toast({
+        title: 'No Numbers Entered',
+        description: 'Please enter at least one valid US phone number (10 digits)',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setParsedPhoneNumbers(valid);
+    checkPortabilityMutation.mutate(valid);
   };
 
   const handleCheckPortabilityNext = () => {
@@ -594,13 +616,13 @@ export default function PortingTransfer() {
                     <div>
                       <Textarea
                         data-testid="input-phone-numbers"
-                        placeholder="Enter phone numbers (one per line or comma-separated)&#10;Example:&#10;+1 (555) 123-4567&#10;5551234568&#10;+15551234569"
+                        placeholder="Enter US phone numbers (one per line or comma-separated)&#10;&#10;Example:&#10;(555) 123-4567&#10;555-123-4568&#10;5551234569"
                         value={phoneNumbersInput}
                         onChange={(e) => setPhoneNumbersInput(e.target.value)}
                         className="min-h-[180px] font-mono"
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                        Enter phone numbers in any format. Separate multiple numbers with commas or new lines.
+                        Only US phone numbers are supported (10 digits). Separate multiple numbers with commas or new lines.
                       </p>
                     </div>
                   </div>
