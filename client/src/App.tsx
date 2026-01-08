@@ -103,6 +103,7 @@ import NotificationsPage from "@/pages/notifications";
 import WalletAnalyticsPage from "@/pages/wallet-analytics";
 import GettingStarted from "@/pages/getting-started";
 import ComplianceChooseNumber from "@/pages/compliance-choose-number";
+import PortingTransfer from "@/pages/porting-transfer";
 import ComplianceInfo from "@/pages/compliance-info";
 import ComplianceBrand from "@/pages/compliance-brand";
 import ComplianceCampaign from "@/pages/compliance-campaign";
@@ -1455,6 +1456,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <ComplianceChooseNumber />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/porting/transfer">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <PortingTransfer />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

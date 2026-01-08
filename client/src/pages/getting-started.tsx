@@ -566,7 +566,7 @@ export default function GettingStarted() {
                   </p>
                   <Button 
                       size="sm" 
-                      onClick={() => setLocation("/settings/sms-voice/port-in")} 
+                      onClick={() => setLocation("/porting/transfer")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
                       data-testid="button-start-porting"
                     >
