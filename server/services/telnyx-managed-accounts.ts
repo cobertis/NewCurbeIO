@@ -311,6 +311,7 @@ export async function regenerateManagedAccountToken(accountId: string): Promise<
 /**
  * Ensure a company has a valid Telnyx API token.
  * If missing, regenerate it from Telnyx and save to wallet.
+ * If account doesn't exist (404), create a new managed account.
  */
 export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
   success: boolean;
@@ -331,29 +332,71 @@ export async function ensureCompanyTelnyxToken(companyId: string): Promise<{
       return { success: true, apiToken: wallet.telnyxApiToken };
     }
 
-    if (!wallet.telnyxAccountId) {
-      return { success: false, error: "No Telnyx account configured for company" };
+    // Get company info for creating new account if needed
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, companyId));
+
+    if (!company) {
+      return { success: false, error: "Company not found" };
     }
 
-    console.log(`[Telnyx Managed] Company ${companyId} missing API token, regenerating...`);
-    
-    const regenerateResult = await regenerateManagedAccountToken(wallet.telnyxAccountId);
-    
-    if (!regenerateResult.success || !regenerateResult.apiToken) {
-      return { success: false, error: regenerateResult.error || "Failed to regenerate token" };
+    // If there's an existing account ID, try to regenerate token
+    if (wallet.telnyxAccountId) {
+      console.log(`[Telnyx Managed] Company ${companyId} missing API token, regenerating...`);
+      
+      const regenerateResult = await regenerateManagedAccountToken(wallet.telnyxAccountId);
+      
+      if (regenerateResult.success && regenerateResult.apiToken) {
+        await db
+          .update(wallets)
+          .set({
+            telnyxApiToken: regenerateResult.apiToken,
+            updatedAt: new Date(),
+          })
+          .where(eq(wallets.id, wallet.id));
+
+        console.log(`[Telnyx Managed] API token saved to wallet ${wallet.id}`);
+        return { success: true, apiToken: regenerateResult.apiToken };
+      }
+
+      // If 404, the account doesn't exist - we need to create a new one
+      if (regenerateResult.error?.includes("404")) {
+        console.log(`[Telnyx Managed] Account ${wallet.telnyxAccountId} not found, creating new managed account...`);
+      } else {
+        return { success: false, error: regenerateResult.error || "Failed to regenerate token" };
+      }
     }
 
+    // Create new managed account
+    console.log(`[Telnyx Managed] Creating new managed account for company ${companyId}...`);
+    
+    const companySlug = company.name.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 20);
+    const createResult = await createManagedAccount(company.name, `${companySlug}-${companyId.substring(0, 8)}`);
+    
+    if (!createResult.success || !createResult.managedAccount) {
+      return { success: false, error: createResult.error || "Failed to create managed account" };
+    }
+
+    const apiToken = createResult.managedAccount.api_token || createResult.managedAccount.api_key;
+    
     await db
       .update(wallets)
       .set({
-        telnyxApiToken: regenerateResult.apiToken,
+        telnyxAccountId: createResult.managedAccount.id,
+        telnyxApiToken: apiToken || null,
         updatedAt: new Date(),
       })
       .where(eq(wallets.id, wallet.id));
 
-    console.log(`[Telnyx Managed] API token saved to wallet ${wallet.id}`);
+    console.log(`[Telnyx Managed] New managed account ${createResult.managedAccount.id} saved to wallet ${wallet.id}`);
 
-    return { success: true, apiToken: regenerateResult.apiToken };
+    if (!apiToken) {
+      return { success: false, error: "Managed account created but API token not available yet. Please try again in a moment." };
+    }
+
+    return { success: true, apiToken };
   } catch (error) {
     console.error("[Telnyx Managed] Ensure token error:", error);
     return {
