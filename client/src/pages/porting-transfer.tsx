@@ -268,7 +268,7 @@ export default function PortingTransfer() {
       return apiRequest('POST', '/api/telnyx/porting/check-portability', { phoneNumbers });
     },
     onSuccess: (data) => {
-      if (data.success && data.results) {
+      if (data.results && Array.isArray(data.results)) {
         setPortabilityResults(data.results);
         const portable = data.results.filter((r: PortabilityResult) => r.portable).map((r: PortabilityResult) => r.phone_number);
         setPortableNumbers(portable);
@@ -276,7 +276,7 @@ export default function PortingTransfer() {
       } else {
         toast({
           title: 'Error',
-          description: data.error || 'Failed to check portability',
+          description: data.message || 'Failed to check portability',
           variant: 'destructive',
         });
       }
