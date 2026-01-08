@@ -140,6 +140,38 @@ export class LeadDerivedFieldsService {
     return { permitted: true };
   }
   
+  // Get recent failed attempts count per contact point
+  private async getRecentFailedAttempts(
+    companyId: string, 
+    contactPointIds: string[]
+  ): Promise<Map<string, number>> {
+    if (contactPointIds.length === 0) return new Map();
+    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const failedOutcomes = ['no_answer', 'failed', 'busy', 'wrong_number'];
+    
+    const attempts = await db.select({
+      contactPointId: contactAttempts.contactPointId,
+      failedCount: count()
+    })
+      .from(contactAttempts)
+      .where(and(
+        eq(contactAttempts.companyId, companyId),
+        sql`${contactAttempts.contactPointId} IN (${sql.join(contactPointIds.map(id => sql`${id}`), sql`, `)})`,
+        sql`${contactAttempts.outcome} IN (${sql.join(failedOutcomes.map(o => sql`${o}`), sql`, `)})`,
+        sql`${contactAttempts.occurredAt} >= ${sevenDaysAgo}`
+      ))
+      .groupBy(contactAttempts.contactPointId);
+    
+    const result = new Map<string, number>();
+    for (const a of attempts) {
+      result.set(a.contactPointId, Number(a.failedCount));
+    }
+    return result;
+  }
+  
   // Get best phone for calling
   async getBestPhoneToCall(companyId: string, personId: string): Promise<string | null> {
     // Priority: direct > mobile > personal > other (for calls)
@@ -157,8 +189,14 @@ export class LeadDerivedFieldsService {
     
     if (phones.length === 0) return null;
     
-    // Sort by subtype priority for calls
-    const priority: Record<string, number> = {
+    // Get recent failed attempts for these phones
+    const failedAttempts = await this.getRecentFailedAttempts(
+      companyId, 
+      phones.map(p => p.id)
+    );
+    
+    // Sort by subtype priority for calls, but reduce priority if 3+ recent failures
+    const basePriority: Record<string, number> = {
       'direct': 4,
       'mobile': 3,
       'personal': 2,
@@ -166,7 +204,19 @@ export class LeadDerivedFieldsService {
       'other': 0
     };
     
-    phones.sort((a, b) => (priority[b.subtype] || 0) - (priority[a.subtype] || 0));
+    phones.sort((a, b) => {
+      let priorityA = basePriority[a.subtype] || 0;
+      let priorityB = basePriority[b.subtype] || 0;
+      
+      // Reduce priority by 2 if 3+ consecutive failures in last 7 days
+      const failedA = failedAttempts.get(a.id) || 0;
+      const failedB = failedAttempts.get(b.id) || 0;
+      
+      if (failedA >= 3) priorityA -= 2;
+      if (failedB >= 3) priorityB -= 2;
+      
+      return priorityB - priorityA;
+    });
     
     return phones[0].id;
   }
@@ -420,6 +470,34 @@ export class LeadDerivedFieldsService {
       .returning({ id: leadOperational.id });
     
     return inserted.id;
+  }
+  
+  // Recompute derived fields for a single person (after contact attempt)
+  async recomputePersonDerivedFields(companyId: string, personId: string): Promise<void> {
+    const derived = await this.computeDerivedFields(companyId, personId);
+    
+    // Update existing lead_operational record
+    const existing = await db.select({ id: leadOperational.id })
+      .from(leadOperational)
+      .where(and(
+        eq(leadOperational.companyId, companyId),
+        eq(leadOperational.personId, personId)
+      ))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      await db.update(leadOperational)
+        .set({
+          bestPhoneToCall: derived.bestPhoneToCall,
+          bestPhoneForSms: derived.bestPhoneForSms,
+          bestEmail: derived.bestEmail,
+          contactabilityScore: derived.contactabilityScore,
+          riskFlags: derived.riskFlags,
+          recommendedNextAction: derived.recommendedNextAction,
+          updatedAt: new Date()
+        })
+        .where(eq(leadOperational.id, existing[0].id));
+    }
   }
   
   // Recompute all leads for a company (batch job)

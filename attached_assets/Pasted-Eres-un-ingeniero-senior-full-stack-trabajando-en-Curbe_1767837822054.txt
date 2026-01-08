@@ -1,0 +1,314 @@
+Eres un ingeniero senior full-stack trabajando en Curbe (CRM multi-tenant). Necesito rediseñar por completo cómo manejamos “Imported Leads” de CSV para que la data se convierta en decisiones y acciones, NO en una tabla bonita con 74 columnas.
+
+Contexto actual (problema real):
+- Ya existe /leads con tabs (Form Leads / Appointments / Imported Leads).
+- En Imported Leads hoy se muestra una tabla y al expandir un lead aparece “All Phone Numbers” y “All Emails”, y chips tipo homeowner/married, etc.
+- Eso NO sirve: no prioriza, no normaliza, no deduplica, no respeta DNC por número, no bloquea acciones legalmente peligrosas, y no produce “qué hacer ahora”.
+
+Meta final (Definition of Done):
+1) Arquitectura de datos en 3 capas: RAW (inmutable), CANONICAL (normalizado), OPERATIONAL (lo que usa el CRM).
+2) Normalizar teléfonos/emails como “contact points” (un registro por phone/email) y manejar DNC/opt-out por contact point (por número/email).
+3) Dedupe real: importar el mismo CSV 2 veces no duplica personas ni contact_points.
+4) Campos derivados con valor: best_phone_to_call, best_phone_for_sms, best_email, timezone, contactability_score (0..100), risk_flags, recommended_next_action.
+5) UI nueva: “accionable primero” con botones CALL/SMS/EMAIL que se habilitan SOLO si el contact_point está permitido (no DNC, no opt-out, válido).
+6) Search y filtros avanzados por contacto permitido, score, batch, estado/zip, flags (DNC/no valid phone/etc).
+7) Cumplimiento: sistema debe BLOQUEAR cualquier acción (call/sms/email) si está DNC/opt-out/invalid y explicar el motivo.
+
+IMPORTANTE:
+- NO guardar listas “num1, num2, num3” en un campo string para operar. Multi-valor se normaliza a tabla hija.
+- DNC en este dataset viene como LISTA ALINEADA POR POSICIÓN con la lista de teléfonos:
+  DIRECT_NUMBER <-> DIRECT_NUMBER_DNC
+  MOBILE_PHONE  <-> MOBILE_PHONE_DNC
+  PERSONAL_PHONE <-> PERSONAL_PHONE_DNC
+  El flag i corresponde al teléfono i. Si faltan flags => UNKNOWN, NO asumir "N".
+- Curbe es multi-tenant: TODAS las tablas deben tener company_id (tenant) y todas las queries deben filtrar por company_id.
+
+========================
+FASE 1 — DATA MODEL (Postgres)
+========================
+
+Crear/migrar tablas:
+
+A) imports_raw (inmutable, auditoría)
+- id (uuid)
+- company_id (uuid, indexed)
+- source (text) ej: "csv_import"
+- batch_id (uuid, indexed)
+- row_number (int)
+- raw_json (jsonb)  // fila completa tal cual
+- imported_at (timestamptz)
+- checksum (text)   // hash para idempotencia
+- parse_warnings (jsonb nullable) // mismatch longitudes, etc.
+
+B) person (entidad canónica)
+- id (uuid)
+- company_id
+- first_name, last_name
+- gender (nullable)
+- age_range (nullable)  // 35-44 etc
+- location_city, location_state, location_zip (nullable)
+- address_line1 (nullable)
+- created_at, updated_at
+
+C) company_entity (empleador/compañía si aplica)
+- id, company_id
+- name, domain (nullable), industry (nullable)
+- employee_count (nullable)
+- company_revenue (nullable, pero NO confiar)
+- created_at, updated_at
+
+D) person_company (relación)
+- id, company_id
+- person_id, company_entity_id
+- job_title (nullable), department (nullable), seniority (nullable)
+- created_at, updated_at
+
+E) contact_point (CENTRAL)
+- id
+- company_id
+- person_id (nullable al principio; luego asociar)
+- type (enum: phone, email)
+- subtype (text: mobile, direct, personal, business, other)
+- value (text)  // phone en E.164, email lowercase
+- value_raw (text) // como venía en csv
+- is_valid (bool default false)
+- is_verified (bool default false) // para emails verificados
+- dnc_status (enum: yes, no, unknown) // por contact_point (por número)
+- opted_out (bool default false)      // interno por contact_point
+- source (text)
+- batch_id (uuid)
+- confidence (smallint 0..100)
+- last_validated_at (timestamptz nullable)
+- created_at, updated_at
+UNIQUE(company_id, type, value)
+
+F) lead_operational (lo que usa la UI y automatizaciones)
+- id
+- company_id
+- person_id
+- last_batch_id
+- status/pipeline_stage (new, contacted, qualified, etc)
+- owner_user_id (nullable)
+- best_phone_to_call (contact_point_id nullable)
+- best_phone_for_sms (contact_point_id nullable)
+- best_email (contact_point_id nullable)
+- timezone (text nullable)
+- contactability_score (int 0..100)
+- risk_flags (jsonb) // {"dnc_all":true,"no_valid_phone":true,"junk_demographics":true,...}
+- recommended_next_action (text) // CALL / SMS / EMAIL / UNCONTACTABLE
+- created_at, updated_at
+UNIQUE(company_id, person_id)
+
+G) contact_attempt (telemetría)
+- id, company_id
+- person_id
+- contact_point_id
+- channel (call/sms/email)
+- outcome (connected/no_answer/voicemail/bounced/failed/opted_out/etc)
+- occurred_at
+- metadata (jsonb)
+
+H) suppression_list (opcional si ya existe)
+- id, company_id
+- type (phone/email)
+- value (normalized)
+- reason (dnc_vendor/user_opt_out/litigation/etc)
+- created_at
+
+========================
+FASE 2 — INGESTA CSV (pipeline)
+========================
+
+Al subir CSV:
+1) Crear batch_id y guardar metadata: filename, uploaded_by, uploaded_at, total_rows.
+2) Insertar cada fila en imports_raw.raw_json EXACTAMENTE como viene (no modificar).
+3) Procesar fila por fila (streaming) para no reventar memoria.
+
+Funciones utilitarias a implementar:
+- split_csv_list(str): si null/empty => []; si contiene comas => split por ","; trim; eliminar vacíos; preservar orden.
+- normalize_phone_to_e164(str, default_country="US"): usar libphonenumber; si no parsea => guardar value_raw y marcar is_valid=false.
+- normalize_email(str): trim, lowercase; validación básica.
+
+CRÍTICO: Manejo DNC alineado por índice (OBLIGATORIO y exacto)
+- DIRECT_NUMBER y DIRECT_NUMBER_DNC son listas por coma alineadas por posición.
+- MOBILE_PHONE y MOBILE_PHONE_DNC igual.
+- PERSONAL_PHONE y PERSONAL_PHONE_DNC igual.
+Implementar EXACTAMENTE así:
+
+parse_phone_with_dnc(phone_field, dnc_field, subtype):
+  phones = split_csv_list(phone_field)
+  dncs   = split_csv_list(dnc_field)
+  if len(dncs) > 0 and len(dncs) != len(phones):
+     registrar warning en imports_raw.parse_warnings: {"field": subtype, "phones":len(phones),"dncs":len(dncs)}
+  for i in range(len(phones)):
+     raw_phone = phones[i]
+     phone_e164, is_valid = normalize_phone_to_e164(raw_phone)
+     flag = dncs[i] si i < len(dncs) else "UNKNOWN"
+     dnc_status =
+       if upper(flag) == "Y": "yes"
+       elif upper(flag) == "N": "no"
+       else: "unknown"
+     upsert contact_point:
+        type="phone"
+        subtype=subtype (direct/mobile/personal)
+        value=phone_e164 si is_valid else (store still value=best normalized if possible) 
+        value_raw=raw_phone
+        is_valid=is_valid
+        dnc_status=dnc_status
+        source="csv_import"
+        batch_id=this_batch
+        confidence=70 (o basado en validación)
+NOTAS:
+- Si falta flag => UNKNOWN (NUNCA asumir "N").
+- DNC se aplica a ESE NÚMERO (contact_point), NO al lead completo.
+- Si un número aparece repetido en múltiples columnas, unificar por value E.164 por UNIQUE(company_id,type,value) y mantener el subtype de mayor prioridad:
+   prioridad subtype: mobile > direct > personal > other
+- Si dnc_status="yes", bloquear CALL y SMS para ese contact_point SIEMPRE.
+
+Parseo por fila:
+- Crear/obtener contact_points para:
+  - direct: parse_phone_with_dnc(DIRECT_NUMBER, DIRECT_NUMBER_DNC, "direct")
+  - mobile: parse_phone_with_dnc(MOBILE_PHONE, MOBILE_PHONE_DNC, "mobile")
+  - personal: parse_phone_with_dnc(PERSONAL_PHONE, PERSONAL_PHONE_DNC, "personal")
+- Parsear emails:
+  - business/personal/verificados según columnas disponibles
+  - is_verified=true si cae en VERIFIED_EMAILS o BUSINESS_VERIFIED_EMAILS/PERSONAL_VERIFIED_EMAILS
+
+Dedupe (reglas):
+- contact_point es la llave principal (UNIQUE por company_id,type,value).
+- Si un contact_point ya existe y está asociado a person_id:
+   usar esa persona como candidata.
+- Si múltiples contact_points apuntan a personas diferentes:
+   NO merges automáticos sin reglas; crear tarea de revisión (merge_queue) o escoger la persona más antigua y registrar conflicto.
+- Si no hay persona asociada:
+   crear person nuevo y asociar todos los contact_points nuevos.
+- Crear/actualizar lead_operational (UPsert por person_id).
+
+========================
+FASE 3 — DERIVED FIELDS (lo accionable)
+========================
+
+Después de importar (y luego nightly), recalcular para cada person:
+
+1) best_phone_to_call:
+- Elegir contact_point.type=phone donde:
+   is_valid=true AND dnc_status != "yes" AND opted_out=false
+- Prioridad por subtype: direct > mobile > personal > other (para llamadas).
+- Ajustar por histórico: si un número tuvo outcomes fallidos repetidos recientes, bajar prioridad.
+
+2) best_phone_for_sms:
+- Preferir subtype="mobile" con is_valid=true, dnc_status!="yes", opted_out=false.
+- Si no existe mobile permitido => null (no inventar).
+
+3) best_email:
+- Preferir is_verified=true.
+- Luego business válido.
+- Luego personal válido.
+
+4) timezone:
+- Derivar de zip/state (tabla interna o librería; fallback por state).
+- Guardar en lead_operational.timezone.
+
+5) contactability_score (0..100) + risk_flags:
+- +30 si existe best_phone_to_call
+- +20 si existe best_phone_for_sms
+- +15 si existe best_email verified
+- -50 si todos los phones válidos están DNC (risk_flags.dnc_all=true)
+- -40 si no hay phone válido (risk_flags.no_valid_phone=true)
+- -20 si data demográfica sospechosa por batch (junk) (risk_flags.junk_demographics=true)
+Guardar score y flags.
+
+6) recommended_next_action:
+- Si best_phone_to_call => "CALL"
+- else si best_phone_for_sms => "SMS"
+- else si best_email => "EMAIL"
+- else => "UNCONTACTABLE"
+
+Regla de cumplimiento:
+- Cualquier endpoint de acción (call/sms/email) debe verificar permission del contact_point:
+   permitido si is_valid=true AND opted_out=false AND dnc_status!="yes" AND no está en suppression_list.
+- Si no permitido: rechazar con error claro y UI debe mostrar motivo exacto.
+
+========================
+FASE 4 — UI / UX NUEVA (Imported Leads)
+========================
+
+Reemplazar el diseño actual (lista + expand con listas planas).
+
+A) Tabla principal:
+Columnas:
+- Lead (Nombre + ciudad/estado)
+- Best Contact (CALL/SMS/EMAIL con valor enmascarado + tooltip "por qué se eligió")
+- Score (0-100) + etiqueta High/Med/Low
+- Risk chips: DNC_ALL / NO_VALID_PHONE / OPTED_OUT / SUSPECT_DATA
+- Batch + Imported at
+- Owner + Status
+
+B) Expand/Detail Drawer:
+1) Action Panel (arriba):
+- CALL button (solo si best_phone_to_call existe y permitido)
+- SMS button (solo si best_phone_for_sms existe y permitido)
+- EMAIL button (solo si best_email existe y permitido)
+Si está bloqueado, mostrar:
+  “Blocked: DNC by vendor on +1xxx”
+  “Blocked: invalid number”
+  “Blocked: opted out”
+2) Contact Points (tabla):
+- type, subtype, value (masked), valid, verified, dnc_status, opted_out, last_attempt, outcomes recientes
+- Acciones:
+  - Mark opted out
+  - Mark invalid
+  - Set as primary (call/sms/email)
+3) Insights (colapsable):
+- Employment/company
+- Demographics/financial con disclaimer “inferred, may be inaccurate”
+- Link “View raw import row” (solo admin)
+
+C) Filtros:
+- Batch selector
+- Only contactable (tiene al menos 1 canal permitido)
+- Exclude DNC
+- Has mobile valid
+- Has verified email
+- Min score
+- State/zip
+- Risk flags
+
+D) Search:
+- Buscar por nombre, phone, email, address
+- Debe buscar también en contact_point.value (no solo person).
+
+========================
+FASE 5 — API ENDPOINTS
+========================
+
+Implementar:
+- POST /api/leads/import/csv
+- GET  /api/leads?filters...
+- GET  /api/leads/:id
+- POST /api/leads/:id/recompute
+- POST /api/contact-points/:id/opt-out
+- POST /api/contact-points/:id/mark-invalid
+- POST /api/contact-points/:id/set-primary?usage=call|sms|email
+
+Tenant isolation obligatorio: company_id del usuario autenticado se aplica en todas las queries.
+
+========================
+TESTS OBLIGATORIOS
+========================
+
+1) Unit tests para split_csv_list, normalize_phone_to_e164, y parse_phone_with_dnc:
+- Caso: phones=3, dncs=3 => alineación correcta
+- Caso: phones=3, dncs=2 => último => unknown y warning
+- Caso: phones=2, dncs=0 => ambos unknown
+2) Integration: importar dos veces el mismo CSV:
+- no duplica contact_points (UNIQUE)
+- no duplica person/lead
+3) Compliance: si dnc_status="yes" => endpoint CALL/SMS bloqueado.
+
+Entrega requerida:
+- Migraciones SQL
+- Import pipeline streaming + normalizador + dedupe
+- Recompute derived fields
+- UI nueva para Imported Leads basada en derived fields
+- README corto explicando flujo y tablas

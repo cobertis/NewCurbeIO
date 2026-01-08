@@ -46304,6 +46304,7 @@ CRITICAL REMINDERS:
       
       let processed = 0;
       let errors = 0;
+      let skippedDuplicates = 0;
       const warnings: any[] = [];
       
       for (let i = 0; i < leads.length; i++) {
@@ -46346,12 +46347,20 @@ CRITICAL REMINDERS:
           // Process through canonicalizer
           const result = await leadCanonicalizerService.processRow(companyId, batchId, i + 1, row);
           
+          // Skip duplicate rows (idempotency protection)
+          if (result.skippedDuplicate) {
+            skippedDuplicates++;
+            continue;
+          }
+          
           if (result.warnings.length > 0) {
             warnings.push({ row: i + 1, warnings: result.warnings });
           }
           
-          // Create/update lead_operational
-          await leadDerivedFieldsService.upsertLeadOperational(companyId, result.personId, batchId);
+          // Create/update lead_operational (only if not skipped)
+          if (result.personId) {
+            await leadDerivedFieldsService.upsertLeadOperational(companyId, result.personId, batchId);
+          }
           
           processed++;
         } catch (err: any) {
@@ -46363,6 +46372,7 @@ CRITICAL REMINDERS:
       res.json({
         success: true,
         processed,
+        skippedDuplicates,
         errors,
         warnings: warnings.slice(0, 100), // Limit warnings in response
         totalWarnings: warnings.length

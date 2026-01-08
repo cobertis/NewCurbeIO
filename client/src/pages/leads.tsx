@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Search, CheckCircle, XCircle, Clock, Trash2, Upload, FileSpreadsheet, Users, ChevronDown, ChevronUp, Mail, Phone, MessageSquare, AlertTriangle, Ban, ShieldOff, Zap, PhoneCall, Eye, EyeOff, Star, Info } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Trash2, Upload, FileSpreadsheet, Users, ChevronDown, ChevronUp, Mail, Phone, MessageSquare, AlertTriangle, Ban, ShieldOff, Zap, PhoneCall, Eye, EyeOff, Star, Info, FileJson, Briefcase, Building } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,8 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -163,10 +165,16 @@ export default function Leads() {
   const [opOnlyContactable, setOpOnlyContactable] = useState<boolean>(false);
   const [opExcludeDnc, setOpExcludeDnc] = useState<boolean>(false);
   const [opSearch, setOpSearch] = useState<string>("");
+  const [opHasMobileValid, setOpHasMobileValid] = useState<boolean>(false);
+  const [opHasVerifiedEmail, setOpHasVerifiedEmail] = useState<boolean>(false);
+  const [opSelectedRiskFlags, setOpSelectedRiskFlags] = useState<string[]>([]);
   const [opPage, setOpPage] = useState(1);
   const [expandedOpLead, setExpandedOpLead] = useState<string | null>(null);
   const [opLeadDetails, setOpLeadDetails] = useState<OperationalLeadDetails | null>(null);
   const [showDemographics, setShowDemographics] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [rawImportDialogOpen, setRawImportDialogOpen] = useState(false);
+  const [rawImportData, setRawImportData] = useState<any>(null);
   
   const urlParams = new URLSearchParams(window.location.search);
   const tabFromUrl = urlParams.get('tab');
@@ -205,11 +213,20 @@ export default function Leads() {
       state: opStateFilter !== "all" ? opStateFilter : undefined,
       onlyContactable: opOnlyContactable || undefined,
       excludeDnc: opExcludeDnc || undefined,
+      hasMobileValid: opHasMobileValid || undefined,
+      hasVerifiedEmail: opHasVerifiedEmail || undefined,
+      riskFlags: opSelectedRiskFlags.length > 0 ? opSelectedRiskFlags.join(",") : undefined,
       search: opSearch || undefined,
       page: opPage,
       limit: 50
     }],
   });
+
+  const { data: sessionData } = useQuery<{ user: { id: string; role: string; companyId: string } }>({
+    queryKey: ["/api/session"],
+  });
+
+  const isAdmin = sessionData?.user?.role === "admin" || sessionData?.user?.role === "superadmin";
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -335,11 +352,34 @@ export default function Leads() {
       const response = await fetch(`/api/leads/operational/${leadId}`, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
-        setOpLeadDetails(data.lead);
+        setOpLeadDetails({ ...data.lead, contactPoints: data.contactPoints || [], employerName: data.employers?.[0]?.employerName, jobTitle: data.employers?.[0]?.jobTitle, ...data.person });
       }
     } catch (error) {
       console.error("Failed to fetch lead details", error);
     }
+  };
+
+  const fetchRawImport = async (leadId: string) => {
+    try {
+      const response = await fetch(`/api/leads/operational/${leadId}/raw`, { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setRawImportData(data);
+        setRawImportDialogOpen(true);
+      } else {
+        const error = await response.json();
+        toast({ title: "Error", description: error.message || "Failed to fetch raw import data", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Failed to fetch raw import data", error);
+      toast({ title: "Error", description: "Failed to fetch raw import data", variant: "destructive" });
+    }
+  };
+
+  const openOpLeadDrawer = async (leadId: string) => {
+    setExpandedOpLead(leadId);
+    setDrawerOpen(true);
+    await fetchLeadDetails(leadId);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1183,7 +1223,7 @@ export default function Leads() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search by name..."
+                      placeholder="Search by name, phone, email, location..."
                       value={opSearch}
                       onChange={(e) => { setOpSearch(e.target.value); setOpPage(1); }}
                       className="pl-10"
@@ -1260,6 +1300,51 @@ export default function Leads() {
                     />
                     <Label htmlFor="exclude-dnc" className="text-sm">Exclude DNC</Label>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="has-mobile-valid"
+                      checked={opHasMobileValid}
+                      onCheckedChange={(c) => { setOpHasMobileValid(!!c); setOpPage(1); }}
+                      data-testid="checkbox-has-mobile-valid"
+                    />
+                    <Label htmlFor="has-mobile-valid" className="text-sm">Has Mobile Valid</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="has-verified-email"
+                      checked={opHasVerifiedEmail}
+                      onCheckedChange={(c) => { setOpHasVerifiedEmail(!!c); setOpPage(1); }}
+                      data-testid="checkbox-has-verified-email"
+                    />
+                    <Label htmlFor="has-verified-email" className="text-sm">Has Verified Email</Label>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-4">
+                  <Label className="text-sm font-medium">Risk Flags:</Label>
+                  {[
+                    { id: 'dnc_all', label: 'DNC All' },
+                    { id: 'no_valid_phone', label: 'No Valid Phone' },
+                    { id: 'no_valid_email', label: 'No Valid Email' },
+                    { id: 'all_opted_out', label: 'All Opted Out' },
+                  ].map((flag) => (
+                    <div key={flag.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`risk-flag-${flag.id}`}
+                        checked={opSelectedRiskFlags.includes(flag.id)}
+                        onCheckedChange={(c) => {
+                          if (c) {
+                            setOpSelectedRiskFlags([...opSelectedRiskFlags, flag.id]);
+                          } else {
+                            setOpSelectedRiskFlags(opSelectedRiskFlags.filter(f => f !== flag.id));
+                          }
+                          setOpPage(1);
+                        }}
+                        data-testid={`checkbox-risk-flag-${flag.id}`}
+                      />
+                      <Label htmlFor={`risk-flag-${flag.id}`} className="text-sm">{flag.label}</Label>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1300,7 +1385,7 @@ export default function Leads() {
                                 key={lead.id}
                                 data-testid={`row-operational-${lead.id}`}
                                 className="cursor-pointer hover:bg-muted/50"
-                                onClick={() => toggleOpExpand(lead.id)}
+                                onClick={() => openOpLeadDrawer(lead.id)}
                               >
                                 <TableCell>
                                   <Button
@@ -1782,6 +1867,385 @@ export default function Leads() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Operational Lead Detail Drawer */}
+      <Sheet open={drawerOpen} onOpenChange={(open) => {
+        setDrawerOpen(open);
+        if (!open) {
+          setExpandedOpLead(null);
+          setOpLeadDetails(null);
+          setShowDemographics(false);
+        }
+      }}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto" data-testid="drawer-operational-lead">
+          <SheetHeader>
+            <SheetTitle data-testid="drawer-lead-name">
+              {opLeadDetails ? [opLeadDetails.firstName, opLeadDetails.lastName].filter(Boolean).join(' ') || 'Unknown' : 'Loading...'}
+            </SheetTitle>
+            <SheetDescription data-testid="drawer-lead-location">
+              {opLeadDetails ? [opLeadDetails.city, opLeadDetails.personState, opLeadDetails.zip].filter(Boolean).join(', ') || 'No location' : ''}
+            </SheetDescription>
+          </SheetHeader>
+          
+          {!opLeadDetails ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner fullScreen={false} message="Loading lead details..." />
+            </div>
+          ) : (
+            <ScrollArea className="h-[calc(100vh-120px)] pr-4">
+              <div className="space-y-6 py-4">
+                {/* Status and Score Badges */}
+                <div className="flex items-center gap-3 flex-wrap" data-testid="drawer-badges">
+                  {getPipelineStatusBadge(opLeadDetails.status)}
+                  <Badge variant="outline" className="text-sm" data-testid="badge-contactability-score">
+                    Score: {opLeadDetails.contactabilityScore || 0}
+                  </Badge>
+                  {opLeadDetails.riskFlags && Object.entries(opLeadDetails.riskFlags).filter(([_, v]) => v).length > 0 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Badge variant="destructive" className="flex items-center gap-1" data-testid="badge-risk-flags">
+                            <AlertTriangle className="h-3 w-3" />
+                            {Object.entries(opLeadDetails.riskFlags).filter(([_, v]) => v).length} Risk Flags
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {Object.entries(opLeadDetails.riskFlags).filter(([_, v]) => v).map(([k]) => (
+                            <div key={k}>{k.replace(/_/g, ' ')}</div>
+                          ))}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+
+                {/* Action Panel */}
+                <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg border" data-testid="drawer-action-panel">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={opLeadDetails.bestPhoneToCall ? "default" : "outline"}
+                      disabled={!opLeadDetails.bestPhoneToCall}
+                      className={opLeadDetails.bestPhoneToCall ? "bg-green-600 hover:bg-green-700" : ""}
+                      data-testid="drawer-action-call"
+                    >
+                      <PhoneCall className="h-4 w-4 mr-2" />
+                      CALL
+                    </Button>
+                    {!opLeadDetails.bestPhoneToCall && (
+                      <span className="text-xs text-red-500">{getContactBlockedReason(opLeadDetails, 'call')}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={opLeadDetails.bestPhoneForSms ? "default" : "outline"}
+                      disabled={!opLeadDetails.bestPhoneForSms}
+                      className={opLeadDetails.bestPhoneForSms ? "bg-blue-600 hover:bg-blue-700" : ""}
+                      data-testid="drawer-action-sms"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      SMS
+                    </Button>
+                    {!opLeadDetails.bestPhoneForSms && (
+                      <span className="text-xs text-red-500">{getContactBlockedReason(opLeadDetails, 'sms')}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={opLeadDetails.bestEmail ? "default" : "outline"}
+                      disabled={!opLeadDetails.bestEmail}
+                      className={opLeadDetails.bestEmail ? "bg-purple-600 hover:bg-purple-700" : ""}
+                      data-testid="drawer-action-email"
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      EMAIL
+                    </Button>
+                    {!opLeadDetails.bestEmail && (
+                      <span className="text-xs text-red-500">{getContactBlockedReason(opLeadDetails, 'email')}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Contact Points Table */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold flex items-center gap-2" data-testid="section-contact-points">
+                    <Phone className="h-4 w-4" />
+                    Contact Points
+                  </h4>
+                  {opLeadDetails.contactPoints && opLeadDetails.contactPoints.length > 0 ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-8">Type</TableHead>
+                            <TableHead>Subtype</TableHead>
+                            <TableHead>Value</TableHead>
+                            <TableHead className="w-16">Valid</TableHead>
+                            <TableHead className="w-16">Verified</TableHead>
+                            <TableHead className="w-20">DNC</TableHead>
+                            <TableHead className="w-20">Opted Out</TableHead>
+                            <TableHead className="w-32">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {opLeadDetails.contactPoints.map((cp: ContactPoint) => (
+                            <TableRow key={cp.id} data-testid={`drawer-contact-point-${cp.id}`}>
+                              <TableCell>
+                                {cp.type === 'phone' ? (
+                                  <Phone className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <Mail className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs capitalize">{cp.subtype}</TableCell>
+                              <TableCell className="font-mono text-sm" data-testid={`contact-value-${cp.id}`}>
+                                {cp.value}
+                              </TableCell>
+                              <TableCell>
+                                {cp.isValid ? (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {cp.isVerified ? (
+                                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {cp.dncStatus === 'yes' ? (
+                                  <Badge variant="destructive" className="text-xs">DNC</Badge>
+                                ) : cp.dncStatus === 'no' ? (
+                                  <Badge className="bg-green-100 text-green-800 text-xs">Clear</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs">Unknown</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {cp.optedOut ? (
+                                  <Badge variant="destructive" className="text-xs">Opted Out</Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  {!cp.optedOut && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0"
+                                            onClick={() => optOutMutation.mutate(cp.id)}
+                                            data-testid={`button-optout-${cp.id}`}
+                                          >
+                                            <Ban className="h-3 w-3" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Mark as opted out</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                  {cp.isValid && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0"
+                                            onClick={() => markInvalidMutation.mutate(cp.id)}
+                                            data-testid={`button-invalid-${cp.id}`}
+                                          >
+                                            <ShieldOff className="h-3 w-3" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Mark as invalid</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => setPrimaryMutation.mutate({ 
+                                            contactPointId: cp.id, 
+                                            usageType: cp.type === 'phone' ? 'call' : 'email' 
+                                          })}
+                                          data-testid={`button-primary-${cp.id}`}
+                                        >
+                                          <Star className="h-3 w-3" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Set as primary</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No contact points available</p>
+                  )}
+                </div>
+
+                {/* Insights Panel (Collapsible) */}
+                <Collapsible open={showDemographics} onOpenChange={setShowDemographics}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-between" data-testid="button-toggle-insights">
+                      <span className="flex items-center gap-2">
+                        <Info className="h-4 w-4" />
+                        Insights & Demographics
+                      </span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${showDemographics ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-2">
+                    {/* Employment Info */}
+                    {opLeadDetails.employerName && (
+                      <div className="p-3 bg-muted/30 rounded-lg" data-testid="section-employment">
+                        <h5 className="text-sm font-medium flex items-center gap-2 mb-2">
+                          <Building className="h-4 w-4" />
+                          Employment
+                        </h5>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Company:</span>
+                            <span className="ml-2">{opLeadDetails.employerName}</span>
+                          </div>
+                          {opLeadDetails.jobTitle && (
+                            <div>
+                              <span className="text-muted-foreground">Title:</span>
+                              <span className="ml-2">{opLeadDetails.jobTitle}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Demographics */}
+                    <div className="p-3 bg-muted/30 rounded-lg" data-testid="section-demographics">
+                      <h5 className="text-sm font-medium flex items-center gap-2 mb-2">
+                        <Users className="h-4 w-4" />
+                        Demographics
+                        <Badge variant="outline" className="text-xs ml-auto">Inferred data, may be inaccurate</Badge>
+                      </h5>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {opLeadDetails.gender && (
+                          <div>
+                            <span className="text-muted-foreground">Gender:</span>
+                            <span className="ml-2 capitalize">{opLeadDetails.gender}</span>
+                          </div>
+                        )}
+                        {opLeadDetails.ageRange && (
+                          <div>
+                            <span className="text-muted-foreground">Age Range:</span>
+                            <span className="ml-2">{opLeadDetails.ageRange}</span>
+                          </div>
+                        )}
+                        {opLeadDetails.hasChildren !== null && (
+                          <div>
+                            <span className="text-muted-foreground">Has Children:</span>
+                            <span className="ml-2">{opLeadDetails.hasChildren ? 'Yes' : 'No'}</span>
+                          </div>
+                        )}
+                        {opLeadDetails.isHomeowner !== null && (
+                          <div>
+                            <span className="text-muted-foreground">Homeowner:</span>
+                            <span className="ml-2">{opLeadDetails.isHomeowner ? 'Yes' : 'No'}</span>
+                          </div>
+                        )}
+                        {opLeadDetails.isMarried !== null && (
+                          <div>
+                            <span className="text-muted-foreground">Married:</span>
+                            <span className="ml-2">{opLeadDetails.isMarried ? 'Yes' : 'No'}</span>
+                          </div>
+                        )}
+                        {opLeadDetails.netWorth && (
+                          <div>
+                            <span className="text-muted-foreground">Net Worth:</span>
+                            <span className="ml-2">{opLeadDetails.netWorth}</span>
+                          </div>
+                        )}
+                        {opLeadDetails.incomeRange && (
+                          <div>
+                            <span className="text-muted-foreground">Income:</span>
+                            <span className="ml-2">{opLeadDetails.incomeRange}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* View Raw Import (Admin Only) */}
+                {isAdmin && (
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => expandedOpLead && fetchRawImport(expandedOpLead)}
+                      className="w-full"
+                      data-testid="button-view-raw-import"
+                    >
+                      <FileJson className="h-4 w-4 mr-2" />
+                      View Raw Import Row
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Raw Import Data Dialog */}
+      <Dialog open={rawImportDialogOpen} onOpenChange={setRawImportDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto" data-testid="dialog-raw-import">
+          <DialogHeader>
+            <DialogTitle>Raw Import Data</DialogTitle>
+            <DialogDescription>
+              Original data from CSV import for {rawImportData?.person?.firstName} {rawImportData?.person?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          {rawImportData?.rawRow ? (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                <span>Row #: {rawImportData.rawRow.rowNumber}</span>
+                <span className="ml-4">Imported: {rawImportData.rawRow.importedAt ? format(new Date(rawImportData.rawRow.importedAt), 'PPpp') : '-'}</span>
+              </div>
+              <pre className="p-4 bg-muted rounded-lg overflow-x-auto text-xs" data-testid="raw-import-json">
+                {JSON.stringify(rawImportData.rawRow.rawJson, null, 2)}
+              </pre>
+              {rawImportData.rawRow.parseWarnings && Object.keys(rawImportData.rawRow.parseWarnings).length > 0 && (
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                  <h5 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">Parse Warnings</h5>
+                  <pre className="text-xs text-yellow-700 dark:text-yellow-300">
+                    {JSON.stringify(rawImportData.rawRow.parseWarnings, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No raw import data found for this lead.</p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRawImportDialogOpen(false)} data-testid="button-close-raw-import">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

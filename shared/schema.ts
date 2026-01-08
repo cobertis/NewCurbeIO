@@ -3214,6 +3214,7 @@ export const leadRawRows = pgTable("lead_raw_rows", {
   index("lead_raw_rows_company_idx").on(table.companyId),
   index("lead_raw_rows_batch_idx").on(table.batchId),
   index("lead_raw_rows_checksum_idx").on(table.checksum),
+  uniqueIndex("lead_raw_rows_company_checksum_unique").on(table.companyId, table.checksum),
 ]);
 
 // LAYER 2: CANONICAL - Normalized entities

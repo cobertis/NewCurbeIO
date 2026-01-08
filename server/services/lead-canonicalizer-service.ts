@@ -235,7 +235,7 @@ export class LeadCanonicalizerService {
     rowNumber: number, 
     rawJson: Record<string, any>,
     parseWarnings: ParseWarning[] | null = null
-  ): Promise<string> {
+  ): Promise<{ id: string; skipped: boolean }> {
     const checksum = generateRowChecksum(rawJson);
     
     // Check if row already exists (idempotence)
@@ -249,7 +249,8 @@ export class LeadCanonicalizerService {
       .limit(1);
     
     if (existing.length > 0) {
-      return existing[0].id;
+      console.log(`Duplicate row skipped (checksum match): ${checksum.substring(0, 16)}...`);
+      return { id: existing[0].id, skipped: true };
     }
     
     const [inserted] = await db.insert(leadRawRows)
@@ -263,7 +264,7 @@ export class LeadCanonicalizerService {
       })
       .returning({ id: leadRawRows.id });
     
-    return inserted.id;
+    return { id: inserted.id, skipped: false };
   }
   
   // Upsert contact point (Layer 2)
@@ -477,12 +478,17 @@ export class LeadCanonicalizerService {
     batchId: string,
     rowNumber: number,
     row: Record<string, any>
-  ): Promise<{ personId: string; contactPointIds: string[]; warnings: ParseWarning[] }> {
+  ): Promise<{ personId: string | null; contactPointIds: string[]; warnings: ParseWarning[]; skippedDuplicate: boolean }> {
     const allWarnings: ParseWarning[] = [];
     const contactPointIds: string[] = [];
     
     // Layer 1: Store raw row
-    const rawRowId = await this.storeRawRow(companyId, batchId, rowNumber, row, []);
+    const { id: rawRowId, skipped } = await this.storeRawRow(companyId, batchId, rowNumber, row, []);
+    
+    // If row was skipped due to duplicate checksum, return early
+    if (skipped) {
+      return { personId: null, contactPointIds: [], warnings: [], skippedDuplicate: true };
+    }
     
     // Layer 2: Create canonical person
     const firstName = row.FIRST_NAME || row.first_name || row.FIRST || null;
@@ -570,7 +576,7 @@ export class LeadCanonicalizerService {
         .where(eq(leadRawRows.id, rawRowId));
     }
     
-    return { personId, contactPointIds, warnings: allWarnings };
+    return { personId, contactPointIds, warnings: allWarnings, skippedDuplicate: false };
   }
 }
 
