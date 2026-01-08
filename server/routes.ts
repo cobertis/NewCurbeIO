@@ -19,6 +19,8 @@ import { chargeCallUsage, getCallUsageBreakdown, chargeSmsUsage, chargeMmsUsage,
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
+import { leadCanonicalizerService } from "./services/lead-canonicalizer-service";
+import { leadDerivedFieldsService } from "./services/lead-derived-fields-service";
 import twilio from "twilio";
 import fetch from "node-fetch";
 import { checkPwnedPassword } from "./lib/security/pwnedPassword";
@@ -103,7 +105,7 @@ import { parse as csvParse } from "csv-parse";
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, leadOperational, canonicalPersons, canonicalContactPoints, canonicalCompanyEntities, personCompanyRelations, leadRawRows, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -45762,6 +45764,612 @@ CRITICAL REMINDERS:
     } catch (error: any) {
       console.error("[Lead Import] Error deleting batch:", error);
       res.status(500).json({ message: error.message || "Failed to delete batch" });
+    }
+  });
+
+
+  // =====================================================
+  // OPERATIONAL LEADS - 3-Layer Lead Architecture
+  // =====================================================
+
+  // GET /api/leads/operational - Get leads from lead_operational with joins
+  app.get("/api/leads/operational", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      
+      // Parse query parameters
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+      const offset = (page - 1) * limit;
+      
+      const { batchId, minScore, status, state, onlyContactable, excludeDnc, search } = req.query;
+      
+      // Build where conditions
+      const conditions = [eq(leadOperational.companyId, companyId)];
+      
+      if (batchId) {
+        conditions.push(eq(leadOperational.lastBatchId, batchId as string));
+      }
+      
+      if (minScore) {
+        conditions.push(gte(leadOperational.contactabilityScore, parseInt(minScore as string)));
+      }
+      
+      if (status) {
+        conditions.push(eq(leadOperational.status, status as any));
+      }
+      
+      if (excludeDnc === 'true') {
+        // Exclude leads where all phones are DNC (riskFlags contains dnc_all: true)
+        conditions.push(sql`NOT (${leadOperational.riskFlags}->>'dnc_all')::boolean`);
+      }
+      
+      if (onlyContactable === 'true') {
+        conditions.push(ne(leadOperational.recommendedNextAction, 'UNCONTACTABLE'));
+      }
+      
+      // Get leads with person data joined
+      const leadsQuery = db.select({
+        id: leadOperational.id,
+        personId: leadOperational.personId,
+        status: leadOperational.status,
+        ownerUserId: leadOperational.ownerUserId,
+        lastBatchId: leadOperational.lastBatchId,
+        bestPhoneToCall: leadOperational.bestPhoneToCall,
+        bestPhoneForSms: leadOperational.bestPhoneForSms,
+        bestEmail: leadOperational.bestEmail,
+        timezone: leadOperational.timezone,
+        contactabilityScore: leadOperational.contactabilityScore,
+        riskFlags: leadOperational.riskFlags,
+        recommendedNextAction: leadOperational.recommendedNextAction,
+        lastContactAttemptAt: leadOperational.lastContactAttemptAt,
+        lastContactOutcome: leadOperational.lastContactOutcome,
+        totalContactAttempts: leadOperational.totalContactAttempts,
+        createdAt: leadOperational.createdAt,
+        updatedAt: leadOperational.updatedAt,
+        // Person data
+        firstName: canonicalPersons.firstName,
+        lastName: canonicalPersons.lastName,
+        personState: canonicalPersons.state,
+        city: canonicalPersons.city,
+        zip: canonicalPersons.zip,
+        ageRange: canonicalPersons.ageRange,
+        gender: canonicalPersons.gender
+      })
+      .from(leadOperational)
+      .innerJoin(canonicalPersons, and(eq(leadOperational.personId, canonicalPersons.id), eq(canonicalPersons.companyId, companyId)))
+      .where(and(...conditions));
+      
+      // Apply state filter on person
+      if (state) {
+        conditions.push(eq(canonicalPersons.state, state as string));
+      }
+      
+      // Apply search filter on person name
+      if (search) {
+        const searchTerm = `%${(search as string).toLowerCase()}%`;
+        conditions.push(or(
+          sql`lower(${canonicalPersons.firstName}) like ${searchTerm}`,
+          sql`lower(${canonicalPersons.lastName}) like ${searchTerm}`
+        )!);
+      }
+      
+      // Execute count and data queries
+      const [countResult] = await db.select({ count: count() })
+        .from(leadOperational)
+        .innerJoin(canonicalPersons, and(eq(leadOperational.personId, canonicalPersons.id), eq(canonicalPersons.companyId, companyId)))
+        .where(and(...conditions));
+      
+      const leads = await db.select({
+        id: leadOperational.id,
+        personId: leadOperational.personId,
+        status: leadOperational.status,
+        ownerUserId: leadOperational.ownerUserId,
+        lastBatchId: leadOperational.lastBatchId,
+        bestPhoneToCall: leadOperational.bestPhoneToCall,
+        bestPhoneForSms: leadOperational.bestPhoneForSms,
+        bestEmail: leadOperational.bestEmail,
+        timezone: leadOperational.timezone,
+        contactabilityScore: leadOperational.contactabilityScore,
+        riskFlags: leadOperational.riskFlags,
+        recommendedNextAction: leadOperational.recommendedNextAction,
+        lastContactAttemptAt: leadOperational.lastContactAttemptAt,
+        lastContactOutcome: leadOperational.lastContactOutcome,
+        totalContactAttempts: leadOperational.totalContactAttempts,
+        createdAt: leadOperational.createdAt,
+        updatedAt: leadOperational.updatedAt,
+        firstName: canonicalPersons.firstName,
+        lastName: canonicalPersons.lastName,
+        personState: canonicalPersons.state,
+        city: canonicalPersons.city,
+        zip: canonicalPersons.zip,
+        ageRange: canonicalPersons.ageRange,
+        gender: canonicalPersons.gender
+      })
+      .from(leadOperational)
+      .innerJoin(canonicalPersons, and(eq(leadOperational.personId, canonicalPersons.id), eq(canonicalPersons.companyId, companyId)))
+      .where(and(...conditions))
+      .orderBy(desc(leadOperational.contactabilityScore))
+      .limit(limit)
+      .offset(offset);
+      
+      // Fetch best contact point values for each lead
+      const leadIds = leads.map(l => l.id);
+      const contactPointIds = leads.flatMap(l => [l.bestPhoneToCall, l.bestPhoneForSms, l.bestEmail].filter(Boolean)) as string[];
+      
+      let contactPointMap: Record<string, any> = {};
+      if (contactPointIds.length > 0) {
+        const contactPoints = await db.select()
+          .from(canonicalContactPoints)
+          .where(and(
+            eq(canonicalContactPoints.companyId, companyId),
+            inArray(canonicalContactPoints.id, contactPointIds)
+          ));
+        contactPointMap = Object.fromEntries(contactPoints.map(cp => [cp.id, cp]));
+      }
+      
+      // Enrich leads with contact point values
+      const enrichedLeads = leads.map(lead => ({
+        ...lead,
+        bestPhoneToCallValue: lead.bestPhoneToCall ? contactPointMap[lead.bestPhoneToCall]?.value : null,
+        bestPhoneForSmsValue: lead.bestPhoneForSms ? contactPointMap[lead.bestPhoneForSms]?.value : null,
+        bestEmailValue: lead.bestEmail ? contactPointMap[lead.bestEmail]?.value : null
+      }));
+      
+      res.json({
+        leads: enrichedLeads,
+        pagination: {
+          page,
+          limit,
+          total: countResult?.count || 0,
+          totalPages: Math.ceil((countResult?.count || 0) / limit)
+        }
+      });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error fetching leads:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch operational leads" });
+    }
+  });
+
+  // GET /api/leads/operational/:id - Get single lead with all contact points, person data, and employer info
+  app.get("/api/leads/operational/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { id } = req.params;
+      
+      // Get lead with person data
+      const [lead] = await db.select({
+        id: leadOperational.id,
+        personId: leadOperational.personId,
+        status: leadOperational.status,
+        ownerUserId: leadOperational.ownerUserId,
+        lastBatchId: leadOperational.lastBatchId,
+        bestPhoneToCall: leadOperational.bestPhoneToCall,
+        bestPhoneForSms: leadOperational.bestPhoneForSms,
+        bestEmail: leadOperational.bestEmail,
+        timezone: leadOperational.timezone,
+        contactabilityScore: leadOperational.contactabilityScore,
+        riskFlags: leadOperational.riskFlags,
+        recommendedNextAction: leadOperational.recommendedNextAction,
+        lastContactAttemptAt: leadOperational.lastContactAttemptAt,
+        lastContactOutcome: leadOperational.lastContactOutcome,
+        totalContactAttempts: leadOperational.totalContactAttempts,
+        createdAt: leadOperational.createdAt,
+        updatedAt: leadOperational.updatedAt
+      })
+      .from(leadOperational)
+      .where(and(
+        eq(leadOperational.id, id),
+        eq(leadOperational.companyId, companyId)
+      ))
+      .limit(1);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      // Get person data
+      const [person] = await db.select()
+        .from(canonicalPersons)
+        .where(and(eq(canonicalPersons.id, lead.personId), eq(canonicalPersons.companyId, companyId)))
+        .limit(1);
+      
+      // Get all contact points for this person
+      const contactPoints = await db.select()
+        .from(canonicalContactPoints)
+        .where(and(
+          eq(canonicalContactPoints.companyId, companyId),
+          eq(canonicalContactPoints.personId, lead.personId)
+        ));
+      
+      // Get employer relations
+      const employerRelations = await db.select({
+        relationId: personCompanyRelations.id,
+        jobTitle: personCompanyRelations.jobTitle,
+        department: personCompanyRelations.department,
+        seniority: personCompanyRelations.seniority,
+        employerId: canonicalCompanyEntities.id,
+        employerName: canonicalCompanyEntities.name,
+        employerDomain: canonicalCompanyEntities.domain,
+        employerIndustry: canonicalCompanyEntities.industry,
+        employerEmployeeCount: canonicalCompanyEntities.employeeCount,
+        employerRevenue: canonicalCompanyEntities.revenue
+      })
+      .from(personCompanyRelations)
+      .innerJoin(canonicalCompanyEntities, eq(personCompanyRelations.companyEntityId, canonicalCompanyEntities.id))
+      .where(and(eq(personCompanyRelations.personId, lead.personId), eq(personCompanyRelations.companyId, companyId)));
+      
+      res.json({
+        lead,
+        person,
+        contactPoints,
+        employers: employerRelations
+      });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error fetching lead:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch lead" });
+    }
+  });
+
+  // POST /api/leads/operational/:id/recompute - Recompute derived fields for a specific lead
+  app.post("/api/leads/operational/:id/recompute", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { id } = req.params;
+      
+      // Get lead
+      const [lead] = await db.select()
+        .from(leadOperational)
+        .where(and(
+          eq(leadOperational.id, id),
+          eq(leadOperational.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      // Recompute derived fields
+      const derived = await leadDerivedFieldsService.computeDerivedFields(companyId, lead.personId);
+      
+      // Update lead_operational
+      await db.update(leadOperational)
+        .set({
+          bestPhoneToCall: derived.bestPhoneToCall,
+          bestPhoneForSms: derived.bestPhoneForSms,
+          bestEmail: derived.bestEmail,
+          timezone: derived.timezone,
+          contactabilityScore: derived.contactabilityScore,
+          riskFlags: derived.riskFlags,
+          recommendedNextAction: derived.recommendedNextAction,
+          updatedAt: new Date()
+        })
+        .where(eq(leadOperational.id, id));
+      
+      res.json({
+        success: true,
+        derived
+      });
+    } catch (error: any) {
+      console.error("[Operational Leads] Error recomputing lead:", error);
+      res.status(500).json({ message: error.message || "Failed to recompute lead" });
+    }
+  });
+
+  // =====================================================
+  // CONTACT POINTS - Manage contact points
+  // =====================================================
+
+  // POST /api/contact-points/:id/opt-out - Mark a contact point as opted out
+  app.post("/api/contact-points/:id/opt-out", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { id } = req.params;
+      
+      // Verify contact point belongs to company
+      const [cp] = await db.select()
+        .from(canonicalContactPoints)
+        .where(and(
+          eq(canonicalContactPoints.id, id),
+          eq(canonicalContactPoints.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!cp) {
+        return res.status(404).json({ message: "Contact point not found" });
+      }
+      
+      // Update opted out status
+      await db.update(canonicalContactPoints)
+        .set({
+          optedOut: true,
+          updatedAt: new Date()
+        })
+        .where(eq(canonicalContactPoints.id, id));
+      
+      // If contact point is linked to a person, recompute that person's lead
+      if (cp.personId) {
+        const [lead] = await db.select()
+          .from(leadOperational)
+          .where(and(
+            eq(leadOperational.companyId, companyId),
+            eq(leadOperational.personId, cp.personId)
+          ))
+          .limit(1);
+        
+        if (lead) {
+          const derived = await leadDerivedFieldsService.computeDerivedFields(companyId, cp.personId);
+          await db.update(leadOperational)
+            .set({
+              bestPhoneToCall: derived.bestPhoneToCall,
+              bestPhoneForSms: derived.bestPhoneForSms,
+              bestEmail: derived.bestEmail,
+              contactabilityScore: derived.contactabilityScore,
+              riskFlags: derived.riskFlags,
+              recommendedNextAction: derived.recommendedNextAction,
+              updatedAt: new Date()
+            })
+            .where(eq(leadOperational.id, lead.id));
+        }
+      }
+      
+      res.json({ success: true, message: "Contact point marked as opted out" });
+    } catch (error: any) {
+      console.error("[Contact Points] Error opting out:", error);
+      res.status(500).json({ message: error.message || "Failed to opt out contact point" });
+    }
+  });
+
+  // POST /api/contact-points/:id/mark-invalid - Mark a contact point as invalid
+  app.post("/api/contact-points/:id/mark-invalid", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { id } = req.params;
+      
+      // Verify contact point belongs to company
+      const [cp] = await db.select()
+        .from(canonicalContactPoints)
+        .where(and(
+          eq(canonicalContactPoints.id, id),
+          eq(canonicalContactPoints.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!cp) {
+        return res.status(404).json({ message: "Contact point not found" });
+      }
+      
+      // Update validity
+      await db.update(canonicalContactPoints)
+        .set({
+          isValid: false,
+          updatedAt: new Date()
+        })
+        .where(eq(canonicalContactPoints.id, id));
+      
+      // If contact point is linked to a person, recompute that person's lead
+      if (cp.personId) {
+        const [lead] = await db.select()
+          .from(leadOperational)
+          .where(and(
+            eq(leadOperational.companyId, companyId),
+            eq(leadOperational.personId, cp.personId)
+          ))
+          .limit(1);
+        
+        if (lead) {
+          const derived = await leadDerivedFieldsService.computeDerivedFields(companyId, cp.personId);
+          await db.update(leadOperational)
+            .set({
+              bestPhoneToCall: derived.bestPhoneToCall,
+              bestPhoneForSms: derived.bestPhoneForSms,
+              bestEmail: derived.bestEmail,
+              contactabilityScore: derived.contactabilityScore,
+              riskFlags: derived.riskFlags,
+              recommendedNextAction: derived.recommendedNextAction,
+              updatedAt: new Date()
+            })
+            .where(eq(leadOperational.id, lead.id));
+        }
+      }
+      
+      res.json({ success: true, message: "Contact point marked as invalid" });
+    } catch (error: any) {
+      console.error("[Contact Points] Error marking invalid:", error);
+      res.status(500).json({ message: error.message || "Failed to mark contact point as invalid" });
+    }
+  });
+
+  // POST /api/contact-points/:id/set-primary - Set a contact point as primary for call/sms/email usage
+  app.post("/api/contact-points/:id/set-primary", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { id } = req.params;
+      const { usage } = req.body; // 'call', 'sms', or 'email'
+      
+      if (!usage || !['call', 'sms', 'email'].includes(usage)) {
+        return res.status(400).json({ message: "Invalid usage type. Must be 'call', 'sms', or 'email'" });
+      }
+      
+      // Verify contact point belongs to company
+      const [cp] = await db.select()
+        .from(canonicalContactPoints)
+        .where(and(
+          eq(canonicalContactPoints.id, id),
+          eq(canonicalContactPoints.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!cp) {
+        return res.status(404).json({ message: "Contact point not found" });
+      }
+      
+      if (!cp.personId) {
+        return res.status(400).json({ message: "Contact point is not linked to a person" });
+      }
+      
+      // Permission check using centralized compliance service
+      const permissionCheck = await leadDerivedFieldsService.isContactPointPermitted(companyId, id);
+      if (!permissionCheck.permitted) {
+        return res.status(403).json({ 
+          message: permissionCheck.reason,
+          reason: "not_permitted" 
+        });
+      }
+      
+      // Validate type matches usage
+      if (usage === 'email' && cp.type !== 'email') {
+        return res.status(400).json({ message: "Cannot set a phone as primary email" });
+      }
+      if ((usage === 'call' || usage === 'sms') && cp.type !== 'phone') {
+        return res.status(400).json({ message: "Cannot set an email as primary phone" });
+      }
+      
+      // Get lead for this person
+      const [lead] = await db.select()
+        .from(leadOperational)
+        .where(and(
+          eq(leadOperational.companyId, companyId),
+          eq(leadOperational.personId, cp.personId)
+        ))
+        .limit(1);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "No operational lead found for this person" });
+      }
+      
+      // Update the appropriate best field
+      const updateField: Record<string, any> = { updatedAt: new Date() };
+      if (usage === 'call') {
+        updateField.bestPhoneToCall = id;
+      } else if (usage === 'sms') {
+        updateField.bestPhoneForSms = id;
+      } else if (usage === 'email') {
+        updateField.bestEmail = id;
+      }
+      
+      await db.update(leadOperational)
+        .set(updateField)
+        .where(eq(leadOperational.id, lead.id));
+      
+      // Recompute derived fields after mutation
+      await leadDerivedFieldsService.upsertLeadOperational(companyId, cp.personId, lead.lastBatchId || '');
+      
+      res.json({ success: true, message: `Contact point set as primary for ${usage}` });
+    } catch (error: any) {
+      console.error("[Contact Points] Error setting primary:", error);
+      res.status(500).json({ message: error.message || "Failed to set primary contact point" });
+    }
+  });
+
+  // POST /api/leads/import/process-canonical - Process an existing batch through the new canonical pipeline
+  app.post("/api/leads/import/process-canonical", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { batchId } = req.body;
+      
+      if (!batchId) {
+        return res.status(400).json({ message: "batchId is required" });
+      }
+      
+      // Verify batch belongs to company
+      const [batch] = await db.select()
+        .from(importLeadBatches)
+        .where(and(
+          eq(importLeadBatches.id, batchId),
+          eq(importLeadBatches.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!batch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      
+      // Get all leads from import_leads for this batch
+      const leads = await db.select()
+        .from(importLeads)
+        .where(eq(importLeads.batchId, batchId));
+      
+      if (leads.length === 0) {
+        return res.status(400).json({ message: "No leads found in this batch" });
+      }
+      
+      let processed = 0;
+      let errors = 0;
+      const warnings: any[] = [];
+      
+      for (let i = 0; i < leads.length; i++) {
+        const lead = leads[i];
+        try {
+          // Build row object from the import lead
+          const row: Record<string, any> = {
+            FIRST_NAME: lead.firstName,
+            LAST_NAME: lead.lastName,
+            MOBILE_PHONE: lead.mobilePhones,
+            MOBILE_PHONE_DNC: lead.mobilePhoneDnc,
+            DIRECT_NUMBER: lead.directNumbers,
+            DIRECT_NUMBER_DNC: lead.directNumberDnc,
+            PERSONAL_PHONE: lead.personalPhones,
+            PERSONAL_PHONE_DNC: lead.personalPhoneDnc,
+            BUSINESS_EMAIL: lead.businessEmails,
+            PERSONAL_EMAIL: lead.personalEmails,
+            VERIFIED_EMAILS: lead.verifiedEmails,
+            ADDRESS: lead.address,
+            CITY: lead.city,
+            STATE: lead.state,
+            ZIP: lead.zip,
+            GENDER: lead.gender,
+            AGE_RANGE: lead.ageRange,
+            HAS_CHILDREN: lead.hasChildren,
+            IS_HOMEOWNER: lead.isHomeowner,
+            IS_MARRIED: lead.isMarried,
+            NET_WORTH: lead.netWorth,
+            INCOME_RANGE: lead.incomeRange,
+            COMPANY: lead.companyName,
+            JOB_TITLE: lead.jobTitle,
+            SENIORITY: lead.seniority,
+            DEPARTMENT: lead.department,
+            INDUSTRY: lead.industry,
+            EMPLOYEE_COUNT: lead.employeeCount,
+            COMPANY_REVENUE: lead.companyRevenue,
+            COMPANY_DOMAIN: lead.companyDomain
+          };
+          
+          // Process through canonicalizer
+          const result = await leadCanonicalizerService.processRow(companyId, batchId, i + 1, row);
+          
+          if (result.warnings.length > 0) {
+            warnings.push({ row: i + 1, warnings: result.warnings });
+          }
+          
+          // Create/update lead_operational
+          await leadDerivedFieldsService.upsertLeadOperational(companyId, result.personId, batchId);
+          
+          processed++;
+        } catch (err: any) {
+          console.error(`[Process Canonical] Error processing row ${i + 1}:`, err);
+          errors++;
+        }
+      }
+      
+      res.json({
+        success: true,
+        processed,
+        errors,
+        warnings: warnings.slice(0, 100), // Limit warnings in response
+        totalWarnings: warnings.length
+      });
+    } catch (error: any) {
+      console.error("[Process Canonical] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to process batch through canonical pipeline" });
     }
   });
 

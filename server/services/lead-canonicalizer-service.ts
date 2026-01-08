@@ -241,7 +241,8 @@ export class LeadCanonicalizerService {
     // Check if row already exists (idempotence)
     const existing = await db.select({ id: leadRawRows.id })
       .from(leadRawRows)
-      .where(and(
+      
+.where(and(
         eq(leadRawRows.companyId, companyId),
         eq(leadRawRows.checksum, checksum)
       ))
@@ -281,7 +282,8 @@ export class LeadCanonicalizerService {
     // Check if contact point already exists
     const existing = await db.select()
       .from(canonicalContactPoints)
-      .where(and(
+      
+.where(and(
         eq(canonicalContactPoints.companyId, companyId),
         eq(canonicalContactPoints.type, type),
         eq(canonicalContactPoints.value, value)
@@ -361,7 +363,8 @@ export class LeadCanonicalizerService {
     if (firstName || lastName) {
       const existing = await db.select()
         .from(canonicalPersons)
-        .where(and(
+        
+.where(and(
           eq(canonicalPersons.companyId, companyId),
           sql`lower(${canonicalPersons.firstName}) = lower(${firstName || ''})`,
           sql`lower(${canonicalPersons.lastName}) = lower(${lastName || ''})`
@@ -414,7 +417,8 @@ export class LeadCanonicalizerService {
   ): Promise<string> {
     const existing = await db.select({ id: canonicalCompanyEntities.id })
       .from(canonicalCompanyEntities)
-      .where(and(
+      
+.where(and(
         eq(canonicalCompanyEntities.companyId, companyId),
         sql`lower(${canonicalCompanyEntities.name}) = lower(${name})`
       ))
@@ -449,11 +453,11 @@ export class LeadCanonicalizerService {
     const existing = await db.select({ id: personCompanyRelations.id })
       .from(personCompanyRelations)
       .where(and(
+        eq(personCompanyRelations.companyId, companyId),
         eq(personCompanyRelations.personId, personId),
         eq(personCompanyRelations.companyEntityId, companyEntityId)
       ))
       .limit(1);
-    
     if (existing.length > 0) return;
     
     await db.insert(personCompanyRelations)

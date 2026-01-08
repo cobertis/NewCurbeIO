@@ -7,6 +7,7 @@ import {
   suppressionList
 } from "@shared/schema";
 import { eq, and, desc, sql, count } from "drizzle-orm";
+import { normalizePhoneToE164, normalizeEmail } from "./lead-canonicalizer-service";
 
 // State to Timezone mapping
 const STATE_TIMEZONE_MAP: Record<string, string> = {
@@ -52,9 +53,11 @@ export interface DerivedFields {
 export class LeadDerivedFieldsService {
   
   // Check if a contact point is permitted for contact
+  // Channel parameter enables channel-specific validation
   async isContactPointPermitted(
     companyId: string,
-    contactPointId: string
+    contactPointId: string,
+    channel?: 'call' | 'sms' | 'email'
   ): Promise<{ permitted: boolean; reason?: string }> {
     const [cp] = await db.select()
       .from(canonicalContactPoints)
@@ -65,30 +68,73 @@ export class LeadDerivedFieldsService {
       return { permitted: false, reason: 'Contact point not found' };
     }
     
+    // Channel-type validation
+    if (channel === 'email' && cp.type !== 'email') {
+      return { permitted: false, reason: `Contact point is ${cp.type}, not email` };
+    }
+    
+    if ((channel === 'call' || channel === 'sms') && cp.type !== 'phone') {
+      return { permitted: false, reason: `Contact point is ${cp.type}, not phone` };
+    }
+    
     if (!cp.isValid) {
       return { permitted: false, reason: `Invalid ${cp.type}: ${cp.valueRaw || cp.value}` };
     }
     
+    // DNC check - applies to call and sms channels for phones
     if (cp.dncStatus === 'yes') {
-      return { permitted: false, reason: `DNC by vendor on ${cp.value}` };
+      // DNC blocks calls; for SMS we also check DNC
+      if (channel === 'call' || channel === 'sms' || !channel) {
+        return { permitted: false, reason: `DNC by vendor on ${cp.value}` };
+      }
     }
     
     if (cp.optedOut) {
       return { permitted: false, reason: `Opted out: ${cp.value}` };
     }
     
-    // Check suppression list
-    const [suppressed] = await db.select({ id: suppressionList.id })
+    // SMS-specific: Check if phone subtype is suitable for SMS
+    if (channel === 'sms') {
+      const smsPreferredSubtypes = ['mobile', 'personal'];
+      if (!smsPreferredSubtypes.includes(cp.subtype)) {
+        // Allow but warn for non-mobile numbers
+        // For strict enforcement, could return permitted: false
+        // For now, we allow with reduced confidence but permit it
+      }
+    }
+    
+    // Check suppression list with normalized values
+    // Normalize the contact point value for comparison
+    let normalizedValue = cp.value;
+    if (cp.type === 'phone') {
+      const { normalized } = normalizePhoneToE164(cp.value);
+      normalizedValue = normalized;
+    } else if (cp.type === 'email') {
+      const { normalized } = normalizeEmail(cp.value);
+      normalizedValue = normalized;
+    }
+    
+    // Get suppression list entries and normalize for comparison
+    const suppressionEntries = await db.select()
       .from(suppressionList)
       .where(and(
         eq(suppressionList.companyId, companyId),
-        eq(suppressionList.type, cp.type),
-        eq(suppressionList.value, cp.value)
-      ))
-      .limit(1);
+        eq(suppressionList.type, cp.type)
+      ));
     
-    if (suppressed) {
-      return { permitted: false, reason: `Suppressed: ${cp.value}` };
+    for (const entry of suppressionEntries) {
+      let normalizedSuppressionValue = entry.value;
+      if (cp.type === 'phone') {
+        const { normalized } = normalizePhoneToE164(entry.value);
+        normalizedSuppressionValue = normalized;
+      } else if (cp.type === 'email') {
+        const { normalized } = normalizeEmail(entry.value);
+        normalizedSuppressionValue = normalized;
+      }
+      
+      if (normalizedValue === normalizedSuppressionValue) {
+        return { permitted: false, reason: `Suppressed: ${cp.value}` };
+      }
     }
     
     return { permitted: true };
