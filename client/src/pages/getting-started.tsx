@@ -37,7 +37,6 @@ import {
   SkipForward
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { PortingWizard } from "@/components/PortingWizard";
 import { useToast } from "@/hooks/use-toast";
 
 interface User {
@@ -67,7 +66,6 @@ export default function GettingStarted() {
   const [activeAccordion, setActiveAccordion] = useState<string | undefined>("profile");
   const [showNumberTypeDialog, setShowNumberTypeDialog] = useState(false);
   const [showCallSetupDialog, setShowCallSetupDialog] = useState(false);
-  const [showPortingDialog, setShowPortingDialog] = useState(false);
 
   const { data: sessionData, isLoading } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -568,7 +566,7 @@ export default function GettingStarted() {
                   </p>
                   <Button 
                       size="sm" 
-                      onClick={() => setShowPortingDialog(true)} 
+                      onClick={() => setLocation("/settings/sms-voice/port-in")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
                       data-testid="button-start-porting"
                     >
@@ -1101,15 +1099,6 @@ export default function GettingStarted() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Porting Wizard */}
-      <PortingWizard 
-        open={showPortingDialog} 
-        onOpenChange={setShowPortingDialog}
-        onOrderCreated={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/telnyx/porting/orders"] });
-        }}
-      />
     </div>
   );
 }
