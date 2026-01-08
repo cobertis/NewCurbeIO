@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Search, CheckCircle, XCircle, Trash2, Users, ChevronDown, Mail, Phone, MessageSquare, AlertTriangle, Ban, ShieldOff, Zap, PhoneCall, Star, Info, FileJson, Building, Filter, X } from "lucide-react";
+import { Search, CheckCircle, XCircle, Trash2, Users, ChevronDown, Mail, Phone, MessageSquare, AlertTriangle, Ban, ShieldOff, Zap, PhoneCall, Star, Info, FileJson, Building, Filter, X, Upload, FileSpreadsheet, Calendar, Loader2 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -116,9 +116,12 @@ export default function Leads() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [rawImportDialogOpen, setRawImportDialogOpen] = useState(false);
   const [rawImportData, setRawImportData] = useState<any>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [deleteBatchDialogOpen, setDeleteBatchDialogOpen] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<ImportBatch | null>(null);
+  const [csvUploadDialogOpen, setCsvUploadDialogOpen] = useState(false);
+  const [uploadingCsv, setUploadingCsv] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: batchesData, isLoading: isLoadingBatches } = useQuery<{ batches: ImportBatch[] }>({
     queryKey: ["/api/leads/operational/batches"],
@@ -209,6 +212,39 @@ export default function Leads() {
       toast({ title: "Primary contact updated" });
     },
   });
+
+  const handleCsvUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingCsv(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/leads/import/csv', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        toast({ 
+          title: "CSV Import Started", 
+          description: `Processing ${data.totalRows || 'your'} leads. They will appear shortly.`
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/leads/operational/batches"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/leads/operational"] });
+        setCsvUploadDialogOpen(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else {
+        const error = await response.json();
+        toast({ title: "Import Failed", description: error.message || "Failed to import CSV", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("CSV upload error:", error);
+      toast({ title: "Import Failed", description: "An error occurred during CSV upload", variant: "destructive" });
+    } finally {
+      setUploadingCsv(false);
+    }
+  };
 
   const fetchLeadDetails = async (leadId: string) => {
     try {
@@ -379,6 +415,14 @@ export default function Leads() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={() => setCsvUploadDialogOpen(true)}
+            className="gap-2"
+            data-testid="button-import-csv"
+          >
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
           <Select value={batchFilter} onValueChange={(v) => { setBatchFilter(v); setPage(1); }}>
             <SelectTrigger className="w-[200px]" data-testid="select-batch-filter">
               <SelectValue placeholder="All Batches" />
@@ -392,19 +436,94 @@ export default function Leads() {
               ))}
             </SelectContent>
           </Select>
-          {batchFilter !== "all" && selectedBatch && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => { setBatchToDelete(selectedBatch); setDeleteBatchDialogOpen(true); }}
-              data-testid="button-delete-batch"
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Delete Batch
-            </Button>
-          )}
         </div>
       </div>
+
+      {/* Batch Management Panel */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold flex items-center gap-2" data-testid="section-batches">
+              <FileSpreadsheet className="h-4 w-4" />
+              Import Batches
+            </h3>
+            <Badge variant="outline" className="text-xs">{batches.length} batch{batches.length !== 1 ? 'es' : ''}</Badge>
+          </div>
+          {isLoadingBatches ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : batches.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <FileSpreadsheet className="h-10 w-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No batches imported yet</p>
+              <p className="text-xs mt-1">Click "Import CSV" to upload your first batch of leads</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {batches.map((batch) => (
+                <div 
+                  key={batch.id} 
+                  className={`flex items-center justify-between p-3 rounded-lg border ${batchFilter === batch.id ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'}`}
+                  data-testid={`batch-item-${batch.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm truncate" title={batch.fileName}>{batch.fileName}</span>
+                      <Badge variant={batch.status === 'completed' ? 'default' : batch.status === 'processing' ? 'secondary' : 'destructive'} className="text-xs">
+                        {batch.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {batch.totalRows} rows
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(batch.createdAt), 'MMM d, yyyy h:mm a')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-2">
+                    {batchFilter !== batch.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setBatchFilter(batch.id); setPage(1); }}
+                        className="h-7 text-xs"
+                        data-testid={`button-filter-batch-${batch.id}`}
+                      >
+                        Filter
+                      </Button>
+                    )}
+                    {batchFilter === batch.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setBatchFilter("all")}
+                        className="h-7 text-xs"
+                        data-testid={`button-clear-batch-filter-${batch.id}`}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setBatchToDelete(batch); setDeleteBatchDialogOpen(true); }}
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      data-testid={`button-delete-batch-${batch.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Search and Filters */}
       <Card>
@@ -1075,6 +1194,76 @@ export default function Leads() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRawImportDialogOpen(false)} data-testid="button-close-raw-import">
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CSV Upload Dialog */}
+      <Dialog open={csvUploadDialogOpen} onOpenChange={setCsvUploadDialogOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-csv-upload">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              Import Leads from CSV
+            </DialogTitle>
+            <DialogDescription>
+              Upload a CSV file containing your leads. The system will automatically process and enrich the data with contactability insights.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                id="csv-upload-input"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleCsvUpload(file);
+                }}
+                disabled={uploadingCsv}
+                data-testid="input-csv-file"
+              />
+              <label 
+                htmlFor="csv-upload-input" 
+                className={`flex flex-col items-center gap-3 cursor-pointer ${uploadingCsv ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                {uploadingCsv ? (
+                  <>
+                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                    <span className="text-sm font-medium">Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-10 w-10 text-muted-foreground" />
+                    <div>
+                      <span className="text-sm font-medium text-primary">Click to upload</span>
+                      <span className="text-sm text-muted-foreground"> or drag and drop</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">CSV files only (max 50MB)</span>
+                  </>
+                )}
+              </label>
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p className="font-medium">Expected columns:</p>
+              <p>first_name, last_name, email, phone, mobile, city, state, zip</p>
+              <p className="italic">Additional columns will be preserved in raw import data.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setCsvUploadDialogOpen(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}
+              disabled={uploadingCsv}
+              data-testid="button-cancel-csv-upload"
+            >
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>
