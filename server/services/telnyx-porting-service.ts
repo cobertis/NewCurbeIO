@@ -795,3 +795,25 @@ export async function updateLocalPortingOrder(
     .returning();
   return order;
 }
+
+export async function updateLocalPortingOrderByTelnyxId(
+  telnyxPortingOrderId: string,
+  data: Partial<{
+    status: string;
+    lastWebhookAt: Date;
+    focDatetimeActual: Date;
+    portedAt: Date;
+    cancelledAt: Date;
+    lastError: string;
+  }>
+) {
+  const [order] = await db
+    .update(telnyxPortingOrders)
+    .set({
+      ...data,
+      updatedAt: new Date(),
+    })
+    .where(eq(telnyxPortingOrders.telnyxPortingOrderId, telnyxPortingOrderId))
+    .returning();
+  return order;
+}

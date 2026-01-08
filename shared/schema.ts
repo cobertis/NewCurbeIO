@@ -7655,6 +7655,7 @@ export const telnyxPortingOrders = pgTable("telnyx_porting_orders", {
   userReference: text("user_reference"),
   
   lastError: text("last_error"),
+  lastWebhookAt: timestamp("last_webhook_at"),
   
   submittedAt: timestamp("submitted_at"),
   portedAt: timestamp("ported_at"),

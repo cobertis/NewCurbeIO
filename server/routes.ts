@@ -33092,6 +33092,56 @@ CRITICAL REMINDERS:
       res.status(500).json({ message: "Failed to get phone numbers" });
     }
   });
+
+  // POST /webhooks/telnyx/porting - Handle Telnyx porting order status updates
+  app.post("/webhooks/telnyx/porting", async (req: Request, res: Response) => {
+    try {
+      const signature = req.headers["telnyx-signature-ed25519"] as string;
+      const timestamp = req.headers["telnyx-timestamp"] as string;
+      const { publicKey } = await credentialProvider.getTelnyx();
+      
+      if (!signature || !timestamp) {
+        console.error("[Porting Webhook] Missing signature or timestamp headers");
+        return res.status(400).json({ error: "Missing signature headers" });
+      }
+      
+      if (!publicKey) {
+        console.error("[Porting Webhook] Telnyx public key not configured");
+        return res.status(500).json({ error: "Webhook verification not configured" });
+      }
+      
+      const { verifyWebhookSignature } = await import("./services/telnyx-webhook-service");
+      const rawBody = req.body;
+      const isValid = verifyWebhookSignature(rawBody, signature, timestamp, publicKey);
+      
+      if (!isValid) {
+        console.error("[Porting Webhook] Invalid signature");
+        return res.status(401).json({ error: "Invalid signature" });
+      }
+      
+      const event = JSON.parse(rawBody.toString());
+      const eventType = event.data?.event_type;
+      const portingOrderId = event.data?.payload?.id || event.data?.payload?.porting_order_id;
+      const newStatus = event.data?.payload?.status;
+      
+      console.log(`[Porting Webhook] Received event: ${eventType}, order: ${portingOrderId}, status: ${newStatus}`);
+      
+      if (portingOrderId && newStatus) {
+        const { updateLocalPortingOrderByTelnyxId } = await import("./services/telnyx-porting-service");
+        await updateLocalPortingOrderByTelnyxId(portingOrderId, { 
+          status: newStatus,
+          lastWebhookAt: new Date(),
+        });
+        console.log(`[Porting Webhook] Updated local order status to: ${newStatus}`);
+      }
+      
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("[Porting Webhook] Error processing webhook:", error);
+      res.status(500).json({ error: "Webhook processing failed" });
+    }
+  });
+
   // POST /webhooks/telnyx - Telnyx webhook for billing automation
   app.post("/webhooks/telnyx", async (req: Request, res: Response) => {
     try {
