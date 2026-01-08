@@ -60,6 +60,7 @@ import { useWebSocket } from "@/hooks/use-websocket";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { E911ConfigDialog } from "@/components/E911ConfigDialog";
 import { PbxSettings } from "@/components/pbx-settings";
+import { PortingWizard } from "@/components/PortingWizard";
 
 interface ManagedAccountDetails {
   id: string;
@@ -172,6 +173,7 @@ export default function PhoneSystem() {
   useWebSocket(handleWebSocketMessage);
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showBuyNumber, setShowBuyNumber] = useState(false);
+  const [showPortNumber, setShowPortNumber] = useState(false);
   const [showE911Dialog, setShowE911Dialog] = useState(false);
   const [selectedNumberForE911, setSelectedNumberForE911] = useState<{ phoneNumber: string; phoneNumberId: string } | null>(null);
   const [showAddFunds, setShowAddFunds] = useState(false);
@@ -1168,10 +1170,15 @@ export default function PhoneSystem() {
                 <div className="bg-white dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
                   <Phone className="h-12 w-12 mx-auto mb-4 text-slate-300" />
                   <h3 className="text-lg font-medium text-slate-900 dark:text-foreground mb-2">No Phone Numbers</h3>
-                  <p className="text-sm text-slate-500 mb-4">Purchase a phone number to start making and receiving calls.</p>
-                  <Button onClick={() => setShowBuyNumber(true)} data-testid="button-add-first-number">
-                    <Plus className="h-4 w-4 mr-2" />Get a Number
-                  </Button>
+                  <p className="text-sm text-slate-500 mb-4">Purchase a phone number or port in an existing one to start making and receiving calls.</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <Button onClick={() => setShowBuyNumber(true)} data-testid="button-add-first-number">
+                      <Plus className="h-4 w-4 mr-2" />Get a Number
+                    </Button>
+                    <Button variant="outline" onClick={() => setShowPortNumber(true)} data-testid="button-port-first-number">
+                      Port In
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1184,16 +1191,27 @@ export default function PhoneSystem() {
                         <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Phone Numbers</h2>
                         <p className="text-xs text-slate-400 mt-1">{numbersData.numbers.length} number{numbersData.numbers.length !== 1 ? 's' : ''}</p>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setShowBuyNumber(true)}
-                        className="h-8"
-                        data-testid="button-buy-number"
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Buy
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowBuyNumber(true)}
+                          className="h-8"
+                          data-testid="button-buy-number"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Buy
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setShowPortNumber(true)}
+                          className="h-8"
+                          data-testid="button-port-number"
+                        >
+                          Port In
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1953,6 +1971,7 @@ export default function PhoneSystem() {
 
       {/* Dialogs */}
       <BuyNumbersDialog open={showBuyNumber} onOpenChange={setShowBuyNumber} onNumberPurchased={() => refetchNumbers()} />
+      <PortingWizard open={showPortNumber} onOpenChange={setShowPortNumber} onOrderCreated={() => refetchNumbers()} />
       
       {selectedNumberForE911 && (
         <E911ConfigDialog
