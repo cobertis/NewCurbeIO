@@ -2,12 +2,24 @@ import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
-interface GooglePlacesSuggestion {
+interface GeoapifySuggestion {
   place_id: string;
   display_name: string;
   structured_formatting: {
     main_text: string;
     secondary_text: string;
+  };
+  _geoapify_data?: {
+    street: string;
+    streetLine2: string;
+    city: string;
+    state: string;
+    county: string;
+    postalCode: string;
+    country: string;
+    lat: number;
+    lon: number;
+    formatted: string;
   };
 }
 
@@ -41,13 +53,12 @@ export function GooglePlacesAddressAutocomplete({
   placeholder = "Start typing your address...",
   testId = "input-address-autocomplete",
 }: GooglePlacesAddressAutocompleteProps) {
-  const [suggestions, setSuggestions] = useState<GooglePlacesSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<GeoapifySuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceTimer = useRef<NodeJS.Timeout>();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Close suggestions when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -68,7 +79,7 @@ export function GooglePlacesAddressAutocomplete({
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/google-places/autocomplete-address?q=${encodeURIComponent(query)}`
+        `/api/geoapify/autocomplete-address?q=${encodeURIComponent(query)}`
       );
       
       if (response.ok) {
@@ -88,54 +99,69 @@ export function GooglePlacesAddressAutocomplete({
     const newValue = e.target.value;
     onChange(newValue);
 
-    // Clear previous timeout
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
 
-    // Don't search if value is empty
     if (!newValue.trim()) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
 
-    // Set new timeout for debouncing
     debounceTimer.current = setTimeout(() => {
       fetchSuggestions(newValue);
     }, 300);
   };
 
-  const handleSelectSuggestion = async (suggestion: GooglePlacesSuggestion) => {
-    // Fetch full place details
+  const handleSelectSuggestion = async (suggestion: GeoapifySuggestion) => {
     try {
       setIsLoading(true);
-      const response = await fetch(
-        `/api/google-places/place-details?placeId=${encodeURIComponent(suggestion.place_id)}`
-      );
       
-      if (response.ok) {
-        const data = await response.json();
-        const address = data.address;
+      if (suggestion._geoapify_data) {
+        const geoData = suggestion._geoapify_data;
+        onChange(geoData.street);
         
-        // Update the input field with the street address
-        onChange(address.street);
-        
-        // Call the callback with all address components and place details
         onAddressSelect({
-          street: address.street,
-          streetLine2: address.streetLine2,
-          city: address.city,
-          state: address.state,
-          county: address.county,
-          postalCode: address.postalCode,
-          country: address.country,
+          street: geoData.street,
+          streetLine2: geoData.streetLine2,
+          city: geoData.city,
+          state: geoData.state,
+          county: geoData.county,
+          postalCode: geoData.postalCode,
+          country: geoData.country,
         }, {
-          placeId: data.placeId,
-          formattedAddress: data.formattedAddress,
-          latitude: data.latitude,
-          longitude: data.longitude,
+          placeId: suggestion.place_id,
+          formattedAddress: geoData.formatted,
+          latitude: geoData.lat,
+          longitude: geoData.lon,
         });
+      } else {
+        const response = await fetch(
+          `/api/geoapify/place-details?placeId=${encodeURIComponent(suggestion.place_id)}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const address = data.address;
+          
+          onChange(address.street);
+          
+          onAddressSelect({
+            street: address.street,
+            streetLine2: address.streetLine2,
+            city: address.city,
+            state: address.state,
+            county: address.county,
+            postalCode: address.postalCode,
+            country: address.country,
+          }, {
+            placeId: data.placeId,
+            formattedAddress: data.formattedAddress,
+            latitude: data.latitude,
+            longitude: data.longitude,
+          });
+        }
       }
     } catch (error) {
       console.error("Failed to fetch place details:", error);
@@ -167,7 +193,6 @@ export function GooglePlacesAddressAutocomplete({
         )}
       </div>
 
-      {/* Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
           {suggestions.map((suggestion) => (

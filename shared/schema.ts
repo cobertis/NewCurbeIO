@@ -5762,6 +5762,7 @@ export const apiProviders = [
   "bluebubbles",
   "evolution_api",
   "google_places",
+  "geoapify",
   "google_oauth",
   "nodemailer",
   "openai",

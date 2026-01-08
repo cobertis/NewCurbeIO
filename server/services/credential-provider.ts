@@ -149,6 +149,19 @@ export const credentialProvider = {
     return result;
   },
 
+  async getGeoapify(): Promise<{ apiKey: string }> {
+    const cacheKey = getCacheKey('geoapify');
+    const cached = getFromCache<{ apiKey: string }>(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = await secretsService.getCredential("geoapify" as ApiProvider, "api_key") || 
+                   process.env.GEOAPIFY_API_KEY || '';
+    
+    const result = { apiKey };
+    setCache(cacheKey, result);
+    return result;
+  },
+
   async getCloudflare(): Promise<{ apiToken: string; zoneId: string }> {
     const cacheKey = getCacheKey('cloudflare');
     const cached = getFromCache<{ apiToken: string; zoneId: string }>(cacheKey);

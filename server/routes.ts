@@ -4318,6 +4318,149 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ message: "Failed to fetch place details" });
     }
   });
+  // Geoapify Address Autocomplete API
+  app.get("/api/geoapify/autocomplete-address", async (req: Request, res: Response) => {
+    try {
+      const { q } = req.query;
+      console.log("[GEOAPIFY] Address autocomplete request with query:", q);
+      if (!q || typeof q !== 'string') {
+        console.log("[GEOAPIFY] Missing or invalid query parameter");
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+      const { credentialProvider } = await import("./services/credential-provider");
+      const { apiKey } = await credentialProvider.getGeoapify();
+      if (!apiKey) {
+        console.error("[GEOAPIFY] API KEY not configured");
+        return res.status(500).json({ message: "Geoapify service not configured" });
+      }
+      const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(q)}&format=json&apiKey=${apiKey}&filter=countrycode:us`;
+      console.log("[GEOAPIFY] Making request to Geoapify Autocomplete API");
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[GEOAPIFY] API error:", response.status, errorText);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch address suggestions",
+          error: errorText 
+        });
+      }
+      const data = await response.json();
+      console.log("[GEOAPIFY] Got", data.results?.length || 0, "address suggestions");
+      // Transform Geoapify response to match expected format
+      const results = (data.results || []).map((result: any) => {
+        // Geoapify uses different field names depending on location type
+        const city = result.city || result.town || result.village || result.municipality || result.suburb || result.district || '';
+        const state = result.state || result.state_code || result.province || result.region || '';
+        const postalCode = result.postcode || '';
+        const houseNumber = result.housenumber || '';
+        const streetName = result.street || '';
+        const street = result.address_line1 || (houseNumber && streetName ? `${houseNumber} ${streetName}` : streetName) || '';
+        
+        return {
+          place_id: result.place_id || result.formatted || `${result.lat}_${result.lon}`,
+          display_name: result.formatted || '',
+          structured_formatting: {
+            main_text: street || result.name || result.formatted?.split(',')[0] || '',
+            secondary_text: result.address_line2 || [city, state, postalCode].filter(Boolean).join(', ') || ''
+          },
+          _geoapify_data: {
+            street: street,
+            streetLine2: result.address_line2 || '',
+            city: city,
+            state: state,
+            county: result.county || '',
+            postalCode: postalCode,
+            country: result.country || 'United States',
+            lat: result.lat,
+            lon: result.lon,
+            formatted: result.formatted
+          }
+        };
+      });
+      res.setHeader('Content-Type', 'application/json');
+      return res.json({ results });
+    } catch (error) {
+      console.error("[GEOAPIFY] Autocomplete error:", error);
+      return res.status(500).json({ message: "Failed to fetch address suggestions" });
+    }
+  });
+  // Geoapify Place Details API
+  app.get("/api/geoapify/place-details", async (req: Request, res: Response) => {
+    try {
+      const { placeId } = req.query;
+      console.log("[GEOAPIFY] Place details request for:", placeId);
+      if (!placeId || typeof placeId !== 'string') {
+        return res.status(400).json({ message: "placeId parameter is required" });
+      }
+      const { credentialProvider } = await import("./services/credential-provider");
+      const { apiKey } = await credentialProvider.getGeoapify();
+      if (!apiKey) {
+        console.error("[GEOAPIFY] API KEY not configured");
+        return res.status(500).json({ message: "Geoapify service not configured" });
+      }
+      // Use Geoapify place details API
+      const url = `https://api.geoapify.com/v2/place-details?id=${encodeURIComponent(placeId)}&apiKey=${apiKey}`;
+      console.log("[GEOAPIFY] Fetching place details");
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[GEOAPIFY] API error:", response.status, errorText);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch place details",
+          error: errorText 
+        });
+      }
+      const data = await response.json();
+      const feature = data.features?.[0];
+      const props = feature?.properties || {};
+      console.log("[GEOAPIFY] Got place details");
+      // Parse address from Geoapify response with field name normalization
+      const city = props.city || props.town || props.village || props.municipality || props.suburb || props.district || '';
+      const state = props.state || props.state_code || props.province || props.region || '';
+      const houseNumber = props.housenumber || '';
+      const streetName = props.street || '';
+      const street = props.address_line1 || (houseNumber && streetName ? `${houseNumber} ${streetName}` : streetName) || '';
+      
+      const address = {
+        street: street,
+        streetLine2: props.address_line2 || '',
+        city: city,
+        state: state,
+        county: props.county || '',
+        postalCode: props.postcode || '',
+        country: props.country || 'United States'
+      };
+      console.log("[GEOAPIFY] Parsed address:", address);
+      const responseData: any = {
+        address,
+        placeId: props.place_id || placeId,
+        formattedAddress: props.formatted || '',
+      };
+      // Add location if available
+      if (props.lat !== undefined && props.lon !== undefined) {
+        responseData.latitude = props.lat;
+        responseData.longitude = props.lon;
+      } else if (feature?.geometry?.coordinates) {
+        responseData.longitude = feature.geometry.coordinates[0];
+        responseData.latitude = feature.geometry.coordinates[1];
+      }
+      res.setHeader('Content-Type', 'application/json');
+      return res.json(responseData);
+    } catch (error) {
+      console.error("[GEOAPIFY] Place details error:", error);
+      return res.status(500).json({ message: "Failed to fetch place details" });
+    }
+  });
   app.get("/api/google-places/search-business", async (req: Request, res: Response) => {
     try {
       const { q } = req.query;
@@ -33427,6 +33570,15 @@ CRITICAL REMINDERS:
           helpUrl: "https://console.cloud.google.com/google/maps-api/credentials",
           keys: [
             { keyName: "api_key", label: "API Key", required: true, hint: "Enable Places API in your project" },
+          ]
+        },
+        { 
+          provider: "geoapify", 
+          label: "Geoapify",
+          helpText: "Create a key at Geoapify Console",
+          helpUrl: "https://www.geoapify.com/my-account/api-keys",
+          keys: [
+            { keyName: "api_key", label: "API Key", required: true, hint: "Create a free account at geoapify.com" },
           ]
         },
         { 
