@@ -191,6 +191,51 @@ export default function PortingTransfer() {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<WizardStep>('enter-numbers');
   const [phoneNumbersInput, setPhoneNumbersInput] = useState('');
+
+  const formatUsPhoneInput = (value: string): string => {
+    const lines = value.split('\n');
+    const formattedLines: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const digits = line.replace(/\D/g, '');
+      
+      if (digits.length === 0) {
+        if (line === '' && i < lines.length - 1) {
+          continue;
+        }
+        formattedLines.push('');
+      } else if (digits.length <= 3) {
+        formattedLines.push(`(${digits}`);
+      } else if (digits.length <= 6) {
+        formattedLines.push(`(${digits.slice(0, 3)}) ${digits.slice(3)}`);
+      } else if (digits.length <= 10) {
+        formattedLines.push(`(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`);
+      } else {
+        const firstTen = digits.slice(0, 10);
+        formattedLines.push(`(${firstTen.slice(0, 3)}) ${firstTen.slice(3, 6)}-${firstTen.slice(6, 10)}`);
+        const remaining = digits.slice(10);
+        if (remaining.length > 0) {
+          if (remaining.length <= 3) {
+            formattedLines.push(`(${remaining}`);
+          } else if (remaining.length <= 6) {
+            formattedLines.push(`(${remaining.slice(0, 3)}) ${remaining.slice(3)}`);
+          } else {
+            formattedLines.push(`(${remaining.slice(0, 3)}) ${remaining.slice(3, 6)}-${remaining.slice(6, 10)}`);
+          }
+        } else {
+          formattedLines.push('');
+        }
+      }
+    }
+    
+    return formattedLines.join('\n');
+  };
+
+  const handlePhoneInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const formatted = formatUsPhoneInput(e.target.value);
+    setPhoneNumbersInput(formatted);
+  };
   const [parsedPhoneNumbers, setParsedPhoneNumbers] = useState<string[]>([]);
   const [portabilityResults, setPortabilityResults] = useState<PortabilityResult[]>([]);
   const [portableNumbers, setPortableNumbers] = useState<string[]>([]);
@@ -616,13 +661,13 @@ export default function PortingTransfer() {
                     <div>
                       <Textarea
                         data-testid="input-phone-numbers"
-                        placeholder="Enter US phone numbers (one per line or comma-separated)&#10;&#10;Example:&#10;(555) 123-4567&#10;555-123-4568&#10;5551234569"
+                        placeholder="(555) 123-4567"
                         value={phoneNumbersInput}
-                        onChange={(e) => setPhoneNumbersInput(e.target.value)}
+                        onChange={handlePhoneInputChange}
                         className="min-h-[180px] font-mono"
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                        Only US phone numbers are supported (10 digits). Separate multiple numbers with commas or new lines.
+                        Type 10 digits and it will auto-format. Press Enter or keep typing for more numbers.
                       </p>
                     </div>
                   </div>
