@@ -3179,6 +3179,282 @@ export const insertImportLeadSchema = createInsertSchema(importLeads).omit({
 export type InsertImportLead = z.infer<typeof insertImportLeadSchema>;
 export type ImportLead = typeof importLeads.$inferSelect;
 
+// ==============================================
+// LEAD DATA ARCHITECTURE - 3 LAYER SYSTEM
+// Layer 1: RAW (immutable audit trail)
+// Layer 2: CANONICAL (normalized, deduplicated)
+// Layer 3: OPERATIONAL (derived fields for UI/actions)
+// ==============================================
+
+// Enums for contact points
+export const contactPointTypeEnum = pgEnum("contact_point_type", ["phone", "email"]);
+export const contactPointSubtypeEnum = pgEnum("contact_point_subtype", ["mobile", "direct", "personal", "business", "other"]);
+export const dncStatusEnum = pgEnum("dnc_status", ["yes", "no", "unknown"]);
+export const leadPipelineStageEnum = pgEnum("lead_pipeline_stage", ["new", "contacted", "qualified", "nurturing", "converted", "lost"]);
+export const recommendedActionEnum = pgEnum("recommended_action", ["CALL", "SMS", "EMAIL", "UNCONTACTABLE"]);
+export const contactAttemptOutcomeEnum = pgEnum("contact_attempt_outcome", [
+  "connected", "no_answer", "voicemail", "busy", "wrong_number", 
+  "bounced", "delivered", "opened", "clicked", "unsubscribed", 
+  "failed", "opted_out"
+]);
+
+// LAYER 1: RAW - Immutable audit trail
+export const leadRawRows = pgTable("lead_raw_rows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  batchId: varchar("batch_id").notNull().references(() => importLeadBatches.id, { onDelete: "cascade" }),
+  
+  rowNumber: integer("row_number").notNull(),
+  rawJson: jsonb("raw_json").notNull(), // Original CSV row as-is
+  checksum: text("checksum").notNull(), // Hash for idempotence
+  parseWarnings: jsonb("parse_warnings"), // Any parsing issues
+  
+  importedAt: timestamp("imported_at").notNull().defaultNow(),
+}, (table) => [
+  index("lead_raw_rows_company_idx").on(table.companyId),
+  index("lead_raw_rows_batch_idx").on(table.batchId),
+  index("lead_raw_rows_checksum_idx").on(table.checksum),
+]);
+
+// LAYER 2: CANONICAL - Normalized entities
+
+// Canonical Person (deduplicated)
+export const canonicalPersons = pgTable("canonical_persons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  gender: text("gender"),
+  ageRange: text("age_range"), // e.g., "35-44"
+  
+  // Location (derived from best address)
+  addressLine1: text("address_line_1"),
+  city: text("city"),
+  state: text("state"),
+  zip: text("zip"),
+  
+  // Demographics
+  hasChildren: boolean("has_children"),
+  isHomeowner: boolean("is_homeowner"),
+  isMarried: boolean("is_married"),
+  netWorth: text("net_worth"),
+  incomeRange: text("income_range"),
+  
+  // Source tracking
+  firstRawRowId: varchar("first_raw_row_id").references(() => leadRawRows.id),
+  lastBatchId: varchar("last_batch_id").references(() => importLeadBatches.id),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("canonical_persons_company_idx").on(table.companyId),
+  index("canonical_persons_name_idx").on(table.companyId, table.firstName, table.lastName),
+]);
+
+// Canonical Company Entities (employers)
+export const canonicalCompanyEntities = pgTable("canonical_company_entities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  name: text("name").notNull(),
+  domain: text("domain"),
+  industry: text("industry"),
+  employeeCount: text("employee_count"),
+  revenue: text("revenue"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("canonical_company_entities_company_idx").on(table.companyId),
+  uniqueIndex("canonical_company_entities_unique").on(table.companyId, table.name),
+]);
+
+// Person-Company Relations (employment)
+export const personCompanyRelations = pgTable("person_company_relations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  personId: varchar("person_id").notNull().references(() => canonicalPersons.id, { onDelete: "cascade" }),
+  companyEntityId: varchar("company_entity_id").notNull().references(() => canonicalCompanyEntities.id, { onDelete: "cascade" }),
+  
+  jobTitle: text("job_title"),
+  department: text("department"),
+  seniority: text("seniority"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("person_company_relations_person_idx").on(table.personId),
+]);
+
+// Contact Points - CENTRAL entity for phones/emails
+export const canonicalContactPoints = pgTable("canonical_contact_points", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  personId: varchar("person_id").references(() => canonicalPersons.id, { onDelete: "set null" }),
+  
+  type: contactPointTypeEnum("type").notNull(), // phone or email
+  subtype: contactPointSubtypeEnum("subtype").notNull(), // mobile, direct, personal, business, other
+  
+  value: text("value").notNull(), // Normalized (E.164 for phones, lowercase for emails)
+  valueRaw: text("value_raw"), // Original value from CSV
+  
+  isValid: boolean("is_valid").notNull().default(false),
+  isVerified: boolean("is_verified").notNull().default(false), // For verified emails
+  
+  dncStatus: dncStatusEnum("dnc_status").notNull().default("unknown"), // Per contact point!
+  optedOut: boolean("opted_out").notNull().default(false), // Internal opt-out
+  
+  source: text("source"), // e.g., "csv_import"
+  batchId: varchar("batch_id").references(() => importLeadBatches.id),
+  confidence: integer("confidence").default(70), // 0-100
+  
+  lastValidatedAt: timestamp("last_validated_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("contact_points_company_idx").on(table.companyId),
+  index("contact_points_person_idx").on(table.personId),
+  index("contact_points_type_idx").on(table.companyId, table.type),
+  uniqueIndex("contact_points_unique").on(table.companyId, table.type, table.value),
+]);
+
+// LAYER 3: OPERATIONAL - Derived fields for UI/actions
+
+export const leadOperational = pgTable("lead_operational", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  personId: varchar("person_id").notNull().references(() => canonicalPersons.id, { onDelete: "cascade" }),
+  
+  // Pipeline
+  status: leadPipelineStageEnum("status").notNull().default("new"),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+  lastBatchId: varchar("last_batch_id").references(() => importLeadBatches.id),
+  
+  // Best contact methods (references to contact_points)
+  bestPhoneToCall: varchar("best_phone_to_call").references(() => canonicalContactPoints.id, { onDelete: "set null" }),
+  bestPhoneForSms: varchar("best_phone_for_sms").references(() => canonicalContactPoints.id, { onDelete: "set null" }),
+  bestEmail: varchar("best_email").references(() => canonicalContactPoints.id, { onDelete: "set null" }),
+  
+  // Derived insights
+  timezone: text("timezone"), // Derived from zip/state
+  contactabilityScore: integer("contactability_score").default(0), // 0-100
+  riskFlags: jsonb("risk_flags").default({}), // {"dnc_all":true,"no_valid_phone":true,...}
+  recommendedNextAction: recommendedActionEnum("recommended_next_action").default("UNCONTACTABLE"),
+  
+  // Last contact attempt tracking
+  lastContactAttemptAt: timestamp("last_contact_attempt_at"),
+  lastContactOutcome: text("last_contact_outcome"),
+  totalContactAttempts: integer("total_contact_attempts").default(0),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("lead_operational_company_idx").on(table.companyId),
+  index("lead_operational_person_idx").on(table.personId),
+  index("lead_operational_score_idx").on(table.companyId, table.contactabilityScore),
+  uniqueIndex("lead_operational_unique").on(table.companyId, table.personId),
+]);
+
+// Contact Attempts - Telemetry
+export const contactAttempts = pgTable("contact_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  personId: varchar("person_id").notNull().references(() => canonicalPersons.id, { onDelete: "cascade" }),
+  contactPointId: varchar("contact_point_id").notNull().references(() => canonicalContactPoints.id, { onDelete: "cascade" }),
+  
+  channel: text("channel").notNull(), // call, sms, email
+  outcome: contactAttemptOutcomeEnum("outcome").notNull(),
+  
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  metadata: jsonb("metadata").default({}),
+}, (table) => [
+  index("contact_attempts_company_idx").on(table.companyId),
+  index("contact_attempts_person_idx").on(table.personId),
+  index("contact_attempts_contact_point_idx").on(table.contactPointId),
+]);
+
+// Suppression List (DNC, litigation, opt-outs)
+export const suppressionList = pgTable("suppression_list", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  type: contactPointTypeEnum("type").notNull(), // phone or email
+  value: text("value").notNull(), // Normalized value
+  
+  reason: text("reason").notNull(), // dnc_vendor, user_opt_out, litigation, complaint, etc.
+  source: text("source"), // Where this came from
+  
+  expiresAt: timestamp("expires_at"), // Optional expiration
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("suppression_list_company_idx").on(table.companyId),
+  uniqueIndex("suppression_list_unique").on(table.companyId, table.type, table.value),
+]);
+
+// Schema exports for 3-layer architecture
+export const insertLeadRawRowSchema = createInsertSchema(leadRawRows).omit({
+  id: true,
+  importedAt: true,
+});
+export type InsertLeadRawRow = z.infer<typeof insertLeadRawRowSchema>;
+export type LeadRawRow = typeof leadRawRows.$inferSelect;
+
+export const insertCanonicalPersonSchema = createInsertSchema(canonicalPersons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCanonicalPerson = z.infer<typeof insertCanonicalPersonSchema>;
+export type CanonicalPerson = typeof canonicalPersons.$inferSelect;
+
+export const insertCanonicalCompanyEntitySchema = createInsertSchema(canonicalCompanyEntities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCanonicalCompanyEntity = z.infer<typeof insertCanonicalCompanyEntitySchema>;
+export type CanonicalCompanyEntity = typeof canonicalCompanyEntities.$inferSelect;
+
+export const insertPersonCompanyRelationSchema = createInsertSchema(personCompanyRelations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertPersonCompanyRelation = z.infer<typeof insertPersonCompanyRelationSchema>;
+export type PersonCompanyRelation = typeof personCompanyRelations.$inferSelect;
+
+export const insertCanonicalContactPointSchema = createInsertSchema(canonicalContactPoints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCanonicalContactPoint = z.infer<typeof insertCanonicalContactPointSchema>;
+export type CanonicalContactPoint = typeof canonicalContactPoints.$inferSelect;
+
+export const insertLeadOperationalSchema = createInsertSchema(leadOperational).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertLeadOperational = z.infer<typeof insertLeadOperationalSchema>;
+export type LeadOperational = typeof leadOperational.$inferSelect;
+
+export const insertContactAttemptSchema = createInsertSchema(contactAttempts).omit({
+  id: true,
+  occurredAt: true,
+});
+export type InsertContactAttempt = z.infer<typeof insertContactAttemptSchema>;
+export type ContactAttempt = typeof contactAttempts.$inferSelect;
+
+export const insertSuppressionListSchema = createInsertSchema(suppressionList).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSuppressionList = z.infer<typeof insertSuppressionListSchema>;
+export type SuppressionListEntry = typeof suppressionList.$inferSelect;
+
 // Landing page appointment availability settings
 export const appointmentAvailability = pgTable("appointment_availability", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
