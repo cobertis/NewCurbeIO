@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Search, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Trash2, Upload, FileSpreadsheet, Users, ChevronDown, ChevronUp, Mail, Phone } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
@@ -41,6 +42,38 @@ interface Appointment {
   createdAt: string;
 }
 
+interface ImportBatch {
+  id: string;
+  fileName: string;
+  status: 'processing' | 'completed' | 'failed';
+  totalRows: number;
+  processedRows: number;
+  errorRows: number;
+  createdAt: string;
+}
+
+interface ImportedLead {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  ageRange: string | null;
+  gender: string | null;
+  hasChildren: boolean | null;
+  isHomeowner: boolean | null;
+  isMarried: boolean | null;
+  netWorth: string | null;
+  incomeRange: string | null;
+  phones: string[] | null;
+  emails: string[] | null;
+  jobTitle: string | null;
+  companyName: string | null;
+  createdAt: string;
+}
+
 export default function Leads() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,10 +84,16 @@ export default function Leads() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
   
-  // Get tab from URL query parameter
+  const [batchFilter, setBatchFilter] = useState<string>("all");
+  const [importPage, setImportPage] = useState(1);
+  const [expandedLead, setExpandedLead] = useState<string | null>(null);
+  
   const urlParams = new URLSearchParams(window.location.search);
   const tabFromUrl = urlParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl === 'appointments' ? 'appointments' : 'leads');
+  const [activeTab, setActiveTab] = useState(
+    tabFromUrl === 'appointments' ? 'appointments' : 
+    tabFromUrl === 'imported' ? 'imported' : 'leads'
+  );
 
   const { data: leadsData, isLoading: isLoadingLeads } = useQuery<{ leads: FormLead[] }>({
     queryKey: ["/api/landing/leads"],
@@ -62,6 +101,14 @@ export default function Leads() {
 
   const { data: appointmentsData, isLoading: isLoadingAppointments } = useQuery<{ appointments: Appointment[] }>({
     queryKey: ["/api/landing/appointments"],
+  });
+
+  const { data: batchesData, isLoading: isLoadingBatches } = useQuery<{ batches: ImportBatch[] }>({
+    queryKey: ["/api/leads/import/batches"],
+  });
+
+  const { data: importedLeadsData, isLoading: isLoadingImportedLeads } = useQuery<{ leads: ImportedLead[], total: number }>({
+    queryKey: ["/api/leads/import", { batchId: batchFilter, search: searchTerm, page: importPage, limit: 50 }],
   });
 
   const updateMutation = useMutation({
@@ -107,8 +154,52 @@ export default function Leads() {
     },
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/leads/import', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Upload failed');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads/import/batches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leads/import"] });
+      toast({ title: "CSV uploaded successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error uploading CSV", variant: "destructive" });
+    },
+  });
+
+  const deleteBatchMutation = useMutation({
+    mutationFn: async (batchId: string) => {
+      return await apiRequest("DELETE", `/api/leads/import/batches/${batchId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads/import/batches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leads/import"] });
+      toast({ title: "Batch deleted successfully" });
+    },
+  });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadMutation.mutate(file);
+      e.target.value = '';
+    }
+  };
+
   const leads = leadsData?.leads || [];
   const appointments = appointmentsData?.appointments || [];
+  const batches = batchesData?.batches || [];
+  const importedLeads = importedLeadsData?.leads || [];
+  const totalImportedLeads = importedLeadsData?.total || 0;
 
   const filteredLeads = leads
     .filter((lead) => {
@@ -148,6 +239,21 @@ export default function Leads() {
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return (
       <Badge className={config.className} data-testid={`badge-status-${status}`}>
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const getBatchStatusBadge = (status: string) => {
+    const statusConfig = {
+      processing: { label: "Processing", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200" },
+      completed: { label: "Completed", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200" },
+      failed: { label: "Failed", className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200" },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.processing;
+    return (
+      <Badge className={config.className} data-testid={`badge-batch-status-${status}`}>
         {config.label}
       </Badge>
     );
@@ -208,7 +314,6 @@ export default function Leads() {
       );
     }
     
-    // Add delete button for all appointments
     buttons.push(
       <Button
         key="delete"
@@ -229,10 +334,18 @@ export default function Leads() {
 
   const formatDate = (dateString: string) => {
     try {
-      // Parse date as YYYY-MM-DD without timezone conversion
       const [year, month, day] = dateString.split('-').map(Number);
       const date = new Date(year, month - 1, day);
       return format(date, "MMM d, yyyy");
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatDateTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return format(date, "MMM d, yyyy h:mm a");
     } catch {
       return dateString;
     }
@@ -284,6 +397,12 @@ export default function Leads() {
     }
   };
 
+  const toggleExpandLead = (leadId: string) => {
+    setExpandedLead(expandedLead === leadId ? null : leadId);
+  };
+
+  const totalPages = Math.ceil(totalImportedLeads / 50);
+
   return (
     <div className="flex flex-col h-screen w-full bg-background">
       <div className="flex items-center justify-between px-4 py-4 border-b">
@@ -298,6 +417,9 @@ export default function Leads() {
             </TabsTrigger>
             <TabsTrigger value="appointments" data-testid="tab-appointments">
               Appointments
+            </TabsTrigger>
+            <TabsTrigger value="imported" data-testid="tab-imported-leads">
+              Imported Leads
             </TabsTrigger>
           </TabsList>
 
@@ -471,10 +593,328 @@ export default function Leads() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="imported" className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, email, phone, or address..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setImportPage(1);
+                  }}
+                  className="pl-10"
+                  data-testid="input-search-imported"
+                />
+              </div>
+              <Select value={batchFilter} onValueChange={(value) => {
+                setBatchFilter(value);
+                setImportPage(1);
+              }}>
+                <SelectTrigger className="w-full sm:w-64" data-testid="select-batch-filter">
+                  <SelectValue placeholder="Filter by batch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Batches</SelectItem>
+                  {batches.map((batch) => (
+                    <SelectItem key={batch.id} value={batch.id}>
+                      {batch.fileName} ({batch.totalRows} rows)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="csv-upload"
+                  data-testid="input-csv-upload"
+                />
+                <label htmlFor="csv-upload">
+                  <Button
+                    variant="default"
+                    disabled={uploadMutation.isPending}
+                    asChild
+                    data-testid="button-upload-csv"
+                  >
+                    <span className="cursor-pointer">
+                      <Upload className="h-4 w-4 mr-2" />
+                      {uploadMutation.isPending ? "Uploading..." : "Upload CSV"}
+                    </span>
+                  </Button>
+                </label>
+              </div>
+            </div>
+
+            {batches.length > 0 && (
+              <div className="rounded-md border p-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Upload History
+                </div>
+                <div className="space-y-2">
+                  {batches.map((batch) => (
+                    <div 
+                      key={batch.id} 
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      data-testid={`batch-item-${batch.id}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <p className="font-medium text-sm">{batch.fileName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDateTime(batch.createdAt)}
+                          </p>
+                        </div>
+                        {getBatchStatusBadge(batch.status)}
+                        {batch.status === 'processing' && (
+                          <div className="w-32">
+                            <Progress 
+                              value={(batch.processedRows / batch.totalRows) * 100} 
+                              className="h-2"
+                              data-testid={`progress-batch-${batch.id}`}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {batch.processedRows} / {batch.totalRows}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right text-sm">
+                          <p className="text-muted-foreground">
+                            <Users className="h-3 w-3 inline mr-1" />
+                            {batch.totalRows} leads
+                          </p>
+                          {batch.errorRows > 0 && (
+                            <p className="text-red-500 text-xs">
+                              {batch.errorRows} errors
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteBatchMutation.mutate(batch.id)}
+                          disabled={deleteBatchMutation.isPending}
+                          data-testid={`button-delete-batch-${batch.id}`}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isLoadingImportedLeads || isLoadingBatches ? (
+              <LoadingSpinner message="Loading imported leads..." />
+            ) : importedLeads.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileSpreadsheet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg" data-testid="text-no-imported-leads">
+                  {searchTerm || batchFilter !== "all" 
+                    ? "No imported leads match your criteria" 
+                    : "No imported leads yet"}
+                </p>
+                <p className="text-sm mt-2">
+                  Upload a CSV file to import leads
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10"></TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Demographics</TableHead>
+                        <TableHead>Created</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {importedLeads.map((lead) => (
+                        <>
+                          <TableRow 
+                            key={lead.id} 
+                            data-testid={`row-imported-${lead.id}`}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => toggleExpandLead(lead.id)}
+                          >
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                data-testid={`button-expand-${lead.id}`}
+                              >
+                                {expandedLead === lead.id ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TableCell>
+                            <TableCell className="font-medium" data-testid={`cell-name-imported-${lead.id}`}>
+                              {[lead.firstName, lead.lastName].filter(Boolean).join(' ') || '-'}
+                            </TableCell>
+                            <TableCell data-testid={`cell-location-${lead.id}`}>
+                              <div className="text-sm">
+                                {lead.city && lead.state ? `${lead.city}, ${lead.state}` : lead.city || lead.state || '-'}
+                                {lead.zip && <span className="text-muted-foreground ml-1">{lead.zip}</span>}
+                              </div>
+                            </TableCell>
+                            <TableCell data-testid={`cell-contact-${lead.id}`}>
+                              <div className="flex flex-col gap-1">
+                                {lead.phones && lead.phones.length > 0 && (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <Phone className="h-3 w-3 text-muted-foreground" />
+                                    {formatPhone(lead.phones[0])}
+                                    {lead.phones.length > 1 && (
+                                      <span className="text-xs text-muted-foreground">+{lead.phones.length - 1}</span>
+                                    )}
+                                  </div>
+                                )}
+                                {lead.emails && lead.emails.length > 0 && (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <Mail className="h-3 w-3 text-muted-foreground" />
+                                    <span className="truncate max-w-32">{lead.emails[0]}</span>
+                                    {lead.emails.length > 1 && (
+                                      <span className="text-xs text-muted-foreground">+{lead.emails.length - 1}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell data-testid={`cell-demographics-${lead.id}`}>
+                              <div className="flex flex-wrap gap-1">
+                                {lead.gender && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {lead.gender}
+                                  </Badge>
+                                )}
+                                {lead.ageRange && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {lead.ageRange}
+                                  </Badge>
+                                )}
+                                {lead.isHomeowner && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Homeowner
+                                  </Badge>
+                                )}
+                                {lead.isMarried && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Married
+                                  </Badge>
+                                )}
+                                {lead.hasChildren && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Has Children
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell data-testid={`cell-created-${lead.id}`}>
+                              {formatDateTime(lead.createdAt)}
+                            </TableCell>
+                          </TableRow>
+                          {expandedLead === lead.id && (
+                            <TableRow data-testid={`row-expanded-${lead.id}`}>
+                              <TableCell colSpan={6} className="bg-muted/30 p-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                  <div>
+                                    <p className="font-medium text-muted-foreground mb-1">Full Address</p>
+                                    <p>{lead.address || '-'}</p>
+                                    <p>{[lead.city, lead.state, lead.zip].filter(Boolean).join(', ') || '-'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-muted-foreground mb-1">All Phone Numbers</p>
+                                    {lead.phones && lead.phones.length > 0 ? (
+                                      lead.phones.map((phone, idx) => (
+                                        <p key={idx}>{formatPhone(phone)}</p>
+                                      ))
+                                    ) : (
+                                      <p>-</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-muted-foreground mb-1">All Emails</p>
+                                    {lead.emails && lead.emails.length > 0 ? (
+                                      lead.emails.map((email, idx) => (
+                                        <p key={idx}>{email}</p>
+                                      ))
+                                    ) : (
+                                      <p>-</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-muted-foreground mb-1">Employment</p>
+                                    <p>{lead.jobTitle || '-'}</p>
+                                    <p className="text-muted-foreground">{lead.companyName || ''}</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-muted-foreground mb-1">Financial</p>
+                                    <p>Net Worth: {lead.netWorth || '-'}</p>
+                                    <p>Income: {lead.incomeRange || '-'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-muted-foreground mb-1">Personal</p>
+                                    <p>Age: {lead.ageRange || '-'}</p>
+                                    <p>Gender: {lead.gender || '-'}</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground" data-testid="text-pagination-info">
+                      Showing {((importPage - 1) * 50) + 1} - {Math.min(importPage * 50, totalImportedLeads)} of {totalImportedLeads} leads
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setImportPage(p => Math.max(1, p - 1))}
+                        disabled={importPage === 1}
+                        data-testid="button-prev-page"
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setImportPage(p => Math.min(totalPages, p + 1))}
+                        disabled={importPage === totalPages}
+                        data-testid="button-next-page"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
 
-      {/* Appointment Details Dialog */}
       <Dialog open={appointmentDialogOpen} onOpenChange={setAppointmentDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -549,7 +989,6 @@ export default function Leads() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
