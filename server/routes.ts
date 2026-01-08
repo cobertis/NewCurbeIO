@@ -4063,6 +4063,78 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // ==================== GEOAPIFY ADDRESS AUTOCOMPLETE ====================
+  app.get("/api/geoapify/autocomplete", async (req: Request, res: Response) => {
+    try {
+      const { q } = req.query;
+      console.log("[GEOAPIFY] Received request with query:", q);
+      
+      if (!q || typeof q !== 'string') {
+        console.log("[GEOAPIFY] Missing or invalid query parameter");
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+      
+      if (q.length < 3) {
+        return res.json({ results: [] });
+      }
+
+      const { credentialProvider } = await import("./services/credential-provider");
+      const { apiKey } = await credentialProvider.getGeoapify();
+      
+      if (!apiKey) {
+        console.error("[GEOAPIFY] API KEY not configured");
+        return res.status(503).json({ 
+          message: "Address autocomplete not configured", 
+          requiresApiKey: true, 
+          suggestion: "Please configure Geoapify API key in System Settings" 
+        });
+      }
+
+      const url = new URL("https://api.geoapify.com/v1/geocode/autocomplete");
+      url.searchParams.set("apiKey", apiKey);
+      url.searchParams.set("text", q);
+      url.searchParams.set("limit", "5");
+      url.searchParams.set("filter", "countrycode:us");
+      url.searchParams.set("type", "street");
+      url.searchParams.set("format", "json");
+
+      console.log("[GEOAPIFY] Fetching from API");
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        console.error("[GEOAPIFY] API error:", response.status, response.statusText);
+        return res.status(response.status).json({ message: "Failed to fetch address suggestions" });
+      }
+      
+      const data = await response.json();
+      console.log("[GEOAPIFY] Got", data.results?.length || 0, "results");
+
+      // Transform Geoapify response to standardized format
+      const results = (data.results || []).map((result: any) => ({
+        place_id: result.place_id || result.properties?.place_id || `geo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        display_name: result.formatted || '',
+        address: {
+          house_number: result.housenumber || '',
+          road: result.street || '',
+          city: result.city || result.town || result.village || '',
+          county: result.county || '',
+          state: result.state || '',
+          state_code: result.state_code || '',
+          postcode: result.postcode || '',
+          country: result.country || 'United States',
+          country_code: result.country_code || 'us',
+        },
+        lat: result.lat,
+        lon: result.lon,
+      }));
+
+      res.json({ results });
+    } catch (error) {
+      console.error("[GEOAPIFY] Autocomplete error:", error);
+      return res.status(500).json({ message: "Failed to fetch address suggestions" });
+    }
+  });
   // ==================== LOCATIONIQ AUTOCOMPLETE ====================
   app.get("/api/locationiq/autocomplete", async (req: Request, res: Response) => {
     try {
