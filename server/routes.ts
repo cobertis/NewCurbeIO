@@ -4692,18 +4692,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const rawOrders = await getCompanyPortingOrders(user.companyId);
-
       const orders = rawOrders.map(order => {
         let normalizedStatus = order.status || 'draft';
-        
-        // Debug log
-        console.log(`[Porting] Raw status for order ${order.id}:`, JSON.stringify(order.status), typeof order.status);
         
         if (typeof normalizedStatus === 'string' && normalizedStatus.startsWith('{')) {
           try {
             const parsed = JSON.parse(normalizedStatus);
             normalizedStatus = parsed.value || 'draft';
-            console.log(`[Porting] Parsed status:`, normalizedStatus);
           } catch (e) {
             normalizedStatus = 'draft';
           }
@@ -4720,7 +4715,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ message: "Failed to list porting orders" });
     }
   });
-
   app.get("/api/telnyx/porting/orders/:orderId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
