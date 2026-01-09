@@ -127,6 +127,7 @@ export default function SmsVoicePortIn() {
   const { toast } = useToast();
 
   const { data: ordersData, isLoading, refetch } = useQuery<{ orders: PortingOrder[] }>({
+    refetchInterval: 30000, // Auto-refresh every 30 seconds for real-time updates
     queryKey: ["/api/telnyx/porting/orders"],
   });
 
