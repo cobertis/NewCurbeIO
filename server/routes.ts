@@ -4714,8 +4714,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const user = req.user!;
       const { orderId } = req.params;
 
-      const { getPortingOrderById, getPortingOrder } = await import("./services/telnyx-porting-service");
-      const localOrder = await getPortingOrderById(orderId);
+      const { getPortingOrderById, getPortingOrder, updateLocalPortingOrder } = await import("./services/telnyx-porting-service");
+      let localOrder = await getPortingOrderById(orderId);
 
       if (!localOrder || localOrder.companyId !== user.companyId) {
         return res.status(404).json({ message: "Porting order not found" });
@@ -4724,8 +4724,83 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       let telnyxOrder = null;
       if (localOrder.telnyxPortingOrderId) {
         const telnyxResult = await getPortingOrder(localOrder.telnyxPortingOrderId, user.companyId || undefined);
-        if (telnyxResult.success) {
+        if (telnyxResult.success && telnyxResult.portingOrder) {
           telnyxOrder = telnyxResult.portingOrder;
+          
+          // Auto-sync: Update local order with latest Telnyx data
+          const updateData: any = {
+            status: telnyxOrder.status,
+            supportKey: telnyxOrder.support_key || localOrder.supportKey,
+            updatedAt: new Date(),
+          };
+          
+          // Update end user info if available from Telnyx
+          if (telnyxOrder.end_user?.admin) {
+            if (telnyxOrder.end_user.admin.entity_name) {
+              updateData.endUserEntityName = telnyxOrder.end_user.admin.entity_name;
+            }
+            if (telnyxOrder.end_user.admin.auth_person_name) {
+              updateData.endUserAuthPersonName = telnyxOrder.end_user.admin.auth_person_name;
+            }
+            if (telnyxOrder.end_user.admin.billing_phone_number) {
+              updateData.endUserBillingPhone = telnyxOrder.end_user.admin.billing_phone_number;
+            }
+            if (telnyxOrder.end_user.admin.account_number) {
+              updateData.currentCarrierAccountNumber = telnyxOrder.end_user.admin.account_number;
+            }
+            if (telnyxOrder.end_user.admin.pin_passcode) {
+              updateData.currentCarrierPin = telnyxOrder.end_user.admin.pin_passcode;
+            }
+          }
+          
+          // Update location info if available
+          if (telnyxOrder.end_user?.location) {
+            if (telnyxOrder.end_user.location.street_address) {
+              updateData.streetAddress = telnyxOrder.end_user.location.street_address;
+            }
+            if (telnyxOrder.end_user.location.extended_address) {
+              updateData.extendedAddress = telnyxOrder.end_user.location.extended_address;
+            }
+            if (telnyxOrder.end_user.location.locality) {
+              updateData.locality = telnyxOrder.end_user.location.locality;
+            }
+            if (telnyxOrder.end_user.location.administrative_area) {
+              updateData.administrativeArea = telnyxOrder.end_user.location.administrative_area;
+            }
+            if (telnyxOrder.end_user.location.postal_code) {
+              updateData.postalCode = telnyxOrder.end_user.location.postal_code;
+            }
+            if (telnyxOrder.end_user.location.country_code) {
+              updateData.countryCode = telnyxOrder.end_user.location.country_code;
+            }
+          }
+          
+          // Update activation settings
+          if (telnyxOrder.activation_settings?.foc_datetime_requested) {
+            updateData.focDatetimeRequested = new Date(telnyxOrder.activation_settings.foc_datetime_requested);
+          }
+          if (telnyxOrder.activation_settings?.foc_datetime_actual) {
+            updateData.focDatetimeActual = new Date(telnyxOrder.activation_settings.foc_datetime_actual);
+          }
+          
+          // Update timestamps
+          if (telnyxOrder.submitted_at) {
+            updateData.submittedAt = new Date(telnyxOrder.submitted_at);
+          }
+          
+          // Update document IDs
+          if (telnyxOrder.documents?.loa) {
+            updateData.loaDocumentId = telnyxOrder.documents.loa;
+          }
+          if (telnyxOrder.documents?.invoice) {
+            updateData.invoiceDocumentId = telnyxOrder.documents.invoice;
+          }
+          
+          // Perform the update
+          const updatedOrder = await updateLocalPortingOrder(localOrder.id, updateData);
+          if (updatedOrder) {
+            localOrder = updatedOrder;
+          }
         }
       }
 
