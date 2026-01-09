@@ -33465,7 +33465,7 @@ CRITICAL REMINDERS:
   });
 
   // POST /webhooks/telnyx/porting - Handle Telnyx porting order status updates
-  app.post("/webhooks/telnyx/porting", async (req: Request, res: Response) => {
+  app.post("/webhooks/telnyx/porting", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
     try {
       const signature = req.headers["telnyx-signature-ed25519"] as string;
       const timestamp = req.headers["telnyx-timestamp"] as string;
@@ -33490,23 +33490,86 @@ CRITICAL REMINDERS:
         return res.status(401).json({ error: "Invalid signature" });
       }
       
-      const event = JSON.parse(rawBody.toString());
-      const eventType = event.data?.event_type;
-      const portingOrderId = event.data?.payload?.id || event.data?.payload?.porting_order_id;
-      const newStatus = event.data?.payload?.status;
+      // Respond after signature verification
+      res.status(200).json({ received: true });
       
-      console.log(`[Porting Webhook] Received event: ${eventType}, order: ${portingOrderId}, status: ${newStatus}`);
-      
-      if (portingOrderId && newStatus) {
-        const { updateLocalPortingOrderByTelnyxId } = await import("./services/telnyx-porting-service");
-        await updateLocalPortingOrderByTelnyxId(portingOrderId, { 
-          status: newStatus,
-          lastWebhookAt: new Date(),
-        });
-        console.log(`[Porting Webhook] Updated local order status to: ${newStatus}`);
+      // Parse the verified event
+      let event: any;
+      if (Buffer.isBuffer(rawBody)) {
+        event = JSON.parse(rawBody.toString());
+      } else if (typeof rawBody === 'object') {
+        event = rawBody;
+      } else if (typeof rawBody === 'string') {
+        event = JSON.parse(rawBody);
+      } else {
+        console.error("[Porting Webhook] Unknown body type:", typeof rawBody);
+        return;
       }
       
-      res.status(200).json({ received: true });
+      const eventType = event.data?.event_type;
+      const payload = event.data?.payload;
+      const portingOrderId = payload?.id || payload?.porting_order_id;
+      
+      console.log(`[Porting Webhook] Received event: ${eventType}, order: ${portingOrderId}`);
+      
+      if (!portingOrderId) {
+        console.log("[Porting Webhook] No porting order ID in payload");
+        return;
+      }
+      
+      const { updateLocalPortingOrderByTelnyxId } = await import("./services/telnyx-porting-service");
+      
+      // Handle different event types
+      switch (eventType) {
+        case "porting_order.status_changed": {
+          // Extract status from payload - can be string or object
+          const statusValue = typeof payload.status === 'object' 
+            ? payload.status.value 
+            : payload.status;
+          const statusDetails = typeof payload.status === 'object' 
+            ? payload.status.details 
+            : null;
+          
+          const updateData: any = {
+            status: statusValue,
+            lastWebhookAt: new Date(),
+          };
+          
+          // Handle specific status transitions
+          if (statusValue === 'completed' || statusValue === 'ported') {
+            updateData.portedAt = new Date();
+          } else if (statusValue === 'cancelled' || statusValue === 'cancel-pending') {
+            updateData.cancelledAt = new Date();
+          } else if (statusValue === 'exception' || statusValue === 'port-in-exception') {
+            updateData.lastError = statusDetails 
+              ? JSON.stringify(statusDetails) 
+              : 'Porting exception occurred';
+          }
+          
+          // Extract FOC date if available
+          if (payload.foc_datetime_actual) {
+            updateData.focDatetimeActual = new Date(payload.foc_datetime_actual);
+          }
+          
+          await updateLocalPortingOrderByTelnyxId(portingOrderId, updateData);
+          console.log(`[Porting Webhook] Updated order ${portingOrderId} status to: ${statusValue}`);
+          break;
+        }
+        
+        case "porting_order.messaging_changed": {
+          const messagingStatus = payload.messaging?.messaging_port_status;
+          console.log(`[Porting Webhook] Messaging status changed: ${messagingStatus}`);
+          
+          // Update messaging status in local record if needed
+          await updateLocalPortingOrderByTelnyxId(portingOrderId, {
+            lastWebhookAt: new Date(),
+          });
+          break;
+        }
+        
+        default:
+          console.log(`[Porting Webhook] Unhandled event type: ${eventType}`);
+      }
     } catch (error: any) {
       console.error("[Porting Webhook] Error processing webhook:", error);
       res.status(500).json({ error: "Webhook processing failed" });
