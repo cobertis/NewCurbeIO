@@ -412,48 +412,6 @@ export async function submitPortingOrder(
   }
 }
 
-export interface CancelPortingOrderResponse {
-  success: boolean;
-  error?: string;
-}
-
-export async function cancelPortingOrder(
-  portingOrderId: string,
-  companyId: string
-): Promise<CancelPortingOrderResponse> {
-  try {
-    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
-
-    console.log(`[Telnyx Porting] Cancelling porting order: ${portingOrderId} using managed account`);
-
-    const response = await fetch(`${TELNYX_API_BASE}/porting_orders/${portingOrderId}/actions/cancel`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Accept": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Telnyx Porting] Cancel order error: ${response.status} - ${errorText}`);
-      return {
-        success: false,
-        error: `Failed to cancel porting order: ${response.status} - ${errorText}`,
-      };
-    }
-
-    console.log(`[Telnyx Porting] Porting order cancelled successfully`);
-    return { success: true };
-  } catch (error) {
-    console.error("[Telnyx Porting] Cancel order error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to cancel porting order",
-    };
-  }
-}
-
 export interface DeletePortingOrderResponse {
   success: boolean;
   error?: string;
