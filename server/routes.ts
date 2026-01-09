@@ -4355,7 +4355,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const results = (data.results || []).map((result: any) => {
         // Geoapify uses different field names depending on location type
         const city = result.city || result.town || result.village || result.municipality || result.suburb || result.district || '';
-        const state = result.state || result.state_code || result.province || result.region || '';
+        const state = result.state_code || result.state || result.province || result.region || '';
         const postalCode = result.postcode || '';
         const houseNumber = result.housenumber || '';
         const streetName = result.street || '';
