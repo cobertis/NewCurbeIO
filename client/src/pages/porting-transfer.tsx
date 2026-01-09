@@ -259,6 +259,9 @@ export default function PortingTransfer() {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [selectedFocDate, setSelectedFocDate] = useState<string>('');
   const [focWindows, setFocWindows] = useState<FocWindow[]>([]);
+  const [focDateType, setFocDateType] = useState<'earliest' | 'specified'>('earliest');
+  const [activationType, setActivationType] = useState<'on_demand' | 'scheduled'>('scheduled');
+  const [selectedActivationTime, setSelectedActivationTime] = useState<string>('09:00');
   const loaInputRef = useRef<HTMLInputElement>(null);
   const invoiceInputRef = useRef<HTMLInputElement>(null);
 
