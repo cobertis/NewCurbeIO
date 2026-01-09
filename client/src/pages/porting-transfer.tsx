@@ -1406,6 +1406,18 @@ export default function PortingTransfer() {
                           </div>
                         </div>
                         <div className="flex gap-2">
+                          {loaFile && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setLoaFile(null)}
+                              data-testid="button-remove-loa"
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          )}
                           <Button
                             type="button"
                             variant="default"
@@ -1449,7 +1461,19 @@ export default function PortingTransfer() {
                             </div>
                           </div>
                         </div>
-                        <div>
+                        <div className="flex gap-2">
+                          {invoiceFile && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setInvoiceFile(null)}
+                              data-testid="button-remove-invoice"
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          )}
                           <input
                             ref={invoiceInputRef}
                             type="file"
