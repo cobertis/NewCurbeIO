@@ -344,6 +344,13 @@ export default function PortingTransfer() {
           setSelectedFocDate(order.focDatetimeRequested);
         }
         
+        // Pre-populate carrier from telnyxOrder if available
+        if (telnyxOrder?.old_service_provider_ocn) {
+          setLoaCurrentCarrier(telnyxOrder.old_service_provider_ocn);
+        } else if (telnyxOrder?.documents?.loas?.[0]?.losing_carrier_name) {
+          setLoaCurrentCarrier(telnyxOrder.documents.loas[0].losing_carrier_name);
+        }
+        
         const status = order.status || 'draft';
         if (status === 'draft') {
           if (isEditMode) {
@@ -639,10 +646,12 @@ export default function PortingTransfer() {
   };
 
   const handleOpenLoaDialog = () => {
-    if (portabilityResults.length > 0 && portabilityResults[0]?.carrier_name) {
+    // Only set carrier if not already set
+    if (!loaCurrentCarrier && portabilityResults.length > 0 && portabilityResults[0]?.carrier_name) {
       setLoaCurrentCarrier(portabilityResults[0].carrier_name);
     }
-    if (endUserInfo?.billingPhone) {
+    // Pre-fill BTN from endUserInfo if not already set
+    if (!loaBillingTelephoneNumber && endUserInfo?.billingPhone) {
       setLoaBillingTelephoneNumber(endUserInfo.billingPhone);
     }
     setLoaDialogOpen(true);
