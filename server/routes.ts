@@ -34601,7 +34601,7 @@ CRITICAL REMINDERS:
     
     const logRevealAttempt = async (success: boolean, reason?: string) => {
       try {
-      await db.query.systemApiCredentials.findFirst({
+      const credential = await db.query.systemApiCredentials.findFirst({
           where: eq(systemApiCredentials.id, id),
         });
         
@@ -34642,7 +34642,7 @@ CRITICAL REMINDERS:
         await logRevealAttempt(false, "invalid_password");
         return res.status(401).json({ message: "Invalid password" });
       }
-      await db.query.systemApiCredentials.findFirst({
+      const credential = await db.query.systemApiCredentials.findFirst({
         where: eq(systemApiCredentials.id, id),
       });
       if (!credential) {
