@@ -1,0 +1,128 @@
+0|curbe-admin  | 9:41:14 PM [express] GET /api/pbx/special-extensions 304 in 14ms :: {"ivrExtension":null,"queues":[]}
+0|curbe-admin  | [Telnyx Porting] Using API key: KEY019B9FE09...
+0|curbe-admin  | [Telnyx Porting] Listing all porting orders using managed account
+0|curbe-admin  | [TURN Credentials] Returning TURN servers for: curbe13edaa5fs0nc
+0|curbe-admin  | 9:41:14 PM [express] GET /api/inbox/conversations 304 in 64ms :: {"conversations":[]}
+0|curbe-admin  | 9:41:14 PM [express] GET /api/telnyx/turn-credentials 200 in 15ms :: {"username":"curbe13edaa5fs0nc"…
+0|curbe-admin  | 9:41:14 PM [express] GET /api/telnyx/phone-system-access 200 in 51ms :: {"hasAccess":false,"isOwner"…
+0|curbe-admin  | 9:41:14 PM [express] GET /api/wallet/balance 304 in 14ms :: {"balance":"0.0000","currency":"USD","au…
+0|curbe-admin  | 9:41:14 PM [express] GET /api/onboarding/progress 304 in 72ms :: {"profileCompleted":true,"planSelec…
+0|curbe-admin  | 9:41:14 PM [express] GET /api/voicemails 200 in 8ms :: {"voicemails":[],"unreadCount":0}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 64511fdf-e4da-444e-9e54-41168393d4f5 registered for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | 9:41:14 PM [express] GET /api/webrtc/extension-credentials 404 in 7ms :: {"error":"No extension foun…
+0|curbe-admin  | [Telnyx Porting] Sync complete: 0 new, 2 updated
+0|curbe-admin  | 9:41:14 PM [express] GET /api/telnyx/porting/orders 200 in 161ms :: {"orders":[{"id":"c7a7ded2-fe48-…
+0|curbe-admin  | 9:41:14 PM [express] GET /api/telnyx/voice-settings/d1b0b206-7bf3-49be-8a21-a583a7918390 200 in 148m…
+0|curbe-admin  | 9:41:14 PM [express] GET /api/billing/subscription 200 in 278ms :: {"subscription":{"id":"ebbad9c0-6…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=64511fdf-e4da-444e-9e54-41168393d4f5, companyId=13edaa5f-bcfa-419b-ae19-bbc87e0c417d, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=64511fdf-e4da-444e-9e54-41168393d4f5, companyId=13edaa5f-bcfa-419b-ae19-bbc87e0c417d, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | 9:41:16 PM [express] POST /api/onboarding/skip-step 200 in 6ms :: {"success":true,"skippedOnboarding…
+0|curbe-admin  | 9:41:16 PM [express] GET /api/onboarding/progress 200 in 10ms :: {"profileCompleted":true,"planSelec…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | 9:41:18 PM [express] POST /api/onboarding/skip-step 200 in 4ms :: {"success":true,"skippedOnboarding…
+0|curbe-admin  | 9:41:18 PM [express] GET /api/onboarding/progress 200 in 8ms :: {"profileCompleted":true,"planSelect…
+0|curbe-admin  | [BrowserCalling] Starting auto-provision for user 64511fdf-e4da-444e-9e54-41168393d4f5, company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | [BrowserCalling] Error: ReferenceError: existingExtension is not defined
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:44595:24
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 9:41:21 PM [express] POST /api/onboarding/enable-browser-calling 500 in 16ms :: {"error":"existingEx…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | 9:41:28 PM [express] GET /api/session 304 in 14ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393…
+0|curbe-admin  | 9:41:28 PM [express] GET /api/users/limits 304 in 12ms :: {"canAddUsers":true,"maxUsers":null,"curre…
+0|curbe-admin  | 9:41:28 PM [express] GET /api/settings/preferences 304 in 24ms :: {"preferences":{"emailNotification…
+0|curbe-admin  | 9:41:28 PM [express] GET /api/settings/company 200 in 7ms :: {"settings":{"id":"4a03c948-3937-4104-8…
+0|curbe-admin  | 9:41:28 PM [express] GET /api/organization/domain 304 in 8ms :: {"configured":false,"domain":null,"s…
+0|curbe-admin  | 9:41:30 PM [express] GET /api/ses/settings 304 in 9ms :: {"configured":false,"settings":null}
+0|curbe-admin  | 9:41:30 PM [express] GET /api/session 304 in 5ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393d…
+0|curbe-admin  | 9:41:30 PM [express] GET /api/integrations/whatsapp/status 304 in 9ms :: {"connected":false,"connect…
+0|curbe-admin  | 9:41:30 PM [express] GET /api/session 304 in 8ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393d…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | 9:41:31 PM [express] GET /api/session 304 in 7ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393d…
+0|curbe-admin  | [WhatsApp OAuth] Received - code: present wabaId: not provided phoneNumberId: not provided
+0|curbe-admin  | [WhatsApp OAuth] Exchanging code from FB SDK popup
+0|curbe-admin  | [WhatsApp OAuth] Token exchange failed: {
+0|curbe-admin  |   message: 'Invalid verification code format.',
+0|curbe-admin  |   type: 'OAuthException',
+0|curbe-admin  |   code: 100,
+0|curbe-admin  |   fbtrace_id: 'AZKVw4PAaanl1lUYRKNKGex'
+0|curbe-admin  | }
+0|curbe-admin  | 9:41:34 PM [express] POST /api/integrations/meta/whatsapp/exchange-code 400 in 126ms :: {"error":"In…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WhatsApp OAuth] Received - code: present wabaId: not provided phoneNumberId: not provided
+0|curbe-admin  | [WhatsApp OAuth] Exchanging code from FB SDK popup
+0|curbe-admin  | [WhatsApp OAuth] Token exchange failed: {
+0|curbe-admin  |   message: 'Invalid verification code format.',
+0|curbe-admin  |   type: 'OAuthException',
+0|curbe-admin  |   code: 100,
+0|curbe-admin  |   fbtrace_id: 'AjgKE-47I5J1LOq1Y6FB9lI'
+0|curbe-admin  | }
+0|curbe-admin  | 9:41:44 PM [express] POST /api/integrations/meta/whatsapp/exchange-code 400 in 109ms :: {"error":"In…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WhatsApp OAuth] Received - code: present wabaId: not provided phoneNumberId: not provided
+0|curbe-admin  | [WhatsApp OAuth] Exchanging code from FB SDK popup
+0|curbe-admin  | [WhatsApp OAuth] Token exchange failed: {
+0|curbe-admin  |   message: 'Invalid verification code format.',
+0|curbe-admin  |   type: 'OAuthException',
+0|curbe-admin  |   code: 100,
+0|curbe-admin  |   fbtrace_id: 'AO5cAfHjV9fZqyTCnCmK4b4'
+0|curbe-admin  | }
+0|curbe-admin  | 9:41:52 PM [express] POST /api/integrations/meta/whatsapp/exchange-code 400 in 105ms :: {"error":"In…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WhatsApp Call] Agent 64511fdf-e4da-444e-9e54-41168393d4f5 unregistered from company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | [WhatsApp Call WS] Agent 64511fdf-e4da-444e-9e54-41168393d4f5 disconnected
+0|curbe-admin  | 9:42:14 PM [express] GET /api/wallet/balance 304 in 7ms :: {"balance":"0.0000","currency":"USD","aut…
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=64511fdf-e4da-444e-9e54-41168393d4f5, companyId=13edaa5f-bcfa-419b-ae19-bbc87e0c417d, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+0|curbe-admin  | [WhatsApp Call] Agent 64511fdf-e4da-444e-9e54-41168393d4f5 registered for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=64511fdf-e4da-444e-9e54-41168393d4f5, companyId=13edaa5f-bcfa-419b-ae19-bbc87e0c417d, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5

@@ -27852,7 +27852,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
         `client_id=${appId}&` +
         `client_secret=${appSecret}&` +
-        `code=${code}`
+        `code=${encodeURIComponent(code)}`
       );
       
       const tokenData = await tokenResponse.json() as any;
@@ -28161,7 +28161,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         `client_id=${appId}&` +
         `client_secret=${appSecret}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `code=${code}`
+        `code=${encodeURIComponent(code)}`
       );
       
       const tokenData = await tokenResponse.json() as any;
