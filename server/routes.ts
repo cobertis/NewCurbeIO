@@ -4640,7 +4640,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const { createPortingOrder, createLocalPortingOrder } = await import("./services/telnyx-porting-service");
       
-      const telnyxResult = await createPortingOrder({ phone_numbers: phoneNumbers }, user.companyId);
+      // Build webhook URL for real-time status updates
+      const baseUrl = process.env.REPLIT_DEPLOYMENT 
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}` 
+        : process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+          : "";
+      const webhookUrl = baseUrl ? `${baseUrl}/webhooks/telnyx/porting` : undefined;
+      
+      const telnyxResult = await createPortingOrder({ 
+        phone_numbers: phoneNumbers,
+        webhook_url: webhookUrl,
+      }, user.companyId);
 
       if (!telnyxResult.success || !telnyxResult.portingOrders?.length) {
         return res.status(400).json({ message: telnyxResult.error || "Failed to create porting order" });
