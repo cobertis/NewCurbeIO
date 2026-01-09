@@ -4682,7 +4682,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Company ID is required" });
       }
 
-      const { getCompanyPortingOrders } = await import("./services/telnyx-porting-service");
+      const { getCompanyPortingOrders, syncPortingOrdersFromTelnyx } = await import("./services/telnyx-porting-service");
+      
+      // Auto-sync with Telnyx API to get latest status updates
+      try {
+        await syncPortingOrdersFromTelnyx(user.companyId);
+      } catch (syncError) {
+        console.error("[Porting] Auto-sync failed (continuing with local data):", syncError);
+      }
+      
       const rawOrders = await getCompanyPortingOrders(user.companyId);
 
       const orders = rawOrders.map(order => {
