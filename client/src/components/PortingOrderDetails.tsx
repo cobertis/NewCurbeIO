@@ -263,16 +263,12 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
                       <div className="font-mono text-sm">{details.supportKey || '-'}</div>
                     </div>
                     <div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400">Parent Request #</div>
-                      <div className="font-mono text-sm">{details.parentSupportKey || telnyxOrder?.parent_support_key || '-'}</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">Status</div>
+                      <div className="mt-1">{getStatusBadge(details.status)}</div>
                     </div>
                     <div>
                       <div className="text-sm text-slate-500 dark:text-slate-400">Porting Order ID</div>
                       <div className="font-mono text-xs">{details.telnyxPortingOrderId || '-'}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400">Status</div>
-                      <div className="mt-1">{getStatusBadge(details.status)}</div>
                     </div>
                     <div>
                       <div className="text-sm text-slate-500 dark:text-slate-400">Request Submitted At</div>
@@ -281,10 +277,6 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
                           ? format(new Date(details.submittedAt), "MMM d, yyyy, HH:mm") + " (local)"
                           : '-'}
                       </div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400">Porting From</div>
-                      <div className="text-sm">{details.portingFrom || telnyxOrder?.old_service_provider_ocn || '-'}</div>
                     </div>
                   </div>
                 </CardContent>
