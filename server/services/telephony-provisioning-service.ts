@@ -314,12 +314,13 @@ export class TelephonyProvisioningService {
       texmlAppId = texmlResult.appId;
       console.log(`[TelephonyProvisioning] TeXML Application created: ${texmlAppId}`);
 
-      console.log(`[TelephonyProvisioning] Step 3/5: Creating Credential Connection...`);
+      console.log(`[TelephonyProvisioning] Step 3/4: Creating Credential Connection with SIP Credentials...`);
       const connResult = await this.createCredentialConnection(
         managedAccountId,
         companyName,
         webhookBaseUrl,
-        outboundVoiceProfileId
+        outboundVoiceProfileId,
+        companyId
       );
       if (!connResult.success || !connResult.connectionId) {
         await this.rollbackTexmlApp(managedAccountId, texmlAppId);
@@ -327,25 +328,12 @@ export class TelephonyProvisioningService {
         throw new Error(`Step 3 Failed: ${connResult.error}`);
       }
       credentialConnectionId = connResult.connectionId;
-      console.log(`[TelephonyProvisioning] Credential Connection created: ${credentialConnectionId}`);
+      sipCredentials = { id: connResult.connectionId, username: connResult.username || '' };
+      console.log(`[TelephonyProvisioning] Credential Connection created: ${credentialConnectionId}, SIP User: ${sipCredentials.username}`);
 
-      console.log(`[TelephonyProvisioning] Step 4/5: Creating SIP Credentials...`);
-      const sipResult = await this.createSipCredential(
-        managedAccountId,
-        companyId,
-        userId,
-        credentialConnectionId
-      );
-      if (!sipResult.success || !sipResult.credentials) {
-        await this.rollbackCredentialConnection(managedAccountId, credentialConnectionId);
-        await this.rollbackTexmlApp(managedAccountId, texmlAppId);
-        await this.rollbackOutboundProfile(managedAccountId, outboundVoiceProfileId);
-        throw new Error(`Step 4 Failed: ${sipResult.error}`);
-      }
-      sipCredentials = sipResult.credentials;
-      console.log(`[TelephonyProvisioning] SIP Credentials created: ${sipCredentials.username}`);
+      await this.storeSipCredentials(companyId, userId, credentialConnectionId, connResult.username || '', connResult.password || '');
 
-      console.log(`[TelephonyProvisioning] Step 5/5: Updating existing phone numbers...`);
+      console.log(`[TelephonyProvisioning] Step 4/4: Updating existing phone numbers...`);
       // CRITICAL FIX: Assign phone numbers to Credential Connection DIRECTLY
       // Per Telnyx docs, this routes inbound calls directly to WebRTC client
       // without TeXML intermediate leg that causes 4-6 second audio delay
@@ -409,8 +397,9 @@ export class TelephonyProvisioningService {
         "POST",
         {
           name: `${businessName} - Outbound Profile`,
-          service_plan: "us",
+          service_plan: "global",
           traffic_type: "conversational",
+          usage_payment_method: "rate-deck",
           concurrent_call_limit: 10,
           daily_spend_limit: "25.00",
           daily_spend_limit_enabled: true,
@@ -475,19 +464,41 @@ export class TelephonyProvisioningService {
     }
   }
 
+  private generateSipUsername(companyId: string): string {
+    const prefix = "curbe";
+    const shortId = companyId.substring(0, 8).replace(/-/g, '');
+    const timestamp = Date.now().toString(36).substring(0, 4);
+    return `${prefix}${shortId}${timestamp}`;
+  }
+
+  private generateSecurePassword(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    let password = '';
+    for (let i = 0; i < 16; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+
   private async createCredentialConnection(
     managedAccountId: string,
     businessName: string,
     webhookBaseUrl: string,
-    outboundVoiceProfileId: string
-  ): Promise<{ success: boolean; connectionId?: string; error?: string }> {
+    outboundVoiceProfileId: string,
+    companyId: string
+  ): Promise<{ success: boolean; connectionId?: string; username?: string; password?: string; error?: string }> {
     try {
+      const sipUsername = this.generateSipUsername(companyId);
+      const sipPassword = this.generateSecurePassword();
+
       const response = await this.makeApiRequest(
         managedAccountId,
         "/credential_connections",
         "POST",
         {
           connection_name: `Curbe WebRTC - ${businessName}`,
+          user_name: sipUsername,
+          password: sipPassword,
           active: true,
           anchorsite_override: "Latency",
           outbound: {
@@ -496,13 +507,9 @@ export class TelephonyProvisioningService {
           },
           inbound: {
             channel_limit: 10,
-            codecs: ["G722", "PCMU", "PCMA"],
-            // Enable SIP Forking so all registered devices (webphone + physical phones) ring simultaneously
-            // Telnyx uses "simultaneous_ringing" property (not sip_forking_enabled)
+            codecs: ["G722", "G711U", "G711A", "OPUS"],
             simultaneous_ringing: "enabled",
           },
-          // CRITICAL: Enable SIP URI calling so TeXML can dial to this credential connection
-          // This is a ROOT level field, not inside inbound
           sip_uri_calling_preference: "unrestricted",
           webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/voice/status`,
         }
@@ -514,9 +521,38 @@ export class TelephonyProvisioningService {
       }
 
       const data = await response.json();
-      return { success: true, connectionId: data.data?.id };
+      return { 
+        success: true, 
+        connectionId: data.data?.id,
+        username: sipUsername,
+        password: sipPassword,
+      };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Network error" };
+    }
+  }
+
+  private async storeSipCredentials(
+    companyId: string,
+    userId: string,
+    connectionId: string,
+    username: string,
+    password: string
+  ): Promise<void> {
+    try {
+      const encryptedPassword = secretsService.encryptValue(password);
+
+      await db.insert(telephonyCredentials).values({
+        companyId,
+        ownerUserId: userId,
+        telnyxCredentialId: connectionId,
+        sipUsername: username,
+        sipPassword: encryptedPassword,
+        isActive: true,
+      });
+      console.log(`[TelephonyProvisioning] SIP credentials stored for user ${userId}`);
+    } catch (error) {
+      console.error(`[TelephonyProvisioning] Failed to store SIP credentials:`, error);
     }
   }
 
