@@ -5083,6 +5083,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         postalCode: data.postalCode || "",
         currentCarrier: data.currentCarrier || "",
         billingTelephoneNumber: data.billingTelephoneNumber || "",
+        accountNumber: data.accountNumber || "",
+        pin: data.pin || "",
         phoneNumbers: data.phoneNumbers || [],
         signatureDataUrl: data.signatureDataUrl,
         signatureDate: data.signatureDate || new Date().toLocaleDateString(),
