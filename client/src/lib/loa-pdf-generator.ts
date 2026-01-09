@@ -1,7 +1,12 @@
 import pdfMake from 'pdfmake/build/pdfmake';
-import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import vfs from 'pdfmake/build/vfs_fonts';
 
-(pdfMake as any).addVirtualFileSystem(pdfFonts);
+// pdfmake needs font files registered
+if (vfs && vfs.pdfMake && vfs.pdfMake.vfs) {
+  (pdfMake as any).vfs = vfs.pdfMake.vfs;
+} else if (vfs) {
+  (pdfMake as any).vfs = vfs;
+}
 
 export interface LOAData {
   entityName: string;
