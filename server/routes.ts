@@ -28021,7 +28021,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const encryptedToken = encryptToken(accessToken);
       
       // Check existing connection
-      await db.select().from(channelConnections)
+      const existingConnection = await db.select().from(channelConnections)
         .where(and(
           eq(channelConnections.companyId, user.companyId),
           eq(channelConnections.channel, "whatsapp")
