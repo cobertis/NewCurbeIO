@@ -5276,6 +5276,36 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Cancel a porting order
+  app.post("/api/telnyx/porting/orders/:localOrderId/cancel", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { localOrderId } = req.params;
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { getLocalPortingOrderById, cancelPortingOrder } = await import("./services/telnyx-porting-service");
+      const localOrder = await getLocalPortingOrderById(localOrderId, user.companyId);
+
+      if (!localOrder || !localOrder.telnyxPortingOrderId) {
+        return res.status(404).json({ message: "Order not found or not submitted to Telnyx" });
+      }
+
+      const result = await cancelPortingOrder(localOrder.telnyxPortingOrderId, user.companyId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      return res.json({ success: true, portingOrder: result.portingOrder });
+    } catch (error) {
+      console.error("[Porting] Cancel order error:", error);
+      return res.status(500).json({ message: "Failed to cancel porting order" });
+    }
+  });
+
   // Download a specific document from Telnyx
   app.get("/api/telnyx/porting/documents/:documentId/download", requireAuth, async (req: Request, res: Response) => {
     try {

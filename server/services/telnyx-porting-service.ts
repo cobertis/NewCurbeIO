@@ -1195,6 +1195,64 @@ export interface DownloadDocumentResponse {
   error?: string;
 }
 
+export interface CancelPortingOrderResponse {
+  success: boolean;
+  portingOrder?: any;
+  error?: string;
+}
+
+export async function cancelPortingOrder(
+  portingOrderId: string,
+  companyId: string
+): Promise<CancelPortingOrderResponse> {
+  try {
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
+
+    console.log(`[Telnyx Porting] Cancelling porting order: ${portingOrderId}`);
+
+    const response = await fetch(
+      `${TELNYX_API_BASE}/porting_orders/${portingOrderId}/actions/cancel`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`[Telnyx Porting] Cancel order ${portingOrderId} failed:`, errorData);
+      
+      const errorDetail = errorData.errors?.[0]?.detail || `Failed to cancel: ${response.status}`;
+      return { success: false, error: errorDetail };
+    }
+
+    const data = await response.json();
+    console.log(`[Telnyx Porting] Order ${portingOrderId} cancellation requested successfully`);
+
+    // Update local database with cancelled status
+    await db.update(telnyxPortingOrders)
+      .set({
+        status: data.data?.status?.value || 'cancel-pending',
+        updatedAt: new Date(),
+      })
+      .where(eq(telnyxPortingOrders.telnyxPortingOrderId, portingOrderId));
+
+    return {
+      success: true,
+      portingOrder: data.data,
+    };
+  } catch (error) {
+    console.error(`[Telnyx Porting] Cancel order ${portingOrderId} error:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to cancel porting order",
+    };
+  }
+}
+
 export async function downloadPortingDocument(
   documentId: string,
   companyId: string

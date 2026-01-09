@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ArrowLeft,
   CheckCircle,
@@ -119,6 +132,7 @@ interface PortingOrderDetailsProps {
 
 export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps) {
   const [activeTab, setActiveTab] = useState("details");
+  const { toast } = useToast();
 
   const { data: orderDetails, isLoading: loadingDetails } = useQuery<{ order: PortingOrder; telnyxOrder: any }>({
     queryKey: ["/api/telnyx/porting/orders", order.id],
@@ -128,9 +142,34 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
     queryKey: [`/api/telnyx/porting/orders/${order.id}/documents`],
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/telnyx/porting/orders/${order.id}/cancel`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Cancellation requested",
+        description: "The porting order cancellation has been submitted. The carrier will confirm within 48 hours.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/porting/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/porting/orders", order.id] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to cancel",
+        description: error.message || "Could not cancel the porting order. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const details = orderDetails?.order || order;
   const telnyxOrder = orderDetails?.telnyxOrder;
   const documents = documentsData?.documents || [];
+
+  const statusValue = getStatusValue(details.status);
+  const canCancel = !['cancelled', 'cancel-pending', 'ported', 'completed'].includes(statusValue);
 
   const invoiceDoc = documents.find((doc: any) => 
     doc.document_type === 'invoice' || doc.type === 'invoice'
@@ -163,22 +202,56 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="h-auto p-0 bg-transparent gap-6 border-b w-full justify-start rounded-none">
-          <TabsTrigger 
-            value="details" 
-            className="px-0 pb-3 pt-4 rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 dark:data-[state=active]:border-slate-100 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-            data-testid="tab-details"
-          >
-            Order Details
-          </TabsTrigger>
-          <TabsTrigger 
-            value="requirements"
-            className="px-0 pb-3 pt-4 rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 dark:data-[state=active]:border-slate-100 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-            data-testid="tab-requirements"
-          >
-            Requirements
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between border-b">
+          <TabsList className="h-auto p-0 bg-transparent gap-6 justify-start rounded-none border-b-0">
+            <TabsTrigger 
+              value="details" 
+              className="px-0 pb-3 pt-4 rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 dark:data-[state=active]:border-slate-100 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              data-testid="tab-details"
+            >
+              Order Details
+            </TabsTrigger>
+            <TabsTrigger 
+              value="requirements"
+              className="px-0 pb-3 pt-4 rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 dark:data-[state=active]:border-slate-100 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              data-testid="tab-requirements"
+            >
+              Requirements
+            </TabsTrigger>
+          </TabsList>
+
+          {canCancel && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="text-red-700 border-red-300 hover:bg-red-50 hover:text-red-800 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
+                  disabled={cancelMutation.isPending}
+                  data-testid="button-cancel-porting"
+                >
+                  {cancelMutation.isPending ? "Cancelling..." : "Cancel porting request"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel porting request?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will submit a cancellation request to the carrier. The carrier will confirm the cancellation within 48 hours. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep request</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => cancelMutation.mutate()}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Cancel porting request
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
 
         <TabsContent value="details" className="mt-6">
           {loadingDetails ? (
