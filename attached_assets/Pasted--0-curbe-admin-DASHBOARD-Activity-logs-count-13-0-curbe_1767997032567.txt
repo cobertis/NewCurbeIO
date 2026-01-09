@@ -1,0 +1,213 @@
+…
+0|curbe-admin  | [DASHBOARD] Activity logs count: 13
+0|curbe-admin  | [DASHBOARD] Auth actions found: [
+0|curbe-admin  |   { action: 'auth_login_with_otp', date: 2026-01-09T21:41:13.832Z },
+0|curbe-admin  |   { action: 'auth_otp_sent', date: 2026-01-09T21:41:05.679Z },
+0|curbe-admin  |   { action: 'auth_login_with_otp', date: 2026-01-09T14:52:35.049Z },
+0|curbe-admin  |   { action: 'auth_otp_sent', date: 2026-01-09T14:52:23.135Z },
+0|curbe-admin  |   { action: 'auth_login_with_otp', date: 2026-01-08T21:55:57.577Z },
+0|curbe-admin  |   { action: 'auth_otp_sent', date: 2026-01-08T21:55:50.681Z },
+0|curbe-admin  |   { action: 'auth_account_activated', date: 2026-01-08T21:55:41.889Z },
+0|curbe-admin  |   { action: 'auth_company_registered', date: 2026-01-08T21:55:28.291Z }
+0|curbe-admin  | ]
+0|curbe-admin  | [DASHBOARD] Failed login attempts count: 0
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 10:16:47 PM [express] GET /api/voicemails 304 in 30ms :: {"voicemails":[],"unreadCount":0}
+0|curbe-admin  | 10:16:47 PM [express] GET /api/call-logs 304 in 28ms :: {"logs":[]}
+0|curbe-admin  | [WebSocket] Authenticated: userId=64511fdf-e4da-444e-9e54-41168393d4f5, companyId=13edaa5f-bcfa-419b-ae19-bbc87e0c417d, role=admin
+0|curbe-admin  | 10:16:47 PM [express] GET /api/policies-analytics 200 in 27ms
+0|curbe-admin  | 10:16:47 PM [express] GET /api/dashboard-agents 200 in 74ms
+0|curbe-admin  | 10:16:47 PM [express] GET /api/dashboard-carriers 304 in 81ms :: {"carriers":[]}
+0|curbe-admin  | 10:16:47 PM [express] GET /api/dashboard-monthly 200 in 71ms
+0|curbe-admin  | 10:16:47 PM [express] GET /api/notifications 200 in 16ms :: {"notifications":[{"id":"0a3d4435-9ead-4e…
+0|curbe-admin  | 10:16:47 PM [express] GET /api/telnyx/phone-system-access 304 in 14ms :: {"hasAccess":false,"isOwner"…
+0|curbe-admin  | [Telnyx Numbers] Using company API key: KEY019B9FE09...
+0|curbe-admin  | 10:16:47 PM [express] GET /api/dashboard-stats 200 in 108ms :: {"totalUsers":1,"adminCount":1,"member…
+0|curbe-admin  | 10:16:47 PM [express] GET /api/wallet/balance 200 in 68ms :: {"balance":"0.0000","currency":"USD","au…
+0|curbe-admin  | 10:16:47 PM [express] GET /api/users/availability-status 304 in 47ms :: {"status":"offline"}
+0|curbe-admin  | 10:16:47 PM [express] GET /api/session 304 in 35ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393…
+0|curbe-admin  | 10:16:47 PM [express] GET /api/companies/13edaa5f-bcfa-419b-ae19-bbc87e0c417d 304 in 29ms :: {"compan…
+0|curbe-admin  | [Telnyx Sync] Synced 0 new numbers for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | 10:16:47 PM [express] GET /api/telnyx/my-numbers 304 in 174ms :: {"numbers":[{"id":"d1b0b206-7bf3-49b…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=64511fdf-e4da-444e-9e54-41168393d4f5, companyId=13edaa5f-bcfa-419b-ae19-bbc87e0c417d, role=admin
+0|curbe-admin  | [Telnyx Numbers] Using company API key: KEY019B9FE09...
+0|curbe-admin  | [TURN Credentials] Returning TURN servers for: curbe13edaa5fs0nc
+0|curbe-admin  | 10:16:47 PM [express] GET /api/voicemails 304 in 14ms :: {"voicemails":[],"unreadCount":0}
+0|curbe-admin  | 10:16:47 PM [express] GET /api/telnyx/turn-credentials 304 in 16ms :: {"username":"curbe13edaa5fs0nc"…
+0|curbe-admin  | 10:16:47 PM [express] GET /api/pbx/special-extensions 304 in 17ms :: {"ivrExtension":null,"queues":[]}
+0|curbe-admin  | 10:16:47 PM [express] GET /api/webrtc/extension-credentials 404 in 6ms :: {"error":"No extension foun…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 10:16:47 PM [express] GET /api/telnyx/voice-settings/d1b0b206-7bf3-49be-8a21-a583a7918390 304 in 134m…
+0|curbe-admin  | [WebSocket] Authenticated: userId=64511fdf-e4da-444e-9e54-41168393d4f5, companyId=13edaa5f-bcfa-419b-ae19-bbc87e0c417d, role=admin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | 10:16:48 PM [express] GET /api/settings/preferences 304 in 11ms :: {"preferences":{"emailNotification…
+0|curbe-admin  | [BILLING] Subscription query for company: 13edaa5f-bcfa-419b-ae19-bbc87e0c417d Result: {
+0|curbe-admin  |   id: 'ebbad9c0-62e2-4581-99c0-6b9841c0e12f',
+0|curbe-admin  |   companyId: '13edaa5f-bcfa-419b-ae19-bbc87e0c417d',
+0|curbe-admin  |   planId: '547dd624-aa91-402a-843c-8441d9cb15f8',
+0|curbe-admin  |   status: 'trialing',
+0|curbe-admin  |   billingCycle: 'yearly',
+0|curbe-admin  |   trialStart: 2026-01-08T21:56:44.000Z,
+0|curbe-admin  |   trialEnd: 2026-01-22T21:56:44.000Z,
+0|curbe-admin  |   currentPeriodStart: 2026-01-08T21:56:45.234Z,
+0|curbe-admin  |   currentPeriodEnd: 2026-02-07T21:56:45.234Z,
+0|curbe-admin  |   stripeCustomerId: 'cus_Tkx5ZpX6zLJyLS',
+0|curbe-admin  |   stripeSubscriptionId: 'sub_1SnRCCRakK7EZsIVCGJP1LlF',
+0|curbe-admin  |   stripeLatestInvoiceId: 'in_1SnRCCRakK7EZsIVEIyxGLco',
+0|curbe-admin  |   createdAt: 2026-01-08T21:56:45.254Z,
+0|curbe-admin  |   updatedAt: 2026-01-08T21:56:45.254Z,
+0|curbe-admin  |   cancelledAt: null,
+0|curbe-admin  |   cancelAtPeriodEnd: false
+0|curbe-admin  | }
+0|curbe-admin  | 10:16:48 PM [express] GET /api/organization/domain 304 in 14ms :: {"configured":false,"domain":null,"…
+0|curbe-admin  | 10:16:48 PM [express] GET /api/settings/company 304 in 12ms :: {"settings":{"id":"4a03c948-3937-4104-…
+0|curbe-admin  | ==========================================
+0|curbe-admin  | 🔑 STRIPE INITIALIZED: TEST MODE
+0|curbe-admin  | 🔑 Key prefix: sk_test_51SS...
+0|curbe-admin  | ==========================================
+0|curbe-admin  | 10:16:48 PM [express] GET /api/session 304 in 28ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393…
+0|curbe-admin  | 10:16:48 PM [express] GET /api/users/limits 304 in 32ms :: {"canAddUsers":true,"maxUsers":null,"curre…
+0|curbe-admin  | 10:16:48 PM [express] GET /api/billing/subscription 200 in 394ms :: {"subscription":{"id":"ebbad9c0-6…
+0|curbe-admin  | 10:16:49 PM [express] GET /api/integrations/whatsapp/status 200 in 7ms :: {"connected":false,"connect…
+0|curbe-admin  | 10:16:49 PM [express] GET /api/session 304 in 7ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393d…
+0|curbe-admin  | 10:16:50 PM [express] GET /api/session 304 in 7ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393d…
+0|curbe-admin  | 10:16:50 PM [express] GET /api/integrations/facebook/status 200 in 7ms :: {"connection":{"id":"0de815…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | 10:16:51 PM [express] GET /api/session 304 in 6ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393d…
+0|curbe-admin  | 10:16:52 PM [express] GET /api/session 304 in 11ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-41168393…
+0|curbe-admin  | [WhatsApp OAuth] Received - code: present wabaId: not provided phoneNumberId: not provided
+0|curbe-admin  | [WhatsApp OAuth] Exchanging code from FB SDK popup
+0|curbe-admin  | [WhatsApp OAuth] Received access token directly, using it
+0|curbe-admin  | [WhatsApp OAuth] No embedded signup data, querying Graph API for WABAs...
+0|curbe-admin  | [WhatsApp OAuth] WABA lookup attempt 1/3 for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | [WhatsApp OAuth] debug_token response: {
+0|curbe-admin  |   "data": {
+0|curbe-admin  |     "app_id": "775292408902612",
+0|curbe-admin  |     "type": "USER",
+0|curbe-admin  |     "application": "Curbe.io",
+0|curbe-admin  |     "data_access_expires_at": 1775772759,
+0|curbe-admin  |     "expires_at": 1768003200,
+0|curbe-admin  |     "is_valid": true,
+0|curbe-admin  |     "scopes": [
+0|curbe-admin  |       "email",
+0|curbe-admin  |       "pages_show_list",
+0|curbe-admin  |       "business_management",
+0|curbe-admin  |       "pages_messaging",
+0|curbe-admin  |       "instagram_basic",
+0|curbe-admin  |       "instagram_content_publish",
+0|curbe-admin  |       "whatsapp_business_management",
+0|curbe-admin  |       "instagram_manage_messages",
+0|curbe-admin  |       "pages_read_engagement",
+0|curbe-admin  |       "pages_manage_metadata",
+0|curbe-admin  |       "whatsapp_business_messaging",
+0|curbe-admin  |       "whatsapp_business_manage_events",
+0|curbe-admin  |       "public_profile"
+0|curbe-admin  |     ],
+0|curbe-admin  |     "granular_scopes": [
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "pages_show_list",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "837807122740501"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "business_management",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "184460710572692"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "pages_messaging",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "837807122740501"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "instagram_basic",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "17841476805329870"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "instagram_content_publish",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "17841476805329870"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "whatsapp_business_management",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "746542767890502"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "instagram_manage_messages",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "17841476805329870"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "pages_read_engagement",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "837807122740501"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "pages_manage_metadata",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "837807122740501"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "whatsapp_business_messaging",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "746542767890502"
+0|curbe-admin  |         ]
+0|curbe-admin  |       },
+0|curbe-admin  |       {
+0|curbe-admin  |         "scope": "whatsapp_business_manage_events",
+0|curbe-admin  |         "target_ids": [
+0|curbe-admin  |           "746542767890502"
+0|curbe-admin  |         ]
+0|curbe-admin  |       }
+0|curbe-admin  |     ],
+0|curbe-admin  |     "user_id": "811564928526112"
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | [WhatsApp OAuth] Found WABA from debug_token granular_scopes: 746542767890502
+0|curbe-admin  | [WhatsApp OAuth] Phone number lookup attempt 1/3 for WABA 746542767890502
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WhatsApp OAuth] phone_numbers response: {
+0|curbe-admin  |   "data": [
+0|curbe-admin  |     {
+0|curbe-admin  |       "id": "956145024239673",
+0|curbe-admin  |       "display_phone_number": "15551659082",
+0|curbe-admin  |       "verified_name": "Test Number",
+0|curbe-admin  |       "quality_rating": "GREEN"
+0|curbe-admin  |     }
+0|curbe-admin  |   ],
+0|curbe-admin  |   "paging": {
+0|curbe-admin  |     "cursors": {
+0|curbe-admin  |       "before": "QVFIU2VPSk1RNE9iUkRubldBUm9hRkM1SjlPOW5SX1pESFdwWjlCOHpWLUEzcURmdzF3TC1HMkRfRko5a2FhZA01RdmoZD",
+0|curbe-admin  |       "after": "QVFIU2VPSk1RNE9iUkRubldBUm9hRkM1SjlPOW5SX1pESFdwWjlCOHpWLUEzcURmdzF3TC1HMkRfRko5a2FhZA01RdmoZD"
+0|curbe-admin  |     }
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | [WhatsApp OAuth] Found phone number: 956145024239673 15551659082
+0|curbe-admin  | [WhatsApp OAuth] Connection saved successfully for company: 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | [WhatsApp OAuth] Voice calling enabled for phone 956145024239673
+0|curbe-admin  | 10:16:56 PM [express] POST /api/integrations/meta/whatsapp/exchange-code 200 in 3101ms :: {"success":…
+0|curbe-admin  | 10:16:56 PM [express] GET /api/integrations/whatsapp/status 200 in 5ms :: {"connected":true,"connecti…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | 10:16:57 PM [express] GET /api/integrations/whatsapp/phone-status 304 in 633ms :: {"status":"CONNECTE…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0
