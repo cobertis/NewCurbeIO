@@ -653,11 +653,27 @@ export default function PortingTransfer() {
   };
 
   const handleGenerateLoa = async () => {
-    // Use form values directly to avoid null state issues
-    const formData = endUserForm.getValues();
-    const userInfo = endUserInfo || formData;
+    console.log('[LOA] Starting handleGenerateLoa...');
     
-    if (!userInfo.entityName || !userInfo.authPersonName) {
+    // Use form values directly to avoid null state issues
+    let formData;
+    let userInfo;
+    try {
+      formData = endUserForm.getValues();
+      userInfo = endUserInfo || formData;
+      console.log('[LOA] userInfo:', userInfo);
+    } catch (e) {
+      console.error('[LOA] Error getting form values:', e);
+      toast({
+        title: 'Error',
+        description: 'Could not get form values.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!userInfo || !userInfo.entityName || !userInfo.authPersonName) {
+      console.log('[LOA] Missing user info');
       toast({
         title: 'Missing Information',
         description: 'Please complete the end user information first.',
@@ -667,6 +683,7 @@ export default function PortingTransfer() {
     }
 
     if (!loaCurrentCarrier.trim()) {
+      console.log('[LOA] Missing carrier');
       toast({
         title: 'Current Carrier Required',
         description: 'Please enter the current carrier name.',
@@ -676,6 +693,7 @@ export default function PortingTransfer() {
     }
 
     if (!loaBillingTelephoneNumber.trim()) {
+      console.log('[LOA] Missing BTN');
       toast({
         title: 'BTN Required',
         description: 'Please enter the billing telephone number.',
@@ -685,6 +703,7 @@ export default function PortingTransfer() {
     }
 
     if (signatureRef.current?.isEmpty()) {
+      console.log('[LOA] Signature empty');
       toast({
         title: 'Signature Required',
         description: 'Please sign in the signature box.',
@@ -694,13 +713,23 @@ export default function PortingTransfer() {
     }
 
     setIsGeneratingLoa(true);
+    console.log('[LOA] Passed all validations, getting signature...');
 
     try {
-      const signatureDataUrl = signatureRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
+      let signatureDataUrl = '';
+      try {
+        const canvas = signatureRef.current?.getTrimmedCanvas();
+        if (canvas) {
+          signatureDataUrl = canvas.toDataURL('image/png');
+          console.log('[LOA] Signature captured, length:', signatureDataUrl.length);
+        }
+      } catch (sigError) {
+        console.error('[LOA] Error getting signature:', sigError);
+      }
 
       const loaData = {
-        entityName: userInfo.entityName,
-        authPersonName: userInfo.authPersonName,
+        entityName: userInfo.entityName || '',
+        authPersonName: userInfo.authPersonName || '',
         billingPhone: userInfo.billingPhone || '',
         streetAddress: userInfo.streetAddress || '',
         streetAddress2: userInfo.streetAddress2 || '',
@@ -714,7 +743,7 @@ export default function PortingTransfer() {
         signatureDate: format(new Date(), 'MMMM d, yyyy'),
       };
 
-      console.log('[LOA] Sending data to server:', JSON.stringify(loaData, null, 2));
+      console.log('[LOA] Sending POST to /api/telnyx/porting/generate-loa');
 
       const response = await fetch('/api/telnyx/porting/generate-loa', {
         method: 'POST',
@@ -723,6 +752,8 @@ export default function PortingTransfer() {
         body: JSON.stringify(loaData),
       });
 
+      console.log('[LOA] Response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[LOA] Server error:', response.status, errorText);
@@ -730,7 +761,8 @@ export default function PortingTransfer() {
       }
 
       const pdfBlob = await response.blob();
-      const filename = `LOA_${userInfo.entityName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      console.log('[LOA] PDF received, size:', pdfBlob.size);
+      const filename = `LOA_${(userInfo.entityName || 'Unknown').replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
       const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
 
       setLoaFile(pdfFile);
