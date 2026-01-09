@@ -578,19 +578,21 @@ export async function uploadDocument(
     console.log(`[Telnyx Porting] Uploading document: ${fileName} using managed account (multipart method)`);
 
     const FormData = (await import('form-data')).default;
+    const nodeFetch = (await import('node-fetch')).default;
+    
     const formData = new FormData();
     formData.append('file', fileBuffer, {
       filename: fileName,
       contentType: mimeType,
     });
 
-    const response = await fetch(`${TELNYX_API_BASE}/documents`, {
+    const response = await nodeFetch(`${TELNYX_API_BASE}/documents`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         ...formData.getHeaders(),
       },
-      body: formData as any,
+      body: formData,
     });
 
     if (!response.ok) {
@@ -602,7 +604,7 @@ export async function uploadDocument(
       };
     }
 
-    const result = await response.json();
+    const result = await response.json() as any;
     console.log(`[Telnyx Porting] Document uploaded: ${result.data?.id}`);
     return {
       success: true,
