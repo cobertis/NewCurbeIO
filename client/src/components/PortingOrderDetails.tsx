@@ -310,21 +310,23 @@ export function PortingOrderDetails({ order, open, onOpenChange }: PortingOrderD
                       <CardTitle className="text-base">Activation Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">Please select full or partial port</div>
-                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2">
-                            <input type="radio" checked={telnyxOrder?.misc?.type === 'full'} readOnly className="h-4 w-4" />
-                            <span className="text-sm">Full Port</span>
-                          </label>
-                          <label className="flex items-center gap-2">
-                            <input type="radio" checked={telnyxOrder?.misc?.type === 'partial'} readOnly className="h-4 w-4" />
-                            <span className="text-sm">Partial Port</span>
-                          </label>
+                      {telnyxOrder?.misc?.type && (
+                        <div>
+                          <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">Port Type</div>
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-2">
+                              <input type="radio" checked={telnyxOrder.misc.type === 'full'} readOnly className="h-4 w-4" />
+                              <span className="text-sm">Full Port</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input type="radio" checked={telnyxOrder.misc.type === 'partial'} readOnly className="h-4 w-4" />
+                              <span className="text-sm">Partial Port</span>
+                            </label>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
-                      <div className="grid grid-cols-2 gap-x-12 gap-y-4 pt-2">
+                      <div className="grid grid-cols-2 gap-x-12 gap-y-4">
                         <div>
                           <div className="text-sm text-slate-500 dark:text-slate-400">Requested FOC Date</div>
                           <div className="text-sm">
@@ -334,9 +336,19 @@ export function PortingOrderDetails({ order, open, onOpenChange }: PortingOrderD
                           </div>
                         </div>
                         <div>
-                          <div className="text-sm text-slate-500 dark:text-slate-400">Activation Type</div>
-                          <div className="text-sm">{telnyxOrder?.activation_settings?.activation_status || 'scheduled'}</div>
+                          <div className="text-sm text-slate-500 dark:text-slate-400">Actual FOC Date</div>
+                          <div className="text-sm">
+                            {details.focDatetimeActual 
+                              ? format(new Date(details.focDatetimeActual), "MMM d, yyyy, HH:mm") + " (local)"
+                              : 'Pending confirmation'}
+                          </div>
                         </div>
+                        {telnyxOrder?.activation_settings?.activation_status && (
+                          <div>
+                            <div className="text-sm text-slate-500 dark:text-slate-400">Activation Type</div>
+                            <div className="text-sm">{telnyxOrder.activation_settings.activation_status}</div>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
