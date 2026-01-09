@@ -4696,10 +4696,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const orders = rawOrders.map(order => {
         let normalizedStatus = order.status || 'draft';
         
+        // Debug log
+        console.log(`[Porting] Raw status for order ${order.id}:`, JSON.stringify(order.status), typeof order.status);
+        
         if (typeof normalizedStatus === 'string' && normalizedStatus.startsWith('{')) {
           try {
             const parsed = JSON.parse(normalizedStatus);
             normalizedStatus = parsed.value || 'draft';
+            console.log(`[Porting] Parsed status:`, normalizedStatus);
           } catch (e) {
             normalizedStatus = 'draft';
           }

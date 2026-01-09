@@ -25,7 +25,8 @@ import {
   Loader2,
   Pencil,
   RefreshCw,
-  ChevronRight
+  ChevronRight,
+  CalendarCheck
 } from "lucide-react";
 
 interface PortingOrder {
@@ -92,6 +93,13 @@ function getStatusBadge(status: string | { value: string; details?: any[] }) {
         <Badge data-testid="badge-status-in-process" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
           <Clock className="h-3 w-3 mr-1" />
           In Process
+        </Badge>
+      );
+    case "foc-date-confirmed":
+      return (
+        <Badge data-testid="badge-status-foc-confirmed" className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+          <CalendarCheck className="h-3 w-3 mr-1" />
+          FOC Confirmed
         </Badge>
       );
     case "exception":
