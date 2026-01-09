@@ -778,6 +778,8 @@ export default function PortingTransfer() {
         postalCode: userInfo.postalCode || '',
         currentCarrier: loaCurrentCarrier,
         billingTelephoneNumber: loaBillingTelephoneNumber,
+        accountNumber: userInfo.accountNumber || '',
+        pin: userInfo.pin || '',
         phoneNumbers: portableNumbers,
         signatureDataUrl,
         signatureDate: format(new Date(), 'MMMM d, yyyy'),
