@@ -346,7 +346,7 @@ export default function InboxPage() {
   
   // WhatsApp 24-hour window countdown
   const [waWindowTimeLeft, setWaWindowTimeLeft] = useState<string | null>(null);
-  const [waWindowExpired, setWaWindowExpired] = useState(false);
+  const [waWindowExpired, setWaWindowExpired] = useState<boolean | null>(null); // null = loading/unknown
   
   // Typing indicator state for incoming typing signals
   const [contactTyping, setContactTyping] = useState<{ conversationId: string; isTyping: boolean } | null>(null);
@@ -676,9 +676,12 @@ export default function InboxPage() {
   useEffect(() => {
     if (selectedConversation?.channel !== "whatsapp") {
       setWaWindowTimeLeft(null);
-      setWaWindowExpired(false);
+      setWaWindowExpired(null);
       return;
     }
+    
+    // Reset to loading state when conversation changes
+    setWaWindowExpired(null);
 
     // Find the last inbound message timestamp to estimate window expiration
     const lastInboundMessage = messages
@@ -3148,8 +3151,8 @@ export default function InboxPage() {
               "absolute bottom-4 left-4 right-4 rounded-lg border bg-white dark:bg-gray-900 shadow-lg min-h-[160px]",
               isInternalNote && "bg-yellow-50 dark:bg-yellow-900/20"
             )}>
-              {/* WhatsApp 24-hour Window Banner */}
-              {selectedConversation?.channel === "whatsapp" && (waWindowTimeLeft || waWindowExpired) && (
+              {/* WhatsApp 24-hour Window Banner - only show when state is known */}
+              {selectedConversation?.channel === "whatsapp" && waWindowExpired !== null && (waWindowTimeLeft || waWindowExpired) && (
                 <div 
                   className={cn(
                     "mx-4 mt-3 px-3 py-2 rounded-lg flex items-center justify-between",
