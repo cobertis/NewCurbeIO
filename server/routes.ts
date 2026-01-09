@@ -4729,7 +4729,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         normalizedStatus = (normalizedStatus as any).value || 'draft';
       }
       
-      const normalizedOrder = { ...localOrder, status: normalizedStatus };
+      const endUserInfo = localOrder.endUserEntityName ? {
+        entityName: localOrder.endUserEntityName || '',
+        authPersonName: localOrder.endUserAuthPersonName || '',
+        billingPhone: localOrder.endUserBillingPhone || '',
+        accountNumber: localOrder.currentCarrierAccountNumber || '',
+        pin: localOrder.currentCarrierPin || '',
+        streetAddress: localOrder.streetAddress || '',
+        extendedAddress: localOrder.extendedAddress || '',
+        locality: localOrder.locality || '',
+        administrativeArea: localOrder.administrativeArea || '',
+        postalCode: localOrder.postalCode || '',
+        countryCode: localOrder.countryCode || 'US',
+      } : null;
+      
+      const normalizedOrder = { ...localOrder, status: normalizedStatus, endUserInfo };
 
       return res.json({ order: normalizedOrder, telnyxOrder });
     } catch (error) {
