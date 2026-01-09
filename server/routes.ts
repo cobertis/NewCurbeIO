@@ -27844,27 +27844,32 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!appId || !appSecret) {
         return res.status(500).json({ error: "Meta credentials not configured" });
       }
-
       console.log("[WhatsApp OAuth] Exchanging code from FB SDK popup");
 
-      // Exchange code for access token (no redirect_uri needed for FB SDK popup)
-      const tokenResponse = await fetch(
-        `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
-        `client_id=${appId}&` +
-        `client_secret=${appSecret}&` +
-        `code=${encodeURIComponent(code)}`
-      );
-      
-      const tokenData = await tokenResponse.json() as any;
-      
-      if (tokenData.error || !tokenData.access_token) {
-        console.error("[WhatsApp OAuth] Token exchange failed:", tokenData.error);
-        return res.status(400).json({ error: tokenData.error?.message || "Token exchange failed" });
+      let accessToken: string;
+
+      // Check if we received an access token directly (starts with EAA) or an authorization code
+      if (code.startsWith("EAA")) {
+        console.log("[WhatsApp OAuth] Received access token directly, using it");
+        accessToken = code;
+      } else {
+        // Exchange authorization code for access token
+        const tokenResponse = await fetch(
+          `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
+          `client_id=${appId}&` +
+          `client_secret=${appSecret}&` +
+          `code=${encodeURIComponent(code)}`
+        );
+        
+        const tokenData = await tokenResponse.json() as any;
+        
+        if (tokenData.error || !tokenData.access_token) {
+          console.error("[WhatsApp OAuth] Token exchange failed:", tokenData.error);
+          return res.status(400).json({ error: tokenData.error?.message || "Token exchange failed" });
+        }
+        accessToken = tokenData.access_token;
       }
-      
-      
-      const accessToken = tokenData.access_token;
-      console.log("[WhatsApp OAuth] Got access token for company:", user.companyId);
+
       
       let businessId: string | null = null;
       let wabaId: string | null = null;
