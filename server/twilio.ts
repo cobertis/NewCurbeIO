@@ -22,7 +22,7 @@ async function initTwilio(): Promise<Twilio | null> {
       const { accountSid, authToken, phoneNumber } = await credentialProvider.getTwilio();
 
       if (!accountSid || !authToken || !phoneNumber) {
-        console.warn("⚠️  Twilio credentials not configured. SMS service will not be available.");
+        // Silently skip - Twilio is optional, system uses Telnyx for SMS/Voice
         twilioInitialized = true;
         return null;
       }
