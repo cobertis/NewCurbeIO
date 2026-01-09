@@ -1255,7 +1255,6 @@ export default function PortingTransfer() {
                                 {...field}
                                 data-testid="input-pin"
                                 placeholder="Account PIN"
-                                type="password"
                               />
                             </FormControl>
                             <FormMessage />
