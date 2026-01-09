@@ -30,7 +30,8 @@ import {
   FileText,
   Trash2,
   Loader2,
-  Pencil
+  Pencil,
+  RefreshCw
 } from "lucide-react";
 
 interface PortingOrder {
@@ -40,6 +41,7 @@ interface PortingOrder {
   telnyxPortingOrderId: string | null;
   phoneNumbers: string[];
   status: string | { value: string; details?: any[] };
+  supportKey: string | null;
   focDatetimeRequested: string | null;
   focDatetimeActual: string | null;
   endUserEntityName: string | null;
@@ -395,6 +397,26 @@ export default function SmsVoicePortIn() {
 
   const orders = ordersData?.orders || [];
 
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/telnyx/porting/sync");
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Sync complete",
+        description: `Synced ${data.synced || 0} new orders, updated ${data.updated || 0} existing orders.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/porting/orders"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Sync failed",
+        description: error.message || "Failed to sync porting orders from Telnyx.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (orderId: string) => {
       const response = await apiRequest("DELETE", `/api/telnyx/porting/orders/${orderId}`);
@@ -464,10 +486,25 @@ export default function SmsVoicePortIn() {
               Port your existing phone numbers from other carriers
             </p>
           </div>
-          <Button onClick={() => setWizardOpen(true)} data-testid="button-new-port-request">
-            <Plus className="h-4 w-4 mr-2" />
-            New Port Request
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              data-testid="button-sync-telnyx"
+            >
+              {syncMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Sync with Telnyx
+            </Button>
+            <Button onClick={() => setWizardOpen(true)} data-testid="button-new-port-request">
+              <Plus className="h-4 w-4 mr-2" />
+              New Port Request
+            </Button>
+          </div>
         </div>
 
         <Card className="border-slate-200 dark:border-slate-800">
@@ -490,10 +527,13 @@ export default function SmsVoicePortIn() {
               <Table data-testid="table-porting-orders">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[250px]">Phone Numbers</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Request #</TableHead>
+                    <TableHead>Porting Order ID</TableHead>
+                    <TableHead>Total TNs</TableHead>
                     <TableHead>FOC Date</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>End User</TableHead>
+                    <TableHead>Submitted At</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -504,48 +544,49 @@ export default function SmsVoicePortIn() {
                       className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
                       data-testid={`row-order-${order.id}`}
                     >
-                      <TableCell>
-                        <div className="space-y-1">
-                          {order.phoneNumbers?.slice(0, 2).map((phone, idx) => (
-                            <div 
-                              key={idx} 
-                              className="text-sm font-mono"
-                              data-testid={`text-phone-${order.id}-${idx}`}
-                            >
-                              {formatPhoneNumber(phone)}
-                            </div>
-                          ))}
-                          {(order.phoneNumbers?.length || 0) > 2 && (
-                            <div className="text-xs text-slate-500">
-                              +{order.phoneNumbers.length - 2} more
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
                       <TableCell data-testid={`cell-status-${order.id}`}>
                         {getStatusBadge(order.status)}
                       </TableCell>
+                      <TableCell data-testid={`cell-request-${order.id}`}>
+                        <span className="font-mono text-sm text-slate-600 dark:text-slate-400">
+                          {order.supportKey || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell data-testid={`cell-porting-id-${order.id}`}>
+                        <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                          {order.telnyxPortingOrderId 
+                            ? `${order.telnyxPortingOrderId.slice(0, 8)}...`
+                            : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell data-testid={`cell-tns-${order.id}`}>
+                        <span className="text-sm">{order.phoneNumbers?.length || 0}</span>
+                      </TableCell>
                       <TableCell data-testid={`cell-foc-${order.id}`}>
-                        {order.focDatetimeRequested || order.focDatetimeActual ? (
+                        {order.focDatetimeActual ? (
                           <div className="text-sm">
-                            {order.focDatetimeActual 
-                              ? format(new Date(order.focDatetimeActual), "MMM d, yyyy")
-                              : order.focDatetimeRequested 
-                                ? format(new Date(order.focDatetimeRequested), "MMM d, yyyy")
-                                : "-"
-                            }
+                            {format(new Date(order.focDatetimeActual), "MMM d, yyyy")}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-sm">Unconfirmed</span>
+                        )}
+                      </TableCell>
+                      <TableCell data-testid={`cell-enduser-${order.id}`}>
+                        <span className="text-sm">{order.endUserEntityName || '-'}</span>
+                      </TableCell>
+                      <TableCell data-testid={`cell-submitted-${order.id}`}>
+                        {order.submittedAt ? (
+                          <div>
+                            <div className="text-sm">
+                              {format(new Date(order.submittedAt), "MMM d, yyyy")}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {format(new Date(order.submittedAt), "HH:mm")} (local)
+                            </div>
                           </div>
                         ) : (
                           <span className="text-slate-400">-</span>
                         )}
-                      </TableCell>
-                      <TableCell data-testid={`cell-created-${order.id}`}>
-                        <div className="text-sm">
-                          {format(new Date(order.createdAt), "MMM d, yyyy")}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {format(new Date(order.createdAt), "h:mm a")}
-                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">

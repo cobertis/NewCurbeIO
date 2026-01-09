@@ -4976,6 +4976,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  app.post("/api/telnyx/porting/sync", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "Company ID is required" });
+      }
+
+      const { syncPortingOrdersFromTelnyx } = await import("./services/telnyx-porting-service");
+      const result = await syncPortingOrdersFromTelnyx(user.companyId, user.id);
+
+      return res.json({
+        synced: result.synced,
+        updated: result.updated,
+        errors: result.errors,
+      });
+    } catch (error) {
+      console.error("[Porting] Sync error:", error);
+      return res.status(500).json({ message: "Failed to sync porting orders" });
+    }
+  });
+
+
   app.delete("/api/telnyx/porting/orders/:orderId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;

@@ -7617,6 +7617,7 @@ export const telnyxPortingOrders = pgTable("telnyx_porting_orders", {
   createdBy: varchar("created_by").notNull().references(() => users.id),
   
   telnyxPortingOrderId: varchar("telnyx_porting_order_id"),
+  supportKey: varchar("support_key"),
   
   phoneNumbers: text("phone_numbers").array().notNull(),
   

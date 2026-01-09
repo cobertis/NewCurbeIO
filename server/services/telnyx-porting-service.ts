@@ -104,6 +104,7 @@ export interface TelnyxPortingOrderData {
   id: string;
   record_type: string;
   status: string;
+  support_key?: string;
   phone_numbers: string[];
   requirements: any[];
   requirements_status: boolean;
@@ -744,6 +745,7 @@ export async function createLocalPortingOrder(data: {
   createdBy: string;
   phoneNumbers: string[];
   telnyxPortingOrderId?: string;
+  supportKey?: string | null;
   status?: string;
   portabilityCheckResults?: any;
 }) {
@@ -754,6 +756,7 @@ export async function createLocalPortingOrder(data: {
       createdBy: data.createdBy,
       phoneNumbers: data.phoneNumbers,
       telnyxPortingOrderId: data.telnyxPortingOrderId,
+      supportKey: data.supportKey,
       status: data.status || "draft",
       portabilityCheckResults: data.portabilityCheckResults,
     })
@@ -765,6 +768,7 @@ export async function updateLocalPortingOrder(
   orderId: string,
   data: Partial<{
     telnyxPortingOrderId: string;
+    supportKey: string;
     status: string;
     portabilityCheckResults: any;
     currentCarrierName: string;
@@ -808,6 +812,7 @@ export async function updateLocalPortingOrderByTelnyxId(
   telnyxPortingOrderId: string,
   data: Partial<{
     status: string;
+    supportKey: string;
     lastWebhookAt: Date;
     focDatetimeActual: Date;
     portedAt: Date;
@@ -824,4 +829,159 @@ export async function updateLocalPortingOrderByTelnyxId(
     .where(eq(telnyxPortingOrders.telnyxPortingOrderId, telnyxPortingOrderId))
     .returning();
   return order;
+}
+
+export interface ListTelnyxPortingOrdersResponse {
+  success: boolean;
+  orders?: any[];
+  error?: string;
+}
+
+export async function listAllTelnyxPortingOrders(
+  companyId: string
+): Promise<ListTelnyxPortingOrdersResponse> {
+  try {
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
+
+    console.log(`[Telnyx Porting] Listing all porting orders using managed account`);
+
+    const response = await fetch(`${TELNYX_API_BASE}/porting_orders?page[size]=100`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Porting] List orders error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to list porting orders: ${response.status}`,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      orders: result.data || [],
+    };
+  } catch (error) {
+    console.error("[Telnyx Porting] List orders error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to list porting orders",
+    };
+  }
+}
+
+export async function syncPortingOrdersFromTelnyx(
+  companyId: string,
+  systemUserId: string
+): Promise<{ synced: number; updated: number; errors: string[] }> {
+  const result = { synced: 0, updated: 0, errors: [] as string[] };
+  
+  try {
+    const telnyxResult = await listAllTelnyxPortingOrders(companyId);
+    
+    if (!telnyxResult.success || !telnyxResult.orders) {
+      result.errors.push(telnyxResult.error || "Failed to fetch orders from Telnyx");
+      return result;
+    }
+
+    const existingOrders = await getCompanyPortingOrders(companyId);
+    const existingTelnyxIds = new Set(existingOrders.map(o => o.telnyxPortingOrderId));
+
+    for (const telnyxOrder of telnyxResult.orders) {
+      try {
+        const statusValue = typeof telnyxOrder.status === 'object' 
+          ? telnyxOrder.status.value 
+          : telnyxOrder.status;
+
+        if (existingTelnyxIds.has(telnyxOrder.id)) {
+          const localOrder = existingOrders.find(o => o.telnyxPortingOrderId === telnyxOrder.id);
+          if (localOrder) {
+            await db
+              .update(telnyxPortingOrders)
+              .set({
+                status: telnyxOrder.status,
+                supportKey: telnyxOrder.support_key || null,
+                focDatetimeRequested: telnyxOrder.activation_settings?.foc_datetime_requested 
+                  ? new Date(telnyxOrder.activation_settings.foc_datetime_requested) 
+                  : null,
+                focDatetimeActual: telnyxOrder.activation_settings?.foc_datetime_actual 
+                  ? new Date(telnyxOrder.activation_settings.foc_datetime_actual) 
+                  : null,
+                endUserEntityName: telnyxOrder.end_user?.admin?.entity_name || null,
+                endUserAuthPersonName: telnyxOrder.end_user?.admin?.auth_person_name || null,
+                submittedAt: telnyxOrder.submitted_at ? new Date(telnyxOrder.submitted_at) : null,
+                updatedAt: new Date(),
+              })
+              .where(eq(telnyxPortingOrders.id, localOrder.id));
+            result.updated++;
+          }
+        } else {
+          const phoneNumbers = await getPortingPhoneNumbers(telnyxOrder.id, companyId);
+          
+          await db
+            .insert(telnyxPortingOrders)
+            .values({
+              companyId,
+              createdBy: systemUserId,
+              phoneNumbers: phoneNumbers || [],
+              telnyxPortingOrderId: telnyxOrder.id,
+              supportKey: telnyxOrder.support_key || null,
+              status: telnyxOrder.status,
+              focDatetimeRequested: telnyxOrder.activation_settings?.foc_datetime_requested 
+                ? new Date(telnyxOrder.activation_settings.foc_datetime_requested) 
+                : null,
+              focDatetimeActual: telnyxOrder.activation_settings?.foc_datetime_actual 
+                ? new Date(telnyxOrder.activation_settings.foc_datetime_actual) 
+                : null,
+              endUserEntityName: telnyxOrder.end_user?.admin?.entity_name || null,
+              endUserAuthPersonName: telnyxOrder.end_user?.admin?.auth_person_name || null,
+              submittedAt: telnyxOrder.submitted_at ? new Date(telnyxOrder.submitted_at) : null,
+            });
+          result.synced++;
+        }
+      } catch (orderError) {
+        console.error(`[Telnyx Porting] Error syncing order ${telnyxOrder.id}:`, orderError);
+        result.errors.push(`Failed to sync order ${telnyxOrder.id}`);
+      }
+    }
+
+    console.log(`[Telnyx Porting] Sync complete: ${result.synced} new, ${result.updated} updated`);
+    return result;
+  } catch (error) {
+    console.error("[Telnyx Porting] Sync error:", error);
+    result.errors.push(error instanceof Error ? error.message : "Sync failed");
+    return result;
+  }
+}
+
+async function getPortingPhoneNumbers(portingOrderId: string, companyId: string): Promise<string[]> {
+  try {
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
+    
+    const response = await fetch(
+      `${TELNYX_API_BASE}/porting_phone_numbers?filter[porting_order_id]=${portingOrderId}`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const result = await response.json();
+    return (result.data || []).map((pn: any) => pn.phone_number);
+  } catch {
+    return [];
+  }
 }
