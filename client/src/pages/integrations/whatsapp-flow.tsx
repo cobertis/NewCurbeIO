@@ -36,8 +36,6 @@ interface FBLoginResponse {
   status: string;
 }
 
-const FB_APP_ID = import.meta.env.VITE_META_APP_ID || "775292408902612";
-const FB_CONFIG_ID = import.meta.env.VITE_META_BUSINESS_LOGIN_CONFIG_ID || "1379775110076042";
 const FB_SDK_VERSION = "v24.0";
 
 // Store embedded signup data from postMessage event
@@ -68,6 +66,11 @@ export default function WhatsAppFlow() {
 
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/whatsapp/status"],
+  });
+
+  // Get Meta config from backend (reads from system credentials database)
+  const { data: metaConfig } = useQuery<{ appId: string; configId: string; whatsappConfigId: string }>({
+    queryKey: ["/api/integrations/meta/config"],
   });
   
   // Reset state when starting a new connection and clean up URL
@@ -108,7 +111,10 @@ export default function WhatsAppFlow() {
   const isPhoneRegistered = phoneStatusData?.status === "CONNECTED" && 
                             phoneStatusData?.needsRegistration === false;
 
+  // Load Facebook SDK only after we have the appId from backend
   useEffect(() => {
+    if (!metaConfig?.appId) return;
+
     if (document.getElementById("facebook-jssdk")) {
       if (window.FB) {
         setFbSdkLoaded(true);
@@ -118,7 +124,7 @@ export default function WhatsAppFlow() {
 
     window.fbAsyncInit = function() {
       window.FB.init({
-        appId: FB_APP_ID,
+        appId: metaConfig.appId,
         cookie: true,
         xfbml: true,
         version: FB_SDK_VERSION,
@@ -139,7 +145,7 @@ export default function WhatsAppFlow() {
         existingScript.remove();
       }
     };
-  }, []);
+  }, [metaConfig?.appId]);
 
   // Listen for WhatsApp Embedded Signup postMessage events
   useEffect(() => {
@@ -325,6 +331,17 @@ export default function WhatsAppFlow() {
       return;
     }
 
+    // Verify we have the config from backend
+    const configId = metaConfig?.whatsappConfigId || metaConfig?.configId;
+    if (!configId) {
+      toast({
+        variant: "destructive",
+        title: "Configuration error",
+        description: "Meta configuration not loaded. Please refresh the page and try again.",
+      });
+      return;
+    }
+
     setIsConnecting(true);
     // Reset any previous state and refs
     setPendingCode(null);
@@ -376,7 +393,7 @@ export default function WhatsAppFlow() {
         }
       },
       {
-        config_id: FB_CONFIG_ID,
+        config_id: configId,
         response_type: "code",
         override_default_response_type: true,
         extras: {
@@ -386,7 +403,7 @@ export default function WhatsAppFlow() {
         },
       }
     );
-  }, [fbSdkLoaded, toast, exchangeCodeMutation]);
+  }, [fbSdkLoaded, toast, exchangeCodeMutation, metaConfig]);
 
   const handleDiscard = () => {
     setForceNewConnection(false);
