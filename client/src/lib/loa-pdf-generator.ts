@@ -1,14 +1,17 @@
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-// Register fonts with pdfMake - use addVirtualFileSystem if available, fallback to direct assignment
-const pdfMakeInstance = pdfMake as any;
-if (typeof pdfMakeInstance.addVirtualFileSystem === 'function') {
-  pdfMakeInstance.addVirtualFileSystem(pdfFonts);
-} else if (pdfFonts && (pdfFonts as any).vfs) {
-  pdfMakeInstance.vfs = (pdfFonts as any).vfs;
-} else {
-  pdfMakeInstance.vfs = pdfFonts;
+// Register fonts with pdfMake - in Vite, pdfFonts exports the vfs object directly
+const pdfMakeAny = pdfMake as any;
+const pdfFontsAny = pdfFonts as any;
+
+// Determine the correct vfs location based on what's exported
+if (pdfFontsAny?.pdfMake?.vfs) {
+  pdfMakeAny.vfs = pdfFontsAny.pdfMake.vfs;
+} else if (pdfFontsAny?.vfs) {
+  pdfMakeAny.vfs = pdfFontsAny.vfs;
+} else if (typeof pdfFontsAny === 'object' && Object.keys(pdfFontsAny).some((k: string) => k.endsWith('.ttf'))) {
+  pdfMakeAny.vfs = pdfFontsAny;
 }
 
 export interface LOAData {
