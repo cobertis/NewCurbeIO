@@ -93,8 +93,12 @@ export default function GettingStarted() {
 
   const activeApplication = complianceData?.application;
   const draftPortingOrder = portingOrdersData?.orders?.find(
-    (order: any) => order.status === "draft" || order.status === "in_progress"
+    (order: any) => order.status === "draft"
   );
+  const submittedPortingOrder = portingOrdersData?.orders?.find(
+    (order: any) => order.status !== "draft" && order.status !== "completed" && order.status !== "cancelled"
+  );
+  const activePortingOrder = draftPortingOrder || submittedPortingOrder;
   const subscription = subscriptionData?.subscription;
   const selectedPlan = subscription?.plan;
   const { toast } = useToast();
@@ -570,42 +574,73 @@ export default function GettingStarted() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">Port your existing number</h4>
-                    {draftPortingOrder && (
-                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
-                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                        In Progress
+                    {activePortingOrder && (
+                      <Badge className={draftPortingOrder 
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                        : "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                      }>
+                        {draftPortingOrder ? (
+                          <>
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            Draft
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-3 h-3 mr-1" />
+                            Submitted
+                          </>
+                        )}
                       </Badge>
                     )}
                   </div>
-                  {draftPortingOrder ? (
+                  {activePortingOrder ? (
                     <>
                       <div className="mb-3">
                         <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Numbers being ported:</p>
                         <div className="flex flex-wrap gap-1">
-                          {(draftPortingOrder.phoneNumbers || []).slice(0, 2).map((phone: string, idx: number) => (
+                          {(activePortingOrder.phoneNumbers || []).slice(0, 2).map((phone: string, idx: number) => (
                             <Badge key={idx} variant="outline" className="text-xs">
                               {formatPhoneNumber(phone)}
                             </Badge>
                           ))}
-                          {(draftPortingOrder.phoneNumbers || []).length > 2 && (
+                          {(activePortingOrder.phoneNumbers || []).length > 2 && (
                             <Badge variant="outline" className="text-xs">
-                              +{(draftPortingOrder.phoneNumbers || []).length - 2} more
+                              +{(activePortingOrder.phoneNumbers || []).length - 2} more
                             </Badge>
                           )}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                        You have a porting order in progress. Continue where you left off.
-                      </p>
-                      <Button 
-                        size="sm" 
-                        onClick={() => setLocation(`/porting/transfer?orderId=${draftPortingOrder.id}`)} 
-                        className="gap-2 bg-blue-600 hover:bg-blue-700" 
-                        data-testid="button-continue-porting"
-                      >
-                        Continue porting
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
+                      {draftPortingOrder ? (
+                        <>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            You have a porting order in progress. Continue where you left off to complete the submission.
+                          </p>
+                          <Button 
+                            size="sm" 
+                            onClick={() => setLocation(`/porting/transfer?orderId=${draftPortingOrder.id}`)} 
+                            className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                            data-testid="button-continue-porting"
+                          >
+                            Continue porting
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            Your porting order has been submitted and is being processed by the carrier.
+                          </p>
+                          <Button 
+                            size="sm" 
+                            onClick={() => setLocation("/settings/sms-voice/port-in")} 
+                            className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                            data-testid="button-view-porting-status"
+                          >
+                            View status
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
                     </>
                   ) : (
                     <>
