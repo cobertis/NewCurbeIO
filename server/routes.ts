@@ -5053,6 +5053,46 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  app.post("/api/telnyx/porting/generate-loa", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { generateLOAPdf } = await import("./services/loa-pdf-service");
+      
+      const data = req.body;
+      
+      if (!data.entityName || !data.authPersonName || !data.phoneNumbers || !data.signatureDataUrl) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      console.log("[LOA PDF] Generating PDF for:", data.entityName);
+      
+      const pdfBuffer = await generateLOAPdf({
+        entityName: data.entityName,
+        authPersonName: data.authPersonName,
+        billingPhone: data.billingPhone || "",
+        streetAddress: data.streetAddress || "",
+        streetAddress2: data.streetAddress2 || "",
+        city: data.city || "",
+        state: data.state || "",
+        postalCode: data.postalCode || "",
+        currentCarrier: data.currentCarrier || "",
+        billingTelephoneNumber: data.billingTelephoneNumber || "",
+        phoneNumbers: data.phoneNumbers || [],
+        signatureDataUrl: data.signatureDataUrl,
+        signatureDate: data.signatureDate || new Date().toLocaleDateString(),
+      });
+      
+      console.log("[LOA PDF] PDF generated successfully, size:", pdfBuffer.length);
+      
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="LOA_${data.entityName.replace(/\s+/g, "_")}.pdf"`);
+      return res.send(pdfBuffer);
+    } catch (error) {
+      console.error("[LOA PDF] Generate error:", error);
+      return res.status(500).json({ message: "Failed to generate LOA PDF" });
+    }
+  });
+
   const portingDocumentUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 },

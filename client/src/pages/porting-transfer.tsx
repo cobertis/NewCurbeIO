@@ -39,7 +39,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
-import { generateLOAPdf, downloadPdf, blobToFile, type LOAData } from '@/lib/loa-pdf-generator';
 
 type WizardStep = 'enter-numbers' | 'check-portability' | 'create-order' | 'end-user-info' | 'upload-documents' | 'select-foc-date' | 'review-submit';
 
@@ -695,7 +694,7 @@ export default function PortingTransfer() {
     try {
       const signatureDataUrl = signatureRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
 
-      const loaData: LOAData = {
+      const loaData = {
         entityName: endUserInfo.entityName,
         authPersonName: endUserInfo.authPersonName,
         billingPhone: endUserInfo.billingPhone,
@@ -711,9 +710,20 @@ export default function PortingTransfer() {
         signatureDate: format(new Date(), 'MMMM d, yyyy'),
       };
 
-      const pdfBlob = await generateLOAPdf(loaData);
+      const response = await fetch('/api/telnyx/porting/generate-loa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(loaData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const pdfBlob = await response.blob();
       const filename = `LOA_${endUserInfo.entityName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
-      const pdfFile = blobToFile(pdfBlob, filename);
+      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
 
       setLoaFile(pdfFile);
       setLoaDialogOpen(false);
@@ -723,7 +733,14 @@ export default function PortingTransfer() {
         description: 'Your Letter of Authorization has been created and attached.',
       });
 
-      downloadPdf(pdfBlob, filename);
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to generate LOA:', error);
       toast({
