@@ -5,6 +5,9 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 const pdfMakeAny = pdfMake as any;
 const pdfFontsAny = pdfFonts as any;
 
+// CRITICAL: Disable Web Worker - pdfmake 0.3.1 uses workers by default which don't work in Vite dev
+pdfMakeAny.worker = null;
+
 // Determine the correct vfs location based on what's exported
 if (pdfFontsAny?.pdfMake?.vfs) {
   pdfMakeAny.vfs = pdfFontsAny.pdfMake.vfs;
