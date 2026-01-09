@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -100,6 +101,7 @@ const endUserInfoSchema = z.object({
   billingPhone: z.string().min(10, 'Valid phone number is required'),
   accountNumber: z.string().optional(),
   pin: z.string().optional(),
+  portType: z.enum(['full', 'partial']).default('full'),
   streetAddress: z.string().min(1, 'Street address is required'),
   streetAddress2: z.string().optional(),
   city: z.string().min(1, 'City is required'),
@@ -274,6 +276,7 @@ export default function PortingTransfer() {
       billingPhone: '',
       accountNumber: '',
       pin: '',
+      portType: 'full',
       streetAddress: '',
       streetAddress2: '',
       city: '',
@@ -320,6 +323,7 @@ export default function PortingTransfer() {
             billingPhone: info.billingPhone || '',
             accountNumber: info.accountNumber || '',
             pin: info.pin || '',
+            portType: info.portType || 'full',
             streetAddress: info.streetAddress || '',
             streetAddress2: info.extendedAddress || '',
             city: info.locality || '',
@@ -332,6 +336,7 @@ export default function PortingTransfer() {
             billingPhone: info.billingPhone || '',
             accountNumber: info.accountNumber || '',
             pin: info.pin || '',
+            portType: info.portType || 'full',
             streetAddress: info.streetAddress || '',
             streetAddress2: info.extendedAddress || '',
             city: info.locality || '',
@@ -1256,6 +1261,42 @@ export default function PortingTransfer() {
                                 data-testid="input-pin"
                                 placeholder="Account PIN"
                               />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <Separator className="my-4" />
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        Activation Details
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Please select full or partial port
+                      </p>
+                      <FormField
+                        control={endUserForm.control}
+                        name="portType"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <FormControl>
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                className="flex flex-col space-y-2"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="full" id="port-full" data-testid="radio-port-full" />
+                                  <Label htmlFor="port-full" className="font-normal cursor-pointer">Full Port</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="partial" id="port-partial" data-testid="radio-port-partial" />
+                                  <Label htmlFor="port-partial" className="font-normal cursor-pointer">Partial Port</Label>
+                                </div>
+                              </RadioGroup>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
