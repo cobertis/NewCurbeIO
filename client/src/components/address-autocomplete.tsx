@@ -161,8 +161,8 @@ export function AddressAutocomplete({
   };
 
   return (
-    <div ref={wrapperRef} className="relative">
-      <FormItem>
+    <div ref={wrapperRef} className="relative w-full">
+      <FormItem className="w-full">
         <FormLabel>{label}</FormLabel>
         <FormControl>
           <div className="relative">
