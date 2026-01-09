@@ -44242,7 +44242,7 @@ CRITICAL REMINDERS:
               .returning();
             
             // Update conversation
-      await db
+            await db.update(telnyxConversations)
               .set({
                 lastMessage: (text || "(attachment)").substring(0, 100),
                 lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
