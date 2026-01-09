@@ -740,6 +740,20 @@ export async function getPortingOrderById(orderId: string) {
   return order;
 }
 
+export async function getLocalPortingOrderById(orderId: string, companyId: string | null) {
+  if (!companyId) return null;
+  const [order] = await db
+    .select()
+    .from(telnyxPortingOrders)
+    .where(
+      and(
+        eq(telnyxPortingOrders.id, orderId),
+        eq(telnyxPortingOrders.companyId, companyId)
+      )
+    );
+  return order;
+}
+
 export async function createLocalPortingOrder(data: {
   companyId: string;
   createdBy: string;
@@ -1173,6 +1187,66 @@ export interface GetOrderDocumentsResponse {
   error?: string;
 }
 
+export interface DownloadDocumentResponse {
+  success: boolean;
+  buffer?: Buffer;
+  contentType?: string;
+  filename?: string;
+  error?: string;
+}
+
+export async function downloadPortingDocument(
+  documentId: string,
+  companyId: string
+): Promise<DownloadDocumentResponse> {
+  try {
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
+
+    console.log(`[Telnyx Porting] Downloading document: ${documentId}`);
+
+    const response = await fetch(
+      `${TELNYX_API_BASE}/documents/${documentId}/download`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`[Telnyx Porting] Download document ${documentId} failed: ${response.status}`);
+      return { success: false, error: `Failed to download: ${response.status}` };
+    }
+
+    const contentType = response.headers.get("content-type") || "application/pdf";
+    const contentDisposition = response.headers.get("content-disposition");
+    let filename = "document.pdf";
+    
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '');
+      }
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    
+    return {
+      success: true,
+      buffer: Buffer.from(arrayBuffer),
+      contentType,
+      filename,
+    };
+  } catch (error) {
+    console.error(`[Telnyx Porting] Download document ${documentId} error:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to download document",
+    };
+  }
+}
+
 async function getDocumentDetails(documentId: string, apiKey: string): Promise<any | null> {
   try {
     const response = await fetch(
@@ -1192,6 +1266,7 @@ async function getDocumentDetails(documentId: string, apiKey: string): Promise<a
     }
 
     const result = await response.json();
+    console.log(`[Telnyx Porting] Document ${documentId} details:`, JSON.stringify(result.data, null, 2));
     return result.data;
   } catch (error) {
     console.error(`[Telnyx Porting] Get document ${documentId} error:`, error);
@@ -1219,27 +1294,27 @@ export async function getPortingOrderDocuments(
     console.log(`[Telnyx Porting] Order documents structure:`, JSON.stringify(telnyxOrder.documents, null, 2));
 
     if (telnyxOrder.documents?.loa) {
-      const loaDoc = await getDocumentDetails(telnyxOrder.documents.loa, apiKey);
-      if (loaDoc) {
-        documents.push({
-          ...loaDoc,
-          document_type: 'loa',
-          type: 'loa',
-          download_url: loaDoc.file_url || loaDoc.url,
-        });
-      }
+      const loaDocId = telnyxOrder.documents.loa;
+      const loaDoc = await getDocumentDetails(loaDocId, apiKey);
+      documents.push({
+        id: loaDocId,
+        document_type: 'loa',
+        type: 'loa',
+        filename: loaDoc?.filename || 'Letter of Authorization.pdf',
+        created_at: loaDoc?.created_at,
+      });
     }
 
     if (telnyxOrder.documents?.invoice) {
-      const invoiceDoc = await getDocumentDetails(telnyxOrder.documents.invoice, apiKey);
-      if (invoiceDoc) {
-        documents.push({
-          ...invoiceDoc,
-          document_type: 'invoice',
-          type: 'invoice',
-          download_url: invoiceDoc.file_url || invoiceDoc.url,
-        });
-      }
+      const invoiceDocId = telnyxOrder.documents.invoice;
+      const invoiceDoc = await getDocumentDetails(invoiceDocId, apiKey);
+      documents.push({
+        id: invoiceDocId,
+        document_type: 'invoice',
+        type: 'invoice',
+        filename: invoiceDoc?.filename || 'Invoice.pdf',
+        created_at: invoiceDoc?.created_at,
+      });
     }
 
     console.log(`[Telnyx Porting] Found ${documents.length} documents for order ${portingOrderId}`);

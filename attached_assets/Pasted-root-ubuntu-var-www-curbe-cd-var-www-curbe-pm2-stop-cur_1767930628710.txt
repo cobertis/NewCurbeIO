@@ -1,0 +1,321 @@
+root@ubuntu:/var/www/curbe# cd /var/www/curbe
+pm2 stop curbe-admin
+rm -f scripts/deploy.sh
+git pull origin main
+npm ci
+npm run build
+pm2 start /var/www/curbe/ecosystem.config.cjs
+pm2 save
+pm2 logs curbe-admin --lines 20
+[PM2] Applying action stopProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 3  │ cloudflared-suppo… │ fork     │ 1    │ online    │ 0%       │ 38.7mb   │
+│ 0  │ curbe-admin        │ fork     │ 4    │ stopped   │ 0%       │ 0b       │
+│ 1  │ curbe-support      │ fork     │ 14   │ online    │ 0%       │ 61.1mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+From github.com:cobertis/NewCurbeIO
+ * branch                main       -> FETCH_HEAD
+Already up to date.
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+npm warn deprecated querystring@0.2.0: The querystring API is considered Legacy. new code should use the URLSearchParams API instead.
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+npm warn deprecated fluent-ffmpeg@2.1.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+
+added 944 packages, and audited 945 packages in 9s
+
+143 packages are looking for funding
+  run `npm fund` for details
+
+20 vulnerabilities (2 low, 6 moderate, 12 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.7.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+npm notice To update run: npm install -g npm@11.7.0
+npm notice
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v5.4.20 building for production...
+transforming (4) src/App.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 4334 modules transformed.
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/client/src/hooks/use-toast.ts is dynamically imported by /var/www/curbe/client/src/services/webphone.ts, /var/www/curbe/client/src/services/webphone.ts but also statically imported by /var/www/curbe/client/src/App.tsx, /var/www/curbe/client/src/components/E911ConfigDialog.tsx, /var/www/curbe/client/src/components/EmergencyAddressForm.tsx, /var/www/curbe/client/src/components/PolicyRenewalComparison.tsx, /var/www/curbe/client/src/components/PortingWizard.tsx, /var/www/curbe/client/src/components/WebPhoneFloatingWindow.tsx, /var/www/curbe/client/src/components/appointment-booking-inline.tsx, /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/components/campaigns/campaign-form-dialog.tsx, /var/www/curbe/client/src/components/chat/number-provision-modal.tsx, /var/www/curbe/client/src/components/chat/phone-settings-modal.tsx, /var/www/curbe/client/src/components/company-billing-tab.tsx, /var/www/curbe/client/src/components/compliance-tab.tsx, /var/www/curbe/client/src/components/email-templates-manager.tsx, /var/www/curbe/client/src/components/manage-payment-methods-dialog.tsx, /var/www/curbe/client/src/components/messenger-layout.tsx, /var/www/curbe/client/src/components/new-event-dialog.tsx, /var/www/curbe/client/src/components/pbx-settings.tsx, /var/www/curbe/client/src/components/public-block-renderer.tsx, /var/www/curbe/client/src/components/ui/toaster.tsx, /var/www/curbe/client/src/components/upload-avatar-dialog.tsx, /var/www/curbe/client/src/components/wallet-topup-dialog.tsx, /var/www/curbe/client/src/components/white-label-settings.tsx, /var/www/curbe/client/src/hooks/useExtensionCall.ts, /var/www/curbe/client/src/lib/status-editor.ts, /var/www/curbe/client/src/pages/SuperAdminRecordingMedia.tsx, /var/www/curbe/client/src/pages/activate-account.tsx, /var/www/curbe/client/src/pages/appointment-settings.tsx, /var/www/curbe/client/src/pages/audit-logs.tsx, /var/www/curbe/client/src/pages/billing.tsx, /var/www/curbe/client/src/pages/birthday-images.tsx, /var/www/curbe/client/src/pages/blacklist.tsx, /var/www/curbe/client/src/pages/campaigns.tsx, /var/www/curbe/client/src/pages/companies.tsx, /var/www/curbe/client/src/pages/company-detail.tsx, /var/www/curbe/client/src/pages/compliance-brand.tsx, /var/www/curbe/client/src/pages/compliance-campaign.tsx, /var/www/curbe/client/src/pages/compliance-choose-number.tsx, /var/www/curbe/client/src/pages/compliance-review.tsx, /var/www/curbe/client/src/pages/contacts.tsx, /var/www/curbe/client/src/pages/email-integration-flow.tsx, /var/www/curbe/client/src/pages/email-integration.tsx, /var/www/curbe/client/src/pages/email-settings.tsx, /var/www/curbe/client/src/pages/features.tsx, /var/www/curbe/client/src/pages/forgot-password.tsx, /var/www/curbe/client/src/pages/getting-started.tsx, /var/www/curbe/client/src/pages/imessage-campaign-detail.tsx, /var/www/curbe/client/src/pages/imessage-campaigns.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/inbox.tsx, /var/www/curbe/client/src/pages/incoming-sms.tsx, /var/www/curbe/client/src/pages/integrations/facebook-details.tsx, /var/www/curbe/client/src/pages/integrations/facebook-flow.tsx, /var/www/curbe/client/src/pages/integrations/facebook-page.tsx, /var/www/curbe/client/src/pages/integrations/instagram-flow.tsx, /var/www/curbe/client/src/pages/integrations/instagram-page.tsx, /var/www/curbe/client/src/pages/integrations/sms-voice-numbers.tsx, /var/www/curbe/client/src/pages/integrations/telegram-flow.tsx, /var/www/curbe/client/src/pages/integrations/telegram-page.tsx, /var/www/curbe/client/src/pages/integrations/whatsapp-flow.tsx, /var/www/curbe/client/src/pages/integrations/whatsapp-templates.tsx, /var/www/curbe/client/src/pages/integrations/whatsapp.tsx, /var/www/curbe/client/src/pages/landing-page.tsx, /var/www/curbe/client/src/pages/leads.tsx, /var/www/curbe/client/src/pages/login.tsx, /var/www/curbe/client/src/pages/marketplace-plans.tsx, /var/www/curbe/client/src/pages/onboarding.tsx, /var/www/curbe/client/src/pages/phone-system.tsx, /var/www/curbe/client/src/pages/plan-selection.tsx, /var/www/curbe/client/src/pages/plans.tsx, /var/www/curbe/client/src/pages/policies.tsx, /var/www/curbe/client/src/pages/public-consent.tsx, /var/www/curbe/client/src/pages/public-landing-page.tsx, /var/www/curbe/client/src/pages/pulse-ai-settings.tsx, /var/www/curbe/client/src/pages/quotes.tsx, /var/www/curbe/client/src/pages/register.tsx, /var/www/curbe/client/src/pages/reset-password.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/sms-mms.tsx, /var/www/curbe/client/src/pages/system-alerts.tsx, /var/www/curbe/client/src/pages/system-settings.tsx, /var/www/curbe/client/src/pages/tasks.tsx, /var/www/curbe/client/src/pages/tickets.tsx, /var/www/curbe/client/src/pages/user-detail.tsx, /var/www/curbe/client/src/pages/users.tsx, /var/www/curbe/client/src/pages/verify-otp.tsx, /var/www/curbe/client/src/pages/wallet-analytics.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/client/src/services/webphone.ts is dynamically imported by /var/www/curbe/client/src/services/whatsapp-call-service.ts but also statically imported by /var/www/curbe/client/src/App.tsx, /var/www/curbe/client/src/components/WebPhoneFloatingWindow.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/client/src/services/telnyx-webrtc.ts is dynamically imported by /var/www/curbe/client/src/App.tsx but also statically imported by /var/www/curbe/client/src/App.tsx, /var/www/curbe/client/src/components/WebPhoneFloatingWindow.tsx, /var/www/curbe/client/src/hooks/useExtensionCall.ts, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/node_modules/@emoji-mart/react/dist/module.js is dynamically imported by /var/www/curbe/client/src/components/chat/emoji-picker.tsx but also statically imported by /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/inbox.tsx, /var/www/curbe/client/src/pages/settings.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/node_modules/@emoji-mart/data/sets/15/native.json is dynamically imported by /var/www/curbe/client/src/components/chat/emoji-picker.tsx but also statically imported by /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/inbox.tsx, /var/www/curbe/client/src/pages/settings.tsx, dynamic import will not move module into another chunk.
+
+../dist/public/index.html                                                            2.31 kB │ gzip:     0.88 kB
+../dist/public/assets/att-logo--_kwcY0R.svg                                          5.22 kB │ gzip:     2.29 kB
+../dist/public/assets/tmobile-logo-CTc5WKKT.svg                                      7.37 kB │ gzip:     2.87 kB
+../dist/public/assets/ambetter_1765960250992-CTvZtW80.png                           28.81 kB
+../dist/public/assets/logo no fondo_1760457183587-BR-LiXG_.png                      45.10 kB
+../dist/public/assets/image_1766269959786-D11mCR-v.png                              75.98 kB
+../dist/public/assets/image_1766776300912-J9jDpAWK.png                             100.82 kB
+../dist/public/assets/image_1766560780707-BLa2p85G.png                             124.19 kB
+../dist/public/assets/image_1766560622007-5AH-MzYC.png                             124.22 kB
+../dist/public/assets/image_1766559979785-Dee4F9tU.png                             133.84 kB
+../dist/public/assets/image_1766258646875-dkaf4ST0.png                             248.50 kB
+../dist/public/assets/Generic_user_avatar_icon_55b842ef-BGsZDgwn.png               456.74 kB
+../dist/public/assets/Telegram_CRM_Interface_1766561393470-Bw9QCaS_.png            972.98 kB
+../dist/public/assets/Curbe_SaaS_Brand_Illustration_1765854893427-DMFZyR7a.png  17,682.27 kB
+../dist/public/assets/index-DqchArkv.css                                           216.81 kB │ gzip:    31.63 kB
+../dist/public/assets/index-Cu3JbSi2.js                                          5,702.61 kB │ gzip: 1,360.60 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 20.13s
+▲ [WARNING] Duplicate member "markConversationAsRead" in class body [duplicate-class-member]
+
+    server/storage.ts:10803:8:
+      10803 │   async markConversationAsRead(conversationId: string): Promise<void> {
+            ╵         ~~~~~~~~~~~~~~~~~~~~~~
+
+  The original member "markConversationAsRead" is here:
+
+    server/storage.ts:3038:8:
+      3038 │   async markConversationAsRead(phoneNumber: string, companyId?: string): Promise<void> {
+           ╵         ~~~~~~~~~~~~~~~~~~~~~~
+
+1 warning
+
+  dist/index.js  3.3mb ⚠️
+
+⚡ Done in 156ms
+[PM2] Applying action restartProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 3  │ cloudflared-suppo… │ fork     │ 1    │ online    │ 0%       │ 38.7mb   │
+│ 0  │ curbe-admin        │ fork     │ 4    │ online    │ 0%       │ 16.9mb   │
+│ 1  │ curbe-support      │ fork     │ 14   │ online    │ 0%       │ 61.3mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[PM2] Saving current process list...
+[PM2] Successfully saved in /root/.pm2/dump.pm2
+[TAILING] Tailing last 20 lines for [curbe-admin] process (change the value with --lines option)
+/root/.pm2/logs/curbe-admin-error.log last 20 lines:
+0|curbe-ad |   message: 'Invalid verification code format.',
+0|curbe-ad |   type: 'OAuthException',
+0|curbe-ad |   code: 100,
+0|curbe-ad |   fbtrace_id: 'AOlBJUs_1mfwDmUipBNjqIp'
+0|curbe-ad | }
+0|curbe-ad | [Telnyx Voice] Get settings error: 404 - {"errors":[{"code":"10005","title":"Resource not found","detail":"The requested resource or URL could not be found.","source":{"pointer":"/"},"meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10005"}}]}
+0|curbe-ad | [Telnyx Voice] Get settings error: 404 - {"errors":[{"code":"10005","title":"Resource not found","detail":"The requested resource or URL could not be found.","source":{"pointer":"/"},"meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10005"}}]}
+0|curbe-ad | [Telnyx Voice] Get settings error: 404 - {"errors":[{"code":"10005","title":"Resource not found","detail":"The requested resource or URL could not be found.","source":{"pointer":"/"},"meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10005"}}]}
+0|curbe-ad | [Telnyx Voice] Get settings error: 404 - {"errors":[{"code":"10005","title":"Resource not found","detail":"The requested resource or URL could not be found.","source":{"pointer":"/"},"meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10005"}}]}
+0|curbe-ad | ⚠️  Twilio credentials not configured. SMS service will not be available.
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees
+
+/root/.pm2/logs/curbe-admin-out.log last 20 lines:
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-ad | [WebSocket] Rejecting upgrade with invalid/expired session
+
+0|curbe-admin  | [LiveChat] Accept endpoint registered
+0|curbe-admin  | [SES] Routes registered successfully
+0|curbe-admin  | 3:45:46 AM [express] serving on port 5000
+0|curbe-admin  | [Campaign Studio] Running data backfill...
+0|curbe-admin  | [REMINDER SCHEDULER] Starting scheduler...
+0|curbe-admin  | [REMINDER SCHEDULER] Scheduler started successfully
+0|curbe-admin  | [BIRTHDAY SCHEDULER] Starting scheduler...
+0|curbe-admin  | [BIRTHDAY SCHEDULER] Scheduler started successfully (runs hourly at :00)
+0|curbe-admin  | [CAMPAIGN PROCESSOR] Starting processor...
+0|curbe-admin  | [CAMPAIGN PROCESSOR] Processor started (runs every 10 seconds)
+0|curbe-admin  | [DID BILLING] Starting DID billing scheduler...
+0|curbe-admin  | [DID BILLING] Scheduler started - runs every hour to check for DIDs due for billing
+0|curbe-admin  | [Payment Reminder Scheduler] Started - will run at 12:01 AM EST daily
+0|curbe-admin  | [SES QUEUE] Starting scheduler...
+0|curbe-admin  | [SES QUEUE] Scheduler started (queue processes every 10 seconds)
+0|curbe-admin  | [WhatsApp Webhook Worker] Starting with poll interval: 500 ms
+0|curbe-admin  | [WhatsApp Send Worker] Starting...
+0|curbe-admin  | [Meta Webhook Worker] Starting (handles Facebook + Instagram)...
+0|curbe-admin  | [ContactRegistry] Checking if auto-backfill is needed...
+0|curbe-admin  | [Campaign Studio] Fixed 0 system templates
+0|curbe-admin  | [Campaign Studio] Fixed 0 system categories
+0|curbe-admin  | [Campaign Studio] Fixed 0 system placeholders
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG Creating transport: nodemailer (7.0.10; +https://nodemailer.com/; SMTP/7.0.10[client:7.0.10])
+0|curbe-admin  | Email service initialized successfully
+0|curbe-admin  | [Campaign Studio] System data already exists, skipping seed
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] Resolved mail.auth.curbe.io as 74.208.235.84 [cache miss]
+0|curbe-admin  | [2026-01-09 03:45:46] INFO  [VkGcWE7MBuE] Connection established to 74.208.235.84:587
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 220 server.curbe.io ESMTP Postfix (Ubuntu)
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] C: EHLO [127.0.0.1]
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-server.curbe.io
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-PIPELINING
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-SIZE 10240000
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-ETRN
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-STARTTLS
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-ENHANCEDSTATUSCODES
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-8BITMIME
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-DSN
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250 CHUNKING
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] C: STARTTLS
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 220 2.0.0 Ready to start TLS
+0|curbe-admin  | [2026-01-09 03:45:46] INFO  [VkGcWE7MBuE] Connection upgraded with STARTTLS
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] C: EHLO [127.0.0.1]
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-server.curbe.io
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-PIPELINING
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-SIZE 10240000
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-ETRN
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-AUTH DIGEST-MD5 CRAM-MD5 PLAIN LOGIN
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-ENHANCEDSTATUSCODES
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-8BITMIME
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250-DSN
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 250 CHUNKING
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] SMTP handshake finished
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] C: AUTH PLAIN AG5vLXJlcGx5QGF1dGguY3VyYmUuaW8ALyogc2VjcmV0ICov
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 235 2.7.0 Authentication successful
+0|curbe-admin  | [2026-01-09 03:45:46] INFO  [VkGcWE7MBuE] User "no-reply@auth.curbe.io" authenticated
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] C: QUIT
+0|curbe-admin  | SMTP connection verified successfully
+0|curbe-admin  | [EMAIL] Email service connected successfully on startup
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] S: 221 2.0.0 Bye
+0|curbe-admin  | [2026-01-09 03:45:46] DEBUG [VkGcWE7MBuE] Closing connection to the server using "end"
+0|curbe-admin  | [2026-01-09 03:45:46] INFO  [VkGcWE7MBuE] Connection closed
+0|curbe-admin  | [ContactRegistry] Skipping auto-backfill for company b5325600-9bf9-4eae-b34a-87d6ab2f5fb2 (Cobertis Insurance) - 67 contacts, 86 policies (ratio 1.3:1)
+0|curbe-admin  | [ContactRegistry] Skipping auto-backfill for company 078dac90-b0ca-44f1-9739-f78221dc0f53 (Cobertis Insurance) - 3 contacts, 0 policies (ratio 0.0:1)
+0|curbe-admin  | [ContactRegistry] Skipping auto-backfill for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d (Curbe IO) - 0 contacts, 0 policies (ratio 0.0:1)
+0|curbe-admin  | [ContactRegistry] Auto-backfill check complete
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0|curbe-admin  | [WebSocket] Rejecting upgrade with invalid/expired session
+0

@@ -367,11 +367,11 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
                           <Badge variant="outline" className="font-normal">
                             {invoiceDoc.filename || invoiceDoc.name || 'Invoice uploaded'}
                           </Badge>
-                          {invoiceDoc.download_url && (
+                          {invoiceDoc.id && (
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => window.open(invoiceDoc.download_url, '_blank')}
+                              onClick={() => window.open(`/api/telnyx/porting/documents/${invoiceDoc.id}/download`, '_blank')}
                             >
                               <Download className="h-4 w-4 mr-1" />
                               Download Document
@@ -390,11 +390,11 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
                           <Badge variant="outline" className="font-normal">
                             {loaDoc.filename || loaDoc.name || 'LOA uploaded'}
                           </Badge>
-                          {loaDoc.download_url && (
+                          {loaDoc.id && (
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => window.open(loaDoc.download_url, '_blank')}
+                              onClick={() => window.open(`/api/telnyx/porting/documents/${loaDoc.id}/download`, '_blank')}
                             >
                               <Download className="h-4 w-4 mr-1" />
                               Download Document
@@ -428,11 +428,11 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
                                 <TableCell>{doc.created_at ? format(new Date(doc.created_at), "MMM d, yyyy") : '-'}</TableCell>
                                 <TableCell>{doc.document_type || doc.type || '-'}</TableCell>
                                 <TableCell>
-                                  {doc.download_url && (
+                                  {doc.id && (
                                     <Button 
                                       variant="outline" 
                                       size="sm"
-                                      onClick={() => window.open(doc.download_url, '_blank')}
+                                      onClick={() => window.open(`/api/telnyx/porting/documents/${doc.id}/download`, '_blank')}
                                     >
                                       <Download className="h-4 w-4" />
                                     </Button>

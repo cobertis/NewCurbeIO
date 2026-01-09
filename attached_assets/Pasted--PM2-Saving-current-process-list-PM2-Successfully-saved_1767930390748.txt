@@ -1,0 +1,24 @@
+[PM2] Saving current process list...
+[PM2] Successfully saved in /root/.pm2/dump.pm2
+[TAILING] Tailing last 20 lines for [curbe-admin] process (change the value with --lines option)
+/root/.pm2/logs/curbe-admin-error.log last 20 lines:
+0|curbe-ad |   message: 'Invalid verification code format.',
+0|curbe-ad |   type: 'OAuthException',
+0|curbe-ad |   code: 100,
+0|curbe-ad |   fbtrace_id: 'AOlBJUs_1mfwDmUipBNjqIp'
+0|curbe-ad | }
+0|curbe-ad | [Telnyx Voice] Get settings error: 404 - {"errors":[{"code":"10005","title":"Resource not found","detail":"The requested resource or URL could not be found.","source":{"pointer":"/"},"meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10005"}}]}
+0|curbe-ad | [Telnyx Voice] Get settings error: 404 - {"errors":[{"code":"10005","title":"Resource not found","detail":"The requested resource or URL could not be found.","source":{"pointer":"/"},"meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10005"}}]}
+0|curbe-ad | [Telnyx Voice] Get settings error: 404 - {"errors":[{"code":"10005","title":"Resource not found","detail":"The requested resource or URL could not be found.","source":{"pointer":"/"},"meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10005"}}]}
+0|curbe-ad | [Telnyx Voice] Get settings error: 404 - {"errors":[{"code":"10005","title":"Resource not found","detail":"The requested resource or URL could not be found.","source":{"pointer":"/"},"meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10005"}}]}
+0|curbe-ad | ⚠️  Twilio credentials not configured. SMS service will not be available.
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees
+0|curbe-ad | [DID BILLING] +13058423033: INSUFFICIENT BALANCE - current: $0, required: $12
+0|curbe-ad | [DID BILLING] SUSPENDED wallet 38604fe8-b495-47fa-a9b7-f601f296fee4 for company Cobertis Insurance due to unpaid DID fees

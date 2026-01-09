@@ -5276,6 +5276,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Download a specific document from Telnyx
+  app.get("/api/telnyx/porting/documents/:documentId/download", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { documentId } = req.params;
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { downloadPortingDocument } = await import("./services/telnyx-porting-service");
+      const result = await downloadPortingDocument(documentId, user.companyId);
+
+      if (!result.success || !result.buffer) {
+        return res.status(400).json({ message: result.error || "Failed to download document" });
+      }
+
+      res.setHeader("Content-Type", result.contentType || "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${result.filename || 'document.pdf'}"`);
+      return res.send(result.buffer);
+    } catch (error) {
+      console.error("[Porting] Download document error:", error);
+      return res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
   // ==================== GOOGLE OAUTH ENDPOINTS ====================
   app.get("/api/auth/google", async (req: Request, res: Response) => {
     try {
