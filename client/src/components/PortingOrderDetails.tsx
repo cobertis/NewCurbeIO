@@ -49,8 +49,8 @@ interface PortingOrder {
   cancelledAt: string | null;
   createdAt: string;
   updatedAt: string;
-  pinPasscode?: string | null;
-  accountNumber?: string | null;
+  currentCarrierPin?: string | null;
+  currentCarrierAccountNumber?: string | null;
   oldServiceProviderOcn?: string | null;
   parentSupportKey?: string | null;
   portingFrom?: string | null;
@@ -359,11 +359,11 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
                     </div>
                     <div>
                       <div className="text-sm text-slate-500 dark:text-slate-400">PIN/passcode</div>
-                      <div className="text-sm font-medium">{details.pinPasscode || telnyxOrder?.end_user?.admin?.pin_passcode || '-'}</div>
+                      <div className="text-sm font-medium">{details.currentCarrierPin || telnyxOrder?.end_user?.admin?.pin_passcode || '-'}</div>
                     </div>
                     <div>
                       <div className="text-sm text-slate-500 dark:text-slate-400">Customer reference</div>
-                      <div className="text-sm font-medium">{details.accountNumber || telnyxOrder?.end_user?.admin?.account_number || '-'}</div>
+                      <div className="text-sm font-medium">{details.currentCarrierAccountNumber || telnyxOrder?.end_user?.admin?.account_number || '-'}</div>
                     </div>
                   </div>
                 </CardContent>
