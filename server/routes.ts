@@ -29306,7 +29306,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const accessToken = decryptToken(connection.accessTokenEnc);
 
       // Check 24-hour window by finding last INBOUND message from this contact
-      await db.query.waMessages.findFirst({
+      const lastInboundMessage = await db.query.waMessages.findFirst({
         where: and(
           eq(waMessages.conversationId, conversationId),
           eq(waMessages.direction, "inbound")
@@ -30574,7 +30574,7 @@ CRITICAL REMINDERS:
       const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
 
       // Check 24-hour window by finding last INBOUND message from this contact
-      await db.query.waMessages.findFirst({
+      const lastInboundMessage = await db.query.waMessages.findFirst({
         where: and(
           eq(waMessages.conversationId, conversationId),
           eq(waMessages.direction, "inbound")
@@ -43979,7 +43979,7 @@ CRITICAL REMINDERS:
             const recipientWaId = conversation.phoneNumber.replace(/^\+/, "");
             
             // 2. Check 24-hour window by finding last INBOUND message
-      await db.query.telnyxMessages.findFirst({
+            const lastInboundMessage = await db.query.telnyxMessages.findFirst({
               where: and(
                 eq(telnyxMessages.conversationId, id),
                 eq(telnyxMessages.direction, "inbound")
