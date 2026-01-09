@@ -4673,12 +4673,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { getCompanyPortingOrders } = await import("./services/telnyx-porting-service");
       const rawOrders = await getCompanyPortingOrders(user.companyId);
 
-      const orders = rawOrders.map(order => ({
-        ...order,
-        status: typeof order.status === 'object' && order.status !== null 
-          ? (order.status).value || 'draft'
-          : order.status || 'draft'
-      }));
+      const orders = rawOrders.map(order => {
+        let normalizedStatus = order.status || 'draft';
+        
+        if (typeof normalizedStatus === 'string' && normalizedStatus.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(normalizedStatus);
+            normalizedStatus = parsed.value || 'draft';
+          } catch (e) {
+            normalizedStatus = 'draft';
+          }
+        } else if (typeof normalizedStatus === 'object' && normalizedStatus !== null) {
+          normalizedStatus = (normalizedStatus as any).value || 'draft';
+        }
+        
+        return { ...order, status: normalizedStatus };
+      });
 
       return res.json({ orders });
     } catch (error) {
@@ -4707,12 +4717,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
-      const normalizedOrder = {
-        ...localOrder,
-        status: typeof localOrder.status === 'object' && localOrder.status !== null 
-          ? (localOrder.status).value || 'draft'
-          : localOrder.status || 'draft'
-      };
+      let normalizedStatus = localOrder.status || 'draft';
+      if (typeof normalizedStatus === 'string' && normalizedStatus.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(normalizedStatus);
+          normalizedStatus = parsed.value || 'draft';
+        } catch (e) {
+          normalizedStatus = 'draft';
+        }
+      } else if (typeof normalizedStatus === 'object' && normalizedStatus !== null) {
+        normalizedStatus = (normalizedStatus as any).value || 'draft';
+      }
+      
+      const normalizedOrder = { ...localOrder, status: normalizedStatus };
 
       return res.json({ order: normalizedOrder, telnyxOrder });
     } catch (error) {
