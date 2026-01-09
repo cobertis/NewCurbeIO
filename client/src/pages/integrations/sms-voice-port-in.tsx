@@ -39,7 +39,7 @@ interface PortingOrder {
   createdBy: string;
   telnyxPortingOrderId: string | null;
   phoneNumbers: string[];
-  status: "draft" | "in_process" | "submitted" | "exception" | "completed" | "cancelled";
+  status: string | { value: string; details?: any[] };
   focDatetimeRequested: string | null;
   focDatetimeActual: string | null;
   endUserEntityName: string | null;
@@ -77,9 +77,12 @@ function formatPhoneNumber(phone: string): string {
   return phone;
 }
 
-function getStatusBadge(status: string) {
-  switch (status) {
+function getStatusBadge(status: string | { value: string; details?: any[] }) {
+  const statusValue = typeof status === 'object' ? status.value : status;
+  
+  switch (statusValue) {
     case "completed":
+    case "ported":
       return (
         <Badge data-testid="badge-status-completed" className="bg-green-500/10 text-green-600 border-green-500/20">
           <CheckCircle className="h-3 w-3 mr-1" />
@@ -88,13 +91,15 @@ function getStatusBadge(status: string) {
       );
     case "submitted":
     case "in_process":
+    case "in-process":
       return (
         <Badge data-testid="badge-status-in-process" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
           <Clock className="h-3 w-3 mr-1" />
-          {status === "submitted" ? "Submitted" : "In Process"}
+          In Process
         </Badge>
       );
     case "exception":
+    case "port-in-exception":
       return (
         <Badge data-testid="badge-status-exception" className="bg-red-500/10 text-red-600 border-red-500/20">
           <AlertCircle className="h-3 w-3 mr-1" />
@@ -102,6 +107,7 @@ function getStatusBadge(status: string) {
         </Badge>
       );
     case "cancelled":
+    case "cancel-pending":
       return (
         <Badge data-testid="badge-status-cancelled" className="bg-slate-500/10 text-slate-500 border-slate-500/20">
           <XCircle className="h-3 w-3 mr-1" />
