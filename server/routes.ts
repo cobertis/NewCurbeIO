@@ -5059,9 +5059,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { generateLOAPdf } = await import("./services/loa-pdf-service");
       
       const data = req.body;
-      
-      if (!data.entityName || !data.authPersonName || !data.phoneNumbers || !data.signatureDataUrl) {
-        return res.status(400).json({ message: "Missing required fields" });
+      console.log("[LOA PDF] Received data:", {
+        entityName: data.entityName ? "present" : "MISSING",
+        authPersonName: data.authPersonName ? "present" : "MISSING",
+        phoneNumbers: data.phoneNumbers?.length > 0 ? data.phoneNumbers.length + " numbers" : "MISSING",
+        signatureDataUrl: data.signatureDataUrl ? data.signatureDataUrl.length + " chars" : "MISSING",
+      });
+      if (!data.entityName || !data.authPersonName || !data.phoneNumbers?.length || !data.signatureDataUrl) {
+        console.log("[LOA PDF] Missing fields detected");
+        return res.status(400).json({ message: "Missing required fields", details: { entityName: !!data.entityName, authPersonName: !!data.authPersonName, phoneNumbers: data.phoneNumbers?.length > 0, signatureDataUrl: !!data.signatureDataUrl } });
       }
       
       console.log("[LOA PDF] Generating PDF for:", data.entityName);
