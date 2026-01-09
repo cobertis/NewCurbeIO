@@ -575,14 +575,19 @@ export async function uploadDocument(
   try {
     const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Uploading document: ${fileName} using managed account (multipart method)`);
+    const sanitizedFileName = fileName
+      .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/[^a-zA-Z0-9._-]/g, ''); // Keep only safe characters
+
+    console.log(`[Telnyx Porting] Uploading document: ${sanitizedFileName} (original: ${fileName}) using managed account (multipart method)`);
 
     const FormData = (await import('form-data')).default;
     const nodeFetch = (await import('node-fetch')).default;
     
     const formData = new FormData();
     formData.append('file', fileBuffer, {
-      filename: fileName,
+      filename: sanitizedFileName,
       contentType: mimeType,
     });
 
