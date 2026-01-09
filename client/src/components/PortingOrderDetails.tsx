@@ -1,16 +1,13 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ArrowLeft,
   CheckCircle,
@@ -18,9 +15,6 @@ import {
   XCircle,
   Clock,
   Download,
-  Send,
-  Loader2,
-  User,
 } from "lucide-react";
 
 interface PortingOrder {
@@ -54,22 +48,6 @@ interface PortingOrder {
   oldServiceProviderOcn?: string | null;
   parentSupportKey?: string | null;
   portingFrom?: string | null;
-}
-
-interface Comment {
-  id: string;
-  body: string;
-  user_id?: string;
-  user_type?: string;
-  created_at: string;
-}
-
-interface Event {
-  id: string;
-  event_type: string;
-  description?: string;
-  payload?: any;
-  occurred_at: string;
 }
 
 function formatPhoneNumber(phone: string): string {
@@ -141,45 +119,17 @@ interface PortingOrderDetailsProps {
 
 export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps) {
   const [activeTab, setActiveTab] = useState("details");
-  const [newComment, setNewComment] = useState("");
-  const { toast } = useToast();
 
   const { data: orderDetails, isLoading: loadingDetails } = useQuery<{ order: PortingOrder; telnyxOrder: any }>({
     queryKey: ["/api/telnyx/porting/orders", order.id],
-  });
-
-  const { data: commentsData, isLoading: loadingComments } = useQuery<{ comments: Comment[] }>({
-    queryKey: ["/api/telnyx/porting/orders", order.id, "comments"],
-    enabled: activeTab === "communications",
-  });
-
-  const { data: eventsData, isLoading: loadingEvents } = useQuery<{ events: Event[] }>({
-    queryKey: ["/api/telnyx/porting/orders", order.id, "events"],
-    enabled: activeTab === "timeline",
   });
 
   const { data: documentsData, isLoading: loadingDocs } = useQuery<{ documents: any[] }>({
     queryKey: [`/api/telnyx/porting/orders/${order.id}/documents`],
   });
 
-  const addCommentMutation = useMutation({
-    mutationFn: async (body: string) => {
-      return apiRequest("POST", `/api/telnyx/porting/orders/${order.id}/comments`, { body });
-    },
-    onSuccess: () => {
-      toast({ title: "Comment added", description: "Your comment has been submitted." });
-      setNewComment("");
-      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/porting/orders", order.id, "comments"] });
-    },
-    onError: (error: any) => {
-      toast({ title: "Failed to add comment", description: error.message, variant: "destructive" });
-    },
-  });
-
   const details = orderDetails?.order || order;
   const telnyxOrder = orderDetails?.telnyxOrder;
-  const comments = commentsData?.comments || [];
-  const events = eventsData?.events || [];
   const documents = documentsData?.documents || [];
 
   const invoiceDoc = documents.find((doc: any) => 
@@ -192,12 +142,6 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
     doc.document_type !== 'invoice' && doc.type !== 'invoice' &&
     doc.document_type !== 'loa' && doc.type !== 'loa'
   );
-
-  const handleAddComment = () => {
-    if (newComment.trim()) {
-      addCommentMutation.mutate(newComment.trim());
-    }
-  };
 
   return (
     <div className="space-y-6" data-testid="porting-order-details">
@@ -233,27 +177,6 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
             data-testid="tab-requirements"
           >
             Requirements
-          </TabsTrigger>
-          <TabsTrigger 
-            value="phone-numbers"
-            className="px-0 pb-3 pt-4 rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 dark:data-[state=active]:border-slate-100 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-            data-testid="tab-phone-numbers"
-          >
-            Phone Numbers
-          </TabsTrigger>
-          <TabsTrigger 
-            value="communications"
-            className="px-0 pb-3 pt-4 rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 dark:data-[state=active]:border-slate-100 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-            data-testid="tab-communications"
-          >
-            Communications
-          </TabsTrigger>
-          <TabsTrigger 
-            value="timeline"
-            className="px-0 pb-3 pt-4 rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 dark:data-[state=active]:border-slate-100 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-            data-testid="tab-timeline"
-          >
-            Timeline
           </TabsTrigger>
         </TabsList>
 
@@ -405,6 +328,23 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
                   </div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Phone Numbers ({details.phoneNumbers?.length || 0} total)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {details.phoneNumbers?.map((phone, idx) => (
+                      <Badge key={idx} variant="outline" className="font-mono text-sm py-1.5 px-3">
+                        {formatPhoneNumber(phone)}
+                      </Badge>
+                    )) || (
+                      <span className="text-sm text-slate-500">No phone numbers</span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </TabsContent>
@@ -511,152 +451,6 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
           </Card>
         </TabsContent>
 
-        <TabsContent value="phone-numbers" className="mt-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Phone Numbers ({details.phoneNumbers?.length || 0} total)</CardTitle>
-              <Button variant="outline" size="sm" data-testid="button-export-numbers">
-                <Download className="h-4 w-4 mr-1" />
-                Export
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Number</TableHead>
-                    <TableHead>Bundle</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {details.phoneNumbers?.map((phone, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell className="font-mono">{formatPhoneNumber(phone)}</TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm">Assign Bundle</Button>
-                      </TableCell>
-                    </TableRow>
-                  )) || (
-                    <TableRow>
-                      <TableCell colSpan={2} className="text-center text-slate-500">No phone numbers</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="communications" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Leave a comment</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                placeholder="Add comment"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                className="min-h-[100px]"
-                data-testid="textarea-comment"
-              />
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleAddComment}
-                  disabled={!newComment.trim() || addCommentMutation.isPending}
-                  data-testid="button-save-comment"
-                >
-                  {addCommentMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Save
-                </Button>
-                <Button variant="outline" onClick={() => setNewComment("")} data-testid="button-cancel-comment">
-                  Cancel
-                </Button>
-              </div>
-
-              <Separator className="my-6" />
-
-              <div>
-                <h4 className="text-sm font-medium mb-4">Comment history</h4>
-                {loadingComments ? (
-                  <LoadingSpinner fullScreen={false} message="Loading comments..." />
-                ) : comments.length > 0 ? (
-                  <div className="space-y-4">
-                    {comments.map((comment) => (
-                      <div key={comment.id} className="border rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                            <User className="h-4 w-4 text-slate-500" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium">
-                              {comment.user_type === 'telnyx' ? 'Telnyx Admin' : 'You'}
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              {format(new Date(comment.created_at), "MMM d, yyyy, h:mm a")}
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                          {comment.body}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500 text-center py-4">No comments yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="timeline" className="mt-6">
-          <Card>
-            <CardContent className="pt-6">
-              {loadingEvents ? (
-                <LoadingSpinner fullScreen={false} message="Loading timeline..." />
-              ) : events.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Event Type</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {events.map((event) => (
-                      <TableRow key={event.id}>
-                        <TableCell className="capitalize">
-                          {event.event_type?.replace(/_/g, ' ').replace(/-/g, ' ') || 'Event'}
-                        </TableCell>
-                        <TableCell>
-                          {event.description || `${event.event_type?.replace(/_/g, ' ')}` || '-'}
-                        </TableCell>
-                        <TableCell>
-                          {event.occurred_at 
-                            ? format(new Date(event.occurred_at), "MMM d, yyyy, h:mm:ss a")
-                            : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm">Rebroadcast</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-sm text-slate-500 text-center py-8">No events recorded</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
