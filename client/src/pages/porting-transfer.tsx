@@ -1172,44 +1172,47 @@ export default function PortingTransfer() {
                       Service Address
                     </div>
 
-                    <FormField
-                      control={endUserForm.control}
-                      name="streetAddress"
-                      render={({ field }) => (
-                        <AddressAutocomplete
-                          value={field.value}
-                          onChange={field.onChange}
-                          onAddressSelect={(address) => {
-                            endUserForm.setValue('streetAddress', address.street);
-                            endUserForm.setValue('city', address.city);
-                            endUserForm.setValue('state', address.state);
-                            endUserForm.setValue('postalCode', address.postalCode);
-                          }}
-                          label="Street Address"
-                          placeholder="Start typing an address..."
-                          testId="input-street-address"
-                          error={endUserForm.formState.errors.streetAddress?.message}
-                        />
-                      )}
-                    />
-
-                    <FormField
-                      control={endUserForm.control}
-                      name="streetAddress2"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Address Line 2 (Optional)</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              data-testid="input-street-address-2"
-                              placeholder="Apt, Suite, Unit, Building, Floor, etc."
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <div className="md:col-span-3">
+                        <FormField
+                          control={endUserForm.control}
+                          name="streetAddress"
+                          render={({ field }) => (
+                            <AddressAutocomplete
+                              value={field.value}
+                              onChange={field.onChange}
+                              onAddressSelect={(address) => {
+                                endUserForm.setValue('streetAddress', address.street);
+                                endUserForm.setValue('city', address.city);
+                                endUserForm.setValue('state', address.state);
+                                endUserForm.setValue('postalCode', address.postalCode);
+                              }}
+                              label="Street Address"
+                              placeholder="Start typing an address..."
+                              testId="input-street-address"
+                              error={endUserForm.formState.errors.streetAddress?.message}
                             />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={endUserForm.control}
+                        name="streetAddress2"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Apt/Unit</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                data-testid="input-street-address-2"
+                                placeholder="Apt #"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField
