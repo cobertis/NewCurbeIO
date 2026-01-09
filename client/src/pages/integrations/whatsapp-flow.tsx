@@ -339,23 +339,24 @@ export default function WhatsAppFlow() {
       (response: FBLoginResponse) => {
         console.log("[WhatsApp Flow] FB.login full response:", JSON.stringify(response, null, 2));
         
-        if (response.authResponse?.code) {
-          console.log("[WhatsApp Flow] Got authorization code, waiting for embedded signup data...");
-          setPendingCode(response.authResponse.code);
-          // The useEffect will trigger the mutation when embeddedSignupData is also available
-          // Set a fallback timeout in case embedded signup data doesn't come
+        const authCode = response.authResponse?.code ?? response.authResponse?.accessToken;
+        if (authCode) {
+          console.log(`[WhatsApp Flow] Got ${response.authResponse?.code ? "authorization code" : "access token"}, waiting for embedded signup data...`);
+          setPendingCode(authCode);
+          // Set a fallback timeout - if no embedded signup data received, show error
           fallbackTimeoutRef.current = setTimeout(() => {
-            // Only proceed if code hasn't been exchanged yet
             if (!codeExchangedRef.current) {
-              console.log("[WhatsApp Flow] No embedded signup data received, proceeding with code only");
-              codeExchangedRef.current = true;
-              exchangeCodeMutation.mutate({ code: response.authResponse!.code! });
+              console.log("[WhatsApp Flow] No embedded signup data received - prompting user to retry");
+              fallbackTimeoutRef.current = null;
+              setIsConnecting(false);
+              setPendingCode(null);
+              toast({
+                variant: "destructive",
+                title: "Selection required",
+                description: "We didn't receive the WhatsApp Business Account details from Meta. Please click Connect again and complete the account selection.",
+              });
             }
-          }, 3000);
-        } else if (response.authResponse?.accessToken) {
-          console.log("[WhatsApp Flow] Got access token directly (no code), sending...");
-          codeExchangedRef.current = true;
-          exchangeCodeMutation.mutate({ code: response.authResponse.accessToken });
+          }, 8000);
         } else {
           setIsConnecting(false);
           console.log("[WhatsApp Flow] No code or token in response, status:", response.status);
