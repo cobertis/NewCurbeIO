@@ -727,13 +727,44 @@ export default function PortingTransfer() {
     try {
       let signatureDataUrl = '';
       try {
-        const canvas = signatureRef.current?.getTrimmedCanvas();
-        if (canvas) {
-          signatureDataUrl = canvas.toDataURL('image/png');
-          console.log('[LOA] Signature captured, length:', signatureDataUrl.length);
+        // Use toDataURL directly instead of getTrimmedCanvas which can fail
+        const signatureCanvas = signatureRef.current;
+        if (signatureCanvas) {
+          // Try getTrimmedCanvas first, fallback to toDataURL
+          try {
+            const trimmedCanvas = signatureCanvas.getTrimmedCanvas();
+            if (trimmedCanvas) {
+              signatureDataUrl = trimmedCanvas.toDataURL('image/png');
+              console.log('[LOA] Signature from trimmed canvas, length:', signatureDataUrl.length);
+            }
+          } catch (trimError) {
+            console.log('[LOA] getTrimmedCanvas failed, using toDataURL directly');
+            signatureDataUrl = signatureCanvas.toDataURL('image/png');
+            console.log('[LOA] Signature from toDataURL, length:', signatureDataUrl.length);
+          }
+          
+          // Final fallback: get canvas element directly
+          if (!signatureDataUrl || signatureDataUrl.length < 100) {
+            const canvasEl = signatureCanvas.getCanvas();
+            if (canvasEl) {
+              signatureDataUrl = canvasEl.toDataURL('image/png');
+              console.log('[LOA] Signature from getCanvas, length:', signatureDataUrl.length);
+            }
+          }
         }
       } catch (sigError) {
         console.error('[LOA] Error getting signature:', sigError);
+      }
+      
+      if (!signatureDataUrl || signatureDataUrl.length < 100) {
+        console.error('[LOA] Failed to capture signature');
+        toast({
+          title: 'Signature Error',
+          description: 'Failed to capture signature. Please try signing again.',
+          variant: 'destructive',
+        });
+        setIsGeneratingLoa(false);
+        return;
       }
 
       const loaData = {
