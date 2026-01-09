@@ -4652,6 +4652,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         createdBy: user.id,
         phoneNumbers,
         telnyxPortingOrderId: telnyxOrder.id,
+        supportKey: telnyxOrder.support_key || null,
         status: telnyxOrder.status || "draft",
         portabilityCheckResults: portabilityResults,
       });
