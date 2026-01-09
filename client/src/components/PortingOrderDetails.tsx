@@ -203,7 +203,7 @@ export function PortingOrderDetails({ order, open, onOpenChange }: PortingOrderD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0" data-testid="dialog-porting-details">
+      <DialogContent className="w-screen h-screen max-w-none max-h-none rounded-none overflow-hidden flex flex-col p-0" data-testid="dialog-porting-details">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mb-2">
             <button
