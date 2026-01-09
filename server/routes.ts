@@ -27884,92 +27884,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         phoneNumberId = embeddedPhoneNumberId;
         displayName = "WhatsApp Business";
       } else {
-        // FALLBACK: Try multiple methods to find WABA from Graph API with retries
-        console.log("[WhatsApp OAuth] No embedded signup data, querying Graph API for WABAs...");
-        
-        // Helper function for retries with delay
-        const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-        
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          console.log(`[WhatsApp OAuth] WABA lookup attempt ${attempt}/3 for company ${user.companyId}`);
-          
-          // METHOD 1: Use /debug_token to extract WABA IDs from granular_scopes
-          if (!wabaId) {
-            try {
-              const appToken = `${appId}|${appSecret}`;
-              const debugResponse = await fetch(
-                `https://graph.facebook.com/${META_GRAPH_VERSION}/debug_token?input_token=${accessToken}&access_token=${appToken}`
-              );
-              const debugData = await debugResponse.json() as any;
-              console.log("[WhatsApp OAuth] debug_token response:", JSON.stringify(debugData, null, 2));
-              
-              if (debugData.data?.granular_scopes) {
-                for (const scope of debugData.data.granular_scopes) {
-                  if ((scope.scope === "whatsapp_business_management" || scope.scope === "whatsapp_business_messaging") 
-                      && scope.target_ids?.length > 0) {
-                    wabaId = scope.target_ids[0];
-                    console.log("[WhatsApp OAuth] Found WABA from debug_token granular_scopes:", wabaId);
-                    break;
-                  }
-                }
-              }
-            } catch (debugError) {
-              console.error("[WhatsApp OAuth] debug_token error:", debugError);
-            }
-          }
-          
-          // METHOD 2: Query /me/businesses for owned WABAs
-          if (!wabaId) {
-            try {
-              const wabaResponse = await fetch(
-                `https://graph.facebook.com/${META_GRAPH_VERSION}/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,timezone_id}&access_token=${accessToken}`
-              );
-              const wabaData = await wabaResponse.json() as any;
-              console.log("[WhatsApp OAuth] me/businesses response:", JSON.stringify(wabaData, null, 2));
-              
-              if (wabaData.data?.length > 0) {
-                for (const business of wabaData.data) {
-                  if (business.owned_whatsapp_business_accounts?.data?.length > 0) {
-                    businessId = business.id;
-                    const wabaInfo = business.owned_whatsapp_business_accounts.data[0];
-                    wabaId = wabaInfo.id;
-                    displayName = wabaInfo.name || "WhatsApp Business";
-                    console.log("[WhatsApp OAuth] Found WABA from me/businesses:", wabaId);
-                    break;
-                  }
-                }
-              }
-            } catch (bizError) {
-              console.error("[WhatsApp OAuth] me/businesses error:", bizError);
-            }
-          }
-          
-          // METHOD 3: Try shared WABAs
-          if (!wabaId) {
-            try {
-              const sharedWabaResponse = await fetch(
-                `https://graph.facebook.com/${META_GRAPH_VERSION}/me/whatsapp_shared_business_accounts?fields=id,name&access_token=${accessToken}`
-              );
-              const sharedWabaData = await sharedWabaResponse.json() as any;
-              console.log("[WhatsApp OAuth] Shared WABAs response:", JSON.stringify(sharedWabaData, null, 2));
-              if (sharedWabaData.data?.length > 0) {
-                wabaId = sharedWabaData.data[0].id;
-                displayName = sharedWabaData.data[0].name || "WhatsApp Business";
-                console.log("[WhatsApp OAuth] Found WABA from shared accounts:", wabaId);
-              }
-            } catch (sharedError) {
-              console.error("[WhatsApp OAuth] shared WABAs error:", sharedError);
-            }
-          }
-          
-          if (wabaId) break;
-          
-          // Wait before retry (Meta may need time to propagate data)
-          if (attempt < 3) {
-            console.log(`[WhatsApp OAuth] No WABA found, waiting 2s before retry...`);
-            await delay(2000);
-          }
-        }
+        // REQUIRED: wabaId and phoneNumberId must come from embedded signup - no auto-selection allowed
+        console.log("[WhatsApp OAuth] Missing embedded signup data - rejecting request. User must complete account selection.");
+        return res.status(400).json({ 
+          error: "Please complete the WhatsApp account selection in the Facebook popup. If the popup closed, click Connect again.",
+          code: "EMBEDDED_SIGNUP_REQUIRED"
+        });
       }
       
       if (!wabaId) {
