@@ -1,20 +1,43 @@
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+// Use dynamic import pattern to ensure proper loading
+let pdfMakeInstance: any = null;
 
-// Register fonts with pdfMake - in Vite, pdfFonts exports the vfs object directly
-const pdfMakeAny = pdfMake as any;
-const pdfFontsAny = pdfFonts as any;
-
-// CRITICAL: Disable Web Worker - pdfmake 0.3.1 uses workers by default which don't work in Vite dev
-pdfMakeAny.worker = null;
-
-// Determine the correct vfs location based on what's exported
-if (pdfFontsAny?.pdfMake?.vfs) {
-  pdfMakeAny.vfs = pdfFontsAny.pdfMake.vfs;
-} else if (pdfFontsAny?.vfs) {
-  pdfMakeAny.vfs = pdfFontsAny.vfs;
-} else if (typeof pdfFontsAny === 'object' && Object.keys(pdfFontsAny).some((k: string) => k.endsWith('.ttf'))) {
-  pdfMakeAny.vfs = pdfFontsAny;
+async function initPdfMake(): Promise<any> {
+  if (pdfMakeInstance) return pdfMakeInstance;
+  
+  try {
+    const pdfMakeModule = await import('pdfmake/build/pdfmake');
+    const pdfFontsModule = await import('pdfmake/build/vfs_fonts');
+    
+    const pdfMake = pdfMakeModule.default || pdfMakeModule;
+    const pdfFonts = pdfFontsModule.default || pdfFontsModule;
+    
+    console.log('[PDF] pdfMake loaded:', typeof pdfMake);
+    console.log('[PDF] pdfFonts type:', typeof pdfFonts);
+    console.log('[PDF] pdfFonts keys:', Object.keys(pdfFonts || {}).slice(0, 5));
+    
+    // Disable Web Worker - critical for Vite
+    pdfMake.worker = null;
+    
+    // Set VFS - try different structures
+    if (pdfFonts?.pdfMake?.vfs) {
+      pdfMake.vfs = pdfFonts.pdfMake.vfs;
+      console.log('[PDF] VFS from pdfFonts.pdfMake.vfs');
+    } else if (pdfFonts?.vfs) {
+      pdfMake.vfs = pdfFonts.vfs;
+      console.log('[PDF] VFS from pdfFonts.vfs');
+    } else if (typeof pdfFonts === 'object') {
+      pdfMake.vfs = pdfFonts;
+      console.log('[PDF] VFS direct from pdfFonts');
+    }
+    
+    console.log('[PDF] VFS keys count:', Object.keys(pdfMake.vfs || {}).length);
+    
+    pdfMakeInstance = pdfMake;
+    return pdfMake;
+  } catch (err) {
+    console.error('[PDF] Init error:', err);
+    throw err;
+  }
 }
 
 export interface LOAData {
@@ -50,7 +73,7 @@ function displayPhoneNumber(phone: string): string {
   return phone;
 }
 
-export function generateLOAPdf(data: LOAData): Promise<Blob> {
+export async function generateLOAPdf(data: LOAData): Promise<Blob> {
   const fullAddress = [
     data.streetAddress,
     data.streetAddress2,
@@ -285,23 +308,31 @@ export function generateLOAPdf(data: LOAData): Promise<Blob> {
     },
   };
 
-  return new Promise((resolve, reject) => {
-    try {
-      console.log('[LOA PDF] Creating PDF document...');
-      const pdfDoc = pdfMake.createPdf(docDefinition);
-      console.log('[LOA PDF] PDF document created, getting blob...');
-      pdfDoc.getBlob((blob: Blob) => {
-        console.log('[LOA PDF] Blob generated successfully, size:', blob.size);
-        resolve(blob);
-      }, (error: Error) => {
-        console.error('[LOA PDF] getBlob error:', error);
+  try {
+    console.log('[LOA PDF] Initializing pdfMake...');
+    const pdfMake = await initPdfMake();
+    console.log('[LOA PDF] pdfMake initialized, creating document...');
+    
+    return new Promise((resolve, reject) => {
+      try {
+        const pdfDoc = pdfMake.createPdf(docDefinition);
+        console.log('[LOA PDF] PDF document created, getting blob...');
+        pdfDoc.getBlob((blob: Blob) => {
+          console.log('[LOA PDF] Blob generated successfully, size:', blob.size);
+          resolve(blob);
+        }, (error: Error) => {
+          console.error('[LOA PDF] getBlob error:', error);
+          reject(error);
+        });
+      } catch (error) {
+        console.error('[LOA PDF] createPdf error:', error);
         reject(error);
-      });
-    } catch (error) {
-      console.error('[LOA PDF] createPdf error:', error);
-      reject(error);
-    }
-  });
+      }
+    });
+  } catch (error) {
+    console.error('[LOA PDF] Init error:', error);
+    throw error;
+  }
 }
 
 export function downloadPdf(blob: Blob, filename: string) {
