@@ -4974,7 +4974,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Porting order not found" });
       }
 
-      if (localOrder.status !== "draft") {
+      // Normalize status from JSON string if needed
+      let orderStatus = localOrder.status || 'draft';
+      if (typeof orderStatus === 'string' && orderStatus.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(orderStatus);
+          orderStatus = parsed.value || 'draft';
+        } catch (e) {
+          orderStatus = 'draft';
+        }
+      }
+
+      if (orderStatus !== "draft") {
         return res.status(400).json({ message: "Only draft orders can be deleted" });
       }
 
