@@ -24,13 +24,13 @@ export interface LOAData {
   signatureDate: string;
 }
 
-function formatPhoneNumber(phone: string): string {
+function formatPhoneNumberE164(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
   if (cleaned.length === 11 && cleaned.startsWith('1')) {
-    return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    return `+${cleaned}`;
   }
   if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    return `+1${cleaned}`;
   }
   return phone;
 }
@@ -67,18 +67,17 @@ export async function generateLOAPdf(data: LOAData): Promise<Buffer> {
   stateField.setText(data.state || '');
   zipField.setText(data.postalCode || '');
   
-  let carrierInfo = data.currentCarrier || '';
-  if (data.accountNumber) {
-    carrierInfo += ` | Acct#: ${data.accountNumber}`;
-  }
-  if (data.pin) {
-    carrierInfo += ` | PIN: ${data.pin}`;
-  }
-  carrierNameField.setText(carrierInfo);
+  carrierNameField.setText(data.currentCarrier || '');
   
   btnField.setText(data.billingTelephoneNumber || '');
   
-  const phoneNumbersText = data.phoneNumbers.map(p => formatPhoneNumber(p)).join(', ');
+  const phoneNumbersText = data.phoneNumbers.map(p => {
+    const formatted = formatPhoneNumberE164(p);
+    if (data.pin) {
+      return `${formatted} - PIN ${data.pin}`;
+    }
+    return formatted;
+  }).join(', ');
   tnsField.setText(phoneNumbersText);
   
   dateField.setText(data.signatureDate || '');
