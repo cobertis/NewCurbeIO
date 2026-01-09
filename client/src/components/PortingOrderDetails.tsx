@@ -160,7 +160,6 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
 
   const { data: documentsData, isLoading: loadingDocs } = useQuery<{ documents: any[] }>({
     queryKey: ["/api/telnyx/porting/orders", order.id, "documents"],
-    enabled: activeTab === "requirements",
   });
 
   const addCommentMutation = useMutation({
@@ -182,6 +181,17 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
   const comments = commentsData?.comments || [];
   const events = eventsData?.events || [];
   const documents = documentsData?.documents || [];
+
+  const invoiceDoc = documents.find((doc: any) => 
+    doc.document_type === 'invoice' || doc.type === 'invoice'
+  );
+  const loaDoc = documents.find((doc: any) => 
+    doc.document_type === 'loa' || doc.type === 'loa'
+  );
+  const otherDocs = documents.filter((doc: any) => 
+    doc.document_type !== 'invoice' && doc.type !== 'invoice' &&
+    doc.document_type !== 'loa' && doc.type !== 'loa'
+  );
 
   const handleAddComment = () => {
     if (newComment.trim()) {
@@ -405,67 +415,98 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
               <CardTitle className="text-base">Requirements</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Latest Invoice</div>
-                  {details.invoiceDocumentId ? (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-normal">Invoice uploaded</Badge>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-1" />
-                        Download Document
-                      </Button>
+              {loadingDocs ? (
+                <LoadingSpinner fullScreen={false} message="Loading documents..." />
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Latest Invoice</div>
+                      {invoiceDoc ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="font-normal">
+                            {invoiceDoc.filename || invoiceDoc.name || 'Invoice uploaded'}
+                          </Badge>
+                          {invoiceDoc.download_url && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(invoiceDoc.download_url, '_blank')}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Download Document
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-slate-400">No invoice uploaded</span>
+                      )}
                     </div>
-                  ) : (
-                    <span className="text-sm text-slate-400">No invoice uploaded</span>
-                  )}
-                </div>
 
-                <div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Letter of Authorization</div>
-                  {details.loaDocumentId ? (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-normal">LOA uploaded</Badge>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-1" />
-                        Download Document
-                      </Button>
+                    <div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Letter of Authorization</div>
+                      {loaDoc ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="font-normal">
+                            {loaDoc.filename || loaDoc.name || 'LOA uploaded'}
+                          </Badge>
+                          {loaDoc.download_url && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(loaDoc.download_url, '_blank')}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Download Document
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-slate-400">No LOA uploaded</span>
+                      )}
                     </div>
-                  ) : (
-                    <span className="text-sm text-slate-400">No LOA uploaded</span>
+                  </div>
+
+                  {otherDocs.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="text-sm font-medium mb-4">Additional Documents</h4>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Filename</TableHead>
+                              <TableHead>Created At</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {otherDocs.map((doc: any) => (
+                              <TableRow key={doc.id}>
+                                <TableCell className="font-mono text-sm">{doc.filename || doc.name || doc.id}</TableCell>
+                                <TableCell>{doc.created_at ? format(new Date(doc.created_at), "MMM d, yyyy") : '-'}</TableCell>
+                                <TableCell>{doc.document_type || doc.type || '-'}</TableCell>
+                                <TableCell>
+                                  {doc.download_url && (
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => window.open(doc.download_url, '_blank')}
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
                   )}
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="text-sm font-medium mb-4">Additional Documents</h4>
-                {loadingDocs ? (
-                  <LoadingSpinner fullScreen={false} message="Loading documents..." />
-                ) : documents.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Filename</TableHead>
-                        <TableHead>Created At</TableHead>
-                        <TableHead>Type</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {documents.map((doc: any) => (
-                        <TableRow key={doc.id}>
-                          <TableCell className="font-mono text-sm">{doc.filename || doc.id}</TableCell>
-                          <TableCell>{doc.created_at ? format(new Date(doc.created_at), "MMM d, yyyy") : '-'}</TableCell>
-                          <TableCell>{doc.document_type || '-'}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <p className="text-sm text-slate-500 text-center py-4">No results found</p>
-                )}
-              </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
