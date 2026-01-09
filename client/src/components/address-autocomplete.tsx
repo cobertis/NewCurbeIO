@@ -71,17 +71,34 @@ export function AddressAutocomplete({
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/locationiq/autocomplete?q=${encodeURIComponent(query)}`
+        `/api/geoapify/autocomplete-address?q=${encodeURIComponent(query)}`
       );
       
       if (response.ok) {
         const data = await response.json();
-        // Filter to only show results that have road/street information
-        const filteredResults = (data.results || []).filter((result: AddressResult) => {
-          return result.address && (result.address.road || result.address.house_number);
+        // Transform Geoapify results to our format
+        const transformedResults = (data.predictions || []).map((result: any) => {
+          const geoapifyData = result._geoapify_data || {};
+          return {
+            place_id: result.place_id,
+            display_name: result.description || '',
+            address: {
+              name: result.structured_formatting?.main_text || '',
+              house_number: geoapifyData.street?.match(/^\d+/)?.[0] || '',
+              road: geoapifyData.street?.replace(/^\d+\s*/, '') || geoapifyData.street || '',
+              city: geoapifyData.city || '',
+              town: '',
+              village: '',
+              state: geoapifyData.state || '',
+              postcode: geoapifyData.postalCode || '',
+              country: geoapifyData.country || 'US',
+            }
+          };
+        }).filter((result: AddressResult) => {
+          return result.address && (result.address.road || result.address.house_number || result.address.name);
         });
-        setSuggestions(filteredResults);
-        setShowSuggestions(filteredResults.length > 0);
+        setSuggestions(transformedResults);
+        setShowSuggestions(transformedResults.length > 0);
       }
     } catch (error) {
       console.error("Failed to fetch address suggestions:", error);
@@ -175,13 +192,13 @@ export function AddressAutocomplete({
               key={result.place_id}
               type="button"
               onClick={() => handleSelectSuggestion(result)}
-              className="w-full text-left px-4 py-2 hover-elevate active-elevate-2 text-sm border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+              className="w-full text-left px-4 py-2 hover:bg-muted/50 text-sm border-b border-gray-100 dark:border-gray-700 last:border-b-0"
               data-testid={`suggestion-${result.place_id}`}
             >
               <div className="font-medium text-gray-900 dark:text-gray-100">
-                {result.address.house_number && result.address.road
+                {result.address.name || (result.address.house_number && result.address.road
                   ? `${result.address.house_number} ${result.address.road}`
-                  : result.address.road || result.address.name}
+                  : result.address.road || result.display_name?.split(',')[0])}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {[

@@ -1095,16 +1095,13 @@ export default function PortingTransfer() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                       <FormField
                         control={endUserForm.control}
                         name="billingPhone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              Billing Phone
-                            </FormLabel>
+                            <FormLabel>Billing Phone</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
