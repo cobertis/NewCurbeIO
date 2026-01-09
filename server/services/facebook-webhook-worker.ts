@@ -149,6 +149,11 @@ async function processInstagramComment(igAccountId: string, commentData: any, fu
     }
   }
   
+  // Fallback: Use commenter username or ID if profile couldn't be fetched
+  if (!customerName) {
+    customerName = commenterUsername || `IG User ${commenterId.slice(-6)}`;
+  }
+  
   const companyPhone = connection.igUsername || connection.displayName || igAccountId;
   const originMetadata = {
     commentId,
@@ -290,6 +295,11 @@ async function processInstagramEvent(payload: any): Promise<void> {
         } catch (profileErr) {
           console.log(`[Meta Webhook Worker] Could not fetch Instagram profile (token issue), continuing without profile`);
         }
+      }
+      
+      // Fallback: Use Instagram ID as display name if profile couldn't be fetched
+      if (!customerName) {
+        customerName = `IG User ${customerIgId.slice(-6)}`;
       }
 
       const upsertResult = await db.execute<typeof telnyxConversations.$inferSelect>(sql`
