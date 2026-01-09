@@ -6,28 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SettingsLayout } from "@/components/settings-layout";
 import { PortingWizard } from "@/components/PortingWizard";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { PortingOrderDetails } from "@/components/PortingOrderDetails";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
-  ChevronRight, 
   Plus, 
   Phone, 
   Eye, 
-  Calendar, 
-  Building2, 
-  User, 
-  MapPin,
   AlertCircle,
   CheckCircle,
   Clock,
   XCircle,
-  FileText,
   Trash2,
   Loader2,
   Pencil,
@@ -124,264 +117,6 @@ function getStatusBadge(status: string | { value: string; details?: any[] }) {
         </Badge>
       );
   }
-}
-
-function OrderDetailsSheet({ 
-  order, 
-  open, 
-  onOpenChange 
-}: { 
-  order: PortingOrder | null; 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void;
-}) {
-  const { data: orderDetails, isLoading } = useQuery<{ order: PortingOrder; telnyxOrder: any }>({
-    queryKey: ["/api/telnyx/porting/orders", order?.id],
-    enabled: !!order?.id && open,
-  });
-
-  if (!order) return null;
-
-  const details = orderDetails?.order || order;
-  const telnyxOrder = orderDetails?.telnyxOrder;
-
-  const handleEditOrder = () => {
-    onOpenChange(false);
-    window.location.href = `/porting/transfer?orderId=${details.id}&edit=true`;
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto" data-testid="sheet-order-details">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Phone className="h-5 w-5" />
-            Port-In Order Details
-          </SheetTitle>
-          <SheetDescription>
-            Order ID: {details.id.slice(0, 8)}...
-          </SheetDescription>
-        </SheetHeader>
-
-        {isLoading ? (
-          <div className="py-8">
-            <LoadingSpinner fullScreen={false} message="Loading order details..." />
-          </div>
-        ) : (
-          <div className="mt-6 space-y-6">
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Status</h4>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {getStatusBadge(details.status)}
-                  {details.lastError && (
-                    <span className="text-sm text-red-600" data-testid="text-last-error">{details.lastError}</span>
-                  )}
-                </div>
-                {details.status === "draft" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEditOrder}
-                    data-testid="button-edit-order-sheet"
-                  >
-                    <Pencil className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                Phone Numbers ({details.phoneNumbers?.length || 0})
-              </h4>
-              <div className="space-y-1">
-                {details.phoneNumbers?.map((phone, idx) => (
-                  <div 
-                    key={idx} 
-                    className="text-sm text-slate-600 dark:text-slate-400 font-mono"
-                    data-testid={`text-phone-${idx}`}
-                  >
-                    {formatPhoneNumber(phone)}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Important Dates
-              </h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">FOC Requested</span>
-                  <p className="font-medium" data-testid="text-foc-requested">
-                    {details.focDatetimeRequested 
-                      ? format(new Date(details.focDatetimeRequested), "MMM d, yyyy")
-                      : "Not set"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">FOC Actual</span>
-                  <p className="font-medium" data-testid="text-foc-actual">
-                    {details.focDatetimeActual 
-                      ? format(new Date(details.focDatetimeActual), "MMM d, yyyy")
-                      : "Pending"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Created</span>
-                  <p className="font-medium" data-testid="text-created">
-                    {format(new Date(details.createdAt), "MMM d, yyyy h:mm a")}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Last Updated</span>
-                  <p className="font-medium" data-testid="text-updated">
-                    {format(new Date(details.updatedAt), "MMM d, yyyy h:mm a")}
-                  </p>
-                </div>
-                {details.submittedAt && (
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-400">Submitted</span>
-                    <p className="font-medium" data-testid="text-submitted">
-                      {format(new Date(details.submittedAt), "MMM d, yyyy h:mm a")}
-                    </p>
-                  </div>
-                )}
-                {details.portedAt && (
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-400">Ported</span>
-                    <p className="font-medium text-green-600" data-testid="text-ported">
-                      {format(new Date(details.portedAt), "MMM d, yyyy h:mm a")}
-                    </p>
-                  </div>
-                )}
-                {details.cancelledAt && (
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-400">Cancelled</span>
-                    <p className="font-medium text-red-600" data-testid="text-cancelled">
-                      {format(new Date(details.cancelledAt), "MMM d, yyyy h:mm a")}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {(details.endUserEntityName || details.endUserAuthPersonName) && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    End User Information
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    {details.endUserEntityName && (
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-slate-400" />
-                        <span data-testid="text-entity-name">{details.endUserEntityName}</span>
-                      </div>
-                    )}
-                    {details.endUserAuthPersonName && (
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-slate-400" />
-                        <span data-testid="text-auth-person">{details.endUserAuthPersonName}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {(details.streetAddress || details.locality) && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Service Address
-                  </h4>
-                  <div className="text-sm text-slate-600 dark:text-slate-400" data-testid="text-address">
-                    {details.streetAddress && <div>{details.streetAddress}</div>}
-                    {(details.locality || details.administrativeArea || details.postalCode) && (
-                      <div>
-                        {details.locality}{details.locality && details.administrativeArea ? ", " : ""}
-                        {details.administrativeArea} {details.postalCode}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {(details.loaDocumentId || details.invoiceDocumentId) && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Documents
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    {details.loaDocumentId && (
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        LOA Document Uploaded
-                      </div>
-                    )}
-                    {details.invoiceDocumentId && (
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        Invoice Document Uploaded
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {details.requirementsStatus && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Requirements Status</h4>
-                  <Badge 
-                    className={details.requirementsStatus === "met" 
-                      ? "bg-green-500/10 text-green-600 border-green-500/20"
-                      : "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                    }
-                    data-testid="badge-requirements-status"
-                  >
-                    {details.requirementsStatus === "met" ? "All Requirements Met" : details.requirementsStatus}
-                  </Badge>
-                </div>
-              </>
-            )}
-
-            {telnyxOrder && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Telnyx Order ID</h4>
-                  <code className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded" data-testid="text-telnyx-order-id">
-                    {details.telnyxPortingOrderId}
-                  </code>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
 }
 
 export default function SmsVoicePortIn() {
@@ -646,7 +381,7 @@ export default function SmsVoicePortIn() {
         onOrderCreated={handleWizardClose}
       />
 
-      <OrderDetailsSheet
+      <PortingOrderDetails
         order={selectedOrder}
         open={detailsOpen}
         onOpenChange={setDetailsOpen}

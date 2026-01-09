@@ -5163,6 +5163,119 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Get porting order comments
+  app.get("/api/telnyx/porting/orders/:orderId/comments", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getLocalPortingOrderById } = await import("./services/telnyx-porting-service");
+      const localOrder = await getLocalPortingOrderById(orderId, user.companyId);
+
+      if (!localOrder || !localOrder.telnyxPortingOrderId) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const { getPortingOrderComments } = await import("./services/telnyx-porting-service");
+      const result = await getPortingOrderComments(localOrder.telnyxPortingOrderId, user.companyId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      return res.json({ comments: result.comments });
+    } catch (error) {
+      console.error("[Porting] Get comments error:", error);
+      return res.status(500).json({ message: "Failed to get comments" });
+    }
+  });
+
+  // Add porting order comment
+  app.post("/api/telnyx/porting/orders/:orderId/comments", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+      const { body } = req.body;
+
+      if (!body || typeof body !== "string") {
+        return res.status(400).json({ message: "Comment body is required" });
+      }
+
+      const { getLocalPortingOrderById } = await import("./services/telnyx-porting-service");
+      const localOrder = await getLocalPortingOrderById(orderId, user.companyId);
+
+      if (!localOrder || !localOrder.telnyxPortingOrderId) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const { addPortingOrderComment } = await import("./services/telnyx-porting-service");
+      const result = await addPortingOrderComment(localOrder.telnyxPortingOrderId, body, user.companyId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      return res.json({ comment: result.comment });
+    } catch (error) {
+      console.error("[Porting] Add comment error:", error);
+      return res.status(500).json({ message: "Failed to add comment" });
+    }
+  });
+
+  // Get porting order events/timeline
+  app.get("/api/telnyx/porting/orders/:orderId/events", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getLocalPortingOrderById } = await import("./services/telnyx-porting-service");
+      const localOrder = await getLocalPortingOrderById(orderId, user.companyId);
+
+      if (!localOrder || !localOrder.telnyxPortingOrderId) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const { getPortingOrderEvents } = await import("./services/telnyx-porting-service");
+      const result = await getPortingOrderEvents(localOrder.telnyxPortingOrderId, user.companyId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      return res.json({ events: result.events });
+    } catch (error) {
+      console.error("[Porting] Get events error:", error);
+      return res.status(500).json({ message: "Failed to get events" });
+    }
+  });
+
+  // Get porting order documents
+  app.get("/api/telnyx/porting/orders/:orderId/documents", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { orderId } = req.params;
+
+      const { getLocalPortingOrderById } = await import("./services/telnyx-porting-service");
+      const localOrder = await getLocalPortingOrderById(orderId, user.companyId);
+
+      if (!localOrder || !localOrder.telnyxPortingOrderId) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const { getPortingOrderDocuments } = await import("./services/telnyx-porting-service");
+      const result = await getPortingOrderDocuments(localOrder.telnyxPortingOrderId, user.companyId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      return res.json({ documents: result.documents });
+    } catch (error) {
+      console.error("[Porting] Get documents error:", error);
+      return res.status(500).json({ message: "Failed to get documents" });
+    }
+  });
+
   // ==================== GOOGLE OAUTH ENDPOINTS ====================
   app.get("/api/auth/google", async (req: Request, res: Response) => {
     try {

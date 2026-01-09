@@ -985,3 +985,229 @@ async function getPortingPhoneNumbers(portingOrderId: string, companyId: string)
     return [];
   }
 }
+
+export interface PortingOrderComment {
+  id: string;
+  body: string;
+  user_id?: string;
+  user_type?: string;
+  created_at: string;
+}
+
+export interface GetCommentsResponse {
+  success: boolean;
+  comments?: PortingOrderComment[];
+  error?: string;
+}
+
+export async function getPortingOrderComments(
+  portingOrderId: string,
+  companyId: string
+): Promise<GetCommentsResponse> {
+  try {
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
+
+    console.log(`[Telnyx Porting] Getting comments for order: ${portingOrderId}`);
+
+    const response = await fetch(
+      `${TELNYX_API_BASE}/porting_orders/${portingOrderId}/comments`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Porting] Get comments error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to get comments: ${response.status}`,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      comments: result.data || [],
+    };
+  } catch (error) {
+    console.error("[Telnyx Porting] Get comments error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get comments",
+    };
+  }
+}
+
+export interface AddCommentResponse {
+  success: boolean;
+  comment?: PortingOrderComment;
+  error?: string;
+}
+
+export async function addPortingOrderComment(
+  portingOrderId: string,
+  body: string,
+  companyId: string
+): Promise<AddCommentResponse> {
+  try {
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
+
+    console.log(`[Telnyx Porting] Adding comment to order: ${portingOrderId}`);
+
+    const response = await fetch(
+      `${TELNYX_API_BASE}/porting_orders/${portingOrderId}/comments`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({ body }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Porting] Add comment error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to add comment: ${response.status}`,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      comment: result.data,
+    };
+  } catch (error) {
+    console.error("[Telnyx Porting] Add comment error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to add comment",
+    };
+  }
+}
+
+export interface PortingOrderEvent {
+  id: string;
+  event_type: string;
+  description?: string;
+  payload?: any;
+  occurred_at: string;
+}
+
+export interface GetEventsResponse {
+  success: boolean;
+  events?: PortingOrderEvent[];
+  error?: string;
+}
+
+export async function getPortingOrderEvents(
+  portingOrderId: string,
+  companyId: string
+): Promise<GetEventsResponse> {
+  try {
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
+
+    console.log(`[Telnyx Porting] Getting events for order: ${portingOrderId}`);
+
+    // Try the events endpoint first
+    let response = await fetch(
+      `${TELNYX_API_BASE}/porting_orders/${portingOrderId}/events`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    // If events endpoint doesn't exist, try activities
+    if (response.status === 404) {
+      response = await fetch(
+        `${TELNYX_API_BASE}/porting_orders/${portingOrderId}/activities`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Accept": "application/json",
+          },
+        }
+      );
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Porting] Get events error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to get events: ${response.status}`,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      events: result.data || [],
+    };
+  } catch (error) {
+    console.error("[Telnyx Porting] Get events error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get events",
+    };
+  }
+}
+
+export interface GetOrderDocumentsResponse {
+  success: boolean;
+  documents?: any[];
+  error?: string;
+}
+
+export async function getPortingOrderDocuments(
+  portingOrderId: string,
+  companyId: string
+): Promise<GetOrderDocumentsResponse> {
+  try {
+    const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
+
+    console.log(`[Telnyx Porting] Getting documents for order: ${portingOrderId}`);
+
+    const response = await fetch(
+      `${TELNYX_API_BASE}/porting_orders/${portingOrderId}/documents`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      // Documents might be part of the order itself, return empty array
+      return { success: true, documents: [] };
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      documents: result.data || [],
+    };
+  } catch (error) {
+    console.error("[Telnyx Porting] Get documents error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get documents",
+    };
+  }
+}
