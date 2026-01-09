@@ -159,7 +159,7 @@ export function PortingOrderDetails({ order, onBack }: PortingOrderDetailsProps)
   });
 
   const { data: documentsData, isLoading: loadingDocs } = useQuery<{ documents: any[] }>({
-    queryKey: ["/api/telnyx/porting/orders", order.id, "documents"],
+    queryKey: [`/api/telnyx/porting/orders/${order.id}/documents`],
   });
 
   const addCommentMutation = useMutation({

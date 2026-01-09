@@ -1216,6 +1216,8 @@ export async function getPortingOrderDocuments(
     const telnyxOrder = orderResponse.portingOrder;
     const documents: any[] = [];
 
+    console.log(`[Telnyx Porting] Order documents structure:`, JSON.stringify(telnyxOrder.documents, null, 2));
+
     if (telnyxOrder.documents?.loa) {
       const loaDoc = await getDocumentDetails(telnyxOrder.documents.loa, apiKey);
       if (loaDoc) {
