@@ -575,22 +575,25 @@ export async function uploadDocument(
   try {
     const apiKey = await getRequiredCompanyTelnyxApiKey(companyId);
 
-    console.log(`[Telnyx Porting] Uploading document: ${fileName} using managed account`);
+    console.log(`[Telnyx Porting] Uploading document: ${fileName} using managed account (base64 method)`);
 
-    const FormData = (await import('form-data')).default;
-    const formData = new FormData();
-    formData.append('file', fileBuffer, {
-      filename: fileName,
-      contentType: mimeType,
-    });
+    const base64Content = fileBuffer.toString('base64');
+    
+    const requestBody = {
+      file: {
+        data: base64Content,
+        filename: fileName,
+        content_type: mimeType,
+      }
+    };
 
     const response = await fetch(`${TELNYX_API_BASE}/documents`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        ...formData.getHeaders(),
+        "Content-Type": "application/json",
       },
-      body: formData as any,
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
