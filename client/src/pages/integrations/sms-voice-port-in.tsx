@@ -553,11 +553,14 @@ export default function SmsVoicePortIn() {
                         </span>
                       </TableCell>
                       <TableCell data-testid={`cell-porting-id-${order.id}`}>
-                        <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
-                          {order.telnyxPortingOrderId 
-                            ? `${order.telnyxPortingOrderId.slice(0, 8)}...`
-                            : '-'}
-                        </span>
+                        {order.telnyxPortingOrderId ? (
+                          <div className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                            <div>{order.telnyxPortingOrderId.slice(0, 18)}-</div>
+                            <div>{order.telnyxPortingOrderId.slice(19)}</div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
                       </TableCell>
                       <TableCell data-testid={`cell-tns-${order.id}`}>
                         <span className="text-sm">{order.phoneNumbers?.length || 0}</span>
