@@ -27940,30 +27940,39 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Encrypt the access token using the standard encryptToken function
       const encryptedToken = encryptToken(accessToken);
       
-      // Check existing connection
-      const existingConnection = await db.select().from(channelConnections)
-        .where(and(
-          eq(channelConnections.companyId, user.companyId),
-          eq(channelConnections.channel, "whatsapp")
-        ))
+      // Check existing connection - first by phone_number_id (unique constraint), then by company+channel
+      let existingConnection = await db.select().from(channelConnections)
+        .where(eq(channelConnections.phoneNumberId, phoneNumberId))
         .limit(1);
       
+      // If no connection with this phone number, check for company's existing WhatsApp connection
+      if (existingConnection.length === 0) {
+        existingConnection = await db.select().from(channelConnections)
+          .where(and(
+            eq(channelConnections.companyId, user.companyId),
+            eq(channelConnections.channel, "whatsapp")
+          ))
+          .limit(1);
+      }
+      
       if (existingConnection.length > 0) {
-      await db.update(channelConnections)
+        // Update existing connection (either same phone or same company's whatsapp)
+        await db.update(channelConnections)
           .set({
+            companyId: user.companyId,
             businessId,
             wabaId,
             phoneNumberId,
             phoneNumberE164,
             displayName,
             accessTokenEnc: encryptedToken,
-            
             status: "active",
             updatedAt: new Date()
           })
           .where(eq(channelConnections.id, existingConnection[0].id));
+        console.log("[WhatsApp OAuth] Updated existing connection:", existingConnection[0].id);
       } else {
-      await db.insert(channelConnections).values({
+        await db.insert(channelConnections).values({
           companyId: user.companyId,
           channel: "whatsapp",
           businessId,
@@ -27972,9 +27981,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           phoneNumberE164,
           displayName,
           accessTokenEnc: encryptedToken,
-          
           status: "active"
         });
+        console.log("[WhatsApp OAuth] Created new connection");
       }
       
       console.log("[WhatsApp OAuth] Connection saved successfully for company:", user.companyId);

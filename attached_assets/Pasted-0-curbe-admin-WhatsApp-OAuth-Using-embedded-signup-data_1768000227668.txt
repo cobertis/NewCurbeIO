@@ -1,0 +1,54 @@
+0|curbe-admin  | [WhatsApp OAuth] Using embedded signup data - WABA: 711039251800193 Phone: 977416115444309
+0|curbe-admin  | [WhatsApp OAuth] Phone number lookup attempt 1/3 for WABA 711039251800193
+0|curbe-admin  | [WhatsApp OAuth] phone_numbers response: {
+0|curbe-admin  |   "data": [
+0|curbe-admin  |     {
+0|curbe-admin  |       "id": "977416115444309",
+0|curbe-admin  |       "display_phone_number": "+1 305-393-6666",
+0|curbe-admin  |       "verified_name": "Curbe IO",
+0|curbe-admin  |       "quality_rating": "GREEN"
+0|curbe-admin  |     },
+0|curbe-admin  |     {
+0|curbe-admin  |       "id": "977042948821102",
+0|curbe-admin  |       "display_phone_number": "+1 786-763-1593",
+0|curbe-admin  |       "verified_name": "Curbe",
+0|curbe-admin  |       "quality_rating": "GREEN"
+0|curbe-admin  |     }
+0|curbe-admin  |   ],
+0|curbe-admin  |   "paging": {
+0|curbe-admin  |     "cursors": {
+0|curbe-admin  |       "before": "QVFIUzI1N3NzRDNxTjhUeWplbW13VkRoNnBpYmY0bjBuNVFEak1MdEpQTkp0SmNaRklHellveFhuOWZAyMzJ3dmFPTUxGTV9vbWlYNjIzbFR3OWw2dkZACbjNB",
+0|curbe-admin  |       "after": "QVFIUzJnY0Y4bUFsaXNQbGFIWlVicERybEV6eFhRNHNHdmZAIdGM5Yk9nQjkxZAVF0a3FDLW8zTS1PZAHVCUWhUZAEZA2SWpIZA212bWFtTzZAZAT3JmZAmFtakc4MG53"
+0|curbe-admin  |     }
+0|curbe-admin  |   }
+0|curbe-admin  | }
+0|curbe-admin  | [WhatsApp OAuth] Found phone number: 977416115444309 +13053936666
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WhatsApp OAuth] Exchange code error: error: duplicate key value violates unique constraint "channel_connections_phone_number_id_unique"
+0|curbe-admin  |     at /var/www/curbe/node_modules/pg-pool/index.js:45:11
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  |     at async file:///var/www/curbe/dist/index.js:63879:9 {
+0|curbe-admin  |   length: 285,
+0|curbe-admin  |   severity: 'ERROR',
+0|curbe-admin  |   code: '23505',
+0|curbe-admin  |   detail: 'Key (phone_number_id)=(977416115444309) already exists.',
+0|curbe-admin  |   hint: undefined,
+0|curbe-admin  |   position: undefined,
+0|curbe-admin  |   internalPosition: undefined,
+0|curbe-admin  |   internalQuery: undefined,
+0|curbe-admin  |   where: undefined,
+0|curbe-admin  |   schema: 'public',
+0|curbe-admin  |   table: 'channel_connections',
+0|curbe-admin  |   column: undefined,
+0|curbe-admin  |   dataType: undefined,
+0|curbe-admin  |   constraint: 'channel_connections_phone_number_id_unique',
+0|curbe-admin  |   file: 'nbtinsert.c',
+0|curbe-admin  |   line: '666',
+0|curbe-admin  |   routine: '_bt_check_unique'
+0|curbe-admin  | }
+0|curbe-admin  | 11:10:04 PM [express] POST /api/integrations/meta/whatsapp/exchange-code 500 in 4296ms :: {"error":"F…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
