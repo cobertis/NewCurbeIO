@@ -1110,6 +1110,21 @@ export default function PortingTransfer() {
                                 {...field}
                                 data-testid="input-billing-phone"
                                 placeholder="(555) 123-4567"
+                                onChange={(e) => {
+                                  const input = e.target.value.replace(/\D/g, '');
+                                  let formatted = '';
+                                  if (input.length > 0) {
+                                    formatted = '(' + input.substring(0, 3);
+                                  }
+                                  if (input.length >= 3) {
+                                    formatted += ') ' + input.substring(3, 6);
+                                  }
+                                  if (input.length >= 6) {
+                                    formatted += '-' + input.substring(6, 10);
+                                  }
+                                  field.onChange(formatted);
+                                }}
+                                maxLength={14}
                               />
                             </FormControl>
                             <FormMessage />
