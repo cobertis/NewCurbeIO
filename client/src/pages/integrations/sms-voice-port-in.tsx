@@ -123,7 +123,6 @@ function getStatusBadge(status: string | { value: string; details?: any[] }) {
 export default function SmsVoicePortIn() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<PortingOrder | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<PortingOrder | null>(null);
   const { toast } = useToast();
 
@@ -178,7 +177,10 @@ export default function SmsVoicePortIn() {
 
   const handleViewOrder = (order: PortingOrder) => {
     setSelectedOrder(order);
-    setDetailsOpen(true);
+  };
+
+  const handleBackToList = () => {
+    setSelectedOrder(null);
   };
 
   const handleDeleteOrder = (order: PortingOrder) => {
@@ -200,6 +202,14 @@ export default function SmsVoicePortIn() {
     return (
       <SettingsLayout activeSection="sms-voice">
         <LoadingSpinner fullScreen={false} message="Loading porting orders..." />
+      </SettingsLayout>
+    );
+  }
+
+  if (selectedOrder) {
+    return (
+      <SettingsLayout activeSection="sms-voice">
+        <PortingOrderDetails order={selectedOrder} onBack={handleBackToList} />
       </SettingsLayout>
     );
   }
@@ -380,12 +390,6 @@ export default function SmsVoicePortIn() {
         open={wizardOpen} 
         onOpenChange={setWizardOpen}
         onOrderCreated={handleWizardClose}
-      />
-
-      <PortingOrderDetails
-        order={selectedOrder}
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
       />
 
       <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
