@@ -77,15 +77,16 @@ export function AddressAutocomplete({
       if (response.ok) {
         const data = await response.json();
         // Transform Geoapify results to our format
-        const transformedResults = (data.predictions || []).map((result: any) => {
+        const transformedResults = (data.results || data.predictions || []).map((result: any) => {
           const geoapifyData = result._geoapify_data || {};
+          const mainText = result.structured_formatting?.main_text || geoapifyData.street || '';
           return {
             place_id: result.place_id,
             display_name: result.description || '',
             address: {
-              name: result.structured_formatting?.main_text || '',
-              house_number: geoapifyData.street?.match(/^\d+/)?.[0] || '',
-              road: geoapifyData.street?.replace(/^\d+\s*/, '') || geoapifyData.street || '',
+              name: mainText,
+              house_number: mainText.match(/^\d+/)?.[0] || '',
+              road: mainText.replace(/^\d+\s*/, '') || '',
               city: geoapifyData.city || '',
               town: '',
               village: '',
