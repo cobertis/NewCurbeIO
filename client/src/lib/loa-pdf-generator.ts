@@ -1,11 +1,14 @@
 import pdfMake from 'pdfmake/build/pdfmake';
-import vfs from 'pdfmake/build/vfs_fonts';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-// pdfmake needs font files registered
-if (vfs && vfs.pdfMake && vfs.pdfMake.vfs) {
-  (pdfMake as any).vfs = vfs.pdfMake.vfs;
-} else if (vfs) {
-  (pdfMake as any).vfs = vfs;
+// Register fonts with pdfMake - use addVirtualFileSystem if available, fallback to direct assignment
+const pdfMakeInstance = pdfMake as any;
+if (typeof pdfMakeInstance.addVirtualFileSystem === 'function') {
+  pdfMakeInstance.addVirtualFileSystem(pdfFonts);
+} else if (pdfFonts && (pdfFonts as any).vfs) {
+  pdfMakeInstance.vfs = (pdfFonts as any).vfs;
+} else {
+  pdfMakeInstance.vfs = pdfFonts;
 }
 
 export interface LOAData {
@@ -278,11 +281,18 @@ export function generateLOAPdf(data: LOAData): Promise<Blob> {
 
   return new Promise((resolve, reject) => {
     try {
+      console.log('[LOA PDF] Creating PDF document...');
       const pdfDoc = pdfMake.createPdf(docDefinition);
+      console.log('[LOA PDF] PDF document created, getting blob...');
       pdfDoc.getBlob((blob: Blob) => {
+        console.log('[LOA PDF] Blob generated successfully, size:', blob.size);
         resolve(blob);
+      }, (error: Error) => {
+        console.error('[LOA PDF] getBlob error:', error);
+        reject(error);
       });
     } catch (error) {
+      console.error('[LOA PDF] createPdf error:', error);
       reject(error);
     }
   });
