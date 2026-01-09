@@ -1,0 +1,49 @@
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+1:06:23 AM [express] POST /api/telnyx/porting/generate-loa 401 in 1ms :: {"message":"Not authenticat…
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WhatsApp Call] Agent 64511fdf-e4da-444e-9e54-41168393d4f5 unregistered from company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+[WhatsApp Call WS] Agent 64511fdf-e4da-444e-9e54-41168393d4f5 disconnected
+[WebSocket] Client disconnected
+[WebSocket] Client disconnected
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+1:06:46 AM [express] GET /api/session 304 in 246ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-4116839…
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WhatsApp Call] Agent 64511fdf-e4da-444e-9e54-41168393d4f5 registered for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+1:06:47 AM [express] GET /api/session 304 in 263ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-4116839…
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/chat
+[Telnyx Numbers] Using company API key: KEY019B9FE09...
+[Telnyx Porting] Using API key: KEY019B9FE09...
+[Telnyx Porting] Getting porting order: a2620911-5208-4a19-8a76-47f4e85529cd using managed account
+1:06:47 AM [express] GET /api/call-logs 304 in 164ms :: {"logs":[]}
+[WebSocket] Authenticated: userId=64511fdf-e4da-444e-9e54-41168393d4f5, companyId=13edaa5f-bcfa-419b-ae19-bbc87e0c417d, role=admin
+1:06:47 AM [express] GET /api/voicemails 304 in 204ms :: {"voicemails":[],"unreadCount":0}
+1:06:47 AM [express] GET /api/telnyx/user-phone-status 304 in 242ms :: {"hasAssignedNumber":false,"c…
+[WebSocket] Accepting authenticated connection for path: /ws/chat
+[WebSocket] Authenticated: userId=64511fdf-e4da-444e-9e54-41168393d4f5, companyId=13edaa5f-bcfa-419b-ae19-bbc87e0c417d, role=admin
+[Telnyx Sync] Synced 0 new numbers for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+1:06:47 AM [express] GET /api/notifications 304 in 129ms :: {"notifications":[{"id":"9a4be8a7-89a3-4…
+1:06:47 AM [express] GET /api/session 304 in 478ms :: {"user":{"id":"64511fdf-e4da-444e-9e54-4116839…
+1:06:47 AM [express] GET /api/telnyx/my-numbers 304 in 513ms :: {"numbers":[],"totalCount":0}
+[Inbox] Returning 0 conversations for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+1:06:47 AM [express] GET /api/inbox/conversations 304 in 248ms :: {"conversations":[]}
+1:06:47 AM [express] GET /api/telnyx/porting/orders/db8b9435-e5f6-4a3f-859a-7de8429ea3f9 200 in 603m…
+1:06:47 AM [express] GET /api/telnyx/phone-system-access 304 in 288ms :: {"hasAccess":true,"isOwner"…
+1:06:47 AM [express] GET /api/imessage/access 304 in 127ms :: {"hasAccess":false,"reason":"feature_n…
+1:06:47 AM [express] GET /api/wallet/balance 304 in 204ms :: {"balance":"0.0000","currency":"USD","a…
+1:06:48 AM [express] GET /api/users/availability-status 304 in 127ms :: {"status":"offline"}
+1:06:48 AM [express] GET /api/companies/13edaa5f-bcfa-419b-ae19-bbc87e0c417d 304 in 202ms :: {"compa…
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call
+[WebSocket] Accepting authenticated connection for path: /ws/whatsapp-call

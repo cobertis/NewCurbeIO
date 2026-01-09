@@ -653,7 +653,11 @@ export default function PortingTransfer() {
   };
 
   const handleGenerateLoa = async () => {
-    if (!endUserInfo) {
+    // Use form values directly to avoid null state issues
+    const formData = endUserForm.getValues();
+    const userInfo = endUserInfo || formData;
+    
+    if (!userInfo.entityName || !userInfo.authPersonName) {
       toast({
         title: 'Missing Information',
         description: 'Please complete the end user information first.',
@@ -695,20 +699,22 @@ export default function PortingTransfer() {
       const signatureDataUrl = signatureRef.current?.getTrimmedCanvas().toDataURL('image/png') || '';
 
       const loaData = {
-        entityName: endUserInfo.entityName,
-        authPersonName: endUserInfo.authPersonName,
-        billingPhone: endUserInfo.billingPhone,
-        streetAddress: endUserInfo.streetAddress,
-        streetAddress2: endUserInfo.streetAddress2,
-        city: endUserInfo.city,
-        state: endUserInfo.state,
-        postalCode: endUserInfo.postalCode,
+        entityName: userInfo.entityName,
+        authPersonName: userInfo.authPersonName,
+        billingPhone: userInfo.billingPhone || '',
+        streetAddress: userInfo.streetAddress || '',
+        streetAddress2: userInfo.streetAddress2 || '',
+        city: userInfo.city || '',
+        state: userInfo.state || '',
+        postalCode: userInfo.postalCode || '',
         currentCarrier: loaCurrentCarrier,
         billingTelephoneNumber: loaBillingTelephoneNumber,
         phoneNumbers: portableNumbers,
         signatureDataUrl,
         signatureDate: format(new Date(), 'MMMM d, yyyy'),
       };
+
+      console.log('[LOA] Sending data to server:', JSON.stringify(loaData, null, 2));
 
       const response = await fetch('/api/telnyx/porting/generate-loa', {
         method: 'POST',
@@ -718,11 +724,13 @@ export default function PortingTransfer() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+        const errorText = await response.text();
+        console.error('[LOA] Server error:', response.status, errorText);
+        throw new Error(`Failed to generate PDF: ${response.status}`);
       }
 
       const pdfBlob = await response.blob();
-      const filename = `LOA_${endUserInfo.entityName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      const filename = `LOA_${userInfo.entityName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
       const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
 
       setLoaFile(pdfFile);
