@@ -17,7 +17,7 @@ import {
   contacts
 } from "@shared/schema";
 import { eq, and, like } from "drizzle-orm";
-import { runJobsOnce } from "../workers/job-runner";
+import { runJobsOnce, reapStuckProcessingJobs } from "../workers/job-runner";
 import { MockVoiceAdapter } from "../services/channel-adapters/voice-adapter";
 import { MockBridgeAdapter } from "../services/channel-adapters/bridge-imessage-sms";
 import { nanoid } from "nanoid";
@@ -193,8 +193,8 @@ async function runTests() {
     failed++;
   }
   
-  // TEST 3: Voice provider error -> retry + CALL_FAILED (attempt) + final fail
-  console.log("[TEST 3] Voice provider error -> retry + CALL_FAILED attempt + final fail");
+  // TEST 3: Voice provider error -> retry with correct state (status=queued, started_at=NULL, run_at future)
+  console.log("[TEST 3] Voice provider error -> retry state consistency (queued, started_at NULL, run_at future)");
   try {
     await cleanupTestJobs();
     mockVoiceAdapter.reset();
@@ -202,6 +202,8 @@ async function runTests() {
     
     const externalId = `test-voice-3-${nanoid(6)}`;
     await createTestJob("voice", externalId);
+    
+    const beforeRun = new Date();
     
     // First run - should retry
     await runJobsOnce({
@@ -217,6 +219,9 @@ async function runTests() {
     
     const firstStatus = job?.status;
     const firstRetryCount = job?.retryCount || 0;
+    const firstStartedAt = job?.startedAt;
+    const firstRunAt = job?.runAt;
+    const runAtIsFuture = firstRunAt && firstRunAt > beforeRun;
     
     // Force runAt to past for second run
     if (job) {
@@ -241,14 +246,14 @@ async function runTests() {
     const callFailedEvents = events.filter(e => e.eventType === "CALL_FAILED");
     const callPlacedEvents = events.filter(e => e.eventType === "CALL_PLACED");
     
-    if (firstStatus === "queued" && firstRetryCount === 1 && job?.status === "failed" && callFailedEvents.length >= 1 && callPlacedEvents.length === 0) {
-      console.log(`  First run: status=queued, retryCount=1`);
+    if (firstStatus === "queued" && firstRetryCount === 1 && firstStartedAt === null && runAtIsFuture && job?.status === "failed" && callFailedEvents.length >= 1 && callPlacedEvents.length === 0) {
+      console.log(`  After retry: status=queued, retryCount=1, started_at=NULL, run_at=future`);
       console.log(`  Final status: ${job.status}`);
       console.log(`  CALL_FAILED events: ${callFailedEvents.length}, CALL_PLACED: 0 (correct)`);
       console.log("RESULT: PASS ✓\n");
       passed++;
     } else {
-      console.log(`  First: status=${firstStatus}, retryCount=${firstRetryCount}`);
+      console.log(`  After retry: status=${firstStatus}, retryCount=${firstRetryCount}, started_at=${firstStartedAt}, run_at_future=${runAtIsFuture}`);
       console.log(`  Final: status=${job?.status}, CALL_FAILED count=${callFailedEvents.length}, CALL_PLACED=${callPlacedEvents.length}`);
       console.log("RESULT: FAIL ✗\n");
       failed++;
@@ -298,8 +303,8 @@ async function runTests() {
     failed++;
   }
   
-  // TEST 5: Pending outcome (undefined) keeps job in processing for webhook
-  console.log("[TEST 5] Pending outcome (undefined) -> job stays in processing for webhook");
+  // TEST 5: Pending outcome (undefined) keeps job in processing with started_at set
+  console.log("[TEST 5] Pending outcome (undefined) -> job stays in processing with started_at set");
   try {
     await cleanupTestJobs();
     mockVoiceAdapter.reset();
@@ -322,14 +327,15 @@ async function runTests() {
     const events = await getEventsByExternalIdPrefix(`job:${externalId}`);
     const callPlaced = events.find(e => e.eventType === "CALL_PLACED");
     const hasOutcome = events.some(e => ["CALL_ANSWERED", "CALL_NO_ANSWER", "CALL_BUSY", "CALL_FAILED"].includes(e.eventType));
+    const hasStartedAt = job?.startedAt !== null;
     
-    if (job?.status === "processing" && callPlaced && !hasOutcome) {
-      console.log(`  Job status: ${job.status} (pending webhook)`);
+    if (job?.status === "processing" && hasStartedAt && callPlaced && !hasOutcome) {
+      console.log(`  Job status: ${job.status}, started_at: ${job.startedAt ? "SET" : "NULL"}`);
       console.log(`  Events: CALL_PLACED only (no outcome yet)`);
       console.log("RESULT: PASS ✓\n");
       passed++;
     } else {
-      console.log(`  Job status: ${job?.status}, Events: ${events.map(e => e.eventType).join(", ")}`);
+      console.log(`  Job status: ${job?.status}, started_at: ${job?.startedAt}, Events: ${events.map(e => e.eventType).join(", ")}`);
       console.log("RESULT: FAIL ✗\n");
       failed++;
     }
@@ -383,6 +389,71 @@ async function runTests() {
     failed++;
   }
   
+  // TEST 7: Reaper marks stuck processing jobs as failed + emits CALL_FAILED timeout
+  console.log("[TEST 7] Reaper marks stuck processing jobs as failed + CALL_FAILED timeout event");
+  try {
+    await cleanupTestJobs();
+    
+    const externalId = `test-reaper-7-${nanoid(6)}`;
+    const oldStartedAt = new Date(Date.now() - 20 * 60 * 1000); // 20 minutes ago
+    
+    // Insert a job directly in processing state with old started_at
+    await db.execute(`
+      INSERT INTO orchestrator_jobs 
+        (id, company_id, campaign_id, campaign_contact_id, contact_id, channel, status, payload, external_id, run_at, started_at, retry_count)
+      VALUES 
+        (gen_random_uuid()::varchar, '${TEST_COMPANY_ID}', '${TEST_CAMPAIGN_ID}', '${TEST_ENROLLMENT_ID}', '${TEST_CONTACT_ID}', 
+         'voice', 'processing', '{"to": "+15551234567"}', '${externalId}', NOW(), '${oldStartedAt.toISOString()}', 0)
+    `);
+    
+    // Run reaper with 10 minute timeout
+    const reaperResult = await reapStuckProcessingJobs({
+      companyId: TEST_COMPANY_ID,
+      timeoutMinutes: 10
+    });
+    
+    // Verify job is now failed
+    const [job] = await db.select()
+      .from(orchestratorJobs)
+      .where(like(orchestratorJobs.externalId, externalId))
+      .limit(1);
+    
+    // Verify CALL_FAILED timeout event was emitted
+    const events = await getEventsByExternalIdPrefix(`job:${externalId}`);
+    const timeoutEvent = events.find(e => e.eventType === "CALL_FAILED" && (e.payload as any)?.reason === "processing_timeout");
+    const hasCompletedAt = job?.completedAt !== null;
+    const hasFinalTrue = timeoutEvent && (timeoutEvent.payload as any)?.final === true;
+    
+    if (reaperResult.reaped >= 1 && job?.status === "failed" && hasCompletedAt && timeoutEvent && hasFinalTrue) {
+      console.log(`  Reaped: ${reaperResult.reaped} job(s)`);
+      console.log(`  Job status: ${job.status}, completed_at: SET`);
+      console.log(`  CALL_FAILED timeout event: externalId=${timeoutEvent.externalId}, final=true`);
+      console.log("RESULT: PASS ✓\n");
+      passed++;
+    } else {
+      console.log(`  Reaped: ${reaperResult.reaped}, Job status: ${job?.status}, completed_at: ${job?.completedAt}`);
+      console.log(`  Timeout event: ${timeoutEvent ? "found" : "NOT FOUND"}, final=${hasFinalTrue}`);
+      console.log("RESULT: FAIL ✗\n");
+      failed++;
+    }
+    
+    // Run reaper again - should be idempotent (already failed, no new events)
+    const secondReap = await reapStuckProcessingJobs({
+      companyId: TEST_COMPANY_ID,
+      timeoutMinutes: 10
+    });
+    
+    const eventsAfterSecond = await getEventsByExternalIdPrefix(`job:${externalId}`);
+    const timeoutEventsCount = eventsAfterSecond.filter(e => e.eventType === "CALL_FAILED" && (e.payload as any)?.reason === "processing_timeout").length;
+    
+    if (secondReap.reaped === 0 && timeoutEventsCount === 1) {
+      console.log(`  Idempotency: second reap=0, timeout events still=1`);
+    }
+  } catch (e) {
+    console.log(`RESULT: FAIL ✗ - Error: ${e}\n`);
+    failed++;
+  }
+  
   // Cleanup
   await cleanupTestJobs();
   
@@ -391,14 +462,15 @@ async function runTests() {
   console.log("============================================================");
   console.log(`✓ Test 1: Voice answered`);
   console.log(`✓ Test 2: Voice no answer`);
-  console.log(`✓ Test 3: Voice provider error with retry`);
+  console.log(`✓ Test 3: Voice provider error with retry (state consistency)`);
   console.log(`✓ Test 4: Voicemail drop success`);
-  console.log(`✓ Test 5: Pending outcome (webhook)`);
+  console.log(`✓ Test 5: Pending outcome (started_at set)`);
   console.log(`✓ Test 6: Idempotency`);
+  console.log(`✓ Test 7: Reaper timeout + CALL_FAILED`);
   console.log(`\nTotal: ${passed}/${passed + failed} tests passed`);
   console.log("============================================================");
   
-  return passed === 6;
+  return passed === 7;
 }
 
 runTests()

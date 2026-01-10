@@ -10,7 +10,7 @@ import {
   orchestratorCampaigns,
   OrchestratorJob 
 } from "@shared/schema";
-import { eq, and, sql, lte, inArray } from "drizzle-orm";
+import { eq, and, sql, lte, inArray, isNotNull } from "drizzle-orm";
 import { emitCampaignEvent } from "../services/campaign-events";
 import { 
   sendViaBridge, 
@@ -134,6 +134,8 @@ async function scheduleRetry(job: OrchestratorJob, error: string): Promise<void>
       retryCount: newRetryCount,
       runAt: newRunAt,
       error,
+      startedAt: null,
+      completedAt: null,
       updatedAt: new Date()
     })
     .where(eq(orchestratorJobs.id, job.id));
@@ -611,6 +613,7 @@ export async function reapStuckProcessingJobs(options: {
   const conditions = [
     eq(orchestratorJobs.status, "processing"),
     inArray(orchestratorJobs.channel, ["voice", "voicemail"]),
+    isNotNull(orchestratorJobs.startedAt),
     lte(orchestratorJobs.startedAt, cutoff)
   ];
   
@@ -635,21 +638,22 @@ export async function reapStuckProcessingJobs(options: {
     if (!dryRun) {
       await markFailed(job.id, `Processing timeout after ${timeoutMinutes} minutes - webhook never received`);
       
-      if (job.channel === "voice" && job.externalId) {
+      if (job.externalId) {
         await emitCampaignEvent({
           companyId: job.companyId,
           campaignId: job.campaignId,
           campaignContactId: job.campaignContactId,
           contactId: job.contactId,
           eventType: "CALL_FAILED",
-          channel: "voice",
+          channel: job.channel as any,
           provider: "telnyx",
-          externalId: buildEventExternalId(job.externalId, "call_timeout"),
+          externalId: `job:${job.externalId}:call_timeout`,
           payload: {
             jobId: job.id,
             reason: "processing_timeout",
             timeoutMinutes,
-            channel: job.channel
+            channel: job.channel,
+            final: true
           }
         });
       }
