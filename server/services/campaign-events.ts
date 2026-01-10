@@ -9,6 +9,7 @@ import {
   CampaignContact
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import { ATTEMPT_EVENT_TYPES } from "../constants/orchestrator";
 
 export interface EmitCampaignEventInput {
   companyId: string;
@@ -28,15 +29,6 @@ export interface EmitCampaignEventResult {
   wasIdempotent: boolean;
   stateTransition?: { before: string; after: string };
 }
-
-// Shared constant: Event types that count as "attempts" for caps/limits
-// Used by: Policy Engine (24h caps, total caps), Event Emitter (attemptsTotal increment)
-export const ATTEMPT_EVENT_TYPES = [
-  "MESSAGE_SENT",
-  "CALL_PLACED",
-  "VOICEMAIL_DROPPED",
-  "RVM_DROPPED"
-] as const;
 
 const TERMINAL_EVENT_TYPES = {
   OPT_OUT: "DO_NOT_CONTACT",

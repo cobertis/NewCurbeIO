@@ -12,7 +12,7 @@ import {
   ContactSuppression
 } from "@shared/schema";
 import { eq, and, sql, gte, inArray } from "drizzle-orm";
-import { ATTEMPT_EVENT_TYPES } from "./campaign-events";
+import { ATTEMPT_EVENT_TYPES } from "../constants/orchestrator";
 
 export type OrchestratorChannel = "sms" | "mms" | "imessage" | "whatsapp" | "voice" | "voicemail" | "rvm";
 
