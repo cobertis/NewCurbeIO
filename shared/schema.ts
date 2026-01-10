@@ -7877,8 +7877,9 @@ export const campaignEvents = pgTable("campaign_events", {
   channel: orchestratorChannelEnum("channel"),
   provider: text("provider"), // telnyx, twilio, bluebubbles, etc.
   
-  // External reference
-  externalId: text("external_id"), // Provider's message/call ID
+  // External reference - MUST be namespaced by provider for uniqueness
+  // Format: "{provider}:{provider_id}" e.g. "twilio:SMxxxx", "telnyx:callxxx", "bluebubbles:imsg:xxx"
+  externalId: text("external_id"),
   
   // Event payload
   payload: jsonb("payload").default({}),
@@ -7904,6 +7905,8 @@ export const campaignEvents = pgTable("campaign_events", {
   channelIdx: index("campaign_events_channel_idx").on(table.channel),
   processedIdx: index("campaign_events_processed_idx").on(table.processed),
   companyIdIdx: index("campaign_events_company_id_idx").on(table.companyId),
+  // Race-safe idempotency: UNIQUE on (company_id, external_id) when external_id is NOT NULL
+  uniqueCompanyExternalId: uniqueIndex("campaign_events_company_external_id_uniq").on(table.companyId, table.externalId).where(sql`external_id IS NOT NULL`),
 }));
 
 export const insertCampaignEventSchema = createInsertSchema(campaignEvents).omit({

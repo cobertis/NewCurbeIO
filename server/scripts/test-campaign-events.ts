@@ -9,7 +9,7 @@ import {
   users
 } from "@shared/schema";
 import { emitCampaignEvent } from "../services/campaign-events";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 const TEST_COMPANY_ID = "test-events-company-" + Date.now();
 const TEST_CAMPAIGN_ID = "test-events-campaign-" + Date.now();
@@ -305,6 +305,52 @@ async function runTests() {
     eventType: "MESSAGE_SENT"
   });
   assert("error" in result && result.status === 404, "Error: contact not found returns 404");
+  
+  console.log("\n11) Race-safe idempotency (10 parallel inserts with same externalId)");
+  
+  await cleanupTestData();
+  await setupTestData();
+  
+  const raceExternalId = `twilio:race-test-${Date.now()}`;
+  
+  // Fire 10 parallel inserts with same externalId
+  const racePromises = Array.from({ length: 10 }, () =>
+    emitCampaignEvent({
+      companyId: TEST_COMPANY_ID,
+      campaignId: TEST_CAMPAIGN_ID,
+      contactId: TEST_CONTACT_ID,
+      eventType: "MESSAGE_SENT",
+      channel: "sms",
+      provider: "twilio",
+      externalId: raceExternalId
+    })
+  );
+  
+  const raceResults = await Promise.all(racePromises);
+  
+  // All should succeed (no errors)
+  const successResults = raceResults.filter(r => !("error" in r));
+  assert(successResults.length === 10, `Race: all 10 calls succeeded (got ${successResults.length})`);
+  
+  // All should return the same event ID
+  const eventIds = successResults.map(r => (r as any).event.id);
+  const uniqueIds = Array.from(new Set(eventIds));
+  assert(uniqueIds.length === 1, `Race: all calls return same event id (got ${uniqueIds.length} unique)`);
+  
+  // Exactly 1 should be wasIdempotent=false (the winner), rest should be true
+  const newInserts = successResults.filter(r => !(r as any).wasIdempotent);
+  const idempotentHits = successResults.filter(r => (r as any).wasIdempotent);
+  assert(newInserts.length === 1, `Race: exactly 1 new insert (got ${newInserts.length})`);
+  assert(idempotentHits.length === 9, `Race: exactly 9 idempotent hits (got ${idempotentHits.length})`);
+  
+  // Verify only 1 row in DB
+  const [raceCount] = await db.select({ count: sql<number>`count(*)` })
+    .from(campaignEvents)
+    .where(and(
+      eq(campaignEvents.companyId, TEST_COMPANY_ID),
+      eq(campaignEvents.externalId, raceExternalId)
+    ));
+  assert(Number(raceCount.count) === 1, `Race: only 1 row in DB (got ${raceCount.count})`);
   
   await cleanupTestData();
   

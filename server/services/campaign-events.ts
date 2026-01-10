@@ -142,23 +142,7 @@ export async function emitCampaignEvent(
     return { error: "Contact is not enrolled in this campaign", status: 404 };
   }
 
-  if (externalId) {
-    const [existing] = await db.select()
-      .from(campaignEvents)
-      .where(and(
-        eq(campaignEvents.companyId, companyId),
-        eq(campaignEvents.externalId, externalId)
-      ))
-      .limit(1);
-
-    if (existing) {
-      return {
-        event: existing,
-        wasIdempotent: true
-      };
-    }
-  }
-
+  // Compute state transition before insert
   const stateBefore = enrollment.state;
   let stateAfter: CampaignContact["state"] = stateBefore;
   let shouldUpdateState = false;
@@ -172,7 +156,8 @@ export async function emitCampaignEvent(
     shouldUpdateState = stateBefore !== "ENGAGED";
   }
 
-  const [newEvent] = await db.insert(campaignEvents).values({
+  // Build event data
+  const eventData = {
     campaignId,
     campaignContactId,
     contactId,
@@ -180,13 +165,57 @@ export async function emitCampaignEvent(
     eventType,
     channel: channel || null,
     provider: provider || null,
+    // externalId MUST be namespaced by provider: "{provider}:{id}" e.g. "twilio:SMxxx"
     externalId: externalId || null,
     payload: payload || {},
     costAmount: cost ? cost.amount.toString() : null,
     costCurrency: cost ? cost.currency : null,
     stateBefore,
     stateAfter
-  }).returning();
+  };
+
+  let newEvent: CampaignEvent;
+
+  if (externalId) {
+    // Race-safe insert: try insert, catch unique violation, re-fetch if conflict
+    // Using try-catch because partial unique index doesn't work with onConflictDoNothing target
+    try {
+      const [inserted] = await db.insert(campaignEvents)
+        .values(eventData)
+        .returning();
+      newEvent = inserted;
+    } catch (err: any) {
+      // Check for unique violation (Postgres error code 23505)
+      if (err?.code === "23505" && err?.constraint === "campaign_events_company_external_id_uniq") {
+        // Conflict occurred - fetch existing event
+        const [existing] = await db.select()
+          .from(campaignEvents)
+          .where(and(
+            eq(campaignEvents.companyId, companyId),
+            eq(campaignEvents.externalId, externalId)
+          ))
+          .limit(1);
+
+        if (!existing) {
+          // Should never happen but handle gracefully
+          return { error: "Race condition: event not found after conflict", status: 500 };
+        }
+
+        return {
+          event: existing,
+          wasIdempotent: true
+        };
+      }
+      // Re-throw other errors
+      throw err;
+    }
+  } else {
+    // No externalId - regular insert (no conflict possible on this constraint)
+    const [inserted] = await db.insert(campaignEvents)
+      .values(eventData)
+      .returning();
+    newEvent = inserted;
+  }
 
   if (isAttemptEvent(eventType) || shouldUpdateState) {
     const updates: Partial<CampaignContact> = {
