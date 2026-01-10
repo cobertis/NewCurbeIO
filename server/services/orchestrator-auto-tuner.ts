@@ -544,7 +544,7 @@ export async function applyAllocationRecommendation(
     newAllocation = { ...recommendedAllocation };
   } else {
     newAllocation = {};
-    const allVariants = new Set([...Object.keys(oldAllocation), ...Object.keys(recommendedAllocation)]);
+    const allVariants = Array.from(new Set([...Object.keys(oldAllocation), ...Object.keys(recommendedAllocation)]));
     
     for (const variant of allVariants) {
       const oldVal = oldAllocation[variant] || 0;
@@ -890,7 +890,7 @@ export async function executeAutoApply(
   
   if (config.applyMode === "blend") {
     finalAllocation = {};
-    const allVariants = new Set([...Object.keys(currentAllocation), ...Object.keys(recommendedAllocation)]);
+    const allVariants = Array.from(new Set([...Object.keys(currentAllocation), ...Object.keys(recommendedAllocation)]));
     
     for (const variant of allVariants) {
       const oldVal = currentAllocation[variant] || 0;
