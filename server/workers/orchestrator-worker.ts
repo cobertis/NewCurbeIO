@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { 
   campaignContacts, 
+  campaignEvents,
   orchestratorCampaigns, 
   orchestratorJobs,
   CampaignContact,
@@ -10,7 +11,11 @@ import {
 import { eq, and, sql, lte, or, isNull, inArray, desc, asc } from "drizzle-orm";
 import { calculateAllowedActions, PolicyEngineResult, OrchestratorChannel } from "../services/policy-engine";
 import { emitCampaignEvent } from "../services/campaign-events";
+import { decideNextAction, generateDecisionExternalId, DecideNextActionOutput } from "../services/ai-next-action";
 import { format } from "date-fns";
+
+const AI_ENABLED = process.env.ORCHESTRATOR_AI_ENABLED === "true";
+const AI_HISTORY_LIMIT = 20;
 
 const CHANNEL_PRIORITY: OrchestratorChannel[] = [
   "imessage",
@@ -170,6 +175,33 @@ async function tryCreateJob(
   }
 }
 
+async function loadContactHistory(
+  companyId: string,
+  campaignContactId: string,
+  limit: number
+): Promise<Array<{ eventType: string; channel?: string; createdAt: string; payload?: any }>> {
+  const events = await db.select({
+    eventType: campaignEvents.eventType,
+    channel: campaignEvents.channel,
+    createdAt: campaignEvents.createdAt,
+    payload: campaignEvents.payload
+  })
+    .from(campaignEvents)
+    .where(and(
+      eq(campaignEvents.companyId, companyId),
+      eq(campaignEvents.campaignContactId, campaignContactId)
+    ))
+    .orderBy(desc(campaignEvents.createdAt))
+    .limit(limit);
+  
+  return events.map(e => ({
+    eventType: e.eventType,
+    channel: e.channel || undefined,
+    createdAt: e.createdAt.toISOString(),
+    payload: e.payload
+  }));
+}
+
 async function processContact(
   contact: CampaignContact,
   campaign: OrchestratorCampaign,
@@ -189,7 +221,56 @@ async function processContact(
       return { enqueued: false, timeout: false, error: policyResult.error };
     }
     
-    const chosenChannel = pickNextChannel(policyResult);
+    let chosenChannel: OrchestratorChannel | null = null;
+    let aiDecision: DecideNextActionOutput | null = null;
+    let fallbackUsed = false;
+    let aiError: string | undefined;
+    let waitSeconds = DEFAULT_WAIT_SECONDS;
+    
+    const allowedChannels = policyResult.allowedActions
+      .filter(a => a.allowed)
+      .map(a => a.channel);
+    
+    if (AI_ENABLED && allowedChannels.length > 0) {
+      const history = await loadContactHistory(companyId, campaignContactId, AI_HISTORY_LIMIT);
+      
+      const lastOutbound = history.find(e => 
+        e.eventType === "MESSAGE_SENT" || e.eventType === "CALL_INITIATED"
+      );
+      
+      const policyJson = campaign.policyJson as Record<string, any> || {};
+      
+      const aiResult = await decideNextAction({
+        companyId,
+        campaignId,
+        campaignContactId,
+        contactId,
+        campaignName: campaign.name,
+        campaignGoal: policyJson.goal,
+        policy: policyJson,
+        allowedActions: policyResult.allowedActions,
+        history,
+        lastOutbound: lastOutbound ? { channel: lastOutbound.channel!, at: lastOutbound.createdAt } : null,
+        fatigueScore: contact.fatigueScore || 0,
+        locale: policyJson.locale || "en"
+      });
+      
+      if (aiResult.decision && !aiResult.fallbackUsed) {
+        aiDecision = aiResult.decision;
+        chosenChannel = aiDecision.channel as OrchestratorChannel;
+        waitSeconds = aiDecision.waitSeconds;
+        fallbackUsed = false;
+      } else {
+        aiError = aiResult.error;
+        fallbackUsed = true;
+        console.log(`[Orchestrator] AI fallback: ${aiError}`);
+      }
+    }
+    
+    if (!chosenChannel) {
+      chosenChannel = pickNextChannel(policyResult);
+      fallbackUsed = !AI_ENABLED ? false : true;
+    }
     
     if (!chosenChannel) {
       const timeoutExternalId = generateTimeoutExternalId(campaignContactId);
@@ -224,6 +305,29 @@ async function processContact(
       return { enqueued: false, timeout: true };
     }
     
+    const decisionExternalId = generateDecisionExternalId(campaignContactId);
+    await emitCampaignEvent({
+      companyId,
+      campaignId,
+      campaignContactId,
+      contactId,
+      eventType: "DECISION_MADE",
+      channel: chosenChannel,
+      externalId: `orchestrator:${decisionExternalId}`,
+      payload: {
+        chosenChannel,
+        confidence: aiDecision?.confidence ?? null,
+        explanation: aiDecision?.explanation ?? "Heuristic priority-based selection",
+        aiEnabled: AI_ENABLED,
+        fallbackUsed,
+        aiError: aiError || null,
+        allowedChannels,
+        prefer: aiDecision?.prefer,
+        messageBody: aiDecision?.messageBody,
+        waitSeconds
+      }
+    });
+    
     const jobExternalId = generateJobExternalId(campaignContactId, chosenChannel);
     
     const { job, wasIdempotent } = await tryCreateJob(
@@ -236,9 +340,12 @@ async function processContact(
       {
         target: contactId,
         channel: chosenChannel,
+        prefer: aiDecision?.prefer,
+        messageBody: aiDecision?.messageBody,
         metadata: {
           attemptNumber: contact.attemptsTotal + 1,
-          previousChannel: contact.lastAttemptChannel
+          previousChannel: contact.lastAttemptChannel,
+          aiDecision: aiDecision ? true : false
         }
       }
     );
@@ -249,8 +356,8 @@ async function processContact(
     
     if (!wasIdempotent) {
       const policyJson = campaign.policyJson as Record<string, any> || {};
-      const waitSeconds = policyJson.waitSeconds || DEFAULT_WAIT_SECONDS;
-      const nextActionAt = new Date(Date.now() + waitSeconds * 1000);
+      const finalWaitSeconds = aiDecision?.waitSeconds || policyJson.waitSeconds || DEFAULT_WAIT_SECONDS;
+      const nextActionAt = new Date(Date.now() + finalWaitSeconds * 1000);
       
       await emitCampaignEvent({
         companyId,
