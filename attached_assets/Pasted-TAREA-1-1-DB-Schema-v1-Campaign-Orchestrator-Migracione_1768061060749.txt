@@ -1,0 +1,126 @@
+TAREA: 1.1 — DB Schema v1 (Campaign Orchestrator) + Migraciones
+
+OBJETIVO:
+Implementar migraciones para crear las tablas base del Campaign Orchestrator alineadas con /docs/campaign_orchestrator.md (incluyendo Consent Model explícito).
+Debe integrarse con el stack actual del repo (inspecciona ORM/migraciones existentes y sigue el patrón del proyecto).
+
+ALCANCE (IN):
+- Crear/actualizar migraciones para:
+  1) campaigns
+  2) campaign_contacts
+  3) campaign_events
+  4) contact_channels (si no existe ya)
+  5) consents (per-contact, per-channel)
+  6) (opcional) contact_suppressions o flags equivalentes si el repo ya maneja suppression_status de otra forma
+- Índices y constraints para performance del worker.
+- Documentar comandos para correr migraciones.
+
+ALCANCE (OUT):
+- No endpoints.
+- No UI.
+- No worker.
+
+REGLAS:
+- NO inventes tablas de contactos si ya existe una (busca la tabla real: contacts/leads/customers).
+- Si ya existe algo similar (phones, dnc, opt_out), reutilízalo o crea una tabla puente mínima y documenta.
+- Mantén consistencia con Consent Model:
+  - consent_status por canal: opt_in | opt_out | unknown
+  - suppression_status es global y SIEMPRE gana (opted_out/complaint/dnc/none)
+
+PASO 1 — DETECCIÓN OBLIGATORIA (antes de escribir migración):
+1) Identifica el stack DB:
+   - ¿Postgres/MySQL/SQLite?
+   - ¿Prisma/Drizzle/Knex/TypeORM/SQL migrations?
+2) Identifica tabla de contactos existente y su PK (contact_id).
+3) Identifica si ya existe tabla de teléfonos/canales y campos DNC/opt-out.
+
+ANTES DE APLICAR CAMBIOS, RESPONDE CON:
+- Stack detectado (ORM y DB)
+- Tabla de contactos encontrada (nombre y PK)
+- Dónde viven migraciones y cómo se ejecutan en este repo
+Luego procede a implementar.
+
+ESQUEMA REQUERIDO (ajusta nombres a convención del repo):
+A) campaigns
+- id (uuid/serial)
+- name (text)
+- status (draft|active|paused|completed)
+- policy_json (json/jsonb)  // caps, quiet hours, allowed channels, default rules override
+- created_at, updated_at
+
+B) campaign_contacts
+- id
+- campaign_id (fk)
+- contact_id (fk a tabla real de contactos)
+- state (NEW/ATTEMPTING/ENGAGED/QUALIFIED/BOOKED/NOT_INTERESTED/STOPPED/UNREACHABLE/DO_NOT_CONTACT)
+- fatigue_score int default 0
+- next_action_at timestamp (index)
+- attempts_total int default 0
+- last_attempt_at timestamp null
+- stopped_reason text null
+- created_at, updated_at
+Índices: (campaign_id, state), (next_action_at), (contact_id)
+
+C) campaign_events
+- id
+- campaign_id (fk)
+- campaign_contact_id (fk)
+- contact_id (fk)
+- type (MESSAGE_SENT, MESSAGE_DELIVERED, MESSAGE_FAILED, MESSAGE_REPLIED, CALL_PLACED, CALL_ANSWERED, CALL_NO_ANSWER, CALL_FAILED, VOICEMAIL_DROPPED, RVM_DROPPED, OPT_OUT, COMPLAINT, MANUAL_STOP, TIMEOUT, DECISION_MADE, ATTEMPT_QUEUED)
+- channel (sms|imessage|whatsapp|call|voicemail|rvm)
+- provider text null
+- payload json/jsonb
+- created_at
+Índices: (campaign_contact_id, created_at), (contact_id, created_at), (type), (channel)
+
+D) contact_channels (si ya existe, solo asegurar compatibilidad)
+- id
+- contact_id (fk)
+- kind (direct|mobile|personal|whatsapp_handle|imessage_number)
+- value (text) // phone E.164 o handle
+- dnc boolean default false
+- is_primary boolean default false
+- timezone text null  // opcional si el repo no lo tiene
+- created_at, updated_at
+Unique: (contact_id, kind, value)
+
+E) consents (OBLIGATORIO)
+- id
+- contact_id (fk)
+- channel (sms|imessage|whatsapp|call|voicemail|rvm)
+- status (opt_in|opt_out|unknown) default unknown
+- source text null
+- timestamp timestamp null
+- meta json/jsonb null  // ip, call_id, etc
+- created_at, updated_at
+Unique: (contact_id, channel)
+Índice: (channel, status)
+
+F) suppression (elige 1 según repo):
+Opción 1: si el repo YA tiene suppression_status global por contacto, úsalo.
+Opción 2: crea tabla contact_suppressions:
+- contact_id (fk, unique)
+- suppression_status (none|opted_out|complaint|dnc) default none
+- updated_at
+
+MIGRACIÓN/ROLLBACK:
+- Incluye down migration si el sistema lo exige.
+
+TESTS / VERIFICACIÓN (OBLIGATORIO):
+- Provee comandos exactos para:
+  1) correr migraciones en dev
+  2) verificar tablas (por ejemplo: psql \dt o equivalente)
+- Si el repo tiene test runner para DB, agrega una prueba mínima de que las tablas existen (solo si ya hay patrón).
+
+CRITERIO “DONE” (NO NEGOCIABLE):
+- [ ] Migraciones corren sin error
+- [ ] No rompe migraciones existentes
+- [ ] FKs apuntan a la tabla real de contactos
+- [ ] constraints/índices creados
+- [ ] Documentación: comando de migrate + verificación
+- [ ] No endpoints ni lógica extra
+
+SALIDA:
+- Lista de archivos creados/modificados (rutas)
+- Comandos exactos para correr migraciones
+- Confirmación de que el esquema refleja Consent Model explícito del doc

@@ -7680,3 +7680,361 @@ export const insertTelnyxPortingOrderSchema = createInsertSchema(telnyxPortingOr
 
 export type TelnyxPortingOrder = typeof telnyxPortingOrders.$inferSelect;
 export type InsertTelnyxPortingOrder = z.infer<typeof insertTelnyxPortingOrderSchema>;
+
+// =====================================================
+// CAMPAIGN ORCHESTRATOR - Multi-Channel Outreach System
+// =====================================================
+
+// Contact State Machine States
+export const campaignContactStateEnum = pgEnum("campaign_contact_state", [
+  "NEW",
+  "ATTEMPTING",
+  "ENGAGED",
+  "QUALIFIED",
+  "BOOKED",
+  "NOT_INTERESTED",
+  "STOPPED",
+  "UNREACHABLE",
+  "DO_NOT_CONTACT"
+]);
+
+// Campaign Event Types
+export const campaignEventTypeEnum = pgEnum("campaign_event_type", [
+  "MESSAGE_SENT",
+  "MESSAGE_DELIVERED",
+  "MESSAGE_FAILED",
+  "MESSAGE_REPLIED",
+  "CALL_PLACED",
+  "CALL_ANSWERED",
+  "CALL_NO_ANSWER",
+  "CALL_BUSY",
+  "CALL_FAILED",
+  "VOICEMAIL_DROPPED",
+  "RVM_DROPPED",
+  "RVM_FAILED",
+  "OPT_OUT",
+  "COMPLAINT",
+  "MANUAL_STOP",
+  "TIMEOUT",
+  "DECISION_MADE",
+  "ATTEMPT_QUEUED"
+]);
+
+// Communication Channels
+export const orchestratorChannelEnum = pgEnum("orchestrator_channel", [
+  "sms",
+  "mms",
+  "imessage",
+  "whatsapp",
+  "voice",
+  "voicemail",
+  "rvm"
+]);
+
+// Consent Status
+export const consentStatusEnum = pgEnum("consent_status", [
+  "opt_in",
+  "opt_out",
+  "unknown"
+]);
+
+// Suppression Status (global per contact)
+export const suppressionStatusEnum = pgEnum("suppression_status", [
+  "none",
+  "opted_out",
+  "complaint",
+  "dnc"
+]);
+
+// =====================================================
+// ORCHESTRATOR CAMPAIGNS (Multi-channel outreach campaigns)
+// =====================================================
+
+export const orchestratorCampaigns = pgTable("orchestrator_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by").references(() => users.id),
+  
+  name: text("name").notNull(),
+  description: text("description"),
+  
+  status: text("status").notNull().default("draft"), // draft, active, paused, completed, archived
+  
+  // Policy configuration (caps, quiet hours, allowed channels, etc.)
+  policyJson: jsonb("policy_json").notNull().default({}),
+  
+  // Sequence steps for rule-based selection
+  sequenceJson: jsonb("sequence_json").default([]),
+  
+  // AI settings
+  aiEnabled: boolean("ai_enabled").notNull().default(false),
+  
+  // Stats (denormalized for performance)
+  totalContacts: integer("total_contacts").notNull().default(0),
+  activeContacts: integer("active_contacts").notNull().default(0),
+  completedContacts: integer("completed_contacts").notNull().default(0),
+  
+  startedAt: timestamp("started_at"),
+  pausedAt: timestamp("paused_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("orchestrator_campaigns_company_id_idx").on(table.companyId),
+  statusIdx: index("orchestrator_campaigns_status_idx").on(table.status),
+  createdAtIdx: index("orchestrator_campaigns_created_at_idx").on(table.createdAt),
+}));
+
+export const insertOrchestratorCampaignSchema = createInsertSchema(orchestratorCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  pausedAt: true,
+  completedAt: true,
+  totalContacts: true,
+  activeContacts: true,
+  completedContacts: true,
+});
+
+export type OrchestratorCampaign = typeof orchestratorCampaigns.$inferSelect;
+export type InsertOrchestratorCampaign = z.infer<typeof insertOrchestratorCampaignSchema>;
+
+// =====================================================
+// CAMPAIGN CONTACTS (Enrollment with state machine)
+// =====================================================
+
+export const campaignContacts = pgTable("campaign_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => orchestratorCampaigns.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // State machine
+  state: campaignContactStateEnum("state").notNull().default("NEW"),
+  
+  // Fatigue tracking
+  fatigueScore: integer("fatigue_score").notNull().default(0),
+  
+  // Scheduling
+  nextActionAt: timestamp("next_action_at"),
+  
+  // Attempt tracking
+  attemptsTotal: integer("attempts_total").notNull().default(0),
+  attemptsByChannel: jsonb("attempts_by_channel").default({}), // { sms: 2, voice: 1 }
+  attemptsToday: integer("attempts_today").notNull().default(0),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  lastAttemptChannel: text("last_attempt_channel"),
+  
+  // Current sequence step (for rule-based selection)
+  currentSequenceStep: integer("current_sequence_step").notNull().default(0),
+  
+  // Terminal state metadata
+  stoppedReason: text("stopped_reason"),
+  stoppedAt: timestamp("stopped_at"),
+  
+  // Priority override
+  priority: integer("priority").notNull().default(5), // 1=highest, 10=lowest
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  campaignIdStateIdx: index("campaign_contacts_campaign_state_idx").on(table.campaignId, table.state),
+  nextActionAtIdx: index("campaign_contacts_next_action_idx").on(table.nextActionAt),
+  contactIdIdx: index("campaign_contacts_contact_id_idx").on(table.contactId),
+  companyIdIdx: index("campaign_contacts_company_id_idx").on(table.companyId),
+  uniqueCampaignContact: unique().on(table.campaignId, table.contactId),
+}));
+
+export const insertCampaignContactSchema = createInsertSchema(campaignContacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  attemptsTotal: true,
+  attemptsByChannel: true,
+  attemptsToday: true,
+  fatigueScore: true,
+  currentSequenceStep: true,
+  stoppedAt: true,
+});
+
+export type CampaignContact = typeof campaignContacts.$inferSelect;
+export type InsertCampaignContact = z.infer<typeof insertCampaignContactSchema>;
+
+// =====================================================
+// CAMPAIGN EVENTS (Normalized event log)
+// =====================================================
+
+export const campaignEvents = pgTable("campaign_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => orchestratorCampaigns.id, { onDelete: "cascade" }),
+  campaignContactId: varchar("campaign_contact_id").notNull().references(() => campaignContacts.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Event details
+  eventType: campaignEventTypeEnum("event_type").notNull(),
+  channel: orchestratorChannelEnum("channel"),
+  provider: text("provider"), // telnyx, twilio, bluebubbles, etc.
+  
+  // External reference
+  externalId: text("external_id"), // Provider's message/call ID
+  
+  // Event payload
+  payload: jsonb("payload").default({}),
+  
+  // State transition (if any)
+  stateBefore: text("state_before"),
+  stateAfter: text("state_after"),
+  
+  // Cost tracking
+  costAmount: text("cost_amount"), // decimal string
+  costCurrency: text("cost_currency").default("USD"),
+  
+  // Processing metadata
+  processingTimeMs: integer("processing_time_ms"),
+  processed: boolean("processed").notNull().default(false),
+  processedAt: timestamp("processed_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  campaignContactCreatedIdx: index("campaign_events_contact_created_idx").on(table.campaignContactId, table.createdAt),
+  contactIdCreatedIdx: index("campaign_events_contactid_created_idx").on(table.contactId, table.createdAt),
+  eventTypeIdx: index("campaign_events_type_idx").on(table.eventType),
+  channelIdx: index("campaign_events_channel_idx").on(table.channel),
+  processedIdx: index("campaign_events_processed_idx").on(table.processed),
+  companyIdIdx: index("campaign_events_company_id_idx").on(table.companyId),
+}));
+
+export const insertCampaignEventSchema = createInsertSchema(campaignEvents).omit({
+  id: true,
+  createdAt: true,
+  processed: true,
+  processedAt: true,
+});
+
+export type CampaignEvent = typeof campaignEvents.$inferSelect;
+export type InsertCampaignEvent = z.infer<typeof insertCampaignEventSchema>;
+
+// =====================================================
+// CONTACT CONSENTS (Per-channel consent tracking)
+// =====================================================
+
+export const contactConsents = pgTable("contact_consents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactId: varchar("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Channel-specific consent
+  channel: orchestratorChannelEnum("channel").notNull(),
+  status: consentStatusEnum("status").notNull().default("unknown"),
+  
+  // Audit trail
+  source: text("source"), // web_form, verbal_recorded, sms_opt_in, imported, etc.
+  sourceTimestamp: timestamp("source_timestamp"),
+  sourceMeta: jsonb("source_meta").default({}), // ip, call_id, form_id, etc.
+  
+  // Last change tracking
+  previousStatus: text("previous_status"),
+  changedBy: varchar("changed_by").references(() => users.id),
+  changedReason: text("changed_reason"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  contactChannelUnique: unique().on(table.contactId, table.channel),
+  channelStatusIdx: index("contact_consents_channel_status_idx").on(table.channel, table.status),
+  companyIdIdx: index("contact_consents_company_id_idx").on(table.companyId),
+  contactIdIdx: index("contact_consents_contact_id_idx").on(table.contactId),
+}));
+
+export const insertContactConsentSchema = createInsertSchema(contactConsents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  previousStatus: true,
+});
+
+export type ContactConsent = typeof contactConsents.$inferSelect;
+export type InsertContactConsent = z.infer<typeof insertContactConsentSchema>;
+
+// =====================================================
+// CONTACT SUPPRESSIONS (Global suppression status)
+// =====================================================
+
+export const contactSuppressions = pgTable("contact_suppressions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactId: varchar("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }).unique(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Global suppression (always wins over consent)
+  suppressionStatus: suppressionStatusEnum("suppression_status").notNull().default("none"),
+  
+  // Audit trail
+  reason: text("reason"), // STOP keyword, carrier complaint, DNC registry, manual
+  triggeredBy: text("triggered_by"), // inbound_message, webhook, manual, import
+  triggerSource: text("trigger_source"), // message_id, webhook_id, user_id
+  
+  // Associated campaigns affected
+  affectedCampaigns: text("affected_campaigns").array().default([]),
+  
+  // Risk flagging
+  riskLevel: text("risk_level").default("normal"), // normal, high
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("contact_suppressions_company_id_idx").on(table.companyId),
+  suppressionStatusIdx: index("contact_suppressions_status_idx").on(table.suppressionStatus),
+  riskLevelIdx: index("contact_suppressions_risk_idx").on(table.riskLevel),
+}));
+
+export const insertContactSuppressionSchema = createInsertSchema(contactSuppressions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ContactSuppression = typeof contactSuppressions.$inferSelect;
+export type InsertContactSuppression = z.infer<typeof insertContactSuppressionSchema>;
+
+// =====================================================
+// CAMPAIGN AUDIT LOGS (Compliance logging)
+// =====================================================
+
+export const campaignAuditLogs = pgTable("campaign_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  campaignId: varchar("campaign_id").references(() => orchestratorCampaigns.id, { onDelete: "set null" }),
+  campaignContactId: varchar("campaign_contact_id").references(() => campaignContacts.id, { onDelete: "set null" }),
+  contactId: varchar("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+  
+  // Log type
+  logType: text("log_type").notNull(), // event, decision, execution, compliance
+  
+  // Full payload
+  payload: jsonb("payload").notNull().default({}),
+  
+  // Quick reference fields
+  eventType: text("event_type"),
+  channel: text("channel"),
+  actionTaken: text("action_taken"),
+  
+  // Retention metadata
+  expiresAt: timestamp("expires_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdCreatedIdx: index("campaign_audit_logs_company_created_idx").on(table.companyId, table.createdAt),
+  logTypeIdx: index("campaign_audit_logs_type_idx").on(table.logType),
+  campaignIdIdx: index("campaign_audit_logs_campaign_idx").on(table.campaignId),
+  expiresAtIdx: index("campaign_audit_logs_expires_idx").on(table.expiresAt),
+}));
+
+export const insertCampaignAuditLogSchema = createInsertSchema(campaignAuditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CampaignAuditLog = typeof campaignAuditLogs.$inferSelect;
+export type InsertCampaignAuditLog = z.infer<typeof insertCampaignAuditLogSchema>;
