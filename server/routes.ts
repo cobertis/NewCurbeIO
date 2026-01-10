@@ -47583,7 +47583,7 @@ CRITICAL REMINDERS:
         await db.update(orchestratorJobs)
           .set({
             status: "failed",
-            lastError: errorMsg || "Delivery failed",
+            error: errorMsg || "Delivery failed",
             updatedAt: new Date()
           })
           .where(and(
