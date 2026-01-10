@@ -1,0 +1,83 @@
+Perfecto. Ahora dile a Replit que deje de “adivinar” y que implemente **el endpoint real** para responder comentarios con **Instagram Graph API**, usando **el token de la cuenta que RECIBIÓ el comentario**.
+
+Aquí tienes un prompt listo para copiar/pegar a Replit (con pasos, endpoints y guardrails). **No pegues el token en el chat ni en logs**: va en `.env` o en tu DB cifrado.
+
+```txt
+OBJETIVO
+Implementar en Curbe (Node/Express) la capacidad de RESPONDER a un comentario de Instagram usando Instagram Graph API.
+Ya tengo el access token de Instagram API (generado en Meta Developers > Instagram API > Step 2 "Generate token") para la cuenta IG BUSINESS que recibió el comentario.
+
+REQUISITOS
+- Guardar el token de forma segura (ENV o DB cifrado). NO imprimir tokens en logs.
+- Cada canal/Inbox de Instagram debe guardar:
+  - igAccountId (IG User ID del negocio)
+  - accessToken (token de ESA cuenta)
+  - opcional: expiresAt (si aplica)
+- Para responder un comentario, el backend debe recibir:
+  - commentId (ID del comentario que llegó en el post)
+  - message (texto de respuesta)
+  - channelId o igAccountId (para elegir el token correcto)
+
+ENDPOINT A IMPLEMENTAR (BACKEND)
+1) Crear endpoint interno:
+POST /api/inbox/instagram/comments/:commentId/reply
+Body JSON: { "message": "..." , "channelId": "..."}  // channelId determina qué IG token usar
+
+2) Lógica:
+- Buscar el canal por channelId -> obtener accessToken
+- Validar inputs:
+  - commentId no vacío
+  - message no vacío, <= 1000 caracteres
+- Llamar a Instagram Graph API:
+
+HTTP POST
+https://graph.facebook.com/v21.0/{commentId}/replies
+Form-encoded body:
+  message=... 
+  access_token=...
+
+Ejemplo usando fetch:
+POST `${GRAPH}/v21.0/${commentId}/replies`
+headers: { "Content-Type": "application/x-www-form-urlencoded" }
+body: new URLSearchParams({ message, access_token })
+
+3) Manejo de errores:
+- Si Meta devuelve error #100 Missing Permission -> responder 403 al frontend con mensaje:
+  "Faltan permisos: instagram_manage_comments (token incorrecto o no granted)."
+- Si Meta devuelve error por token inválido/expirado -> 401 y pedir reconectar.
+- Loguear SOLO: commentId, channelId, error.code, error_subcode, fbtrace_id (sin token).
+
+FRONTEND
+- En el UI de Inbox/Comments, cada comentario debe tener botón "Reply".
+- Al enviar, llamar al endpoint interno:
+POST /api/inbox/instagram/comments/{commentId}/reply
+Body: { message, channelId }
+- Mostrar éxito o error en toast.
+
+WEBHOOKS (si ya recibimos comentarios, solo confirmar)
+- Ya estoy recibiendo comentarios, así que no rehacer webhooks.
+- Guardar el commentId que llega del evento y asociarlo al channel/igAccountId correcto.
+
+TEST RÁPIDO (CURL) - no loguear token
+curl -X POST "https://graph.facebook.com/v21.0/COMMENT_ID/replies" \
+  -d "message=Gracias por comentar!" \
+  -d "access_token=TOKEN_IG_BUSINESS"
+
+NOTAS
+- El token a usar siempre es el del IG BUSINESS/CREATOR dueño del post (la cuenta que recibió el comentario), NO el usuario que comentó.
+- Si hay múltiples cuentas IG conectadas, elegir token por channelId/igAccountId.
+
+ENTREGABLES
+- Código backend (servicio + route + controlador)
+- Migración/tabla o campos para guardar igAccountId + token por canal
+- UI: responder comentario
+- Manejo de errores limpio (no 500 genérico)
+```
+
+### Lo que te va a romper si no lo haces así (y que Replit suele cagar)
+
+* **Usar el token equivocado** (p. ej. token del login de mensajes/otro producto) → `(#100) Missing Permission`.
+* **Responder con 500** en vez de 403/401 → tu app “parece rota” cuando en realidad son permisos/token.
+* **No mapear commentId → channel/token** cuando tienes más de una cuenta IG conectada.
+
+Si quieres, pégame (sin tokens) **el endpoint de Graph** que tu backend está llamando ahora cuando intenta responder comentario y el payload que estás guardando del webhook de comentarios (comment_id/media_id/igAccountId). Con eso te digo si el mapping está bien o si estás respondiendo comentarios con el token de la cuenta equivocada.

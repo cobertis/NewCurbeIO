@@ -44686,6 +44686,18 @@ CRITICAL REMINDERS:
             
             if (isPublicCommentReply) {
               // Reply publicly to the comment using Instagram Comments API
+              // CRITICAL: For comment replies, we MUST use the Instagram Access Token from System Settings,
+              // NOT the channel connection token. This token is configured in Super Admin > System Settings.
+              const systemInstagramToken = await credentialProvider.getInstagramAccessToken();
+              
+              if (!systemInstagramToken) {
+                console.error("[Inbox Instagram] No Instagram Access Token configured in System Settings");
+                return res.status(400).json({ 
+                  error: "Instagram comment replies require an Instagram Access Token configured in System Settings (Super Admin). Please contact your administrator.",
+                  requires_system_config: true
+                });
+              }
+              
               // Instagram API limitation: Public comment replies only support text, no media attachments
               if (!text || !text.trim()) {
                 return res.status(400).json({ error: "Text is required for public comment replies" });
@@ -44695,27 +44707,39 @@ CRITICAL REMINDERS:
                 return res.status(400).json({ error: "Media attachments are not supported for public comment replies. Use DM mode to send media." });
               }
               
-              const commentReplyUrl = `https://${apiHost}/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
-              console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId} using ${apiHost}`);
+              // Comment replies ALWAYS use graph.facebook.com (NOT graph.instagram.com)
+              // The Instagram Access Token works with the Facebook Graph API for comment replies
+              const commentReplyUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
+              console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId} using System Instagram Token`);
               
-              // Debug: Check token permissions
-              try {
-                const permissionsUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/permissions?access_token=${pageAccessToken}`;
-                const permResponse = await fetch(permissionsUrl);
-                const permData = await permResponse.json() as any;
-                console.log(`[Inbox Instagram] Token permissions:`, JSON.stringify(permData.data?.map((p: any) => `${p.permission}:${p.status}`) || permData));
-              } catch (e) {
-                console.log(`[Inbox Instagram] Could not fetch permissions`);
-              }
-              
-              // Instagram API with Instagram Login requires graph.instagram.com with URL params
-              const commentResponse = await fetch(`${commentReplyUrl}?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`, {
-                method: "POST"
+              // Make the API call with form-encoded body as per Meta documentation
+              const commentResponse = await fetch(commentReplyUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: new URLSearchParams({
+                  message: text,
+                  access_token: systemInstagramToken
+                })
               });
               
               const commentData = await commentResponse.json();
               if (!commentResponse.ok) {
                 console.error("[Inbox Instagram] Failed to post comment reply:", commentData);
+                // Provide specific error messages based on error code
+                if (commentData.error?.code === 100 && commentData.error?.message?.includes("Permission")) {
+                  return res.status(403).json({ 
+                    message: "Missing permission: instagram_manage_comments. The Instagram Access Token in System Settings may be incorrect or expired.",
+                    requires_system_config: true
+                  });
+                }
+                if (commentData.error?.code === 190) {
+                  return res.status(401).json({ 
+                    message: "Instagram Access Token expired or invalid. Please update the token in System Settings (Super Admin).",
+                    requires_system_config: true
+                  });
+                }
                 return res.status(400).json({ message: commentData.error?.message || "Failed to reply to comment" });
               }
               

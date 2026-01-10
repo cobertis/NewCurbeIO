@@ -264,6 +264,18 @@ export const credentialProvider = {
     return result;
   },
 
+  async getInstagramAccessToken(): Promise<string | null> {
+    const cacheKey = getCacheKey('meta', 'instagram_access_token');
+    const cached = getFromCache<string>(cacheKey);
+    if (cached) return cached;
+
+    const token = await secretsService.getCredential("meta" as ApiProvider, "instagram_access_token");
+    if (token) {
+      setCache(cacheKey, token);
+    }
+    return token || null;
+  },
+
   async getTiktok(): Promise<{ clientKey: string; clientSecret: string }> {
     const cacheKey = getCacheKey('tiktok');
     const cached = getFromCache<{ clientKey: string; clientSecret: string }>(cacheKey);
