@@ -47444,6 +47444,53 @@ CRITICAL REMINDERS:
   });
 
 
+  // GET /api/orchestrator/campaigns/:id/metrics - Campaign metrics
+  app.get("/api/orchestrator/campaigns/:id/metrics", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      const window = (req.query.window as string) || "all";
+      
+      if (!["7d", "30d", "all"].includes(window)) {
+        return res.status(400).json({ error: "Invalid window. Use: 7d, 30d, or all" });
+      }
+      
+      const { verifyCampaignAccess, getCampaignMetrics } = await import("./services/orchestrator-metrics");
+      
+      const hasAccess = await verifyCampaignAccess(companyId, campaignId);
+      if (!hasAccess) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      
+      const metrics = await getCampaignMetrics(companyId, campaignId, window);
+      res.json(metrics);
+    } catch (error: any) {
+      console.error("[Orchestrator Metrics] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to get metrics" });
+    }
+  });
+
+  // GET /api/orchestrator/campaigns/:id/jobs/metrics - Job health metrics
+  app.get("/api/orchestrator/campaigns/:id/jobs/metrics", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      
+      const { verifyCampaignAccess, getJobMetrics } = await import("./services/orchestrator-metrics");
+      
+      const hasAccess = await verifyCampaignAccess(companyId, campaignId);
+      if (!hasAccess) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      
+      const metrics = await getJobMetrics(companyId, campaignId);
+      res.json(metrics);
+    } catch (error: any) {
+      console.error("[Orchestrator Job Metrics] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to get job metrics" });
+    }
+  });
+
   // =====================================================
   // CAMPAIGN ORCHESTRATOR - Bridge Delivery Status Webhook
   // =====================================================

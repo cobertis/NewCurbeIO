@@ -66,6 +66,47 @@ interface TimelineItem {
   createdAt: string;
 }
 
+interface CampaignMetrics {
+  campaignId: string;
+  window: string;
+  totals: {
+    contactsEnrolled: number;
+    activeContacts: number;
+    stoppedContacts: number;
+    engagedContacts: number;
+    unreachableContacts: number;
+  };
+  attempts: number;
+  delivered: number;
+  failed: number;
+  replied: number;
+  optOut: number;
+  rates: {
+    deliveryRate: number;
+    replyRate: number;
+    optOutRate: number;
+    failureRate: number;
+  };
+  avgTimeToReplySeconds: number | null;
+  breakdownByChannel: Record<string, {
+    attempts: number;
+    delivered: number;
+    replied: number;
+    failed: number;
+    optOut: number;
+  }>;
+}
+
+interface JobMetrics {
+  campaignId: string;
+  queuedCount: number;
+  processingCount: number;
+  failedCount: number;
+  doneCount: number;
+  avgRetryCount: number;
+  oldestQueuedAgeSec: number | null;
+}
+
 export default function OrchestratorCampaigns() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -73,6 +114,7 @@ export default function OrchestratorCampaigns() {
   const [stateFilter, setStateFilter] = useState<string>("all");
   const [selectedContact, setSelectedContact] = useState<CampaignContact | null>(null);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [metricsWindow, setMetricsWindow] = useState<string>("7d");
 
   const { data: campaigns, isLoading: campaignsLoading } = useQuery<OrchestratorCampaign[]>({
     queryKey: ["/api/orchestrator/campaigns"]
@@ -101,6 +143,28 @@ export default function OrchestratorCampaigns() {
       return res.json();
     },
     enabled: !!selectedContact && !!selectedCampaign && timelineOpen
+  });
+
+  const { data: metricsData, isLoading: metricsLoading } = useQuery<CampaignMetrics>({
+    queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "metrics", metricsWindow],
+    queryFn: async () => {
+      if (!selectedCampaign) return null;
+      const res = await fetch(`/api/orchestrator/campaigns/${selectedCampaign.id}/metrics?window=${metricsWindow}`);
+      if (!res.ok) throw new Error("Failed to fetch metrics");
+      return res.json();
+    },
+    enabled: !!selectedCampaign
+  });
+
+  const { data: jobMetricsData, isLoading: jobMetricsLoading } = useQuery<JobMetrics>({
+    queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "jobs", "metrics"],
+    queryFn: async () => {
+      if (!selectedCampaign) return null;
+      const res = await fetch(`/api/orchestrator/campaigns/${selectedCampaign.id}/jobs/metrics`);
+      if (!res.ok) throw new Error("Failed to fetch job metrics");
+      return res.json();
+    },
+    enabled: !!selectedCampaign
   });
 
   const pauseMutation = useMutation({
@@ -323,6 +387,143 @@ export default function OrchestratorCampaigns() {
             <h2 className="text-xl font-semibold" data-testid="text-campaign-detail-name">{selectedCampaign.name}</h2>
             {getStatusBadge(selectedCampaign.status)}
           </div>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle data-testid="text-metrics-title">Metrics</CardTitle>
+              <Select value={metricsWindow} onValueChange={setMetricsWindow}>
+                <SelectTrigger className="w-32" data-testid="select-metrics-window">
+                  <SelectValue placeholder="Window" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent>
+              {metricsLoading ? (
+                <LoadingSpinner fullScreen={false} message="Loading metrics..." />
+              ) : metricsData ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold" data-testid="text-metric-attempts">{metricsData.attempts}</div>
+                      <div className="text-sm text-muted-foreground">Attempts</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600" data-testid="text-metric-delivered">{metricsData.delivered}</div>
+                      <div className="text-sm text-muted-foreground">Delivered</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600" data-testid="text-metric-replied">{metricsData.replied}</div>
+                      <div className="text-sm text-muted-foreground">Replies</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600" data-testid="text-metric-optout">{metricsData.optOut}</div>
+                      <div className="text-sm text-muted-foreground">Opt-outs</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold text-red-600" data-testid="text-metric-failed">{metricsData.failed}</div>
+                      <div className="text-sm text-muted-foreground">Failures</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-2 border rounded">
+                      <div className="text-lg font-semibold" data-testid="text-rate-delivery">{(metricsData.rates.deliveryRate * 100).toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground">Delivery Rate</div>
+                    </div>
+                    <div className="text-center p-2 border rounded">
+                      <div className="text-lg font-semibold" data-testid="text-rate-reply">{(metricsData.rates.replyRate * 100).toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground">Reply Rate</div>
+                    </div>
+                    <div className="text-center p-2 border rounded">
+                      <div className="text-lg font-semibold" data-testid="text-rate-optout">{(metricsData.rates.optOutRate * 100).toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground">Opt-out Rate</div>
+                    </div>
+                    <div className="text-center p-2 border rounded">
+                      <div className="text-lg font-semibold" data-testid="text-rate-failure">{(metricsData.rates.failureRate * 100).toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground">Failure Rate</div>
+                    </div>
+                  </div>
+
+                  {Object.keys(metricsData.breakdownByChannel).length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-2">Breakdown by Channel</h4>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Channel</TableHead>
+                            <TableHead className="text-right">Attempts</TableHead>
+                            <TableHead className="text-right">Delivered</TableHead>
+                            <TableHead className="text-right">Replied</TableHead>
+                            <TableHead className="text-right">Failed</TableHead>
+                            <TableHead className="text-right">Opt-out</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(metricsData.breakdownByChannel).map(([channel, stats]) => (
+                            <TableRow key={channel} data-testid={`row-channel-${channel}`}>
+                              <TableCell className="font-medium capitalize">{channel}</TableCell>
+                              <TableCell className="text-right">{stats.attempts}</TableCell>
+                              <TableCell className="text-right">{stats.delivered}</TableCell>
+                              <TableCell className="text-right">{stats.replied}</TableCell>
+                              <TableCell className="text-right">{stats.failed}</TableCell>
+                              <TableCell className="text-right">{stats.optOut}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">No metrics available</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle data-testid="text-job-health-title">Job Health</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {jobMetricsLoading ? (
+                <LoadingSpinner fullScreen={false} message="Loading job health..." />
+              ) : jobMetricsData ? (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-600" data-testid="text-jobs-queued">{jobMetricsData.queuedCount}</div>
+                    <div className="text-sm text-muted-foreground">Queued</div>
+                  </div>
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600" data-testid="text-jobs-processing">{jobMetricsData.processingCount}</div>
+                    <div className="text-sm text-muted-foreground">Processing</div>
+                  </div>
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold text-red-600" data-testid="text-jobs-failed">{jobMetricsData.failedCount}</div>
+                    <div className="text-sm text-muted-foreground">Failed</div>
+                  </div>
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold" data-testid="text-jobs-avgretries">{jobMetricsData.avgRetryCount}</div>
+                    <div className="text-sm text-muted-foreground">Avg Retries</div>
+                  </div>
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold" data-testid="text-jobs-oldest">
+                      {jobMetricsData.oldestQueuedAgeSec !== null 
+                        ? `${Math.round(jobMetricsData.oldestQueuedAgeSec / 60)}m` 
+                        : "-"}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Oldest Queued</div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">No job metrics available</p>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
