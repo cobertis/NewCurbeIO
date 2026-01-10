@@ -47443,5 +47443,168 @@ CRITICAL REMINDERS:
     }
   });
 
+
+  // =====================================================
+  // CAMPAIGN ORCHESTRATOR - Bridge Delivery Status Webhook
+  // =====================================================
+  
+  app.post("/api/webhooks/bridge-delivery", async (req: Request, res: Response) => {
+    try {
+      // Auth: X-Webhook-Token header or ?secret= query param
+      const webhookToken = process.env.BRIDGE_WEBHOOK_TOKEN;
+      if (!webhookToken) {
+        console.error("[Bridge Delivery] BRIDGE_WEBHOOK_TOKEN not configured");
+        return res.status(500).json({ error: "Webhook token not configured" });
+      }
+      
+      const providedToken = (req.headers["x-webhook-token"] as string) || (req.query.secret as string);
+      if (!providedToken || providedToken !== webhookToken) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const { provider, messageId, externalId, status, error: errorMsg, to, timestamp, raw } = req.body;
+      
+      if (!provider || !status) {
+        return res.status(400).json({ error: "Missing required fields: provider, status" });
+      }
+      
+      const validStatuses = ["delivered", "failed", "read"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
+      }
+      
+      if (!messageId && !externalId) {
+        return res.status(400).json({ error: "Either messageId or externalId is required" });
+      }
+      
+      // Resolve the original MESSAGE_SENT event to get context
+      let originalEvent = null;
+      
+      // Try 1: Match by externalId if provided
+      if (externalId) {
+        const [found] = await db.select()
+          .from(campaignEvents)
+          .where(eq(campaignEvents.externalId, externalId))
+          .limit(1);
+        originalEvent = found;
+      }
+      
+      // Try 2: Match by provider messageId in payload.providerId
+      if (!originalEvent && messageId) {
+        const [found] = await db.select()
+          .from(campaignEvents)
+          .where(sql`payload->>'providerId' = ${messageId}`)
+          .limit(1);
+        originalEvent = found;
+      }
+      
+      // Try 3: Match by provider messageId as externalId pattern
+      if (!originalEvent && messageId) {
+        const pattern = `${provider}:${messageId}`;
+        const [found] = await db.select()
+          .from(campaignEvents)
+          .where(eq(campaignEvents.externalId, pattern))
+          .limit(1);
+        originalEvent = found;
+      }
+      
+      if (!originalEvent) {
+        console.log(`[Bridge Delivery] No matching event found for messageId=${messageId}, externalId=${externalId}`);
+        return res.status(404).json({ 
+          error: "No matching message event found",
+          hint: "Ensure the original MESSAGE_SENT event has an externalId or payload.providerId"
+        });
+      }
+      
+      // Derive companyId from the original event (NEVER trust body)
+      const companyId = originalEvent.companyId;
+      const campaignId = originalEvent.campaignId;
+      const campaignContactId = originalEvent.campaignContactId;
+      const contactId = originalEvent.contactId;
+      
+      // Map status to event type
+      const eventTypeMap: Record<string, string> = {
+        "delivered": "MESSAGE_DELIVERED",
+        "failed": "MESSAGE_FAILED",
+        "read": "MESSAGE_DELIVERED" // Treat read as delivered if no MESSAGE_READ type
+      };
+      const eventType = eventTypeMap[status] as any;
+      
+      // Create idempotent externalId for delivery event
+      const deliveryExternalId = `delivery:${provider}:${messageId || externalId}:${status}`;
+      
+      // Check idempotency - don't duplicate events
+      const [existingDelivery] = await db.select()
+        .from(campaignEvents)
+        .where(and(
+          eq(campaignEvents.companyId, companyId),
+          eq(campaignEvents.externalId, deliveryExternalId)
+        ))
+        .limit(1);
+      
+      if (existingDelivery) {
+        console.log(`[Bridge Delivery] Idempotent skip: ${deliveryExternalId}`);
+        return res.json({ 
+          success: true, 
+          idempotent: true, 
+          eventId: existingDelivery.id,
+          message: "Event already processed"
+        });
+      }
+      
+      // Emit the delivery event
+      const { emitCampaignEvent } = await import("./services/campaign-events");
+      const result = await emitCampaignEvent({
+        companyId,
+        campaignId,
+        campaignContactId,
+        contactId,
+        eventType,
+        channel: originalEvent.channel,
+        provider,
+        externalId: deliveryExternalId,
+        payload: {
+          originalEventId: originalEvent.id,
+          originalExternalId: originalEvent.externalId,
+          status,
+          error: errorMsg || null,
+          timestamp: timestamp || new Date().toISOString(),
+          raw: raw || null,
+          isFinal: status === "failed"
+        }
+      });
+      
+      if ("error" in result) {
+        return res.status(result.status).json({ error: result.error });
+      }
+      
+      // If failed, optionally update the orchestrator job
+      if (status === "failed" && campaignContactId) {
+        await db.update(orchestratorJobs)
+          .set({
+            status: "failed",
+            lastError: errorMsg || "Delivery failed",
+            updatedAt: new Date()
+          })
+          .where(and(
+            eq(orchestratorJobs.campaignContactId, campaignContactId),
+            eq(orchestratorJobs.status, "processing")
+          ));
+      }
+      
+      console.log(`[Bridge Delivery] Processed: ${status} for ${provider}:${messageId || externalId}`);
+      
+      res.json({
+        success: true,
+        eventId: result.event.id,
+        eventType,
+        idempotent: result.wasIdempotent,
+        companyId // Return for verification (not PII)
+      });
+    } catch (error: any) {
+      console.error("[Bridge Delivery] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to process delivery status" });
+    }
+  });
   return httpServer;
 }

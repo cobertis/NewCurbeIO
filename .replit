@@ -64,5 +64,6 @@ TELNYX_RECORDING_MEDIA_EN = "https://us-central-1.telnyxcloudstorage.com/curbe.i
 TELNYX_RECORDING_MEDIA_ES = "https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-announcement-es.mp3"
 PUBLIC_OBJECT_SEARCH_PATHS = "/curbe-media"
 INBOUND_WEBHOOK_TOKEN = "test-inbound-token-12345"
+BRIDGE_WEBHOOK_TOKEN = "test-bridge-token-12345"
 
 [userenv.production]
