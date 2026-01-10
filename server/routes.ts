@@ -47015,11 +47015,12 @@ CRITICAL REMINDERS:
         return res.status(401).json({ error: "Unauthorized" });
       }
       
-      const { provider, channel, from, to, text, externalId, companyId, raw } = req.body;
+      const { provider, channel, from, to, text, externalId, raw } = req.body;
+      // NOTE: companyId from body is IGNORED - resolved from "to" number for security
       
-      if (!provider || !channel || !from || !text) {
+      if (!provider || !channel || !from || !to || !text) {
         return res.status(400).json({ 
-          error: "Missing required fields: provider, channel, from, text" 
+          error: "Missing required fields: provider, channel, from, to, text" 
         });
       }
       
@@ -47039,7 +47040,6 @@ CRITICAL REMINDERS:
         to,
         text,
         externalId,
-        companyId,
         raw
       });
       

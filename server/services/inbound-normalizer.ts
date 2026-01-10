@@ -14,13 +14,14 @@ import {
   contactConsents,
   contactSuppressions,
   campaignContacts,
-  orchestratorCampaigns
+  orchestratorCampaigns,
+  telnyxPhoneNumbers
 } from "@shared/schema";
 import { eq, and, inArray, notInArray } from "drizzle-orm";
 import { emitCampaignEvent } from "./campaign-events";
 
 export type InboundChannel = "sms" | "imessage" | "mms" | "whatsapp";
-export type InboundIntent = "OPT_OUT" | "NOT_INTERESTED" | "MESSAGE_REPLIED";
+export type InboundIntent = "OPT_OUT" | "NOT_INTERESTED" | "MESSAGE_REPLIED" | "UNKNOWN_CONTACT";
 
 export interface InboundMessageInput {
   provider: string;
@@ -73,6 +74,22 @@ function normalizePhone(phone: string): string {
   if (digits.length === 10) return `+1${digits}`;
   if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
   return digits;
+}
+
+/**
+ * Resolve companyId from the "to" phone number using telnyx_phone_numbers table.
+ * This ensures multi-tenant isolation - companyId from body is NEVER trusted.
+ */
+export async function resolveCompanyFromToNumber(toPhone: string): Promise<string | null> {
+  const normalized = normalizePhone(toPhone);
+  
+  const result = await db.select({ companyId: telnyxPhoneNumbers.companyId })
+    .from(telnyxPhoneNumbers)
+    .where(eq(telnyxPhoneNumbers.phoneNumber, normalized))
+    .limit(1);
+  
+  if (result.length === 0) return null;
+  return result[0].companyId;
 }
 
 export function detectIntent(text: string): InboundIntent {
@@ -241,14 +258,37 @@ function buildExternalId(provider: string, externalId?: string, intent?: string)
 }
 
 export async function processInboundMessage(input: InboundMessageInput): Promise<InboundNormalizeResult> {
-  const { provider, channel, from, text, externalId, companyId: inputCompanyId } = input;
+  const { provider, channel, from, to, text, externalId } = input;
   
-  const contact = await findContactByPhone(from, inputCompanyId);
+  // CRITICAL: Resolve companyId from "to" phone number, NEVER trust companyId from body
+  if (!to) {
+    return {
+      success: false,
+      intent: "UNKNOWN_CONTACT",
+      eventsEmitted: 0,
+      enrollmentsUpdated: 0,
+      error: "'to' field required for multi-tenant routing"
+    };
+  }
+  
+  const resolvedCompanyId = await resolveCompanyFromToNumber(to);
+  
+  if (!resolvedCompanyId) {
+    return {
+      success: true,
+      intent: "UNKNOWN_CONTACT",
+      eventsEmitted: 0,
+      enrollmentsUpdated: 0,
+      error: "Unknown 'to' number - not registered in system"
+    };
+  }
+  
+  const contact = await findContactByPhone(from, resolvedCompanyId);
   
   if (!contact) {
     return {
       success: true,
-      intent: "MESSAGE_REPLIED",
+      intent: "UNKNOWN_CONTACT",
       eventsEmitted: 0,
       enrollmentsUpdated: 0,
       error: "Unknown contact - no action taken"

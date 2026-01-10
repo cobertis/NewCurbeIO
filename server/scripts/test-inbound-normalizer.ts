@@ -1,6 +1,7 @@
 /**
- * Test: Inbound Normalizer v1
- * Tests intent detection, consent updates, suppression updates, and event emission.
+ * Test: Inbound Normalizer v1.1
+ * Tests intent detection, consent updates, suppression updates, event emission,
+ * and multi-tenant isolation via "to" phone number resolution.
  * 
  * Run: npx tsx server/scripts/test-inbound-normalizer.ts
  */
@@ -12,10 +13,11 @@ import {
   contactSuppressions,
   campaignContacts,
   campaignEvents,
-  orchestratorCampaigns
+  orchestratorCampaigns,
+  telnyxPhoneNumbers
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
-import { processInboundMessage, detectIntent, InboundChannel } from "../services/inbound-normalizer";
+import { processInboundMessage, detectIntent, resolveCompanyFromToNumber, InboundChannel } from "../services/inbound-normalizer";
 
 const testResults: { name: string; passed: boolean; error?: string }[] = [];
 
@@ -45,11 +47,27 @@ async function cleanup(companyId: string): Promise<void> {
   await db.delete(contacts).where(eq(contacts.companyId, companyId));
 }
 
-async function setupTestData(companyId: string, scenario: string): Promise<{
+async function cleanupTelnyxNumbers(phone: string): Promise<void> {
+  await db.delete(telnyxPhoneNumbers).where(eq(telnyxPhoneNumbers.phoneNumber, phone));
+}
+
+async function createTelnyxNumber(companyId: string, phone: string): Promise<void> {
+  await db.insert(telnyxPhoneNumbers)
+    .values({
+      companyId,
+      phoneNumber: phone,
+      telnyxPhoneNumberId: `test-${phone}-${Date.now()}`,
+      status: "active"
+    })
+    .onConflictDoNothing();
+}
+
+async function setupTestData(companyId: string, scenario: string, toPhone: string): Promise<{
   contactId: string;
   campaignId: string;
   campaignContactId: string;
   phone: string;
+  toPhone: string;
 }> {
   const phone = `+1555${Math.floor(Math.random() * 10000000).toString().padStart(7, "0")}`;
   
@@ -85,16 +103,28 @@ async function setupTestData(companyId: string, scenario: string): Promise<{
     contactId: contact.id,
     campaignId: campaign.id,
     campaignContactId: campaignContact.id,
-    phone
+    phone,
+    toPhone
   };
 }
 
 async function runTests(): Promise<void> {
-  console.log("\n=== Inbound Normalizer Tests ===\n");
+  console.log("\n=== Inbound Normalizer Tests v1.1 ===\n");
   
-  const testCompanyId = "13edaa5f-bcfa-419b-ae19-bbc87e0c417d";
+  const testCompanyA = "13edaa5f-bcfa-419b-ae19-bbc87e0c417d"; // Curbe IO
+  const testCompanyB = "7fc5d3b3-875b-4f2b-bd21-7e7d7e79f710"; // DLS Insurance
   
-  await cleanup(testCompanyId);
+  // Test phone numbers for multi-tenant routing
+  const toPhoneA = "+15550001111";
+  const toPhoneB = "+15550002222";
+  
+  await cleanup(testCompanyA);
+  await cleanupTelnyxNumbers(toPhoneA);
+  await cleanupTelnyxNumbers(toPhoneB);
+  
+  // Setup Telnyx phone numbers for routing
+  await createTelnyxNumber(testCompanyA, toPhoneA);
+  await createTelnyxNumber(testCompanyB, toPhoneB);
   
   console.log("1) Intent Detection (Unit Tests)");
   
@@ -137,13 +167,14 @@ async function runTests(): Promise<void> {
   console.log("\n2) OPT_OUT Processing (Full Flow)");
   
   await test("STOP => emits OPT_OUT + updates consent + updates suppression + DNC", async () => {
-    await cleanup(testCompanyId);
-    const { contactId, campaignId, campaignContactId, phone } = await setupTestData(testCompanyId, "stop");
+    await cleanup(testCompanyA);
+    const { contactId, campaignId, campaignContactId, phone, toPhone } = await setupTestData(testCompanyA, "stop", toPhoneA);
     
     const result = await processInboundMessage({
       provider: "bridge",
       channel: "sms",
       from: phone,
+      to: toPhone,
       text: "STOP"
     });
     
@@ -194,13 +225,14 @@ async function runTests(): Promise<void> {
   console.log("\n3) MESSAGE_REPLIED Processing (Full Flow)");
   
   await test("Normal reply => emits MESSAGE_REPLIED + sets ENGAGED", async () => {
-    await cleanup(testCompanyId);
-    const { contactId, campaignId, campaignContactId, phone } = await setupTestData(testCompanyId, "reply");
+    await cleanup(testCompanyA);
+    const { contactId, campaignId, campaignContactId, phone, toPhone } = await setupTestData(testCompanyA, "reply", toPhoneA);
     
     const result = await processInboundMessage({
       provider: "bridge",
       channel: "imessage",
       from: phone,
+      to: toPhone,
       text: "Hi, I got your message"
     });
     
@@ -227,34 +259,150 @@ async function runTests(): Promise<void> {
     assert(events.length === 1, `Expected 1 MESSAGE_REPLIED event, got ${events.length}`);
   });
   
-  console.log("\n4) Unknown Contact");
+  console.log("\n4) Unknown Contact & Missing 'to'");
   
-  await test("Unknown phone => success=true but no events", async () => {
-    await cleanup(testCompanyId);
+  await test("Missing 'to' => success=false, intent=UNKNOWN_CONTACT", async () => {
+    const result = await processInboundMessage({
+      provider: "bridge",
+      channel: "sms",
+      from: "+15559999999",
+      text: "Hello"
+    });
     
+    assert(result.success === false, "Expected success=false for missing 'to'");
+    assert(result.intent === "UNKNOWN_CONTACT", `Expected UNKNOWN_CONTACT, got ${result.intent}`);
+    assert(result.eventsEmitted === 0, `Expected 0 events, got ${result.eventsEmitted}`);
+  });
+  
+  await test("Unknown 'to' number => intent=UNKNOWN_CONTACT", async () => {
+    const result = await processInboundMessage({
+      provider: "bridge",
+      channel: "sms",
+      from: "+15559999999",
+      to: "+15559999998", // Not registered
+      text: "Hello"
+    });
+    
+    assert(result.success === true, "Expected success=true");
+    assert(result.intent === "UNKNOWN_CONTACT", `Expected UNKNOWN_CONTACT, got ${result.intent}`);
+    assert(result.eventsEmitted === 0, `Expected 0 events, got ${result.eventsEmitted}`);
+  });
+  
+  await test("Unknown contact phone => intent=UNKNOWN_CONTACT", async () => {
     const result = await processInboundMessage({
       provider: "twilio",
       channel: "sms",
-      from: "+15550000000",
+      from: "+15550000000", // Contact doesn't exist
+      to: toPhoneA,
       text: "Hello"
     });
     
     assert(result.success === true, "Expected success (graceful handling)");
+    assert(result.intent === "UNKNOWN_CONTACT", `Expected UNKNOWN_CONTACT, got ${result.intent}`);
     assert(result.eventsEmitted === 0, `Expected 0 events for unknown contact, got ${result.eventsEmitted}`);
     assert(!!result.error && result.error.includes("Unknown contact"), "Expected unknown contact message");
   });
   
-  console.log("\n5) Multiple Enrollments");
+  console.log("\n5) Multi-Tenant Isolation via 'to' Number");
   
-  await test("STOP affects all active enrollments", async () => {
-    await cleanup(testCompanyId);
+  await test("Same FROM phone, different 'to' => routes to correct company", async () => {
+    await cleanup(testCompanyA);
+    await cleanup(testCompanyB);
+    
+    // Create same phone in BOTH companies
+    const sharedPhone = "+15553334444";
+    
+    const [contactA] = await db.insert(contacts)
+      .values({
+        companyId: testCompanyA,
+        firstName: "SharedA",
+        lastName: "Test",
+        phoneNormalized: sharedPhone,
+        email: `shared-a-${Date.now()}@test.com`
+      })
+      .returning();
+    
+    const [contactB] = await db.insert(contacts)
+      .values({
+        companyId: testCompanyB,
+        firstName: "SharedB",
+        lastName: "Test",
+        phoneNormalized: sharedPhone,
+        email: `shared-b-${Date.now()}@test.com`
+      })
+      .returning();
+    
+    // Create campaigns in both companies
+    const [campaignA] = await db.insert(orchestratorCampaigns)
+      .values({ companyId: testCompanyA, name: "Multi A", status: "active", policyJson: {} })
+      .returning();
+    
+    const [campaignB] = await db.insert(orchestratorCampaigns)
+      .values({ companyId: testCompanyB, name: "Multi B", status: "active", policyJson: {} })
+      .returning();
+    
+    // Enroll in both campaigns
+    const [ccA] = await db.insert(campaignContacts)
+      .values({ companyId: testCompanyA, campaignId: campaignA.id, contactId: contactA.id, state: "ATTEMPTING" })
+      .returning();
+    
+    const [ccB] = await db.insert(campaignContacts)
+      .values({ companyId: testCompanyB, campaignId: campaignB.id, contactId: contactB.id, state: "ATTEMPTING" })
+      .returning();
+    
+    // Send STOP to company A's number
+    const resultA = await processInboundMessage({
+      provider: "bridge",
+      channel: "sms",
+      from: sharedPhone,
+      to: toPhoneA, // Routes to company A
+      text: "STOP"
+    });
+    
+    assert(resultA.success === true, "Expected success for company A");
+    assert(resultA.intent === "OPT_OUT", `Expected OPT_OUT for company A, got ${resultA.intent}`);
+    assert(resultA.companyId === testCompanyA, `Expected companyId=${testCompanyA}, got ${resultA.companyId}`);
+    
+    // Verify company A's enrollment is DNC
+    const [updatedCcA] = await db.select().from(campaignContacts).where(eq(campaignContacts.id, ccA.id));
+    assert(updatedCcA.state === "DO_NOT_CONTACT", `Expected A to be DNC, got ${updatedCcA.state}`);
+    
+    // Verify company B's enrollment is STILL ATTEMPTING (not affected)
+    const [updatedCcB] = await db.select().from(campaignContacts).where(eq(campaignContacts.id, ccB.id));
+    assert(updatedCcB.state === "ATTEMPTING", `Expected B to still be ATTEMPTING, got ${updatedCcB.state}`);
+    
+    // Now send STOP to company B's number
+    const resultB = await processInboundMessage({
+      provider: "bridge",
+      channel: "sms",
+      from: sharedPhone,
+      to: toPhoneB, // Routes to company B
+      text: "STOP"
+    });
+    
+    assert(resultB.success === true, "Expected success for company B");
+    assert(resultB.intent === "OPT_OUT", `Expected OPT_OUT for company B, got ${resultB.intent}`);
+    assert(resultB.companyId === testCompanyB, `Expected companyId=${testCompanyB}, got ${resultB.companyId}`);
+    
+    // Verify company B's enrollment is NOW DNC
+    const [finalCcB] = await db.select().from(campaignContacts).where(eq(campaignContacts.id, ccB.id));
+    assert(finalCcB.state === "DO_NOT_CONTACT", `Expected B to be DNC, got ${finalCcB.state}`);
+    
+    // Cleanup company B
+    await cleanup(testCompanyB);
+  });
+  
+  console.log("\n6) Multiple Enrollments");
+  
+  await test("STOP affects all active enrollments in resolved company", async () => {
+    await cleanup(testCompanyA);
     
     // Create contact with 2 active campaigns
     const phone = `+1555${Math.floor(Math.random() * 10000000).toString().padStart(7, "0")}`;
     
     const [contact] = await db.insert(contacts)
       .values({
-        companyId: testCompanyId,
+        companyId: testCompanyA,
         firstName: "MultiEnroll",
         lastName: "Test",
         phoneNormalized: phone,
@@ -264,46 +412,27 @@ async function runTests(): Promise<void> {
     
     // Campaign 1
     const [campaign1] = await db.insert(orchestratorCampaigns)
-      .values({
-        companyId: testCompanyId,
-        name: "Multi Campaign 1",
-        status: "active",
-        policyJson: {}
-      })
+      .values({ companyId: testCompanyA, name: "Multi Campaign 1", status: "active", policyJson: {} })
       .returning();
     
     const [cc1] = await db.insert(campaignContacts)
-      .values({
-        companyId: testCompanyId,
-        campaignId: campaign1.id,
-        contactId: contact.id,
-        state: "ATTEMPTING"
-      })
+      .values({ companyId: testCompanyA, campaignId: campaign1.id, contactId: contact.id, state: "ATTEMPTING" })
       .returning();
     
     // Campaign 2
     const [campaign2] = await db.insert(orchestratorCampaigns)
-      .values({
-        companyId: testCompanyId,
-        name: "Multi Campaign 2",
-        status: "active",
-        policyJson: {}
-      })
+      .values({ companyId: testCompanyA, name: "Multi Campaign 2", status: "active", policyJson: {} })
       .returning();
     
     const [cc2] = await db.insert(campaignContacts)
-      .values({
-        companyId: testCompanyId,
-        campaignId: campaign2.id,
-        contactId: contact.id,
-        state: "NEW"
-      })
+      .values({ companyId: testCompanyA, campaignId: campaign2.id, contactId: contact.id, state: "NEW" })
       .returning();
     
     const result = await processInboundMessage({
       provider: "bridge",
       channel: "sms",
       from: phone,
+      to: toPhoneA,
       text: "STOP"
     });
     
@@ -318,16 +447,17 @@ async function runTests(): Promise<void> {
     assert(updated2.state === "DO_NOT_CONTACT", `Expected cc2 DO_NOT_CONTACT, got ${updated2.state}`);
   });
   
-  console.log("\n6) Spanish Keywords");
+  console.log("\n7) Spanish Keywords");
   
   await test("ALTO => OPT_OUT", async () => {
-    await cleanup(testCompanyId);
-    const { phone } = await setupTestData(testCompanyId, "alto");
+    await cleanup(testCompanyA);
+    const { phone, toPhone } = await setupTestData(testCompanyA, "alto", toPhoneA);
     
     const result = await processInboundMessage({
       provider: "bridge",
       channel: "sms",
       from: phone,
+      to: toPhone,
       text: "ALTO"
     });
     
@@ -335,20 +465,36 @@ async function runTests(): Promise<void> {
   });
   
   await test("BASTA => OPT_OUT", async () => {
-    await cleanup(testCompanyId);
-    const { phone } = await setupTestData(testCompanyId, "basta");
+    await cleanup(testCompanyA);
+    const { phone, toPhone } = await setupTestData(testCompanyA, "basta", toPhoneA);
     
     const result = await processInboundMessage({
       provider: "bridge",
       channel: "sms",
       from: phone,
+      to: toPhone,
       text: "BASTA"
     });
     
     assert(result.intent === "OPT_OUT", `Expected OPT_OUT, got ${result.intent}`);
   });
   
-  await cleanup(testCompanyId);
+  console.log("\n8) resolveCompanyFromToNumber");
+  
+  await test("resolveCompanyFromToNumber returns correct company", async () => {
+    const resolved = await resolveCompanyFromToNumber(toPhoneA);
+    assert(resolved === testCompanyA, `Expected ${testCompanyA}, got ${resolved}`);
+  });
+  
+  await test("resolveCompanyFromToNumber returns null for unknown number", async () => {
+    const resolved = await resolveCompanyFromToNumber("+15559999999");
+    assert(resolved === null, `Expected null, got ${resolved}`);
+  });
+  
+  // Cleanup
+  await cleanup(testCompanyA);
+  await cleanupTelnyxNumbers(toPhoneA);
+  await cleanupTelnyxNumbers(toPhoneB);
   
   console.log("\n=== Results ===");
   const passed = testResults.filter(r => r.passed).length;
