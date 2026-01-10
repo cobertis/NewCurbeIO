@@ -13,8 +13,19 @@ import {
 import { eq, and, desc, sql } from "drizzle-orm";
 
 const BASE_URL = "http://localhost:5000";
-const VALID_TOKEN = process.env.BRIDGE_WEBHOOK_TOKEN || "test-bridge-token-12345";
 const CURBE_COMPANY_ID = "13edaa5f-bcfa-419b-ae19-bbc87e0c417d";
+
+// SECURITY: Token must come from Replit Secrets, no fallback allowed
+function getRequiredToken(): string {
+  const token = process.env.BRIDGE_WEBHOOK_TOKEN;
+  if (!token) {
+    console.error("ERROR: BRIDGE_WEBHOOK_TOKEN is not set in environment.");
+    console.error("Please configure this secret in Replit Secrets before running tests.");
+    process.exit(1);
+  }
+  return token;
+}
+const VALID_TOKEN = getRequiredToken();
 
 interface TestResult {
   name: string;
