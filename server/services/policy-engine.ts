@@ -119,6 +119,20 @@ function getConsentForChannel(
   return consent?.status || "unknown";
 }
 
+function resolveDncStatus(
+  suppression: ContactSuppression | null,
+  contactPhone: string,
+  policyDncTargets: string[]
+): { isDnc: boolean; source: "suppression" | "policy" | null } {
+  if (suppression?.suppressionStatus === "dnc") {
+    return { isDnc: true, source: "suppression" };
+  }
+  if (policyDncTargets.includes(contactPhone)) {
+    return { isDnc: true, source: "policy" };
+  }
+  return { isDnc: false, source: null };
+}
+
 export async function calculateAllowedActions(
   companyId: string,
   campaignId: string,
@@ -186,41 +200,57 @@ export async function calculateAllowedActions(
   
   const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   
-  const attemptCounts = await db
-    .select({
-      channel: campaignEvents.channel,
-      count: sql<number>`count(*)::int`
-    })
-    .from(campaignEvents)
-    .where(and(
-      eq(campaignEvents.campaignContactId, enrollment.id),
-      eq(campaignEvents.companyId, companyId),
-      gte(campaignEvents.createdAt, twentyFourHoursAgo),
-      inArray(campaignEvents.eventType, ["MESSAGE_SENT", "CALL_PLACED", "VOICEMAIL_DROPPED", "RVM_DROPPED"])
-    ))
-    .groupBy(campaignEvents.channel);
+  const [attemptCounts24h, totalAttemptsResult] = await Promise.all([
+    db
+      .select({
+        channel: campaignEvents.channel,
+        count: sql<number>`count(*)::int`
+      })
+      .from(campaignEvents)
+      .where(and(
+        eq(campaignEvents.campaignContactId, enrollment.id),
+        eq(campaignEvents.companyId, companyId),
+        gte(campaignEvents.createdAt, twentyFourHoursAgo),
+        inArray(campaignEvents.eventType, ["MESSAGE_SENT", "CALL_PLACED", "VOICEMAIL_DROPPED", "RVM_DROPPED"])
+      ))
+      .groupBy(campaignEvents.channel),
+    
+    db
+      .select({
+        total: sql<number>`count(*)::int`
+      })
+      .from(campaignEvents)
+      .where(and(
+        eq(campaignEvents.campaignContactId, enrollment.id),
+        eq(campaignEvents.companyId, companyId),
+        inArray(campaignEvents.eventType, ["MESSAGE_SENT", "CALL_PLACED", "VOICEMAIL_DROPPED", "RVM_DROPPED"])
+      ))
+  ]);
   
   const attempts24h: Record<string, number> = {};
   let totalAttempts24h = 0;
-  for (const row of attemptCounts) {
+  for (const row of attemptCounts24h) {
     if (row.channel) {
       attempts24h[row.channel] = row.count;
       totalAttempts24h += row.count;
     }
   }
   
+  const lifetimeAttemptsFromEvents = totalAttemptsResult[0]?.total || 0;
+  
   const allowedActions: AllowedAction[] = [];
   const blocked: BlockedAction[] = [];
   
   const inQuietHours = isInQuietHours(policy, now);
   const contactPhone = contact.phone || "";
-  const isOnDnc = policy.dncTargets.includes(contactPhone);
+  
+  const dncCheck = resolveDncStatus(suppression, contactPhone, policy.dncTargets);
   
   for (const channel of CHANNELS) {
     const reasons: string[] = [];
     let allowed = true;
     
-    if (suppression && suppression.suppressionStatus !== "none") {
+    if (suppression && suppression.suppressionStatus !== "none" && suppression.suppressionStatus !== "dnc") {
       allowed = false;
       reasons.push(`SUPPRESSED: ${suppression.suppressionStatus}${suppression.reason ? ` (${suppression.reason})` : ""}`);
     }
@@ -242,9 +272,12 @@ export async function calculateAllowedActions(
       }
     }
     
-    if (allowed && (channel === "voice" || channel === "voicemail") && isOnDnc) {
+    if (allowed && (channel === "voice" || channel === "voicemail") && dncCheck.isDnc) {
       allowed = false;
-      reasons.push("DNC: Contact phone is on Do Not Call list");
+      const sourceInfo = dncCheck.source === "suppression" 
+        ? "Contact is on Do Not Call list (suppression record)" 
+        : "Contact phone is on campaign DNC targets";
+      reasons.push(`DNC: ${sourceInfo}`);
     }
     
     if (allowed && inQuietHours) {
@@ -257,9 +290,9 @@ export async function calculateAllowedActions(
       reasons.push(`CAP_24H: Daily attempt limit reached (${totalAttempts24h}/${policy.maxAttemptsPerDay})`);
     }
     
-    if (allowed && enrollment.attemptsTotal >= policy.maxAttemptsTotal) {
+    if (allowed && lifetimeAttemptsFromEvents >= policy.maxAttemptsTotal) {
       allowed = false;
-      reasons.push(`CAP_TOTAL: Total attempt limit reached (${enrollment.attemptsTotal}/${policy.maxAttemptsTotal})`);
+      reasons.push(`CAP_TOTAL: Total attempt limit reached (${lifetimeAttemptsFromEvents}/${policy.maxAttemptsTotal})`);
     }
     
     if (allowed) {

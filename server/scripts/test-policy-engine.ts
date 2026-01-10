@@ -148,7 +148,7 @@ async function setupTestData(options: {
 async function runTests() {
   console.log("\n=== Policy Engine Tests ===\n");
   
-  console.log("1) Suppression Status Tests");
+  console.log("1) Suppression Status Tests (opted_out, complaint)");
   
   await setupTestData({ suppressionStatus: "opted_out" });
   let result = await calculateAllowedActions(TEST_COMPANY_ID, TEST_CAMPAIGN_ID, TEST_CONTACT_ID);
@@ -165,13 +165,44 @@ async function runTests() {
     assert(result.allowedActions.length === 0, "suppression_status=complaint: blocks ALL channels");
   }
   
-  await setupTestData({ suppressionStatus: "dnc" });
+  console.log("\n2) DNC from suppression_status='dnc' (NO policy.dncTargets)");
+  
+  await setupTestData({ 
+    suppressionStatus: "dnc",
+    consents: [
+      { channel: "voice", status: "opt_in" },
+      { channel: "voicemail", status: "opt_in" },
+      { channel: "sms", status: "opt_in" }
+    ]
+  });
   result = await calculateAllowedActions(TEST_COMPANY_ID, TEST_CAMPAIGN_ID, TEST_CONTACT_ID);
   if (!("error" in result)) {
-    assert(result.allowedActions.length === 0, "suppression_status=dnc: blocks ALL channels");
+    const blockedChannels = result.blocked.map(b => b.channel);
+    assert(blockedChannels.includes("voice"), "DNC from suppression: blocks voice");
+    assert(blockedChannels.includes("voicemail"), "DNC from suppression: blocks voicemail");
+    const voiceBlock = result.blocked.find(b => b.channel === "voice");
+    assert(voiceBlock?.reasons.some(r => r.includes("DNC") && r.includes("suppression")) ?? false, "DNC from suppression: voice has DNC reason with 'suppression' source");
+    const allowedChannels = result.allowedActions.map(a => a.channel);
+    assert(allowedChannels.includes("sms"), "DNC from suppression: sms still allowed (DNC only affects voice/voicemail)");
   }
   
-  console.log("\n2) Consent Unknown Defaults (Conservative)");
+  console.log("\n3) DNC from policy.dncTargets (no suppression record)");
+  
+  await setupTestData({
+    suppressionStatus: "none",
+    contactPhone: "+17865559999",
+    policyOverrides: { dncTargets: ["+17865559999"] }
+  });
+  result = await calculateAllowedActions(TEST_COMPANY_ID, TEST_CAMPAIGN_ID, TEST_CONTACT_ID);
+  if (!("error" in result)) {
+    const blockedChannels = result.blocked.map(b => b.channel);
+    assert(blockedChannels.includes("voice"), "DNC from policy: blocks voice");
+    assert(blockedChannels.includes("voicemail"), "DNC from policy: blocks voicemail");
+    const voiceBlock = result.blocked.find(b => b.channel === "voice");
+    assert(voiceBlock?.reasons.some(r => r.includes("DNC") && r.includes("targets")) ?? false, "DNC from policy: voice has DNC reason with 'targets' source");
+  }
+  
+  console.log("\n4) Consent Unknown Defaults (Conservative)");
   
   await setupTestData({ suppressionStatus: "none" });
   result = await calculateAllowedActions(TEST_COMPANY_ID, TEST_CAMPAIGN_ID, TEST_CONTACT_ID);
@@ -187,23 +218,7 @@ async function runTests() {
     assert(allowedChannels.includes("voicemail"), "consent=unknown: allows voicemail");
   }
   
-  console.log("\n3) DNC Check");
-  
-  await setupTestData({
-    suppressionStatus: "none",
-    contactPhone: "+17865559999",
-    policyOverrides: { dncTargets: ["+17865559999"] }
-  });
-  result = await calculateAllowedActions(TEST_COMPANY_ID, TEST_CAMPAIGN_ID, TEST_CONTACT_ID);
-  if (!("error" in result)) {
-    const blockedChannels = result.blocked.map(b => b.channel);
-    assert(blockedChannels.includes("voice"), "DNC: blocks voice");
-    assert(blockedChannels.includes("voicemail"), "DNC: blocks voicemail");
-    const voiceBlock = result.blocked.find(b => b.channel === "voice");
-    assert(voiceBlock?.reasons.some(r => r.includes("DNC")) ?? false, "DNC: voice has DNC reason");
-  }
-  
-  console.log("\n4) Quiet Hours");
+  console.log("\n5) Quiet Hours");
   
   const now = new Date();
   const currentHour = now.getUTCHours();
@@ -231,7 +246,7 @@ async function runTests() {
     assert(voiceBlock?.reasons.some(r => r.includes("QUIET_HOURS")) ?? false, "Quiet hours: voice has QUIET_HOURS reason");
   }
   
-  console.log("\n5) Caps 24h");
+  console.log("\n6) Caps 24h");
   
   await setupTestData({
     suppressionStatus: "none",
@@ -248,21 +263,45 @@ async function runTests() {
     assert(smsBlock?.reasons.some(r => r.includes("CAP_24H")) ?? false, "Caps 24h: sms has CAP_24H reason");
   }
   
-  console.log("\n6) Caps Total");
+  console.log("\n7) CAP_TOTAL from events (attemptsTotal=0, events exist)");
   
   await setupTestData({
     suppressionStatus: "none",
     consents: [{ channel: "sms", status: "opt_in" }],
-    policyOverrides: { maxAttemptsTotal: 5 },
-    attemptsTotal: 5
+    policyOverrides: { maxAttemptsTotal: 3, maxAttemptsPerDay: 100 },
+    attemptsTotal: 0,
+    createEvents: [
+      { eventType: "MESSAGE_SENT", channel: "sms", createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      { eventType: "CALL_PLACED", channel: "voice", createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
+      { eventType: "MESSAGE_SENT", channel: "sms", createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) }
+    ]
   });
   result = await calculateAllowedActions(TEST_COMPANY_ID, TEST_CAMPAIGN_ID, TEST_CONTACT_ID);
   if (!("error" in result)) {
     const smsBlock = result.blocked.find(b => b.channel === "sms");
-    assert(smsBlock?.reasons.some(r => r.includes("CAP_TOTAL")) ?? false, "Caps total: sms has CAP_TOTAL reason");
+    assert(smsBlock?.reasons.some(r => r.includes("CAP_TOTAL")) ?? false, "CAP_TOTAL from events: sms blocked even though attemptsTotal=0");
+    assert(smsBlock?.reasons.some(r => r.includes("3/3")) ?? false, "CAP_TOTAL from events: shows correct count (3/3)");
   }
   
-  console.log("\n7) Not Enrolled");
+  console.log("\n8) CAP_TOTAL respects lifetime (old events count)");
+  
+  await setupTestData({
+    suppressionStatus: "none",
+    consents: [{ channel: "sms", status: "opt_in" }],
+    policyOverrides: { maxAttemptsTotal: 2, maxAttemptsPerDay: 100 },
+    attemptsTotal: 0,
+    createEvents: [
+      { eventType: "MESSAGE_SENT", channel: "sms", createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      { eventType: "MESSAGE_SENT", channel: "sms", createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000) }
+    ]
+  });
+  result = await calculateAllowedActions(TEST_COMPANY_ID, TEST_CAMPAIGN_ID, TEST_CONTACT_ID);
+  if (!("error" in result)) {
+    const smsBlock = result.blocked.find(b => b.channel === "sms");
+    assert(smsBlock?.reasons.some(r => r.includes("CAP_TOTAL")) ?? false, "CAP_TOTAL lifetime: old events (30+ days) still count");
+  }
+  
+  console.log("\n9) Not Enrolled");
   
   await setupTestData({ suppressionStatus: "none" });
   result = await calculateAllowedActions(TEST_COMPANY_ID, TEST_CAMPAIGN_ID, "non-existent-contact");
@@ -271,7 +310,7 @@ async function runTests() {
     assert(result.status === 404, "Not enrolled: status 404");
   }
   
-  console.log("\n8) Campaign Not Found");
+  console.log("\n10) Campaign Not Found");
   
   result = await calculateAllowedActions(TEST_COMPANY_ID, "non-existent-campaign", TEST_CONTACT_ID);
   assert("error" in result, "Campaign not found: returns error");
