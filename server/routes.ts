@@ -30835,6 +30835,47 @@ CRITICAL REMINDERS:
         console.warn("[Instagram OAuth] Failed to get long-lived token, using short-lived:", longLivedData);
       }
       
+      // Step 2.5: Validate the token with /debug_token endpoint
+      // This ensures we have a valid Instagram user token, not a Facebook token
+      
+      // NOTE: We do NOT check for EAA prefix here because Meta's long-lived Instagram User tokens
+      // can also start with "EAA". The ONLY reliable way to distinguish token types is via /debug_token.
+      
+      
+      // Call debug_token to validate token type and scopes
+      const debugTokenUrl = `https://graph.instagram.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(accessToken)}`;
+      const debugResponse = await fetch(debugTokenUrl);
+      const debugData = await debugResponse.json() as any;
+      
+      if (debugData.error) {
+        console.error("[Instagram OAuth] debug_token failed:", debugData.error);
+        return errorRedirect("token_validation_failed");
+      }
+      
+      const tokenDebugInfo = debugData.data;
+      if (!tokenDebugInfo) {
+        console.error("[Instagram OAuth] debug_token returned no data");
+        return errorRedirect("token_validation_failed");
+      }
+      
+      console.log("[Instagram OAuth] debug_token response:", JSON.stringify(tokenDebugInfo, null, 2));
+      
+      // Validate token type - must be IG_USER_TOKEN for Instagram Login flow
+      if (tokenDebugInfo.type !== "IG_USER_TOKEN") {
+        console.error(`[Instagram OAuth] Invalid token type: ${tokenDebugInfo.type}, expected IG_USER_TOKEN`);
+        return errorRedirect("wrong_token_type");
+      }
+      
+      // Validate required scopes - must include instagram_business_manage_messages
+      const tokenScopes: string[] = tokenDebugInfo.scopes || [];
+      if (!tokenScopes.includes("instagram_business_manage_messages")) {
+        console.error(`[Instagram OAuth] Missing required scope instagram_business_manage_messages. Got: ${tokenScopes.join(", ")}`);
+        return errorRedirect("insufficient_permissions");
+      }
+      
+      console.log("[Instagram OAuth] Token validated successfully - type:", tokenDebugInfo.type, "scopes:", tokenScopes.join(", "));
+
+      
       // Step 3: Get Instagram user info
       const userInfoUrl = `https://graph.instagram.com/${META_GRAPH_VERSION}/me?fields=id,username,name,profile_picture_url&access_token=${accessToken}`;
       const userInfoResponse = await fetch(userInfoUrl);
@@ -30873,7 +30914,7 @@ CRITICAL REMINDERS:
         connectedAt: new Date(),
         lastError: null,
         updatedAt: new Date(),
-        metadata: { authFlow: "instagram_business_login" },
+        metadata: { authFlow: "instagram_business_login", tokenType: "ig_user_token" },
       };
       
       if (existing) {
@@ -44467,21 +44508,52 @@ CRITICAL REMINDERS:
               return res.status(400).json({ message: "Instagram not connected. Please set up Instagram in the Integrations page." });
             }
 
-            // Instagram Messaging supports TWO APIs (determined by SCOPES per Meta documentation):
-            // 1. Instagram API with Instagram Login - scopes include instagram_business_manage_messages
+            // Check token expiry before attempting to send
+            if (igConnection.tokenExpiresAt) {
+              const now = new Date();
+              const expiresAt = new Date(igConnection.tokenExpiresAt);
+              const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+              
+              // Block if token is expired
+              if (now >= expiresAt) {
+                console.error(`[Inbox Instagram] Token expired for company ${companyId}. Expired at: ${expiresAt.toISOString()}`);
+                return res.status(401).json({ 
+                  message: "Your Instagram connection has expired. Please reconnect Instagram in the Integrations page.",
+                  requires_reauth: true,
+                  expired_at: expiresAt.toISOString()
+                });
+              }
+              
+              // Log warning if token expires within 7 days
+              if (expiresAt <= sevenDaysFromNow) {
+                const daysUntilExpiry = Math.ceil((expiresAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+                console.warn(`[Inbox Instagram] Token expires soon for company ${companyId}. Expires in ${daysUntilExpiry} day(s) at ${expiresAt.toISOString()}`);
+              }
+            } else {
+              console.log(`[Inbox Instagram] No tokenExpiresAt set for company ${companyId} - skipping expiry check`);
+            }
+
+            // Instagram Messaging supports TWO APIs:
+            // 1. Instagram API with Instagram Login (ig_user_token)
             //    - Host: graph.instagram.com
             //    - Endpoint: /{ig_user_id}/messages
             //    - Works with Standard Access for own accounts
-            // 2. Instagram API with Facebook Login - scopes include instagram_manage_messages (no "business")
+            // 2. Instagram API with Facebook Login (facebook_page)
             //    - Host: graph.facebook.com  
             //    - Endpoint: /me/messages
             //    - Requires Advanced Access
             
-            // Detect API type by checking connection scopes (Meta documentation requirement)
+            // PRIORITY 1: Check metadata.tokenType for reliable API routing
+            const metadata = igConnection.metadata as { tokenType?: string; authFlow?: string } | null;
+            const tokenType = metadata?.tokenType;
+            
+            // PRIORITY 2: Fall back to scope detection if metadata is missing
             const connectionScopes = igConnection.scopes as string[] | null;
             const hasInstagramBusinessScope = connectionScopes?.includes("instagram_business_manage_messages") ?? false;
             const hasInstagramFacebookScope = connectionScopes?.includes("instagram_manage_messages") ?? false;
             
+            console.log("[Inbox Instagram] === API ROUTING DECISION ===");
+            console.log("[Inbox Instagram] Token type from metadata:", tokenType);
             console.log("[Inbox Instagram] Connection scopes:", connectionScopes);
             console.log("[Inbox Instagram] Has instagram_business_manage_messages:", hasInstagramBusinessScope);
             console.log("[Inbox Instagram] Has instagram_manage_messages:", hasInstagramFacebookScope);
@@ -44489,76 +44561,100 @@ CRITICAL REMINDERS:
             let pageAccessToken: string | null = null;
             let useInstagramLoginAPI = false;
             
-            // Priority 1: Instagram API with Instagram Login (if scopes indicate this connection type)
-            if (hasInstagramBusinessScope && igConnection.accessTokenEnc) {
+            // Branch strictly on tokenType first, then fall back to scopes
+            if (tokenType === "ig_user_token") {
+              // Instagram Login flow - use graph.instagram.com with /{ig_user_id}/messages
+              console.log("[Inbox Instagram] PATH: metadata.tokenType='ig_user_token' → Instagram Login API");
+              if (!igConnection.igUserId) {
+                console.error("[Inbox Instagram] ERROR: ig_user_token type but missing igUserId");
+                return res.status(400).json({ 
+                  message: "Instagram configuration error: Missing Instagram User ID. Please reconnect your Instagram account.",
+                  requires_reauth: true
+                });
+              }
+              if (!igConnection.accessTokenEnc) {
+                console.error("[Inbox Instagram] ERROR: ig_user_token type but missing access token");
+                return res.status(400).json({ 
+                  message: "Instagram configuration error: Missing access token. Please reconnect your Instagram account.",
+                  requires_reauth: true
+                });
+              }
               const igToken = decryptToken(igConnection.accessTokenEnc);
-              if (igToken) {
-                // CRITICAL: Validate token type matches the connection type
-                // Instagram Login tokens start with "IGAAM" or "IGQV" 
-                // Facebook Page tokens start with "EAA"
-                const isInstagramToken = igToken.startsWith("IGAAM") || igToken.startsWith("IGQV") || igToken.startsWith("IG");
-                const isFacebookToken = igToken.startsWith("EAA");
-                
-                if (isInstagramToken) {
-                  pageAccessToken = igToken;
-                  useInstagramLoginAPI = true;
-                  console.log("[Inbox Instagram] Using Instagram Login API (graph.instagram.com) - valid IG token");
-                } else if (isFacebookToken) {
-                  // Token mismatch: scopes say Instagram Login but token is Facebook Page
-                  // This happens when OAuth flow was done incorrectly
-                  console.log("[Inbox Instagram] WARNING: Token mismatch - scopes indicate Instagram Login but token is Facebook type");
-                  console.log("[Inbox Instagram] Will try Facebook Page API as fallback (requires Advanced Access)");
-                  // Don't set useInstagramLoginAPI, will fall through to Facebook API path
-                } else {
-                  // Unknown token type, try it anyway with Instagram API
-                  pageAccessToken = igToken;
-                  useInstagramLoginAPI = true;
-                  console.log("[Inbox Instagram] Using Instagram Login API with unknown token type:", igToken.substring(0, 5) + "...");
-                }
+              if (!igToken) {
+                console.error("[Inbox Instagram] ERROR: Failed to decrypt access token");
+                return res.status(400).json({ 
+                  message: "Instagram configuration error: Failed to decrypt access token. Please reconnect your Instagram account.",
+                  requires_reauth: true
+                });
               }
-            }
-            
-            // Priority 2: Instagram API with Facebook Login (Page token required)
-            if (!pageAccessToken) {
-              // Try Facebook connection's page token
-              const fbConnectionResult = await db
-                .select()
-                .from(channelConnections)
-                .where(and(
-                  eq(channelConnections.companyId, companyId),
-                  eq(channelConnections.channel, "facebook"),
-                  eq(channelConnections.status, "active")
-                ));
-              const fbConnection = fbConnectionResult[0];
+              pageAccessToken = igToken;
+              useInstagramLoginAPI = true;
+              console.log("[Inbox Instagram] Using Instagram Login API (graph.instagram.com) with igUserId:", igConnection.igUserId);
               
-              if (fbConnection?.fbPageAccessToken) {
-                pageAccessToken = fbConnection.fbPageAccessToken;
-                console.log("[Inbox Instagram] Using Facebook Login API (graph.facebook.com) - Page token from FB connection");
-              } else if (igConnection.fbPageAccessToken) {
-                pageAccessToken = igConnection.fbPageAccessToken;
-                console.log("[Inbox Instagram] Using Facebook Login API (graph.facebook.com) - Page token from IG connection");
+            } else if (tokenType === "facebook_page") {
+              // Facebook Page token flow - use graph.facebook.com with /me/messages
+              console.log("[Inbox Instagram] PATH: metadata.tokenType='facebook_page' → Facebook Login API");
+              if (!igConnection.fbPageAccessToken && !igConnection.accessTokenEnc) {
+                console.error("[Inbox Instagram] ERROR: facebook_page type but missing page access token");
+                return res.status(400).json({ 
+                  message: "Instagram configuration error: Missing Page access token. Please reconnect your Instagram account via Facebook.",
+                  requires_reauth: true
+                });
               }
-            }
-            
-            // Priority 3: Fall back to system credentials (legacy)
-            if (!pageAccessToken) {
-              const { SecretsService } = await import("./services/secrets-service");
-              const secretsService = new SecretsService();
-              pageAccessToken = await secretsService.getCredential("meta" as ApiProvider, "instagram_access_token");
-              if (pageAccessToken) {
-                console.log("[Inbox Instagram] Using token from system credentials");
+              pageAccessToken = igConnection.fbPageAccessToken || (igConnection.accessTokenEnc ? decryptToken(igConnection.accessTokenEnc) : null);
+              if (!pageAccessToken) {
+                console.error("[Inbox Instagram] ERROR: Failed to get page access token");
+                return res.status(400).json({ 
+                  message: "Instagram configuration error: Failed to retrieve access token. Please reconnect your Instagram account.",
+                  requires_reauth: true
+                });
               }
+              useInstagramLoginAPI = false;
+              console.log("[Inbox Instagram] Using Facebook Login API (graph.facebook.com) with /me/messages");
+              
+            } else if (tokenType) {
+              // Unknown token type in metadata
+              console.error("[Inbox Instagram] ERROR: Unknown tokenType in metadata:", tokenType);
+              return res.status(400).json({ 
+                message: "Instagram configuration error: Unknown token type '" + tokenType + "'. Please reconnect your Instagram account.",
+                requires_reauth: true
+              });
+              
+            } else {
+              // FATAL: No metadata.tokenType - connection requires re-authentication
+              // DO NOT silently fall back to Facebook page/system tokens as this causes
+              // tenants to unknowingly operate on the wrong API
+              console.error("[Inbox Instagram] FATAL: No metadata.tokenType found - connection requires re-authentication");
+              console.error("[Inbox Instagram] This is a legacy connection without proper token type metadata.");
+              return res.status(400).json({ 
+                message: "Instagram connection requires re-authentication. Please disconnect and reconnect your Instagram account to update the integration.",
+                requires_reauth: true,
+                error_code: "missing_token_type"
+              });
             }
+            
+            // NOTE: Priority 2 and Priority 3 fallbacks have been REMOVED
+            // These were silently using Facebook tokens when ig_user_token connections were absent,
+            // causing tenants to unknowingly operate on the wrong API.
+            // 
+            // Token routing is now STRICT:
+            // - tokenType="ig_user_token" → Instagram Login API (graph.instagram.com)
+            // - tokenType="facebook_page" → Facebook Login API (graph.facebook.com)
+            // - tokenType missing/unknown → requires_reauth error (above)
             
             if (!pageAccessToken) {
-              console.error("[Inbox Instagram] No access token available");
-              return res.status(400).json({ message: "Instagram Messaging requires either an Instagram Business connection or Facebook Page connection." });
+              console.error("[Inbox Instagram] No access token available after token type routing");
+              return res.status(400).json({ 
+                message: "Instagram configuration error: No valid access token. Please reconnect your Instagram account.",
+                requires_reauth: true
+              });
             }
             
-            // Set API host based on connection type (determined by scopes, not token prefix)
+            // Set API host based on connection type
             const apiHost = useInstagramLoginAPI ? "graph.instagram.com" : "graph.facebook.com";
             
-            console.log("[Inbox Instagram] API Type:", useInstagramLoginAPI ? "Instagram Login (Standard Access)" : "Facebook Login (Advanced Access Required)");
+            console.log("[Inbox Instagram] === FINAL DECISION ===");
+            console.log("[Inbox Instagram] API Type:", useInstagramLoginAPI ? "Instagram Login (graph.instagram.com)" : "Facebook Login (graph.facebook.com)");
             console.log("[Inbox Instagram] Using API host:", apiHost);
             const recipientIgId = conversation.phoneNumber; // Instagram scoped ID stored in phoneNumber field
 

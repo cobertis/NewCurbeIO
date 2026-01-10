@@ -16,6 +16,28 @@ interface MetaUserProfile {
   profilePictureUrl: string | null;
 }
 
+type TokenType = "ig_user_token" | "facebook_page" | string | undefined;
+
+const profileCache = new Map<string, { profile: MetaUserProfile; timestamp: number }>();
+const PROFILE_CACHE_TTL_MS = 15 * 60 * 1000;
+
+function getCachedProfile(companyId: string, igUserId: string): MetaUserProfile | null {
+  const cacheKey = `${companyId}:${igUserId}`;
+  const cached = profileCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < PROFILE_CACHE_TTL_MS) {
+    return cached.profile;
+  }
+  if (cached) {
+    profileCache.delete(cacheKey);
+  }
+  return null;
+}
+
+function setCachedProfile(companyId: string, igUserId: string, profile: MetaUserProfile): void {
+  const cacheKey = `${companyId}:${igUserId}`;
+  profileCache.set(cacheKey, { profile, timestamp: Date.now() });
+}
+
 async function getFacebookUserProfile(psid: string, pageAccessToken: string): Promise<MetaUserProfile> {
   const result: MetaUserProfile = { name: null, profilePictureUrl: null };
   try {
@@ -35,18 +57,58 @@ async function getFacebookUserProfile(psid: string, pageAccessToken: string): Pr
   }
 }
 
-async function getInstagramUserProfile(igScopedId: string, pageAccessToken: string): Promise<MetaUserProfile> {
+async function getInstagramUserProfile(
+  igScopedId: string, 
+  accessToken: string, 
+  tokenType: TokenType,
+  companyId?: string
+): Promise<MetaUserProfile> {
+  if (companyId) {
+    const cached = getCachedProfile(companyId, igScopedId);
+    if (cached) {
+      console.log(`[Meta Webhook Worker] Using cached profile for IG user ${igScopedId}`);
+      return cached;
+    }
+  }
+
   const result: MetaUserProfile = { name: null, profilePictureUrl: null };
+  
   try {
-    const url = `https://graph.facebook.com/${META_GRAPH_VERSION}/${igScopedId}?fields=name,username,profile_pic&access_token=${pageAccessToken}`;
+    let url: string;
+    let fields: string;
+    
+    if (tokenType === "ig_user_token") {
+      fields = "id,username,profile_picture_url";
+      url = `https://graph.instagram.com/${META_GRAPH_VERSION}/${igScopedId}?fields=${fields}&access_token=${accessToken}`;
+      console.log(`[Meta Webhook Worker] Using graph.instagram.com for IG user ${igScopedId} (ig_user_token)`);
+    } else {
+      fields = "name,username,profile_pic";
+      url = `https://graph.facebook.com/${META_GRAPH_VERSION}/${igScopedId}?fields=${fields}&access_token=${accessToken}`;
+      console.log(`[Meta Webhook Worker] Using graph.facebook.com for IG user ${igScopedId} (facebook_page token)`);
+    }
+    
     const response = await fetch(url);
+    
     if (!response.ok) {
-      console.log(`[Meta Webhook Worker] Failed to get Instagram user profile for ${igScopedId}: ${response.status}`);
+      const errorText = await response.text();
+      console.log(`[Meta Webhook Worker] Failed to get Instagram user profile for ${igScopedId}: ${response.status} - ${errorText}`);
       return result;
     }
+    
     const data = await response.json() as any;
-    result.name = data.name || data.username || null;
-    result.profilePictureUrl = data.profile_pic || null;
+    
+    if (tokenType === "ig_user_token") {
+      result.name = data.username || null;
+      result.profilePictureUrl = data.profile_picture_url || null;
+    } else {
+      result.name = data.name || data.username || null;
+      result.profilePictureUrl = data.profile_pic || null;
+    }
+    
+    if (companyId && (result.name || result.profilePictureUrl)) {
+      setCachedProfile(companyId, igScopedId, result);
+    }
+    
     return result;
   } catch (error) {
     console.error(`[Meta Webhook Worker] Error fetching Instagram user profile for ${igScopedId}:`, error);
@@ -138,14 +200,26 @@ async function processInstagramComment(igAccountId: string, commentData: any, fu
   
   let customerName = commenterUsername || null;
   let profilePictureUrl: string | null = null;
-  if (connection.accessTokenEnc) {
+  const tokenType = (connection.metadata as { tokenType?: string } | null)?.tokenType;
+  
+  let accessToken: string | null = null;
+  if (tokenType === "facebook_page" && connection.fbPageAccessToken) {
+    accessToken = connection.fbPageAccessToken;
+  } else if (connection.accessTokenEnc) {
     try {
-      const pageToken = decryptToken(connection.accessTokenEnc);
-      const profile = await getInstagramUserProfile(commenterId, pageToken);
+      accessToken = decryptToken(connection.accessTokenEnc);
+    } catch (e) {
+      console.log(`[Meta Webhook Worker] Error decrypting access token: ${e}`);
+    }
+  }
+  
+  if (accessToken) {
+    try {
+      const profile = await getInstagramUserProfile(commenterId, accessToken, tokenType, companyId);
       customerName = profile.name || commenterUsername || null;
       profilePictureUrl = profile.profilePictureUrl;
     } catch (e) {
-      // Continue without profile
+      console.log(`[Meta Webhook Worker] Error fetching commenter profile: ${e}`);
     }
   }
   
@@ -283,17 +357,29 @@ async function processInstagramEvent(payload: any): Promise<void> {
 
       let customerName: string | null = null;
       let profilePictureUrl: string | null = null;
-      if (connection.accessTokenEnc) {
+      const tokenType = (connection.metadata as { tokenType?: string } | null)?.tokenType;
+      
+      let accessToken: string | null = null;
+      if (tokenType === "facebook_page" && connection.fbPageAccessToken) {
+        accessToken = connection.fbPageAccessToken;
+      } else if (connection.accessTokenEnc) {
         try {
-          const pageToken = decryptToken(connection.accessTokenEnc);
-          const profile = await getInstagramUserProfile(customerIgId, pageToken);
+          accessToken = decryptToken(connection.accessTokenEnc);
+        } catch (e) {
+          console.log(`[Meta Webhook Worker] Error decrypting access token: ${e}`);
+        }
+      }
+      
+      if (accessToken) {
+        try {
+          const profile = await getInstagramUserProfile(customerIgId, accessToken, tokenType, companyId);
           customerName = profile.name;
           profilePictureUrl = profile.profilePictureUrl;
           if (customerName) {
             console.log(`[Meta Webhook Worker] Got Instagram user profile: ${customerName} for ID: ${customerIgId}`);
           }
         } catch (profileErr) {
-          console.log(`[Meta Webhook Worker] Could not fetch Instagram profile (token issue), continuing without profile`);
+          console.log(`[Meta Webhook Worker] Could not fetch Instagram profile: ${profileErr}`);
         }
       }
       
