@@ -44457,29 +44457,41 @@ CRITICAL REMINDERS:
               return res.status(400).json({ message: "Instagram not connected. Please set up Instagram in the Integrations page." });
             }
 
-            // Instagram Messaging supports TWO APIs:
-            // 1. Instagram API with Instagram Login - uses IGAAM token with graph.instagram.com and instagram_business_manage_messages
-            // 2. Instagram API with Facebook Login - uses Page token with graph.facebook.com and instagram_manage_messages (requires Advanced Access)
-            // Priority: Try Instagram User Token FIRST (works with Standard Access for own accounts)
-            let pageAccessToken: string | null = null;
+            // Instagram Messaging supports TWO APIs (determined by SCOPES per Meta documentation):
+            // 1. Instagram API with Instagram Login - scopes include instagram_business_manage_messages
+            //    - Host: graph.instagram.com
+            //    - Endpoint: /{ig_user_id}/messages
+            //    - Works with Standard Access for own accounts
+            // 2. Instagram API with Facebook Login - scopes include instagram_manage_messages (no "business")
+            //    - Host: graph.facebook.com  
+            //    - Endpoint: /me/messages
+            //    - Requires Advanced Access
             
-            // Priority 1: Try Instagram User Access Token (IGAAM) for Instagram API with Instagram Login
-            // This works with Standard Access for accounts you own/manage
-            if (igConnection.accessTokenEnc) {
-              const igUserToken = decryptToken(igConnection.accessTokenEnc);
-              console.log("[Inbox Instagram] Checking IG connection token - prefix:", igUserToken ? igUserToken.substring(0, 10) + "..." : "null");
-              if (igUserToken && igUserToken.startsWith("IGAAM")) {
-                pageAccessToken = igUserToken;
-                console.log("[Inbox Instagram] Using Instagram User Token (IGAAM) for Instagram API with Instagram Login");
-              } else {
-                console.log("[Inbox Instagram] IG connection token is NOT IGAAM type, will try Facebook Page token next");
+            // Detect API type by checking connection scopes (Meta documentation requirement)
+            const connectionScopes = igConnection.scopes as string[] | null;
+            const hasInstagramBusinessScope = connectionScopes?.includes("instagram_business_manage_messages") ?? false;
+            const hasInstagramFacebookScope = connectionScopes?.includes("instagram_manage_messages") ?? false;
+            
+            console.log("[Inbox Instagram] Connection scopes:", connectionScopes);
+            console.log("[Inbox Instagram] Has instagram_business_manage_messages:", hasInstagramBusinessScope);
+            console.log("[Inbox Instagram] Has instagram_manage_messages:", hasInstagramFacebookScope);
+            
+            let pageAccessToken: string | null = null;
+            let useInstagramLoginAPI = false;
+            
+            // Priority 1: Instagram API with Instagram Login (if scopes indicate this connection type)
+            if (hasInstagramBusinessScope && igConnection.accessTokenEnc) {
+              const igToken = decryptToken(igConnection.accessTokenEnc);
+              if (igToken) {
+                pageAccessToken = igToken;
+                useInstagramLoginAPI = true;
+                console.log("[Inbox Instagram] Using Instagram Login API (graph.instagram.com) - token prefix:", igToken.substring(0, 10) + "...");
               }
-            } else {
-              console.log("[Inbox Instagram] No encrypted token found in IG connection");
             }
             
-            // Priority 2: Try Facebook Page token from Facebook connection (requires Advanced Access for instagram_manage_messages)
+            // Priority 2: Instagram API with Facebook Login (Page token required)
             if (!pageAccessToken) {
+              // Try Facebook connection's page token
               const fbConnectionResult = await db
                 .select()
                 .from(channelConnections)
@@ -44492,54 +44504,32 @@ CRITICAL REMINDERS:
               
               if (fbConnection?.fbPageAccessToken) {
                 pageAccessToken = fbConnection.fbPageAccessToken;
-                console.log("[Inbox Instagram] Using Facebook Page Token from FB connection:", pageAccessToken.substring(0, 15) + "...");
+                console.log("[Inbox Instagram] Using Facebook Login API (graph.facebook.com) - Page token from FB connection");
+              } else if (igConnection.fbPageAccessToken) {
+                pageAccessToken = igConnection.fbPageAccessToken;
+                console.log("[Inbox Instagram] Using Facebook Login API (graph.facebook.com) - Page token from IG connection");
               }
             }
             
-            // Priority 3: Check if Instagram connection has fb_page_access_token directly
-            if (!pageAccessToken && igConnection.fbPageAccessToken) {
-              pageAccessToken = igConnection.fbPageAccessToken;
-              console.log("[Inbox Instagram] Using Facebook Page Token from IG connection:", pageAccessToken.substring(0, 15) + "...");
-            }
-            
-            // Priority 4: Fall back to system credentials (legacy)
+            // Priority 3: Fall back to system credentials (legacy)
             if (!pageAccessToken) {
               const { SecretsService } = await import("./services/secrets-service");
               const secretsService = new SecretsService();
               pageAccessToken = await secretsService.getCredential("meta" as ApiProvider, "instagram_access_token");
               if (pageAccessToken) {
-                console.log("[Inbox Instagram] Using token from system credentials:", pageAccessToken.substring(0, 10) + "...");
-              }
-            }
-            
-            // If no Facebook Page token, try Instagram User token for Instagram API with Instagram Login
-            let isInstagramBusinessToken = false;
-            if (!pageAccessToken) {
-              // Try to get Instagram User Access Token from the Instagram connection
-              if (igConnection.accessTokenEnc) {
-                const igUserToken = decryptToken(igConnection.accessTokenEnc);
-                if (igUserToken && igUserToken.startsWith("IGAAM")) {
-                  pageAccessToken = igUserToken;
-                  isInstagramBusinessToken = true;
-                  console.log("[Inbox Instagram] Using Instagram User Token (IGAAM) for Instagram API with Instagram Login");
-                }
+                console.log("[Inbox Instagram] Using token from system credentials");
               }
             }
             
             if (!pageAccessToken) {
               console.error("[Inbox Instagram] No access token available");
-              return res.status(400).json({ message: "Instagram Messaging requires either a Facebook Page connection or Instagram Business connection." });
+              return res.status(400).json({ message: "Instagram Messaging requires either an Instagram Business connection or Facebook Page connection." });
             }
             
-            // Determine token type and API to use
-            const isPageToken = pageAccessToken.startsWith("EAAG") || pageAccessToken.startsWith("EAAB") || pageAccessToken.startsWith("EAALB");
-            isInstagramBusinessToken = isInstagramBusinessToken || pageAccessToken.startsWith("IGAAM");
+            // Set API host based on connection type (determined by scopes, not token prefix)
+            const apiHost = useInstagramLoginAPI ? "graph.instagram.com" : "graph.facebook.com";
             
-            // Instagram API with Instagram Login uses graph.instagram.com
-            // Instagram API with Facebook Login uses graph.facebook.com
-            const apiHost = isInstagramBusinessToken ? "graph.instagram.com" : "graph.facebook.com";
-            
-            console.log("[Inbox Instagram] Token type:", isPageToken ? "Facebook Page Token" : isInstagramBusinessToken ? "Instagram User Token (IGAAM)" : "Unknown");
+            console.log("[Inbox Instagram] API Type:", useInstagramLoginAPI ? "Instagram Login (Standard Access)" : "Facebook Login (Advanced Access Required)");
             console.log("[Inbox Instagram] Using API host:", apiHost);
             const recipientIgId = conversation.phoneNumber; // Instagram scoped ID stored in phoneNumber field
 
@@ -44641,8 +44631,8 @@ CRITICAL REMINDERS:
             }
             
             // Regular DM flow (including private reply to comment)
-            // CRITICAL: IGAAM tokens require /{ig-user-id}/messages endpoint, Page tokens use /me/messages
-            const sendEndpoint = isInstagramBusinessToken && igConnection.igUserId 
+            // CRITICAL: Instagram Login API uses /{ig-user-id}/messages, Facebook Login API uses /me/messages
+            const sendEndpoint = useInstagramLoginAPI && igConnection.igUserId 
               ? `${igConnection.igUserId}/messages` 
               : "me/messages";
             const sendUrl = `https://${apiHost}/${META_GRAPH_VERSION}/${sendEndpoint}?access_token=${pageAccessToken}`;
