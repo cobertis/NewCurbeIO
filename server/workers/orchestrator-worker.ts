@@ -265,6 +265,10 @@ async function processContact(
         fallbackUsed = true;
         console.log(`[Orchestrator] AI fallback: ${aiError}`);
       }
+      
+      if (aiResult.messageBodyStripped) {
+        console.log(`[Orchestrator] messageBody stripped for compliance`);
+      }
     }
     
     if (!chosenChannel) {
@@ -323,7 +327,7 @@ async function processContact(
         aiError: aiError || null,
         allowedChannels,
         prefer: aiDecision?.prefer,
-        messageBody: aiDecision?.messageBody,
+        messageTemplateId: aiDecision?.messageTemplateId,
         waitSeconds
       }
     });
@@ -341,7 +345,7 @@ async function processContact(
         target: contactId,
         channel: chosenChannel,
         prefer: aiDecision?.prefer,
-        messageBody: aiDecision?.messageBody,
+        messageTemplateId: aiDecision?.messageTemplateId,
         metadata: {
           attemptNumber: contact.attemptsTotal + 1,
           previousChannel: contact.lastAttemptChannel,

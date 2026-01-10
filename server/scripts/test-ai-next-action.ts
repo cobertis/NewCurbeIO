@@ -224,8 +224,48 @@ async function testDecisionMadeIdempotency() {
   return passed;
 }
 
+async function testMessageBodyStrippedByDefault() {
+  console.log("\n[TEST 6] AI returns messageBody but policy disallows => stripped");
+  
+  const { campaign, cc } = await getTestData();
+  
+  const input: DecideNextActionInput = {
+    companyId: CURBE_COMPANY_ID,
+    campaignId: campaign.id,
+    campaignContactId: cc.id,
+    contactId: cc.contactId,
+    campaignName: campaign.name,
+    policy: { allowAiCopy: false },
+    allowedActions: [
+      { channel: "sms", allowed: true, reasons: [] }
+    ],
+    history: [],
+    lastOutbound: null,
+    fatigueScore: 0,
+    locale: "en"
+  };
+  
+  const result = await decideNextAction(input);
+  
+  const passed = result.decision !== null && 
+    result.decision.messageBody === undefined;
+  
+  results.push({
+    name: "messageBody stripped when policy.allowAiCopy !== true",
+    passed,
+    details: `messageBody: ${result.decision?.messageBody ?? "undefined"}, stripped: ${result.messageBodyStripped}`
+  });
+  
+  console.log(`Decision channel: ${result.decision?.channel}`);
+  console.log(`messageBody in result: ${result.decision?.messageBody ?? "undefined"}`);
+  console.log(`messageBodyStripped flag: ${result.messageBodyStripped}`);
+  console.log(`RESULT: ${passed ? "PASS ✓" : "FAIL ✗"}`);
+  
+  return passed;
+}
+
 async function testPickNextChannelHeuristic() {
-  console.log("\n[TEST 6] Heuristic pickNextChannel follows priority");
+  console.log("\n[TEST 7] Heuristic pickNextChannel follows priority");
   
   const mockPolicyResult = {
     companyId: CURBE_COMPANY_ID,
@@ -298,6 +338,7 @@ async function runTests() {
   await testAiFailure();
   await testWaitSecondsValidation();
   await testDecisionMadeIdempotency();
+  await testMessageBodyStrippedByDefault();
   await testPickNextChannelHeuristic();
   
   await showRecentDecisionEvents();

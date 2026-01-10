@@ -111,7 +111,7 @@ function validateOutput(
 
 export async function decideNextAction(
   input: DecideNextActionInput
-): Promise<{ decision: DecideNextActionOutput | null; error?: string; fallbackUsed?: boolean }> {
+): Promise<{ decision: DecideNextActionOutput | null; error?: string; fallbackUsed?: boolean; messageBodyStripped?: boolean }> {
   const allowedChannels = input.allowedActions
     .filter(a => a.allowed)
     .map(a => a.channel);
@@ -129,6 +129,8 @@ export async function decideNextAction(
   if (hasOptOut) {
     return { decision: null, error: "Contact has opted out or complained" };
   }
+
+  const allowAiCopy = input.policy?.allowAiCopy === true;
 
   try {
     const aiService = new AiOpenAIService();
@@ -164,17 +166,23 @@ export async function decideNextAction(
       return { decision: null, error: `Invalid AI output: ${validation.reason}`, fallbackUsed: true };
     }
 
+    let messageBodyStripped = false;
+    if (parsed.messageBody && !allowAiCopy) {
+      console.log("[AI NextAction] Stripping messageBody (policy.allowAiCopy !== true)");
+      messageBodyStripped = true;
+    }
+
     const decision: DecideNextActionOutput = {
       channel: parsed.channel,
       prefer: parsed.prefer,
       messageTemplateId: parsed.messageTemplateId,
-      messageBody: parsed.messageBody,
+      messageBody: allowAiCopy ? parsed.messageBody : undefined,
       waitSeconds: Math.max(MIN_WAIT_SECONDS, Math.min(MAX_WAIT_SECONDS, parsed.waitSeconds)),
       explanation: parsed.explanation || "AI decision",
       confidence: Math.max(0, Math.min(1, parsed.confidence))
     };
 
-    return { decision, fallbackUsed: false };
+    return { decision, fallbackUsed: false, messageBodyStripped };
 
   } catch (error: any) {
     console.error("[AI NextAction] Error calling AI:", error.message);
