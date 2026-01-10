@@ -51,6 +51,7 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 - **Security Architecture:** Includes session security, webhook signature validation, Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, and token encryption for sensitive data.
 - **Credential Storage:** All service credentials encrypted in the `system_credentials` database table with IV and key versioning, managed by Super Admins via a `credentialProvider` service with caching.
 - **AWS SES Multi-Tenant Email System:** Per-tenant BYO domain email sending with DKIM verification, queue-based sending with retries and rate limits, event processing for delivery/bounce/complaints, auto-pausing for high bounce/complaint rates, and suppression lists.
+- **Campaign Orchestrator Live Ops UI:** Real-time monitoring and control panel for multi-channel outreach campaigns at `/orchestrator-campaigns`. Features include: campaign list with status/stats, campaign detail view, contacts filtered by state (NEW/ATTEMPTING/ENGAGED/STOPPED/DNC/UNREACHABLE), contact timeline with events and jobs merged chronologically, pause/resume campaigns, stop individual contacts, and requeue failed jobs. API endpoints use strict multi-tenant isolation via `requireActiveCompany` middleware with campaign-scoped validation. PII masking applied to phone numbers (+1******1234 format).
 
 ## External Dependencies
 
