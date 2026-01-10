@@ -44578,8 +44578,13 @@ CRITICAL REMINDERS:
             }
             
             // Regular DM flow (including private reply to comment)
-            const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages?access_token=${pageAccessToken}`;
+            // CRITICAL: IGAAM tokens require /{ig-user-id}/messages endpoint, Page tokens use /me/messages
+            const sendEndpoint = isInstagramBusinessToken && igConnection.igUserId 
+              ? `${igConnection.igUserId}/messages` 
+              : "me/messages";
+            const sendUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${sendEndpoint}?access_token=${pageAccessToken}`;
             
+            console.log(`[Inbox Instagram] Using endpoint: /${sendEndpoint}`);
             // For comment-based conversations with DM mode, first message should be a private reply
             const isFirstReplyToComment = replyMode === "dm" && conversation.originType === "comment" && conversation.igCommentId;
 
