@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["ffmpeg", "chromium", "glib", "gtk3", "nss", "nspr", "alsa-lib", "cups", "libdrm", "mesa", "expat", "libxkbcommon", "pango", "cairo", "gdk-pixbuf", "atk", "at-spi2-atk", "dbus", "imagemagick", "dnsutils"]
+packages = ["ffmpeg", "chromium", "glib", "gtk3", "nss", "nspr", "alsa-lib", "cups", "libdrm", "mesa", "expat", "libxkbcommon", "pango", "cairo", "gdk-pixbuf", "atk", "at-spi2-atk", "dbus", "imagemagick", "dnsutils", "jq"]
 
 [deployment]
 deploymentTarget = "autoscale"
