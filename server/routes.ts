@@ -46930,5 +46930,72 @@ CRITICAL REMINDERS:
     }
   });
 
+
+  // =====================================================
+  // CAMPAIGN ORCHESTRATOR - Internal Event Emitter Endpoint
+  // =====================================================
+  
+  app.post("/api/internal/campaign-events", async (req: Request, res: Response) => {
+    try {
+      const internalKey = process.env.INTERNAL_API_KEY;
+      if (!internalKey) {
+        console.error("[Campaign Events] INTERNAL_API_KEY not configured");
+        return res.status(500).json({ error: "Internal API key not configured" });
+      }
+      
+      const providedKey = req.headers["x-internal-key"] as string | undefined;
+      if (!providedKey || providedKey !== internalKey) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const { emitCampaignEvent } = await import("./services/campaign-events");
+      
+      const { 
+        companyId, 
+        campaignId, 
+        campaignContactId, 
+        contactId, 
+        eventType, 
+        channel, 
+        provider, 
+        externalId, 
+        payload, 
+        cost 
+      } = req.body;
+      
+      if (!companyId || !campaignId || !contactId || !eventType) {
+        return res.status(400).json({ error: "companyId, campaignId, contactId, and eventType are required" });
+      }
+      
+      const result = await emitCampaignEvent({
+        companyId,
+        campaignId,
+        campaignContactId,
+        contactId,
+        eventType,
+        channel,
+        provider,
+        externalId,
+        payload,
+        cost
+      });
+      
+      if ("error" in result) {
+        return res.status(result.status).json({ error: result.error });
+      }
+      
+      const statusCode = result.wasIdempotent ? 200 : 201;
+      res.status(statusCode).json({
+        event_id: result.event.id,
+        event: result.event,
+        wasIdempotent: result.wasIdempotent,
+        stateTransition: result.stateTransition || null
+      });
+    } catch (error: any) {
+      console.error("[Campaign Events] Error emitting event:", error);
+      res.status(500).json({ error: error.message || "Failed to emit campaign event" });
+    }
+  });
+
   return httpServer;
 }

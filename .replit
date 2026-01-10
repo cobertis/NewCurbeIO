@@ -63,5 +63,6 @@ VITE_META_BUSINESS_LOGIN_CONFIG_ID = "1379775110076042"
 TELNYX_RECORDING_MEDIA_EN = "https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-announcement-en.mp3"
 TELNYX_RECORDING_MEDIA_ES = "https://us-central-1.telnyxcloudstorage.com/curbe.io/curbe-recording-announcement-es.mp3"
 PUBLIC_OBJECT_SEARCH_PATHS = "/curbe-media"
+INTERNAL_API_KEY = "curbe-internal-key-2025"
 
 [userenv.production]
