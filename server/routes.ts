@@ -44461,6 +44461,7 @@ CRITICAL REMINDERS:
             const { SecretsService } = await import("./services/secrets-service");
             const secretsService = new SecretsService();
             let pageAccessToken = await secretsService.getCredential("meta" as ApiProvider, "instagram_access_token");
+            console.log("[Inbox Instagram] Token from credentials:", pageAccessToken ? `${pageAccessToken.substring(0, 10)}...${pageAccessToken.substring(pageAccessToken.length - 5)} (length: ${pageAccessToken.length})` : "null");
             
             // Priority 2: Fall back to channel connection token (from OAuth)
             if (!pageAccessToken && igConnection.accessTokenEnc) {
