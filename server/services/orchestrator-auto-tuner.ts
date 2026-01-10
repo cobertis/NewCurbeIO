@@ -718,3 +718,443 @@ export async function getLastApplyAuditLog(
     createdAt: log.createdAt
   };
 }
+
+export interface AutoApplyConfig {
+  enabled: boolean;
+  maxDeltaPerRun: number;
+  minSampleSizeAllVariants: number;
+  maxOptOutRate: number;
+  window: string;
+  applyMode: "replace" | "blend";
+  blendFactor: number;
+  rollbackIfWorse: {
+    enabled: boolean;
+    metric: "replyRate" | "score_v1";
+    dropThreshold: number;
+    baselineWindow: string;
+  };
+}
+
+export function parseAutoApplyConfig(policyJson: any): AutoApplyConfig | null {
+  if (!policyJson?.experiment?.autoTune?.autoApply?.enabled) {
+    return null;
+  }
+  
+  const aa = policyJson.experiment.autoTune.autoApply;
+  return {
+    enabled: true,
+    maxDeltaPerRun: aa.maxDeltaPerRun ?? 0.2,
+    minSampleSizeAllVariants: aa.minSampleSizeAllVariants ?? 50,
+    maxOptOutRate: aa.maxOptOutRate ?? 0.03,
+    window: aa.window || "7d",
+    applyMode: aa.applyMode || "blend",
+    blendFactor: aa.blendFactor ?? 0.5,
+    rollbackIfWorse: {
+      enabled: aa.rollbackIfWorse?.enabled ?? false,
+      metric: aa.rollbackIfWorse?.metric || "replyRate",
+      dropThreshold: aa.rollbackIfWorse?.dropThreshold ?? 0.05,
+      baselineWindow: aa.rollbackIfWorse?.baselineWindow || "7d"
+    }
+  };
+}
+
+export interface GuardrailResult {
+  passed: boolean;
+  checks: {
+    name: string;
+    passed: boolean;
+    message: string;
+    value?: number;
+    threshold?: number;
+  }[];
+}
+
+export function evaluateAutoApplyGuardrails(
+  metrics: VariantMetricsSnapshot[],
+  currentAllocation: Record<string, number>,
+  recommendedAllocation: Record<string, number>,
+  config: AutoApplyConfig
+): GuardrailResult {
+  const checks: GuardrailResult["checks"] = [];
+  
+  const minAttempts = Math.min(...metrics.map(m => m.attempts));
+  const sampleSizePassed = minAttempts >= config.minSampleSizeAllVariants;
+  checks.push({
+    name: "minSampleSizeAllVariants",
+    passed: sampleSizePassed,
+    message: sampleSizePassed 
+      ? `All variants have >= ${config.minSampleSizeAllVariants} attempts (min: ${minAttempts})`
+      : `Variant with only ${minAttempts} attempts (need ${config.minSampleSizeAllVariants})`,
+    value: minAttempts,
+    threshold: config.minSampleSizeAllVariants
+  });
+  
+  const totalAttempts = metrics.reduce((s, m) => s + m.attempts, 0);
+  const totalOptOuts = metrics.reduce((s, m) => s + m.optOuts, 0);
+  const optOutRate = totalAttempts > 0 ? totalOptOuts / totalAttempts : 0;
+  const optOutPassed = optOutRate <= config.maxOptOutRate;
+  checks.push({
+    name: "maxOptOutRate",
+    passed: optOutPassed,
+    message: optOutPassed
+      ? `Opt-out rate ${(optOutRate * 100).toFixed(2)}% <= ${(config.maxOptOutRate * 100).toFixed(1)}%`
+      : `Opt-out rate ${(optOutRate * 100).toFixed(2)}% exceeds ${(config.maxOptOutRate * 100).toFixed(1)}%`,
+    value: optOutRate,
+    threshold: config.maxOptOutRate
+  });
+  
+  let maxDelta = 0;
+  for (const variant of Object.keys(recommendedAllocation)) {
+    const current = currentAllocation[variant] || 0;
+    const recommended = recommendedAllocation[variant] || 0;
+    maxDelta = Math.max(maxDelta, Math.abs(recommended - current));
+  }
+  checks.push({
+    name: "maxDeltaPerRun",
+    passed: true,
+    message: `Max allocation delta: ${(maxDelta * 100).toFixed(1)}% (will clamp if > ${(config.maxDeltaPerRun * 100).toFixed(0)}%)`,
+    value: maxDelta,
+    threshold: config.maxDeltaPerRun
+  });
+  
+  return {
+    passed: checks.every(c => c.passed),
+    checks
+  };
+}
+
+export function clampAllocationDelta(
+  currentAllocation: Record<string, number>,
+  recommendedAllocation: Record<string, number>,
+  maxDelta: number
+): Record<string, number> {
+  const clamped: Record<string, number> = {};
+  
+  for (const variant of Object.keys(recommendedAllocation)) {
+    const current = currentAllocation[variant] || 0;
+    const recommended = recommendedAllocation[variant] || 0;
+    const delta = recommended - current;
+    const clampedDelta = Math.max(-maxDelta, Math.min(maxDelta, delta));
+    clamped[variant] = Math.round((current + clampedDelta) * 100) / 100;
+  }
+  
+  const total = Object.values(clamped).reduce((a, b) => a + b, 0);
+  if (total > 0 && Math.abs(total - 1.0) > 0.01) {
+    const factor = 1.0 / total;
+    for (const k of Object.keys(clamped)) {
+      clamped[k] = Math.round(clamped[k] * factor * 100) / 100;
+    }
+  }
+  
+  return clamped;
+}
+
+export interface AutoApplyResult {
+  applied: boolean;
+  reason?: string;
+  guardrails?: GuardrailResult;
+  oldAllocation?: Record<string, number>;
+  newAllocation?: Record<string, number>;
+  clampedDelta?: boolean;
+  auditLogId?: string;
+  baselineMetrics?: { replyRate: number; score: number };
+}
+
+export async function executeAutoApply(
+  companyId: string,
+  campaignId: string,
+  snapshotId: string,
+  metrics: VariantMetricsSnapshot[],
+  currentAllocation: Record<string, number>,
+  recommendedAllocation: Record<string, number>,
+  config: AutoApplyConfig,
+  policyJson: Record<string, any>
+): Promise<AutoApplyResult> {
+  const guardrails = evaluateAutoApplyGuardrails(
+    metrics,
+    currentAllocation,
+    recommendedAllocation,
+    config
+  );
+  
+  if (!guardrails.passed) {
+    return {
+      applied: false,
+      reason: "Guardrails failed",
+      guardrails
+    };
+  }
+  
+  let finalAllocation: Record<string, number>;
+  let clampedDelta = false;
+  
+  if (config.applyMode === "blend") {
+    finalAllocation = {};
+    const allVariants = new Set([...Object.keys(currentAllocation), ...Object.keys(recommendedAllocation)]);
+    
+    for (const variant of allVariants) {
+      const oldVal = currentAllocation[variant] || 0;
+      const newVal = recommendedAllocation[variant] || 0;
+      finalAllocation[variant] = Math.round((oldVal * (1 - config.blendFactor) + newVal * config.blendFactor) * 100) / 100;
+    }
+    
+    const total = Object.values(finalAllocation).reduce((a, b) => a + b, 0);
+    if (total > 0 && Math.abs(total - 1.0) > 0.01) {
+      for (const k of Object.keys(finalAllocation)) {
+        finalAllocation[k] = Math.round((finalAllocation[k] / total) * 100) / 100;
+      }
+    }
+  } else {
+    finalAllocation = { ...recommendedAllocation };
+  }
+  
+  const maxDeltaCheck = guardrails.checks.find(c => c.name === "maxDeltaPerRun");
+  if (maxDeltaCheck && maxDeltaCheck.value! > config.maxDeltaPerRun) {
+    finalAllocation = clampAllocationDelta(currentAllocation, finalAllocation, config.maxDeltaPerRun);
+    clampedDelta = true;
+  }
+  
+  const totalAttempts = metrics.reduce((s, m) => s + m.attempts, 0);
+  const totalReplies = metrics.reduce((s, m) => s + m.replies, 0);
+  const totalReward = metrics.reduce((s, m) => s + m.reward, 0);
+  const baselineMetrics = {
+    replyRate: totalAttempts > 0 ? totalReplies / totalAttempts : 0,
+    score: totalReward
+  };
+  
+  const updatedPolicyJson = {
+    ...policyJson,
+    experiment: {
+      ...policyJson.experiment,
+      allocation: finalAllocation
+    }
+  };
+  
+  await db.update(orchestratorCampaigns)
+    .set({ policyJson: updatedPolicyJson })
+    .where(eq(orchestratorCampaigns.id, campaignId));
+  
+  const [auditLog] = await db.insert(campaignAuditLogs)
+    .values({
+      companyId,
+      campaignId,
+      logType: "auto_tune_auto_apply",
+      actionTaken: config.applyMode,
+      payload: {
+        snapshotId,
+        oldAllocation: currentAllocation,
+        newAllocation: finalAllocation,
+        recommendedAllocation,
+        clampedDelta,
+        guardrails: guardrails.checks,
+        baselineMetrics,
+        config: {
+          maxDeltaPerRun: config.maxDeltaPerRun,
+          minSampleSizeAllVariants: config.minSampleSizeAllVariants,
+          maxOptOutRate: config.maxOptOutRate
+        }
+      }
+    })
+    .returning({ id: campaignAuditLogs.id });
+  
+  return {
+    applied: true,
+    guardrails,
+    oldAllocation: currentAllocation,
+    newAllocation: finalAllocation,
+    clampedDelta,
+    auditLogId: auditLog.id,
+    baselineMetrics
+  };
+}
+
+export async function checkAndExecuteAutoRollback(
+  companyId: string,
+  campaignId: string,
+  metrics: VariantMetricsSnapshot[],
+  config: AutoApplyConfig
+): Promise<{ rolledBack: boolean; reason?: string; auditLogId?: string }> {
+  if (!config.rollbackIfWorse.enabled) {
+    return { rolledBack: false, reason: "Rollback not enabled" };
+  }
+  
+  const [lastAutoApply] = await db.select()
+    .from(campaignAuditLogs)
+    .where(and(
+      eq(campaignAuditLogs.companyId, companyId),
+      eq(campaignAuditLogs.campaignId, campaignId),
+      eq(campaignAuditLogs.logType, "auto_tune_auto_apply")
+    ))
+    .orderBy(desc(campaignAuditLogs.createdAt))
+    .limit(1);
+  
+  if (!lastAutoApply) {
+    return { rolledBack: false, reason: "No previous auto-apply found" };
+  }
+  
+  const alreadyRolledBack = await db.select()
+    .from(campaignAuditLogs)
+    .where(and(
+      eq(campaignAuditLogs.companyId, companyId),
+      eq(campaignAuditLogs.campaignId, campaignId),
+      eq(campaignAuditLogs.logType, "auto_tune_auto_rollback"),
+      sql`payload->>'sourceAutoApplyId' = ${lastAutoApply.id}`
+    ))
+    .limit(1);
+  
+  if (alreadyRolledBack.length > 0) {
+    return { rolledBack: false, reason: "Already rolled back" };
+  }
+  
+  const payload = lastAutoApply.payload as { 
+    baselineMetrics?: { replyRate: number; score: number };
+    oldAllocation?: Record<string, number>;
+  };
+  
+  if (!payload.baselineMetrics) {
+    return { rolledBack: false, reason: "No baseline metrics in last apply" };
+  }
+  
+  const totalAttempts = metrics.reduce((s, m) => s + m.attempts, 0);
+  const totalReplies = metrics.reduce((s, m) => s + m.replies, 0);
+  const totalReward = metrics.reduce((s, m) => s + m.reward, 0);
+  
+  const currentMetrics = {
+    replyRate: totalAttempts > 0 ? totalReplies / totalAttempts : 0,
+    score: totalReward
+  };
+  
+  const baseline = payload.baselineMetrics;
+  let shouldRollback = false;
+  let metricDrop = 0;
+  
+  if (config.rollbackIfWorse.metric === "replyRate") {
+    if (baseline.replyRate > 0) {
+      metricDrop = (baseline.replyRate - currentMetrics.replyRate) / baseline.replyRate;
+      shouldRollback = metricDrop > config.rollbackIfWorse.dropThreshold;
+    }
+  } else {
+    if (baseline.score > 0) {
+      metricDrop = (baseline.score - currentMetrics.score) / baseline.score;
+      shouldRollback = metricDrop > config.rollbackIfWorse.dropThreshold;
+    }
+  }
+  
+  if (!shouldRollback) {
+    return { 
+      rolledBack: false, 
+      reason: `Metric drop ${(metricDrop * 100).toFixed(1)}% within threshold ${(config.rollbackIfWorse.dropThreshold * 100).toFixed(0)}%` 
+    };
+  }
+  
+  const oldAllocation = payload.oldAllocation;
+  if (!oldAllocation) {
+    return { rolledBack: false, reason: "No old allocation to restore" };
+  }
+  
+  const [campaign] = await db.select()
+    .from(orchestratorCampaigns)
+    .where(and(
+      eq(orchestratorCampaigns.id, campaignId),
+      eq(orchestratorCampaigns.companyId, companyId)
+    ))
+    .limit(1);
+  
+  if (!campaign) {
+    return { rolledBack: false, reason: "Campaign not found" };
+  }
+  
+  const policyJson = (campaign.policyJson as Record<string, any>) || {};
+  const currentAllocation = policyJson?.experiment?.allocation || {};
+  
+  const updatedPolicyJson = {
+    ...policyJson,
+    experiment: {
+      ...policyJson.experiment,
+      allocation: oldAllocation
+    }
+  };
+  
+  await db.update(orchestratorCampaigns)
+    .set({ policyJson: updatedPolicyJson })
+    .where(eq(orchestratorCampaigns.id, campaignId));
+  
+  const [auditLog] = await db.insert(campaignAuditLogs)
+    .values({
+      companyId,
+      campaignId,
+      logType: "auto_tune_auto_rollback",
+      actionTaken: "auto_rollback",
+      payload: {
+        sourceAutoApplyId: lastAutoApply.id,
+        rolledBackFrom: currentAllocation,
+        restoredTo: oldAllocation,
+        baselineMetrics: baseline,
+        currentMetrics,
+        metricDrop,
+        threshold: config.rollbackIfWorse.dropThreshold,
+        metric: config.rollbackIfWorse.metric
+      }
+    })
+    .returning({ id: campaignAuditLogs.id });
+  
+  return {
+    rolledBack: true,
+    reason: `${config.rollbackIfWorse.metric} dropped ${(metricDrop * 100).toFixed(1)}% (threshold: ${(config.rollbackIfWorse.dropThreshold * 100).toFixed(0)}%)`,
+    auditLogId: auditLog.id
+  };
+}
+
+export async function getAutoApplyStatus(
+  companyId: string,
+  campaignId: string
+): Promise<{
+  autoApplyEnabled: boolean;
+  killSwitchEnabled: boolean;
+  lastAutoApply: { id: string; createdAt: Date; payload: any } | null;
+  lastAutoRollback: { id: string; createdAt: Date; payload: any } | null;
+}> {
+  const killSwitchEnabled = process.env.AUTO_TUNE_AUTO_APPLY_ENABLED === "true";
+  
+  const [campaign] = await db.select()
+    .from(orchestratorCampaigns)
+    .where(and(
+      eq(orchestratorCampaigns.id, campaignId),
+      eq(orchestratorCampaigns.companyId, companyId)
+    ))
+    .limit(1);
+  
+  if (!campaign) {
+    return { autoApplyEnabled: false, killSwitchEnabled, lastAutoApply: null, lastAutoRollback: null };
+  }
+  
+  const config = parseAutoApplyConfig(campaign.policyJson);
+  const autoApplyEnabled = config?.enabled ?? false;
+  
+  const [lastAutoApply] = await db.select()
+    .from(campaignAuditLogs)
+    .where(and(
+      eq(campaignAuditLogs.companyId, companyId),
+      eq(campaignAuditLogs.campaignId, campaignId),
+      eq(campaignAuditLogs.logType, "auto_tune_auto_apply")
+    ))
+    .orderBy(desc(campaignAuditLogs.createdAt))
+    .limit(1);
+  
+  const [lastAutoRollback] = await db.select()
+    .from(campaignAuditLogs)
+    .where(and(
+      eq(campaignAuditLogs.companyId, companyId),
+      eq(campaignAuditLogs.campaignId, campaignId),
+      eq(campaignAuditLogs.logType, "auto_tune_auto_rollback")
+    ))
+    .orderBy(desc(campaignAuditLogs.createdAt))
+    .limit(1);
+  
+  return {
+    autoApplyEnabled,
+    killSwitchEnabled,
+    lastAutoApply: lastAutoApply ? { id: lastAutoApply.id, createdAt: lastAutoApply.createdAt, payload: lastAutoApply.payload } : null,
+    lastAutoRollback: lastAutoRollback ? { id: lastAutoRollback.id, createdAt: lastAutoRollback.createdAt, payload: lastAutoRollback.payload } : null
+  };
+}
