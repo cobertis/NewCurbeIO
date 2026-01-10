@@ -44458,6 +44458,7 @@ CRITICAL REMINDERS:
             }
 
             // Priority 1: Check for Instagram Access Token in system credentials (for test mode)
+            const secretsService = new SecretsService();
             let pageAccessToken = await secretsService.getCredential("meta" as ApiProvider, "instagram_access_token");
             
             // Priority 2: Fall back to channel connection token (from OAuth)

@@ -1,0 +1,48 @@
+0|curbe-admin  | 12:23:27 AM [express] GET /api/ai/autopilot/pending 304 in 6ms :: {"pending":[]}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [Meta Webhook] POST received - User-Agent: facebookexternalua
+0|curbe-admin  | [Meta Webhook] Body type: object isBuffer: true length: 394
+0|curbe-admin  | [Meta Webhook] Expected sig: sha256=a45379969b33de58358bd82fa463b5c40...
+0|curbe-admin  | [Meta Webhook] Received sig: sha256=abca788af61bc45dd0900e807c74e7585...
+0|curbe-admin  | [Meta Webhook] App secret length: 32 chars
+0|curbe-admin  | [Meta Webhook] Signature match: false
+0|curbe-admin  | [Meta Webhook] Expected sig: sha256=abca788af61bc45dd0900e807c74e7585...
+0|curbe-admin  | [Meta Webhook] Received sig: sha256=abca788af61bc45dd0900e807c74e7585...
+0|curbe-admin  | [Meta Webhook] App secret length: 32 chars
+0|curbe-admin  | [Meta Webhook] Signature match: true
+0|curbe-admin  | [Meta Webhook] Signature validated with: Instagram app secret
+0|curbe-admin  | [Meta Webhook] ACK - queued for async processing
+0|curbe-admin  | 12:23:28 AM [express] POST /api/webhooks/meta/facebook 200 in 4ms
+0|curbe-admin  | [Meta Webhook Worker] Failed to get Instagram user profile for 1410087230641452: 403
+0|curbe-admin  | [WebSocket] Broadcasting new_message to 4 authenticated clients (company: 13edaa5f-bcfa-419b-ae19-bbc87e0c417d)
+0|curbe-admin  | [Meta Webhook Worker] Saved inbound Instagram message to inbox: aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDc2ODA1MzI5ODcwOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI2MDA3OTk1MDYwNDY1MDQ3MTozMjYxMzkyODUzMTMyODg5MDQ2NDIwMTc3MzExMDI2MzgwOAZDZD
+0|curbe-admin  | [Inbox] Returning 2 conversations for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | 12:23:29 AM [express] GET /api/inbox/conversations 200 in 7ms :: {"conversations":[{"id":"9b31ad3b-db…
+0|curbe-admin  | 12:23:29 AM [express] GET /api/notifications 304 in 4ms :: {"notifications":[{"id":"4e650fc5-455d-46b…
+0|curbe-admin  | [Inbox] Returning 2 conversations for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | 12:23:29 AM [express] GET /api/inbox/conversations 304 in 6ms :: {"conversations":[{"id":"9b31ad3b-db…
+0|curbe-admin  | 12:23:31 AM [express] GET /api/ai/conversations 304 in 3ms
+0|curbe-admin  | 12:23:31 AM [express] GET /api/inbox/conversations/9b31ad3b-dbea-40bd-89d4-2499d0b77adb/messages 200 …
+0|curbe-admin  | 12:23:31 AM [express] PATCH /api/inbox/conversations/9b31ad3b-dbea-40bd-89d4-2499d0b77adb 200 in 6ms …
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [Inbox] Returning 2 conversations for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | 12:23:31 AM [express] GET /api/inbox/conversations 200 in 5ms :: {"conversations":[{"id":"9b31ad3b-db…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [Inbox] Reassigned conversation 9b31ad3b-dbea-40bd-89d4-2499d0b77adb to user 64511fdf-e4da-444e-9e54-41168393d4f5 (was: unassigned)
+0|curbe-admin  | [WebSocket] Broadcasting conversation_update to 4 authenticated clients (company: 13edaa5f-bcfa-419b-ae19-bbc87e0c417d)
+0|curbe-admin  | [Inbox Instagram] Send error: ReferenceError: secretsService is not defined
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:76934:35
+0|curbe-admin  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 12:23:35 AM [express] POST /api/inbox/conversations/9b31ad3b-dbea-40bd-89d4-2499d0b77adb/messages 500…
+0|curbe-admin  | 12:23:35 AM [express] GET /api/notifications 304 in 5ms :: {"notifications":[{"id":"4e650fc5-455d-46b…
+0|curbe-admin  | [Inbox] Returning 2 conversations for company 13edaa5f-bcfa-419b-ae19-bbc87e0c417d
+0|curbe-admin  | 12:23:35 AM [express] GET /api/inbox/conversations/9b31ad3b-dbea-40bd-89d4-2499d0b77adb/messages 200 …
+0|curbe-admin  | 12:23:35 AM [express] GET /api/inbox/conversations 200 in 8ms :: {"conversations":[{"id":"9b31ad3b-db…
+0|curbe-admin  | 12:23:37 AM [express] GET /api/ai/autopilot/pending 304 in 6ms :: {"pending":[]}
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] No active extension found for user 64511fdf-e4da-444e-9e54-41168393d4f5
