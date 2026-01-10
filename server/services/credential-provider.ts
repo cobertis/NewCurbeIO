@@ -242,8 +242,9 @@ export const credentialProvider = {
                   process.env.META_APP_ID || '';
     const appSecret = await secretsService.getCredential("meta" as ApiProvider, "app_secret") || 
                       process.env.META_APP_SECRET || '';
-    // Instagram uses the same App Secret as Facebook (same Meta app)
-    const instagramAppSecret = appSecret;
+    // Instagram has its own App Secret (different from Facebook)
+    const instagramAppSecret = await secretsService.getCredential("meta" as ApiProvider, "instagram_app_secret") || 
+                               appSecret || '';
     const webhookVerifyToken = await secretsService.getCredential("meta" as ApiProvider, "webhook_verify_token") || 
                                process.env.META_WEBHOOK_VERIFY_TOKEN || '';
     
