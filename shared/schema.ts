@@ -7836,6 +7836,10 @@ export const campaignContacts = pgTable("campaign_contacts", {
   // Priority override
   priority: integer("priority").notNull().default(5), // 1=highest, 10=lowest
   
+  // Locking for concurrent worker processing
+  lockedUntil: timestamp("locked_until"),
+  lockedBy: text("locked_by"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
@@ -8041,3 +8045,62 @@ export const insertCampaignAuditLogSchema = createInsertSchema(campaignAuditLogs
 
 export type CampaignAuditLog = typeof campaignAuditLogs.$inferSelect;
 export type InsertCampaignAuditLog = z.infer<typeof insertCampaignAuditLogSchema>;
+
+// =====================================================
+// ORCHESTRATOR JOBS (Job queue for channel execution)
+// =====================================================
+
+export const orchestratorJobStatusEnum = pgEnum("orchestrator_job_status", [
+  "queued",
+  "processing",
+  "done",
+  "failed",
+  "canceled"
+]);
+
+export const orchestratorJobs = pgTable("orchestrator_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  campaignId: varchar("campaign_id").notNull().references(() => orchestratorCampaigns.id, { onDelete: "cascade" }),
+  campaignContactId: varchar("campaign_contact_id").notNull().references(() => campaignContacts.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  
+  // Job details
+  channel: orchestratorChannelEnum("channel").notNull(),
+  status: orchestratorJobStatusEnum("status").notNull().default("queued"),
+  
+  // Scheduling
+  runAt: timestamp("run_at").notNull().defaultNow(),
+  
+  // Payload for execution
+  payload: jsonb("payload").notNull().default({}), // target, template_id, metadata
+  
+  // Idempotency key (format: attempt_job:{campaign_contact_id}:{YYYYMMDDHH}:{channel})
+  externalId: text("external_id"),
+  
+  // Execution metadata
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  error: text("error"),
+  retryCount: integer("retry_count").notNull().default(0),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyStatusRunIdx: index("orchestrator_jobs_company_status_run_idx").on(table.companyId, table.status, table.runAt),
+  campaignContactIdx: index("orchestrator_jobs_campaign_contact_idx").on(table.campaignContactId),
+  // Race-safe idempotency: UNIQUE on (company_id, external_id) when external_id is NOT NULL
+  uniqueCompanyExternalId: uniqueIndex("orchestrator_jobs_company_external_id_uniq").on(table.companyId, table.externalId).where(sql`external_id IS NOT NULL`),
+}));
+
+export const insertOrchestratorJobSchema = createInsertSchema(orchestratorJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  completedAt: true,
+  retryCount: true,
+});
+
+export type OrchestratorJob = typeof orchestratorJobs.$inferSelect;
+export type InsertOrchestratorJob = z.infer<typeof insertOrchestratorJobSchema>;
