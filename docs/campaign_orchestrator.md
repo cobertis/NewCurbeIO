@@ -282,6 +282,92 @@ These rules are **non-negotiable** and enforced by the Policy Engine before any 
 **Check Required:** Before voice/RVM actions  
 **Action:** Skip voice channels if on DNC list
 
+### 6. Consent Model (Explicit)
+
+Consent is tracked **per channel per contact** and is distinct from suppression status.
+
+#### Consent vs Suppression Status
+
+| Field | Scope | Purpose | Values |
+|-------|-------|---------|--------|
+| `consent` | Per channel | Explicit permission to contact via this channel | `opt_in`, `opt_out`, `unknown` |
+| `suppression_status` | Global | Compliance block from opt-out/complaint/DNC | `none`, `opted_out`, `complaint`, `dnc` |
+
+**Key difference:** A contact may have `consent.sms = opt_in` but `suppression_status = opted_out` if they later sent STOP. Suppression always wins.
+
+#### Consent Schema
+
+```json
+{
+  "consent": {
+    "sms": "opt_in",
+    "voice": "unknown",
+    "whatsapp": "opt_out",
+    "imessage": "unknown",
+    "rvm": "opt_in"
+  },
+  "consent_sources": {
+    "sms": { "source": "web_form", "timestamp": "2026-01-05T10:00:00Z", "ip": "192.168.1.1" },
+    "rvm": { "source": "verbal_recorded", "timestamp": "2026-01-06T14:30:00Z", "call_id": "call_123" }
+  }
+}
+```
+
+#### Default Rules When consent=unknown (Conservative)
+
+| Channel | Default Behavior | Rationale |
+|---------|------------------|-----------|
+| SMS | **BLOCK** | TCPA requires express consent for marketing SMS |
+| Voice | **ALLOW** (with DNC check) | Cold calling allowed if not on DNC |
+| Voicemail | **ALLOW** (with DNC check) | Same as voice |
+| RVM | **BLOCK** | FCC treats as pre-recorded call, requires consent |
+| WhatsApp | **BLOCK** | Meta requires opt-in template messages |
+| iMessage | **BLOCK** | Treat as SMS equivalent |
+
+#### Policy Engine Consent Check
+
+Added to evaluation order (after suppression, before channel availability):
+
+```
+3. **Consent Check** - Does contact have explicit consent for this channel?
+   - If consent = opt_out → BLOCK
+   - If consent = unknown → Apply default rule per channel (table above)
+   - If consent = opt_in → PASS
+```
+
+#### Updated AllowedAction Example (with consent)
+
+```json
+{
+  "action_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "channel": "sms",
+  "target": { "type": "phone", "value": "+15551234567" },
+  "allowed": true,
+  "reason": "All policy checks passed",
+  "constraints_applied": [
+    { "rule": "suppression", "status": "passed", "detail": "suppression_status=none" },
+    { "rule": "consent", "status": "passed", "detail": "consent.sms=opt_in via web_form" },
+    { "rule": "quiet_hours", "status": "passed", "detail": "Within 9AM-8PM EST" },
+    { "rule": "daily_cap", "status": "passed", "detail": "1 of 3 daily touches used" }
+  ]
+}
+```
+
+#### Updated PolicyEngineInput (with consent)
+
+```typescript
+interface PolicyEngineInput {
+  // ... existing fields ...
+  contact: {
+    id: string;
+    phone_numbers: Array<{ number: string; type: string; timezone?: string }>;
+    consent: Record<ChannelType, 'opt_in' | 'opt_out' | 'unknown'>;
+    suppression_status: 'none' | 'opted_out' | 'complaint' | 'dnc';
+    // ...
+  };
+}
+```
+
 ---
 
 ## E) Quiet Hours
