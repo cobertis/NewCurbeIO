@@ -7927,6 +7927,39 @@ export type CampaignEvent = typeof campaignEvents.$inferSelect;
 export type InsertCampaignEvent = z.infer<typeof insertCampaignEventSchema>;
 
 // =====================================================
+// ORCHESTRATOR EXPERIMENT ALLOCATIONS (Auto-tune snapshots)
+// =====================================================
+
+export const orchestratorExperimentAllocations = pgTable("orchestrator_experiment_allocations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  campaignId: varchar("campaign_id").notNull().references(() => orchestratorCampaigns.id, { onDelete: "cascade" }),
+  
+  computedAt: timestamp("computed_at").notNull().defaultNow(),
+  window: text("window").notNull(), // "7d" or "30d"
+  
+  allocationsJson: jsonb("allocations_json").notNull(), // { "variant_a": 0.6, "variant_b": 0.4 }
+  metricsSnapshotJson: jsonb("metrics_snapshot_json").notNull(), // per-variant metrics used
+  
+  objective: text("objective").notNull().default("score_v1"),
+  epsilon: numeric("epsilon"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("exp_alloc_company_id_idx").on(table.companyId),
+  campaignIdIdx: index("exp_alloc_campaign_id_idx").on(table.campaignId),
+  computedAtIdx: index("exp_alloc_computed_at_idx").on(table.computedAt),
+}));
+
+export const insertExperimentAllocationSchema = createInsertSchema(orchestratorExperimentAllocations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ExperimentAllocation = typeof orchestratorExperimentAllocations.$inferSelect;
+export type InsertExperimentAllocation = z.infer<typeof insertExperimentAllocationSchema>;
+
+// =====================================================
 // CONTACT CONSENTS (Per-channel consent tracking)
 // =====================================================
 

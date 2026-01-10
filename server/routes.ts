@@ -47491,6 +47491,28 @@ CRITICAL REMINDERS:
     }
   });
 
+  // GET /api/orchestrator/campaigns/:id/auto-tune - Get latest auto-tune recommendation
+  app.get("/api/orchestrator/campaigns/:id/auto-tune", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      
+      const { verifyCampaignAccess } = await import("./services/orchestrator-metrics");
+      const { getLatestAllocationRecommendation } = await import("./services/orchestrator-auto-tuner");
+      
+      const hasAccess = await verifyCampaignAccess(companyId, campaignId);
+      if (!hasAccess) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      
+      const recommendation = await getLatestAllocationRecommendation(companyId, campaignId);
+      res.json(recommendation || { message: "No auto-tune recommendations yet" });
+    } catch (error: any) {
+      console.error("[Orchestrator Auto-Tune] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to get auto-tune recommendation" });
+    }
+  });
+
   // =====================================================
   // CAMPAIGN ORCHESTRATOR - Bridge Delivery Status Webhook
   // =====================================================
