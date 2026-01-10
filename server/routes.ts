@@ -34540,6 +34540,7 @@ CRITICAL REMINDERS:
             { keyName: "app_id", label: "App ID", required: true, hint: "Your Meta App ID" },
             { keyName: "app_secret", label: "App Secret", required: true, hint: "Your Meta App Secret (for Facebook/WhatsApp)" },
             { keyName: "instagram_app_secret", label: "Instagram App Secret", required: false, hint: "Separate App Secret for Instagram webhooks (if different)" },
+            { keyName: "instagram_access_token", label: "Instagram Access Token", required: false, hint: "Access Token from Instagram API > Generate access tokens (for test mode)" },
             { keyName: "config_id", label: "Business Login Config ID", required: true, hint: "From Facebook Login for Business > Configurations" },
           ]
         },
@@ -44451,13 +44452,25 @@ CRITICAL REMINDERS:
                 eq(channelConnections.status, "active")
               ));
             const igConnection = igConnectionResult[0];
-
-            if (!igConnection || !igConnection.accessTokenEnc) {
+            if (!igConnection) {
               console.error("[Inbox Instagram] No Instagram connection found");
               return res.status(400).json({ message: "Instagram not connected. Please set up Instagram in the Integrations page." });
             }
 
-            const pageAccessToken = decryptToken(igConnection.accessTokenEnc);
+            // Priority 1: Check for Instagram Access Token in system credentials (for test mode)
+            let pageAccessToken = await secretsService.getCredential("meta" as ApiProvider, "instagram_access_token");
+            
+            // Priority 2: Fall back to channel connection token (from OAuth)
+            if (!pageAccessToken && igConnection.accessTokenEnc) {
+              pageAccessToken = decryptToken(igConnection.accessTokenEnc);
+            }
+            
+            if (!pageAccessToken) {
+              console.error("[Inbox Instagram] No access token available");
+              return res.status(400).json({ message: "Instagram access token not configured. Please add Instagram Access Token in System Settings > API Credentials." });
+            }
+            
+            console.log("[Inbox Instagram] Using token type:", pageAccessToken.startsWith("IGAAM") ? "Instagram Business Token" : "Facebook Page Token");
             // Detect token type and use appropriate API host
             const isInstagramBusinessToken = pageAccessToken.startsWith("IGAAM");
             const apiHost = isInstagramBusinessToken ? "graph.instagram.com" : "graph.facebook.com";
