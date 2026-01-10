@@ -98,6 +98,7 @@ import Tasks from "@/pages/tasks";
 import PhoneSystem from "@/pages/phone-system";
 import IMessagePage from "@/pages/imessage";
 import ImessageCampaigns from "@/pages/imessage-campaigns";
+import OrchestratorCampaigns from "@/pages/orchestrator-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import NotificationsPage from "@/pages/notifications";
 import WalletAnalyticsPage from "@/pages/wallet-analytics";
@@ -2001,6 +2002,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Campaigns />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/orchestrator-campaigns">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <OrchestratorCampaigns />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

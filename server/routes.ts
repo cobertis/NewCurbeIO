@@ -99,7 +99,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes, orchestratorCampaigns, campaignContacts, campaignEvents, orchestratorJobs } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -47056,6 +47056,390 @@ CRITICAL REMINDERS:
     } catch (error: any) {
       console.error("[Inbound Webhook] Error processing message:", error);
       res.status(500).json({ error: error.message || "Failed to process inbound message" });
+    }
+  });
+
+  // =====================================================
+  // CAMPAIGN ORCHESTRATOR API (Live Ops UI)
+  // =====================================================
+  
+  app.get("/api/orchestrator/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      
+      const campaigns = await db.select({
+        id: orchestratorCampaigns.id,
+        name: orchestratorCampaigns.name,
+        status: orchestratorCampaigns.status,
+        createdAt: orchestratorCampaigns.createdAt,
+        updatedAt: orchestratorCampaigns.updatedAt
+      })
+        .from(orchestratorCampaigns)
+        .where(eq(orchestratorCampaigns.companyId, companyId))
+        .orderBy(desc(orchestratorCampaigns.createdAt));
+      
+      // Get contact counts per campaign
+      const campaignsWithStats = await Promise.all(campaigns.map(async (campaign) => {
+        const stats = await db.select({
+          total: sql<number>`count(*)`,
+          new: sql<number>`sum(case when state = 'NEW' then 1 else 0 end)`,
+          attempting: sql<number>`sum(case when state = 'ATTEMPTING' then 1 else 0 end)`,
+          engaged: sql<number>`sum(case when state = 'ENGAGED' then 1 else 0 end)`,
+          stopped: sql<number>`sum(case when state = 'STOPPED' then 1 else 0 end)`,
+          dnc: sql<number>`sum(case when state = 'DO_NOT_CONTACT' then 1 else 0 end)`,
+          unreachable: sql<number>`sum(case when state = 'UNREACHABLE' then 1 else 0 end)`
+        })
+          .from(campaignContacts)
+          .where(eq(campaignContacts.campaignId, campaign.id));
+        
+        return {
+          ...campaign,
+          stats: stats[0] || { total: 0, new: 0, attempting: 0, engaged: 0, stopped: 0, dnc: 0, unreachable: 0 }
+        };
+      }));
+      
+      res.json(campaignsWithStats);
+    } catch (error: any) {
+      console.error("[Orchestrator] Error fetching campaigns:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch campaigns" });
+    }
+  });
+  
+
+  // Campaign detail endpoint
+  app.get("/api/orchestrator/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      
+      const stats = await db.select({
+        total: sql<number>`count(*)`,
+        new: sql<number>`sum(case when state = 'NEW' then 1 else 0 end)`,
+        attempting: sql<number>`sum(case when state = 'ATTEMPTING' then 1 else 0 end)`,
+        engaged: sql<number>`sum(case when state = 'ENGAGED' then 1 else 0 end)`,
+        stopped: sql<number>`sum(case when state = 'STOPPED' then 1 else 0 end)`,
+        dnc: sql<number>`sum(case when state = 'DO_NOT_CONTACT' then 1 else 0 end)`,
+        unreachable: sql<number>`sum(case when state = 'UNREACHABLE' then 1 else 0 end)`
+      })
+        .from(campaignContacts)
+        .where(eq(campaignContacts.campaignId, campaignId));
+      
+      res.json({
+        ...campaign,
+        stats: stats[0] || { total: 0, new: 0, attempting: 0, engaged: 0, stopped: 0, dnc: 0, unreachable: 0 }
+      });
+    } catch (error: any) {
+      console.error("[Orchestrator] Error fetching campaign:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch campaign" });
+    }
+  });
+  app.get("/api/orchestrator/campaigns/:id/contacts", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      const { state, limit = "50", offset = "0" } = req.query;
+      
+      // Verify campaign belongs to company
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      
+      const conditions = [eq(campaignContacts.campaignId, campaignId)];
+      if (state && typeof state === "string") {
+        conditions.push(eq(campaignContacts.state, state as any));
+      }
+      
+      const contactsResult = await db.select({
+        id: campaignContacts.id,
+        contactId: campaignContacts.contactId,
+        state: campaignContacts.state,
+        nextActionAt: campaignContacts.nextActionAt,
+        fatigueScore: campaignContacts.fatigueScore,
+        attemptsTotal: campaignContacts.attemptsTotal,
+        stoppedReason: campaignContacts.stoppedReason,
+        stoppedAt: campaignContacts.stoppedAt,
+        createdAt: campaignContacts.createdAt,
+        updatedAt: campaignContacts.updatedAt,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+        phone: contacts.phoneNormalized,
+        email: contacts.email
+      })
+        .from(campaignContacts)
+        .innerJoin(contacts, eq(campaignContacts.contactId, contacts.id))
+        .where(and(...conditions))
+        .orderBy(desc(campaignContacts.updatedAt))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+      
+      // Mask PII for display
+      const maskedContacts = contactsResult.map(c => ({
+        ...c,
+        phone: c.phone ? c.phone.replace(/(\+\d{1,3})\d{6}(\d{4})/, "$1******$2") : null
+      }));
+      
+      res.json({ campaign, contacts: maskedContacts });
+    } catch (error: any) {
+      console.error("[Orchestrator] Error fetching campaign contacts:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch campaign contacts" });
+    }
+  });
+  
+  app.get("/api/orchestrator/campaigns/:campaignId/contacts/:contactId/timeline", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignContactId = req.params.contactId;
+      const campaignIdFromUrl = req.params.campaignId;
+      const { limit = "50" } = req.query;
+      
+      // Verify campaign_contact belongs to company
+      const [cc] = await db.select()
+        .from(campaignContacts)
+        .where(and(
+          eq(campaignContacts.id, campaignContactId),
+          eq(campaignContacts.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!cc) {
+        return res.status(404).json({ error: "Campaign contact not found" });
+      }
+      
+      
+      // Verify campaign contact belongs to the specified campaign
+      if (cc.campaignId !== campaignIdFromUrl) {
+        return res.status(404).json({ error: "Campaign contact not found in this campaign" });
+      }
+      // Get events
+      const events = await db.select({
+        id: campaignEvents.id,
+        type: sql<string>`'event'`,
+        eventType: campaignEvents.eventType,
+        channel: campaignEvents.channel,
+        provider: campaignEvents.provider,
+        payload: campaignEvents.payload,
+        createdAt: campaignEvents.createdAt
+      })
+        .from(campaignEvents)
+        .where(eq(campaignEvents.campaignContactId, campaignContactId))
+        .orderBy(desc(campaignEvents.createdAt))
+        .limit(parseInt(limit as string));
+      
+      // Get jobs
+      const jobs = await db.select({
+        id: orchestratorJobs.id,
+        type: sql<string>`'job'`,
+        status: orchestratorJobs.status,
+        channel: orchestratorJobs.channel,
+        runAt: orchestratorJobs.runAt,
+        retryCount: orchestratorJobs.retryCount,
+        maxRetries: orchestratorJobs.maxRetries,
+        lastError: orchestratorJobs.lastError,
+        createdAt: orchestratorJobs.createdAt
+      })
+        .from(orchestratorJobs)
+        .where(eq(orchestratorJobs.campaignContactId, campaignContactId))
+        .orderBy(desc(orchestratorJobs.createdAt))
+        .limit(parseInt(limit as string));
+      
+      // Merge and sort
+      const timeline = [...events, ...jobs].sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ).slice(0, parseInt(limit as string));
+      
+      res.json({ campaignContact: cc, timeline });
+    } catch (error: any) {
+      console.error("[Orchestrator] Error fetching timeline:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch timeline" });
+    }
+  });
+  
+  app.post("/api/orchestrator/campaigns/:id/pause", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      
+      if (campaign.status !== "active") {
+        return res.status(400).json({ error: "Campaign is not active" });
+      }
+      
+      await db.update(orchestratorCampaigns)
+        .set({ status: "paused", updatedAt: new Date() })
+        .where(eq(orchestratorCampaigns.id, campaignId));
+      
+      res.json({ success: true, status: "paused" });
+    } catch (error: any) {
+      console.error("[Orchestrator] Error pausing campaign:", error);
+      res.status(500).json({ error: error.message || "Failed to pause campaign" });
+    }
+  });
+  
+  app.post("/api/orchestrator/campaigns/:id/resume", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      
+      if (campaign.status !== "paused") {
+        return res.status(400).json({ error: "Campaign is not paused" });
+      }
+      
+      await db.update(orchestratorCampaigns)
+        .set({ status: "active", updatedAt: new Date() })
+        .where(eq(orchestratorCampaigns.id, campaignId));
+      
+      res.json({ success: true, status: "active" });
+    } catch (error: any) {
+      console.error("[Orchestrator] Error resuming campaign:", error);
+      res.status(500).json({ error: error.message || "Failed to resume campaign" });
+    }
+  });
+  
+  app.post("/api/orchestrator/campaigns/:campaignId/contacts/:contactId/stop", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignContactId = req.params.contactId;
+      const campaignIdFromUrl = req.params.campaignId;
+      
+      const [cc] = await db.select()
+        .from(campaignContacts)
+        .where(and(
+          eq(campaignContacts.id, campaignContactId),
+          eq(campaignContacts.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!cc) {
+        return res.status(404).json({ error: "Campaign contact not found" });
+      }
+      
+      
+      // Verify campaign contact belongs to the specified campaign
+      if (cc.campaignId !== campaignIdFromUrl) {
+        return res.status(404).json({ error: "Campaign contact not found in this campaign" });
+      }
+      if (cc.state === "DO_NOT_CONTACT" || cc.state === "STOPPED") {
+        return res.status(400).json({ error: "Contact already stopped" });
+      }
+      
+      await db.update(campaignContacts)
+        .set({
+          state: "DO_NOT_CONTACT",
+          stoppedReason: "manual_stop",
+          stoppedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(campaignContacts.id, campaignContactId));
+      
+      // Emit MANUAL_STOP event
+      const { emitCampaignEvent } = await import("./services/campaign-events");
+      await emitCampaignEvent({
+        companyId,
+        campaignId: cc.campaignId,
+        campaignContactId,
+        contactId: cc.contactId,
+        eventType: "MANUAL_STOP",
+        channel: "system",
+        provider: "ui",
+        externalId: `manual_stop:${campaignContactId}:${Date.now()}`,
+        payload: { stoppedBy: req.user!.id, reason: "manual_stop" }
+      });
+      
+      res.json({ success: true, state: "DO_NOT_CONTACT" });
+    } catch (error: any) {
+      console.error("[Orchestrator] Error stopping contact:", error);
+      res.status(500).json({ error: error.message || "Failed to stop contact" });
+    }
+  });
+  
+  app.post("/api/orchestrator/jobs/:id/requeue", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const jobId = req.params.id;
+      
+      const [job] = await db.select()
+        .from(orchestratorJobs)
+        .where(eq(orchestratorJobs.id, jobId))
+        .limit(1);
+      
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      // Verify company owns this job via campaign
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, job.campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (!campaign) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      if (!["failed", "canceled"].includes(job.status)) {
+        return res.status(400).json({ error: "Job cannot be requeued (must be failed or canceled)" });
+      }
+      
+      await db.update(orchestratorJobs)
+        .set({
+          status: "queued",
+          runAt: new Date(),
+          retryCount: 0,
+          lastError: null,
+          updatedAt: new Date()
+        })
+        .where(eq(orchestratorJobs.id, jobId));
+      
+      res.json({ success: true, status: "queued" });
+    } catch (error: any) {
+      console.error("[Orchestrator] Error requeuing job:", error);
+      res.status(500).json({ error: error.message || "Failed to requeue job" });
     }
   });
 
