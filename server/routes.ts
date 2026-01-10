@@ -28323,10 +28323,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   function validateMetaWebhookSignature(rawBody: Buffer, signature: string, appSecret: string): boolean {
     try {
       const expectedSig = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+      console.log("[Meta Webhook] Expected sig:", expectedSig.substring(0, 40) + "...");
+      console.log("[Meta Webhook] Received sig:", signature.substring(0, 40) + "...");
+      console.log("[Meta Webhook] App secret length:", appSecret.length, "chars");
       if (signature.length !== expectedSig.length) {
+        console.log("[Meta Webhook] Signature length mismatch:", signature.length, "vs", expectedSig.length);
         return false;
       }
-      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig));
+      const isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig));
+      console.log("[Meta Webhook] Signature match:", isValid);
+      return isValid;
     } catch (error) {
       console.error("[Meta Webhook] Signature validation error:", error);
       return false;
