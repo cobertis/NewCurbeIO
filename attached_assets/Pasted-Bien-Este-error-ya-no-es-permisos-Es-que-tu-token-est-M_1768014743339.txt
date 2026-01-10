@@ -1,0 +1,134 @@
+Bien. **Este error ya no es permisos. Es que tu token está MAL FORMADO o se está guardando MAL.**
+`code: 190` + **“Cannot parse access token”** significa: *Meta ni siquiera puede leer el string como token*. Eso pasa por 3 cosas típicas (y 99% es tu backend):
+
+## 1) Estás guardando el token con comillas/espacios/saltos de línea
+
+Ejemplos reales de token roto:
+
+* `"EAAG...DZD"` (con comillas incluidas en el string)
+* `EAAG...DZD\n` (con salto de línea al final)
+* `EAAG ... DZD` (con espacios)
+* Estás guardando **un JSON** en vez del valor plano
+
+### Fix inmediato (sin debate): sanitiza antes de usar
+
+En el código donde lees el token de DB/ENV:
+
+```js
+function sanitizeToken(t) {
+  if (!t) return "";
+  return String(t)
+    .trim()
+    .replace(/^"+|"+$/g, "")   // quita comillas al inicio/fin
+    .replace(/^'+|'+$/g, "")   // quita comillas simples
+    .replace(/\s+/g, "");      // quita espacios/newlines internos
+}
+```
+
+Y úsalo así:
+
+```js
+const accessToken = sanitizeToken(channel.instagramAccessToken);
+```
+
+**Sí, quita los espacios internos también** porque a veces se pega en varias líneas.
+
+---
+
+## 2) Estás usando el token equivocado (no es un access token válido)
+
+El botón “Generate token” puede darte varios formatos dependiendo del flujo. Pero **si Meta dice “Cannot parse”**, ni siquiera es “token expirado”; es que no parece token.
+
+### Debug brutal: prueba el token directamente con Graph Explorer style
+
+En tu terminal, con ESE mismo token (sin comillas):
+
+```bash
+TOKEN="PEGA_EL_TOKEN_TAL_CUAL_SIN_COMILLAS"
+curl -s "https://graph.facebook.com/v21.0/me?access_token=$TOKEN"
+```
+
+* Si responde JSON con id/name → el token es válido.
+* Si responde `Cannot parse access token` → el token que crees que tienes NO es usable (o lo estás pegando mal).
+
+---
+
+## 3) Tu request está mandando mal el access_token (doble encode o header raro)
+
+Para `/replies` **no inventes**. Mándalo como form-urlencoded **simple**.
+
+Ejemplo correcto en Node:
+
+```js
+const params = new URLSearchParams();
+params.set("message", message);
+params.set("access_token", accessToken);
+
+const r = await fetch(`https://graph.facebook.com/v21.0/${commentId}/replies`, {
+  method: "POST",
+  headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  body: params.toString(),
+});
+```
+
+NO:
+
+* `Authorization: Bearer ...` (a veces funciona en otros endpoints, aquí te mete ruido)
+* JSON body
+* `encodeURIComponent` manual encima del URLSearchParams (doble encode)
+
+---
+
+# Qué haría yo AHORA mismo (pasos cortos, cero teoría)
+
+### Paso A: imprime longitud y últimos caracteres (sin exponer el token)
+
+En el log, antes del fetch, agrega:
+
+```js
+console.log("[IG] token len:", accessToken.length, "tail:", accessToken.slice(-6));
+```
+
+Si ves:
+
+* `len` súper corta (ej 10, 30) → estás guardando basura.
+* `tail` incluye `"` o `'` → lo guardaste con comillas.
+* `len` enorme pero falla → hay whitespace interno o encode mal.
+
+### Paso B: valida el token en runtime (sin guardarlo)
+
+Haz un “ping” una vez:
+
+```js
+const ping = await fetch(`https://graph.facebook.com/v21.0/me?access_token=${encodeURIComponent(accessToken)}`);
+console.log("[IG] ping status", ping.status);
+```
+
+Si aquí falla con parse → token roto. Punto.
+
+### Paso C: si token está roto, regénéralo y guárdalo bien
+
+Cuando copies el token desde Meta:
+
+* **un solo click Copy**
+* pega directo en tu UI de Curbe
+* guarda como string plano
+* NO lo metas dentro de JSON literal, NO lo envuelvas en comillas
+
+---
+
+## Lo más probable en tu caso
+
+Tu app ya está enviando/recibiendo mensajes, pero para comentarios estás usando **otro token path** (el nuevo “token del paso 2”) y lo estás guardando con un formato incorrecto.
+Ese `Cannot parse` es prácticamente una confesión de “token se guardó mal”.
+
+---
+
+## Dame 2 datos y te digo exactamente cuál de las 3 es
+
+Pégame SOLO:
+
+1. El log de `token len` y `tail` (los 6 últimos chars)
+2. Cómo lo estás guardando: ¿DB field? ¿ENV? ¿JSON en DB? (una línea)
+
+Y te digo el arreglo exacto (sin volver a adivinar).

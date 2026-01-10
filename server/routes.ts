@@ -44688,14 +44688,54 @@ CRITICAL REMINDERS:
               // Reply publicly to the comment using Instagram Comments API
               // CRITICAL: For comment replies, we MUST use the Instagram Access Token from System Settings,
               // NOT the channel connection token. This token is configured in Super Admin > System Settings.
-              const systemInstagramToken = await credentialProvider.getInstagramAccessToken();
+              const rawToken = await credentialProvider.getInstagramAccessToken();
               
-              if (!systemInstagramToken) {
+              if (!rawToken) {
                 console.error("[Inbox Instagram] No Instagram Access Token configured in System Settings");
                 return res.status(400).json({ 
                   error: "Instagram comment replies require an Instagram Access Token configured in System Settings (Super Admin). Please contact your administrator.",
                   requires_system_config: true
                 });
+              }
+              
+              // Sanitize token - remove quotes, whitespace, newlines that may have been accidentally included
+              const systemInstagramToken = String(rawToken)
+                .trim()
+                .replace(/^"+|"+$/g, "")   // remove quotes at start/end
+                .replace(/^'+|'+$/g, "")   // remove single quotes
+                .replace(/\s+/g, "");      // remove all whitespace/newlines
+              
+              // Debug logging (safe - no sensitive data exposed)
+              console.log(`[Inbox Instagram] Token debug: len=${systemInstagramToken.length}, tail=${systemInstagramToken.slice(-6)}`);
+              
+              // Validate token format before making API call
+              if (systemInstagramToken.length < 50) {
+                console.error(`[Inbox Instagram] Token appears too short (${systemInstagramToken.length} chars) - may be corrupt or placeholder`);
+                return res.status(400).json({ 
+                  error: "Instagram Access Token appears invalid (too short). Please update the token in System Settings (Super Admin).",
+                  requires_system_config: true
+                });
+              }
+              
+              // Quick validation ping to verify token is parseable
+              try {
+                const pingUrl = `https://graph.facebook.com/v21.0/me?access_token=${encodeURIComponent(systemInstagramToken)}`;
+                const pingResp = await fetch(pingUrl);
+                const pingData = await pingResp.json() as any;
+                console.log(`[Inbox Instagram] Token validation: status=${pingResp.status}, id=${pingData.id || 'none'}, error=${pingData.error?.message || 'none'}`);
+                
+                if (!pingResp.ok || pingData.error) {
+                  console.error("[Inbox Instagram] Token validation failed:", pingData.error);
+                  if (pingData.error?.code === 190) {
+                    return res.status(401).json({ 
+                      message: "Instagram Access Token is invalid or expired. Please update it in System Settings (Super Admin).",
+                      requires_system_config: true,
+                      debug: { error_code: 190, error_message: pingData.error?.message }
+                    });
+                  }
+                }
+              } catch (pingError) {
+                console.error("[Inbox Instagram] Token validation request failed:", pingError);
               }
               
               // Instagram API limitation: Public comment replies only support text, no media attachments
@@ -44710,18 +44750,19 @@ CRITICAL REMINDERS:
               // Comment replies ALWAYS use graph.facebook.com (NOT graph.instagram.com)
               // The Instagram Access Token works with the Facebook Graph API for comment replies
               const commentReplyUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/${conversation.igCommentId}/replies`;
-              console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId} using System Instagram Token`);
+              console.log(`[Inbox Instagram] Sending PUBLIC reply to comment ${conversation.igCommentId}`);
               
               // Make the API call with form-encoded body as per Meta documentation
+              const params = new URLSearchParams();
+              params.set("message", text);
+              params.set("access_token", systemInstagramToken);
+              
               const commentResponse = await fetch(commentReplyUrl, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/x-www-form-urlencoded"
                 },
-                body: new URLSearchParams({
-                  message: text,
-                  access_token: systemInstagramToken
-                })
+                body: params.toString()
               });
               
               const commentData = await commentResponse.json();
