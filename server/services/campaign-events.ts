@@ -29,7 +29,9 @@ export interface EmitCampaignEventResult {
   stateTransition?: { before: string; after: string };
 }
 
-const ATTEMPT_EVENT_TYPES = [
+// Shared constant: Event types that count as "attempts" for caps/limits
+// Used by: Policy Engine (24h caps, total caps), Event Emitter (attemptsTotal increment)
+export const ATTEMPT_EVENT_TYPES = [
   "MESSAGE_SENT",
   "CALL_PLACED",
   "VOICEMAIL_DROPPED",

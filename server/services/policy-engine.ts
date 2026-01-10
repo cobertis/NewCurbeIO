@@ -12,6 +12,7 @@ import {
   ContactSuppression
 } from "@shared/schema";
 import { eq, and, sql, gte, inArray } from "drizzle-orm";
+import { ATTEMPT_EVENT_TYPES } from "./campaign-events";
 
 export type OrchestratorChannel = "sms" | "mms" | "imessage" | "whatsapp" | "voice" | "voicemail" | "rvm";
 
@@ -211,7 +212,7 @@ export async function calculateAllowedActions(
         eq(campaignEvents.campaignContactId, enrollment.id),
         eq(campaignEvents.companyId, companyId),
         gte(campaignEvents.createdAt, twentyFourHoursAgo),
-        inArray(campaignEvents.eventType, ["MESSAGE_SENT", "CALL_PLACED", "VOICEMAIL_DROPPED", "RVM_DROPPED"])
+        inArray(campaignEvents.eventType, [...ATTEMPT_EVENT_TYPES])
       ))
       .groupBy(campaignEvents.channel),
     
@@ -223,7 +224,7 @@ export async function calculateAllowedActions(
       .where(and(
         eq(campaignEvents.campaignContactId, enrollment.id),
         eq(campaignEvents.companyId, companyId),
-        inArray(campaignEvents.eventType, ["MESSAGE_SENT", "CALL_PLACED", "VOICEMAIL_DROPPED", "RVM_DROPPED"])
+        inArray(campaignEvents.eventType, [...ATTEMPT_EVENT_TYPES])
       ))
   ]);
   
