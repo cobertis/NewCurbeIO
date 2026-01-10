@@ -444,10 +444,7 @@ export async function logAutoTuneAudit(
   });
 }
 
-export async function getLatestAllocationRecommendation(
-  companyId: string,
-  campaignId: string
-): Promise<{
+export interface AllocationRecommendation {
   id: string;
   computedAt: Date;
   window: string;
@@ -455,7 +452,13 @@ export async function getLatestAllocationRecommendation(
   metricsSnapshotJson: VariantMetricsSnapshot[];
   objective: string;
   epsilon: number | null;
-} | null> {
+  coverageWarnings: { variant: string; message: string }[];
+}
+
+export async function getLatestAllocationRecommendation(
+  companyId: string,
+  campaignId: string
+): Promise<AllocationRecommendation | null> {
   const [latest] = await db.select()
     .from(orchestratorExperimentAllocations)
     .where(and(
@@ -467,13 +470,251 @@ export async function getLatestAllocationRecommendation(
   
   if (!latest) return null;
   
+  const metricsSnapshot = latest.metricsSnapshotJson as VariantMetricsSnapshot[];
+  const coverageWarnings: { variant: string; message: string }[] = [];
+  
+  for (const m of metricsSnapshot) {
+    if (m.attempts < 50) {
+      coverageWarnings.push({
+        variant: m.variant,
+        message: `Insufficient data: only ${m.attempts} attempts (recommend 50+)`
+      });
+    }
+  }
+  
   return {
     id: latest.id,
     computedAt: latest.computedAt,
     window: latest.window,
     allocationsJson: latest.allocationsJson as Record<string, number>,
-    metricsSnapshotJson: latest.metricsSnapshotJson as VariantMetricsSnapshot[],
+    metricsSnapshotJson: metricsSnapshot,
     objective: latest.objective,
-    epsilon: latest.epsilon ? parseFloat(latest.epsilon) : null
+    epsilon: latest.epsilon ? parseFloat(latest.epsilon) : null,
+    coverageWarnings
+  };
+}
+
+export interface ApplyAllocationResult {
+  success: boolean;
+  campaignId: string;
+  oldAllocation: Record<string, number>;
+  newAllocation: Record<string, number>;
+  auditLogId: string;
+}
+
+export async function applyAllocationRecommendation(
+  companyId: string,
+  campaignId: string,
+  snapshotId: string,
+  mode: "replace" | "blend",
+  blendFactor: number = 0.5
+): Promise<ApplyAllocationResult> {
+  const [snapshot] = await db.select()
+    .from(orchestratorExperimentAllocations)
+    .where(and(
+      eq(orchestratorExperimentAllocations.id, snapshotId),
+      eq(orchestratorExperimentAllocations.companyId, companyId),
+      eq(orchestratorExperimentAllocations.campaignId, campaignId)
+    ))
+    .limit(1);
+  
+  if (!snapshot) {
+    throw new Error("Snapshot not found or access denied");
+  }
+  
+  const [campaign] = await db.select()
+    .from(orchestratorCampaigns)
+    .where(and(
+      eq(orchestratorCampaigns.id, campaignId),
+      eq(orchestratorCampaigns.companyId, companyId)
+    ))
+    .limit(1);
+  
+  if (!campaign) {
+    throw new Error("Campaign not found");
+  }
+  
+  const policyJson = (campaign.policyJson as Record<string, any>) || {};
+  const oldAllocation = policyJson?.experiment?.allocation || {};
+  const recommendedAllocation = snapshot.allocationsJson as Record<string, number>;
+  
+  let newAllocation: Record<string, number>;
+  
+  if (mode === "replace") {
+    newAllocation = { ...recommendedAllocation };
+  } else {
+    newAllocation = {};
+    const allVariants = new Set([...Object.keys(oldAllocation), ...Object.keys(recommendedAllocation)]);
+    
+    for (const variant of allVariants) {
+      const oldVal = oldAllocation[variant] || 0;
+      const newVal = recommendedAllocation[variant] || 0;
+      newAllocation[variant] = Math.round((oldVal * (1 - blendFactor) + newVal * blendFactor) * 100) / 100;
+    }
+    
+    const total = Object.values(newAllocation).reduce((a, b) => a + b, 0);
+    if (total > 0) {
+      for (const k of Object.keys(newAllocation)) {
+        newAllocation[k] = Math.round((newAllocation[k] / total) * 100) / 100;
+      }
+    }
+  }
+  
+  const minAlloc = policyJson?.experiment?.autoTune?.minAllocation || 0.1;
+  const maxAlloc = policyJson?.experiment?.autoTune?.maxAllocation || 0.9;
+  
+  for (const k of Object.keys(newAllocation)) {
+    newAllocation[k] = Math.max(minAlloc, Math.min(maxAlloc, newAllocation[k]));
+  }
+  
+  const allocTotal = Object.values(newAllocation).reduce((a, b) => a + b, 0);
+  if (Math.abs(allocTotal - 1.0) > 0.05) {
+    const diff = 1.0 - allocTotal;
+    const firstKey = Object.keys(newAllocation)[0];
+    if (firstKey) {
+      newAllocation[firstKey] = Math.round((newAllocation[firstKey] + diff) * 100) / 100;
+    }
+  }
+  
+  const updatedPolicyJson = {
+    ...policyJson,
+    experiment: {
+      ...policyJson.experiment,
+      allocation: newAllocation
+    }
+  };
+  
+  await db.update(orchestratorCampaigns)
+    .set({ policyJson: updatedPolicyJson })
+    .where(eq(orchestratorCampaigns.id, campaignId));
+  
+  const [auditLog] = await db.insert(campaignAuditLogs)
+    .values({
+      companyId,
+      campaignId,
+      logType: "auto_tune_apply",
+      actionTaken: mode,
+      payload: {
+        snapshotId,
+        oldAllocation,
+        newAllocation,
+        mode,
+        blendFactor
+      }
+    })
+    .returning({ id: campaignAuditLogs.id });
+  
+  return {
+    success: true,
+    campaignId,
+    oldAllocation,
+    newAllocation,
+    auditLogId: auditLog.id
+  };
+}
+
+export async function rollbackAllocation(
+  companyId: string,
+  campaignId: string,
+  auditLogId?: string,
+  previousAllocation?: Record<string, number>
+): Promise<{ success: boolean; restoredAllocation: Record<string, number>; auditLogId: string }> {
+  let allocationToRestore: Record<string, number>;
+  
+  if (previousAllocation) {
+    allocationToRestore = previousAllocation;
+  } else if (auditLogId) {
+    const [auditLog] = await db.select()
+      .from(campaignAuditLogs)
+      .where(and(
+        eq(campaignAuditLogs.id, auditLogId),
+        eq(campaignAuditLogs.companyId, companyId),
+        eq(campaignAuditLogs.campaignId, campaignId),
+        eq(campaignAuditLogs.logType, "auto_tune_apply")
+      ))
+      .limit(1);
+    
+    if (!auditLog) {
+      throw new Error("Audit log not found or access denied");
+    }
+    
+    const payload = auditLog.payload as { oldAllocation?: Record<string, number> };
+    if (!payload?.oldAllocation) {
+      throw new Error("No previous allocation found in audit log");
+    }
+    
+    allocationToRestore = payload.oldAllocation;
+  } else {
+    throw new Error("Must provide auditLogId or previousAllocation");
+  }
+  
+  const [campaign] = await db.select()
+    .from(orchestratorCampaigns)
+    .where(and(
+      eq(orchestratorCampaigns.id, campaignId),
+      eq(orchestratorCampaigns.companyId, companyId)
+    ))
+    .limit(1);
+  
+  if (!campaign) {
+    throw new Error("Campaign not found");
+  }
+  
+  const policyJson = (campaign.policyJson as Record<string, any>) || {};
+  const currentAllocation = policyJson?.experiment?.allocation || {};
+  
+  const updatedPolicyJson = {
+    ...policyJson,
+    experiment: {
+      ...policyJson.experiment,
+      allocation: allocationToRestore
+    }
+  };
+  
+  await db.update(orchestratorCampaigns)
+    .set({ policyJson: updatedPolicyJson })
+    .where(eq(orchestratorCampaigns.id, campaignId));
+  
+  const [newAuditLog] = await db.insert(campaignAuditLogs)
+    .values({
+      companyId,
+      campaignId,
+      logType: "auto_tune_rollback",
+      actionTaken: "rollback",
+      payload: {
+        rolledBackFrom: currentAllocation,
+        restoredTo: allocationToRestore,
+        sourceAuditLogId: auditLogId
+      }
+    })
+    .returning({ id: campaignAuditLogs.id });
+  
+  return {
+    success: true,
+    restoredAllocation: allocationToRestore,
+    auditLogId: newAuditLog.id
+  };
+}
+
+export async function getLastApplyAuditLog(
+  companyId: string,
+  campaignId: string
+): Promise<{ id: string; payload: any; createdAt: Date } | null> {
+  const [log] = await db.select()
+    .from(campaignAuditLogs)
+    .where(and(
+      eq(campaignAuditLogs.companyId, companyId),
+      eq(campaignAuditLogs.campaignId, campaignId),
+      eq(campaignAuditLogs.logType, "auto_tune_apply")
+    ))
+    .orderBy(desc(campaignAuditLogs.createdAt))
+    .limit(1);
+  
+  if (!log) return null;
+  
+  return {
+    id: log.id,
+    payload: log.payload,
+    createdAt: log.createdAt
   };
 }

@@ -47513,6 +47513,93 @@ CRITICAL REMINDERS:
     }
   });
 
+  // POST /api/orchestrator/campaigns/:id/auto-tune/apply - Apply allocation recommendation
+  app.post("/api/orchestrator/campaigns/:id/auto-tune/apply", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      const { snapshotId, mode, blendFactor } = req.body;
+      
+      if (!snapshotId) {
+        return res.status(400).json({ error: "snapshotId is required" });
+      }
+      
+      if (!mode || !["replace", "blend"].includes(mode)) {
+        return res.status(400).json({ error: "mode must be 'replace' or 'blend'" });
+      }
+      
+      const { applyAllocationRecommendation } = await import("./services/orchestrator-auto-tuner");
+      
+      const result = await applyAllocationRecommendation(
+        companyId,
+        campaignId,
+        snapshotId,
+        mode,
+        mode === "blend" ? (blendFactor || 0.5) : undefined
+      );
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Orchestrator Auto-Tune Apply] Error:", error);
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({ error: error.message || "Failed to apply allocation" });
+    }
+  });
+
+  // POST /api/orchestrator/campaigns/:id/auto-tune/rollback - Rollback allocation
+  app.post("/api/orchestrator/campaigns/:id/auto-tune/rollback", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      const { auditLogId, previousAllocation } = req.body;
+      
+      if (!auditLogId && !previousAllocation) {
+        return res.status(400).json({ error: "auditLogId or previousAllocation is required" });
+      }
+      
+      const { rollbackAllocation } = await import("./services/orchestrator-auto-tuner");
+      
+      const result = await rollbackAllocation(
+        companyId,
+        campaignId,
+        auditLogId,
+        previousAllocation
+      );
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Orchestrator Auto-Tune Rollback] Error:", error);
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({ error: error.message || "Failed to rollback allocation" });
+    }
+  });
+
+  // GET /api/orchestrator/campaigns/:id/auto-tune/last-apply - Get last apply audit log
+  app.get("/api/orchestrator/campaigns/:id/auto-tune/last-apply", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      
+      const { verifyCampaignAccess } = await import("./services/orchestrator-metrics");
+      const { getLastApplyAuditLog } = await import("./services/orchestrator-auto-tuner");
+      
+      const hasAccess = await verifyCampaignAccess(companyId, campaignId);
+      if (!hasAccess) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      
+      const lastApply = await getLastApplyAuditLog(companyId, campaignId);
+      res.json(lastApply || { message: "No apply history found" });
+    } catch (error: any) {
+      console.error("[Orchestrator Auto-Tune Last Apply] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to get last apply" });
+    }
+  });
+
   // =====================================================
   // CAMPAIGN ORCHESTRATOR - Bridge Delivery Status Webhook
   // =====================================================

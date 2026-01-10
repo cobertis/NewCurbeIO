@@ -13,7 +13,8 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
-import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone } from "lucide-react";
+import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CampaignStats {
   total: number;
@@ -128,6 +129,36 @@ interface JobMetrics {
   oldestQueuedAgeSec: number | null;
 }
 
+interface AutoTuneRecommendation {
+  id: string;
+  computedAt: string;
+  window: string;
+  allocationsJson: Record<string, number>;
+  metricsSnapshotJson: Array<{
+    variant: string;
+    attempts: number;
+    replies: number;
+    optOuts: number;
+    failedFinal: number;
+    cost: number;
+    reward: number;
+    rewardRate: number;
+  }>;
+  objective: string;
+  epsilon: number | null;
+  coverageWarnings: Array<{ variant: string; message: string }>;
+}
+
+interface LastApply {
+  id: string;
+  payload: {
+    oldAllocation: Record<string, number>;
+    newAllocation: Record<string, number>;
+    mode: string;
+  };
+  createdAt: string;
+}
+
 export default function OrchestratorCampaigns() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -186,6 +217,62 @@ export default function OrchestratorCampaigns() {
       return res.json();
     },
     enabled: !!selectedCampaign
+  });
+
+  const { data: autoTuneData, isLoading: autoTuneLoading, refetch: refetchAutoTune } = useQuery<AutoTuneRecommendation | { message: string }>({
+    queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "auto-tune"],
+    queryFn: async () => {
+      if (!selectedCampaign) return null;
+      const res = await fetch(`/api/orchestrator/campaigns/${selectedCampaign.id}/auto-tune`);
+      if (!res.ok) throw new Error("Failed to fetch auto-tune data");
+      return res.json();
+    },
+    enabled: !!selectedCampaign
+  });
+
+  const { data: lastApplyData, refetch: refetchLastApply } = useQuery<LastApply | { message: string }>({
+    queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "auto-tune", "last-apply"],
+    queryFn: async () => {
+      if (!selectedCampaign) return null;
+      const res = await fetch(`/api/orchestrator/campaigns/${selectedCampaign.id}/auto-tune/last-apply`);
+      if (!res.ok) throw new Error("Failed to fetch last apply");
+      return res.json();
+    },
+    enabled: !!selectedCampaign
+  });
+
+  const applyMutation = useMutation({
+    mutationFn: async ({ snapshotId, mode, blendFactor }: { snapshotId: string; mode: "replace" | "blend"; blendFactor?: number }) => {
+      return apiRequest("POST", `/api/orchestrator/campaigns/${selectedCampaign?.id}/auto-tune/apply`, {
+        snapshotId,
+        mode,
+        blendFactor
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Allocation applied", description: "Campaign allocation has been updated" });
+      refetchAutoTune();
+      refetchLastApply();
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Apply failed", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const rollbackMutation = useMutation({
+    mutationFn: async (auditLogId: string) => {
+      return apiRequest("POST", `/api/orchestrator/campaigns/${selectedCampaign?.id}/auto-tune/rollback`, { auditLogId });
+    },
+    onSuccess: () => {
+      toast({ title: "Rollback complete", description: "Allocation has been restored" });
+      refetchAutoTune();
+      refetchLastApply();
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Rollback failed", description: error.message, variant: "destructive" });
+    }
   });
 
   const pauseMutation = useMutation({
@@ -592,6 +679,101 @@ export default function OrchestratorCampaigns() {
                 </div>
               ) : (
                 <p className="text-muted-foreground text-center py-4">No job metrics available</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2" data-testid="text-auto-tune-title">
+                <Sliders className="h-5 w-5" />
+                Auto-Tune (A/B Optimization)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {autoTuneLoading ? (
+                <LoadingSpinner fullScreen={false} message="Loading auto-tune..." />
+              ) : autoTuneData && 'id' in autoTuneData ? (
+                <div className="space-y-4">
+                  {autoTuneData.coverageWarnings && autoTuneData.coverageWarnings.length > 0 && (
+                    <Alert variant="default">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Coverage Warnings:</strong>
+                        <ul className="mt-1 list-disc list-inside">
+                          {autoTuneData.coverageWarnings.map((w, i) => (
+                            <li key={i}>{w.variant}: {w.message}</li>
+                          ))}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-medium mb-2">Recommended Allocation</h4>
+                      <div className="space-y-1">
+                        {Object.entries(autoTuneData.allocationsJson).map(([variant, alloc]) => (
+                          <div key={variant} className="flex justify-between text-sm" data-testid={`text-alloc-${variant}`}>
+                            <span className="capitalize">{variant}</span>
+                            <span className="font-mono">{(alloc * 100).toFixed(0)}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Variant Metrics</h4>
+                      <div className="space-y-1">
+                        {autoTuneData.metricsSnapshotJson.map(m => (
+                          <div key={m.variant} className="flex justify-between text-sm">
+                            <span className="capitalize">{m.variant}</span>
+                            <span className="text-muted-foreground">
+                              {m.attempts} attempts, reward: {m.reward.toFixed(1)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    Computed: {format(new Date(autoTuneData.computedAt), "MMM d, h:mm a")} ({autoTuneData.window} window)
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => applyMutation.mutate({ snapshotId: autoTuneData.id, mode: "replace" })}
+                      disabled={applyMutation.isPending}
+                      data-testid="button-apply-replace"
+                    >
+                      {applyMutation.isPending ? "Applying..." : "Apply (Replace)"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => applyMutation.mutate({ snapshotId: autoTuneData.id, mode: "blend", blendFactor: 0.5 })}
+                      disabled={applyMutation.isPending}
+                      data-testid="button-apply-blend"
+                    >
+                      Apply (50% Blend)
+                    </Button>
+                    {lastApplyData && 'id' in lastApplyData && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => rollbackMutation.mutate(lastApplyData.id)}
+                        disabled={rollbackMutation.isPending}
+                        data-testid="button-rollback"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        {rollbackMutation.isPending ? "Rolling back..." : "Rollback"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">No auto-tune recommendations available</p>
               )}
             </CardContent>
           </Card>
