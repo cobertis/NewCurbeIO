@@ -20,6 +20,21 @@ import { ATTEMPT_EVENT_TYPES } from "../constants/orchestrator";
  * - avgTimeToReplySeconds = average of (first MESSAGE_REPLIED - first MESSAGE_SENT) per campaign_contact_id
  */
 
+export interface VariantMetrics {
+  attempts: number;
+  delivered: number;
+  replied: number;
+  optOut: number;
+  failedFinal: number;
+  rates: {
+    deliveryRate: number;
+    replyRate: number;
+    optOutRate: number;
+    failureRateFinal: number;
+  };
+  avgTimeToReplySeconds: number | null;
+}
+
 export interface CampaignMetrics {
   campaignId: string;
   window: string;
@@ -54,6 +69,7 @@ export interface CampaignMetrics {
     failedFinal: number;
     optOut: number;
   }>;
+  metricsByVariant: Record<string, VariantMetrics>;
 }
 
 export interface JobMetrics {
@@ -175,7 +191,9 @@ export async function getCampaignMetrics(
       breakdownByChannel[channel].attempts += cnt;
     }
 
-    switch (row.eventType) {
+    const eventType = row.eventType as string;
+    
+    switch (eventType) {
       case "MESSAGE_DELIVERED":
         delivered += cnt;
         breakdownByChannel[channel].delivered += cnt;
@@ -260,6 +278,82 @@ export async function getCampaignMetrics(
     // Ignore errors in reply latency calculation
   }
 
+  // Metrics by variant: aggregate events grouped by campaign_contacts.variant
+  const metricsByVariant: Record<string, VariantMetrics> = {};
+  
+  try {
+    const variantEventCounts = await db.execute(sql`
+      SELECT 
+        COALESCE(cc.variant, 'control') as variant,
+        ce.event_type,
+        COUNT(*) as cnt
+      FROM campaign_events ce
+      JOIN campaign_contacts cc ON ce.campaign_contact_id = cc.id
+      WHERE ce.company_id = ${companyId}
+        AND ce.campaign_id = ${campaignId}
+        ${windowStart ? sql`AND ce.created_at >= ${windowStart}` : sql``}
+      GROUP BY cc.variant, ce.event_type
+    `);
+    
+    const variantFailedFinal = await db.execute(sql`
+      SELECT 
+        COALESCE(cc.variant, 'control') as variant,
+        COUNT(*) as cnt
+      FROM campaign_events ce
+      JOIN campaign_contacts cc ON ce.campaign_contact_id = cc.id
+      WHERE ce.company_id = ${companyId}
+        AND ce.campaign_id = ${campaignId}
+        AND ce.event_type = 'MESSAGE_FAILED'
+        AND (ce.payload->>'isFinal')::boolean = true
+        ${windowStart ? sql`AND ce.created_at >= ${windowStart}` : sql``}
+      GROUP BY cc.variant
+    `);
+    
+    const failedFinalByVariant: Record<string, number> = {};
+    for (const row of (variantFailedFinal.rows || []) as any[]) {
+      failedFinalByVariant[row.variant || "control"] = Number(row.cnt);
+    }
+    
+    const variantData: Record<string, { attempts: number; delivered: number; replied: number; optOut: number }> = {};
+    
+    for (const row of (variantEventCounts.rows || []) as any[]) {
+      const v = row.variant || "control";
+      if (!variantData[v]) {
+        variantData[v] = { attempts: 0, delivered: 0, replied: 0, optOut: 0 };
+      }
+      
+      const cnt = Number(row.cnt);
+      const et = row.event_type as string;
+      
+      if (["MESSAGE_SENT", "CALL_PLACED", "VOICEMAIL_DROPPED", "RVM_DROPPED"].includes(et)) {
+        variantData[v].attempts += cnt;
+      }
+      if (et === "MESSAGE_DELIVERED") variantData[v].delivered += cnt;
+      if (et === "MESSAGE_REPLIED") variantData[v].replied += cnt;
+      if (et === "OPT_OUT") variantData[v].optOut += cnt;
+    }
+    
+    for (const [v, d] of Object.entries(variantData)) {
+      const ff = failedFinalByVariant[v] || 0;
+      metricsByVariant[v] = {
+        attempts: d.attempts,
+        delivered: d.delivered,
+        replied: d.replied,
+        optOut: d.optOut,
+        failedFinal: ff,
+        rates: {
+          deliveryRate: d.attempts > 0 ? Math.round((d.delivered / d.attempts) * 100) / 100 : 0,
+          replyRate: d.delivered > 0 ? Math.round((d.replied / d.delivered) * 100) / 100 : 0,
+          optOutRate: d.delivered > 0 ? Math.round((d.optOut / d.delivered) * 100) / 100 : 0,
+          failureRateFinal: d.attempts > 0 ? Math.round((ff / d.attempts) * 100) / 100 : 0
+        },
+        avgTimeToReplySeconds: null
+      };
+    }
+  } catch (e) {
+    // Ignore variant metrics errors
+  }
+
   return {
     campaignId,
     window,
@@ -285,7 +379,8 @@ export async function getCampaignMetrics(
       failureRateFinal
     },
     avgTimeToReplySeconds,
-    breakdownByChannel
+    breakdownByChannel,
+    metricsByVariant
   };
 }
 

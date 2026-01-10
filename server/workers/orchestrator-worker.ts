@@ -12,9 +12,10 @@ import { eq, and, sql, lte, or, isNull, inArray, desc, asc } from "drizzle-orm";
 import { calculateAllowedActions, PolicyEngineResult, OrchestratorChannel } from "../services/policy-engine";
 import { emitCampaignEvent } from "../services/campaign-events";
 import { decideNextAction, generateDecisionExternalId, DecideNextActionOutput } from "../services/ai-next-action";
+import { getOrAssignContactVariant, VariantSettings } from "../services/orchestrator-experiments";
 import { format } from "date-fns";
 
-const AI_ENABLED = process.env.ORCHESTRATOR_AI_ENABLED === "true";
+const DEFAULT_AI_ENABLED = process.env.ORCHESTRATOR_AI_ENABLED === "true";
 const AI_HISTORY_LIMIT = 20;
 
 const CHANNEL_PRIORITY: OrchestratorChannel[] = [
@@ -43,12 +44,17 @@ interface WorkerResult {
   errors: string[];
 }
 
-export function pickNextChannel(policyResult: PolicyEngineResult): OrchestratorChannel | null {
+export function pickNextChannel(
+  policyResult: PolicyEngineResult, 
+  channelOrderOverride?: OrchestratorChannel[] | null
+): OrchestratorChannel | null {
   const allowedChannels = policyResult.allowedActions
     .filter(a => a.allowed)
     .map(a => a.channel);
   
-  for (const channel of CHANNEL_PRIORITY) {
+  const channelOrder = channelOrderOverride || CHANNEL_PRIORITY;
+  
+  for (const channel of channelOrder) {
     if (allowedChannels.includes(channel)) {
       return channel;
     }
@@ -215,6 +221,14 @@ async function processContact(
   }
   
   try {
+    const policyJson = campaign.policyJson as Record<string, any> || {};
+    
+    // Get or assign experiment variant
+    const variantSettings = await getOrAssignContactVariant(contactId, campaignContactId, policyJson);
+    const variant = variantSettings?.variant || null;
+    const aiEnabled = variantSettings ? variantSettings.aiEnabled : DEFAULT_AI_ENABLED;
+    const channelOrderOverride = variantSettings?.channelOrder || null;
+    
     const policyResult = await calculateAllowedActions(companyId, campaignId, contactId);
     
     if ("error" in policyResult) {
@@ -231,14 +245,12 @@ async function processContact(
       .filter(a => a.allowed)
       .map(a => a.channel);
     
-    if (AI_ENABLED && allowedChannels.length > 0) {
+    if (aiEnabled && allowedChannels.length > 0) {
       const history = await loadContactHistory(companyId, campaignContactId, AI_HISTORY_LIMIT);
       
       const lastOutbound = history.find(e => 
         e.eventType === "MESSAGE_SENT" || e.eventType === "CALL_INITIATED"
       );
-      
-      const policyJson = campaign.policyJson as Record<string, any> || {};
       
       const aiResult = await decideNextAction({
         companyId,
@@ -272,8 +284,8 @@ async function processContact(
     }
     
     if (!chosenChannel) {
-      chosenChannel = pickNextChannel(policyResult);
-      fallbackUsed = !AI_ENABLED ? false : true;
+      chosenChannel = pickNextChannel(policyResult, channelOrderOverride);
+      fallbackUsed = !aiEnabled ? false : true;
     }
     
     if (!chosenChannel) {
@@ -322,13 +334,14 @@ async function processContact(
         chosenChannel,
         confidence: aiDecision?.confidence ?? null,
         explanation: aiDecision?.explanation ?? "Heuristic priority-based selection",
-        aiEnabled: AI_ENABLED,
+        aiEnabled,
         fallbackUsed,
         aiError: aiError || null,
         allowedChannels,
         prefer: aiDecision?.prefer,
         messageTemplateId: aiDecision?.messageTemplateId,
-        waitSeconds
+        waitSeconds,
+        variant
       }
     });
     
@@ -349,7 +362,8 @@ async function processContact(
         metadata: {
           attemptNumber: contact.attemptsTotal + 1,
           previousChannel: contact.lastAttemptChannel,
-          aiDecision: aiDecision ? true : false
+          aiDecision: aiDecision ? true : false,
+          variant
         }
       }
     );
@@ -359,7 +373,6 @@ async function processContact(
     }
     
     if (!wasIdempotent) {
-      const policyJson = campaign.policyJson as Record<string, any> || {};
       const finalWaitSeconds = aiDecision?.waitSeconds || policyJson.waitSeconds || DEFAULT_WAIT_SECONDS;
       const nextActionAt = new Date(Date.now() + finalWaitSeconds * 1000);
       

@@ -7840,6 +7840,9 @@ export const campaignContacts = pgTable("campaign_contacts", {
   lockedUntil: timestamp("locked_until"),
   lockedBy: text("locked_by"),
   
+  // Experiment variant assignment (A/B testing)
+  variant: text("variant"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({

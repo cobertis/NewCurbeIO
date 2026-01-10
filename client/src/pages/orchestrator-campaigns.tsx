@@ -66,6 +66,21 @@ interface TimelineItem {
   createdAt: string;
 }
 
+interface VariantMetrics {
+  attempts: number;
+  delivered: number;
+  replied: number;
+  optOut: number;
+  failedFinal: number;
+  rates: {
+    deliveryRate: number;
+    replyRate: number;
+    optOutRate: number;
+    failureRateFinal: number;
+  };
+  avgTimeToReplySeconds: number | null;
+}
+
 interface CampaignMetrics {
   campaignId: string;
   window: string;
@@ -100,6 +115,7 @@ interface CampaignMetrics {
     failedFinal: number;
     optOut: number;
   }>;
+  metricsByVariant: Record<string, VariantMetrics>;
 }
 
 interface JobMetrics {
@@ -495,6 +511,38 @@ export default function OrchestratorCampaigns() {
                               <TableCell className="text-right">{stats.failed}</TableCell>
                               <TableCell className="text-right text-red-600">{stats.failedFinal}</TableCell>
                               <TableCell className="text-right">{stats.optOut}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
+                  {metricsData.metricsByVariant && Object.keys(metricsData.metricsByVariant).length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-2">Metrics by Variant (A/B Test)</h4>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Variant</TableHead>
+                            <TableHead className="text-right">Attempts</TableHead>
+                            <TableHead className="text-right">Delivered</TableHead>
+                            <TableHead className="text-right">Replied</TableHead>
+                            <TableHead className="text-right">Opt-out</TableHead>
+                            <TableHead className="text-right">Delivery %</TableHead>
+                            <TableHead className="text-right">Reply %</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(metricsData.metricsByVariant).map(([variant, stats]) => (
+                            <TableRow key={variant} data-testid={`row-variant-${variant}`}>
+                              <TableCell className="font-medium capitalize">{variant}</TableCell>
+                              <TableCell className="text-right">{stats.attempts}</TableCell>
+                              <TableCell className="text-right">{stats.delivered}</TableCell>
+                              <TableCell className="text-right">{stats.replied}</TableCell>
+                              <TableCell className="text-right">{stats.optOut}</TableCell>
+                              <TableCell className="text-right">{(stats.rates.deliveryRate * 100).toFixed(1)}%</TableCell>
+                              <TableCell className="text-right">{(stats.rates.replyRate * 100).toFixed(1)}%</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
