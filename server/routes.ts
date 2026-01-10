@@ -30985,7 +30985,10 @@ CRITICAL REMINDERS:
       });
       
       if (existingConnection) {
-      await db.update(channelConnections)
+      // IMPORTANT: This flow uses Facebook Page token, so use Facebook Login scopes (not Instagram Login scopes)
+          // instagram_manage_messages requires Advanced Access for Facebook Login flow
+          const facebookLoginScopes = ["instagram_basic", "instagram_manage_messages", "pages_messaging"];
+          await db.update(channelConnections)
           .set({
             status: "active",
             igUserId: igAccountId,
@@ -30995,15 +30998,20 @@ CRITICAL REMINDERS:
             pageName: pageName,
             displayName: igAccount.name || igAccount.username,
             accessTokenEnc: encryptToken(pageAccessToken),
-            scopes: META_INSTAGRAM_SCOPES.split(","),
+            scopes: facebookLoginScopes,
+            fbPageAccessToken: pageAccessToken,
             connectedAt: new Date(),
             disconnectedAt: null,
             lastError: null,
             updatedAt: new Date(),
+            metadata: { authFlow: "facebook_page_login", tokenType: "facebook_page" },
           })
           .where(eq(channelConnections.id, existingConnection.id));
       } else {
-      await db.insert(channelConnections).values({
+      // IMPORTANT: This flow uses Facebook Page token, so use Facebook Login scopes (not Instagram Login scopes)
+          // instagram_manage_messages requires Advanced Access for Facebook Login flow
+          const facebookLoginScopes2 = ["instagram_basic", "instagram_manage_messages", "pages_messaging"];
+          await db.insert(channelConnections).values({
           companyId: user.companyId,
           channel: "instagram",
           status: "active",
@@ -31014,8 +31022,10 @@ CRITICAL REMINDERS:
           pageName: pageName,
           displayName: igAccount.name || igAccount.username,
           accessTokenEnc: encryptToken(pageAccessToken),
-          scopes: META_INSTAGRAM_SCOPES.split(","),
+          fbPageAccessToken: pageAccessToken,
+          scopes: facebookLoginScopes2,
           connectedAt: new Date(),
+          metadata: { authFlow: "facebook_page_login", tokenType: "facebook_page" },
         });
       }
       
