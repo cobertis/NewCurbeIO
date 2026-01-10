@@ -46997,5 +46997,67 @@ CRITICAL REMINDERS:
     }
   });
 
+
+  // =====================================================
+  // CAMPAIGN ORCHESTRATOR - Inbound Message Webhook
+  // =====================================================
+  
+  app.post("/api/webhooks/inbound-message", async (req: Request, res: Response) => {
+    try {
+      const webhookToken = process.env.INBOUND_WEBHOOK_TOKEN;
+      if (!webhookToken) {
+        console.error("[Inbound Webhook] INBOUND_WEBHOOK_TOKEN not configured");
+        return res.status(500).json({ error: "Webhook token not configured" });
+      }
+      
+      const providedToken = req.headers["x-webhook-token"] as string | undefined;
+      if (!providedToken || providedToken !== webhookToken) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const { provider, channel, from, to, text, externalId, companyId, raw } = req.body;
+      
+      if (!provider || !channel || !from || !text) {
+        return res.status(400).json({ 
+          error: "Missing required fields: provider, channel, from, text" 
+        });
+      }
+      
+      const validChannels = ["sms", "imessage", "mms", "whatsapp"];
+      if (!validChannels.includes(channel)) {
+        return res.status(400).json({ 
+          error: `Invalid channel. Must be one of: ${validChannels.join(", ")}` 
+        });
+      }
+      
+      const { processInboundMessage } = await import("./services/inbound-normalizer");
+      
+      const result = await processInboundMessage({
+        provider,
+        channel,
+        from,
+        to,
+        text,
+        externalId,
+        companyId,
+        raw
+      });
+      
+      console.log(`[Inbound Webhook] Processed: intent=${result.intent}, events=${result.eventsEmitted}, updated=${result.enrollmentsUpdated}`);
+      
+      res.json({
+        success: result.success,
+        intent: result.intent,
+        contactId: result.contactId,
+        eventsEmitted: result.eventsEmitted,
+        enrollmentsUpdated: result.enrollmentsUpdated,
+        message: result.error || "OK"
+      });
+    } catch (error: any) {
+      console.error("[Inbound Webhook] Error processing message:", error);
+      res.status(500).json({ error: error.message || "Failed to process inbound message" });
+    }
+  });
+
   return httpServer;
 }
