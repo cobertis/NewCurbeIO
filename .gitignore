@@ -7,3 +7,6 @@ vite.config.ts.*
 server/migrate-passwords.ts
 # Chromium profiles for WhatsApp multi-tenant
 .chromium-profiles/
+
+# Temporary pasted task files
+attached_assets/Pasted-*
