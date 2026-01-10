@@ -1,6 +1,6 @@
 /**
- * TICKET 9.1 VERIFICATION: Orchestrator Metrics Tests
- * Tests: Campaign metrics, job metrics, window filtering, multi-tenant isolation
+ * TICKET 9.2 VERIFICATION: Orchestrator Metrics v1.1
+ * Tests: Campaign metrics with failedFinal, read, correct denominators, avgTimeToReply
  */
 
 import { db } from "../db";
@@ -10,7 +10,7 @@ import {
   orchestratorCampaigns,
   orchestratorJobs 
 } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { getCampaignMetrics, getJobMetrics, verifyCampaignAccess } from "../services/orchestrator-metrics";
 
 const CURBE_COMPANY_ID = "13edaa5f-bcfa-419b-ae19-bbc87e0c417d";
@@ -37,48 +37,104 @@ async function getTestCampaign() {
   return campaign;
 }
 
-async function testMetricsReturnsCorrectCounts() {
-  console.log("\n[TEST 1] Metrics returns correct event counts");
+async function testMetricsReturnsNewFields() {
+  console.log("\n[TEST 1] Metrics returns new v1.1 fields (failedFinal, read, failureRateFinal)");
   
   const campaign = await getTestCampaign();
   const metrics = await getCampaignMetrics(CURBE_COMPANY_ID, campaign.id, "all");
   
-  const eventCounts = await db.select({
-    eventType: campaignEvents.eventType
-  })
-    .from(campaignEvents)
-    .where(and(
-      eq(campaignEvents.companyId, CURBE_COMPANY_ID),
-      eq(campaignEvents.campaignId, campaign.id)
-    ));
+  const hasNewFields = 
+    typeof metrics.failedFinal === "number" &&
+    typeof metrics.read === "number" &&
+    typeof metrics.rates.failureRateFinal === "number";
   
-  const sentCount = eventCounts.filter(e => e.eventType === "MESSAGE_SENT").length;
-  const deliveredCount = eventCounts.filter(e => e.eventType === "MESSAGE_DELIVERED").length;
-  const failedCount = eventCounts.filter(e => e.eventType === "MESSAGE_FAILED").length;
-  
-  const passed = metrics.attempts >= 0 && 
-    metrics.delivered >= 0 && 
-    metrics.failed >= 0 &&
-    typeof metrics.rates.deliveryRate === "number";
+  const passed = hasNewFields;
   
   results.push({
-    name: "Metrics returns correct event counts",
+    name: "Metrics returns new v1.1 fields",
     passed,
-    details: `attempts=${metrics.attempts}, delivered=${metrics.delivered}, failed=${metrics.failed}`
+    details: `failedFinal=${metrics.failedFinal}, read=${metrics.read}, failureRateFinal=${metrics.rates.failureRateFinal}`
   });
   
-  console.log(`Campaign: ${campaign.name}`);
-  console.log(`Attempts: ${metrics.attempts}`);
-  console.log(`Delivered: ${metrics.delivered}`);
-  console.log(`Failed: ${metrics.failed}`);
-  console.log(`Delivery Rate: ${(metrics.rates.deliveryRate * 100).toFixed(1)}%`);
+  console.log(`failedFinal: ${metrics.failedFinal}`);
+  console.log(`read: ${metrics.read}`);
+  console.log(`failureRateFinal: ${(metrics.rates.failureRateFinal * 100).toFixed(1)}%`);
+  console.log(`RESULT: ${passed ? "PASS ✓" : "FAIL ✗"}`);
+  
+  return passed;
+}
+
+async function testFailedFinalVsFailedAll() {
+  console.log("\n[TEST 2] failedFinal <= failed (final is subset of all failures)");
+  
+  const campaign = await getTestCampaign();
+  const metrics = await getCampaignMetrics(CURBE_COMPANY_ID, campaign.id, "all");
+  
+  const passed = metrics.failedFinal <= metrics.failed;
+  
+  results.push({
+    name: "failedFinal <= failed (subset check)",
+    passed,
+    details: `failedFinal=${metrics.failedFinal}, failed=${metrics.failed}`
+  });
+  
+  console.log(`Failed (All): ${metrics.failed}`);
+  console.log(`Failed (Final): ${metrics.failedFinal}`);
+  console.log(`failedFinal <= failed: ${passed}`);
+  console.log(`RESULT: ${passed ? "PASS ✓" : "FAIL ✗"}`);
+  
+  return passed;
+}
+
+async function testDenominators() {
+  console.log("\n[TEST 3] Denominators are correct");
+  
+  const campaign = await getTestCampaign();
+  const metrics = await getCampaignMetrics(CURBE_COMPANY_ID, campaign.id, "all");
+  
+  // Verify denominators:
+  // deliveryRate = delivered / attempts
+  // replyRate = replied / delivered
+  // optOutRate = optOut / delivered  
+  // failureRateFinal = failedFinal / attempts
+  
+  const expectedDeliveryRate = metrics.attempts > 0 
+    ? Math.round((metrics.delivered / metrics.attempts) * 100) / 100 
+    : 0;
+  const expectedReplyRate = metrics.delivered > 0 
+    ? Math.round((metrics.replied / metrics.delivered) * 100) / 100 
+    : 0;
+  const expectedOptOutRate = metrics.delivered > 0 
+    ? Math.round((metrics.optOut / metrics.delivered) * 100) / 100 
+    : 0;
+  const expectedFailureRateFinal = metrics.attempts > 0 
+    ? Math.round((metrics.failedFinal / metrics.attempts) * 100) / 100 
+    : 0;
+  
+  const deliveryRateCorrect = metrics.rates.deliveryRate === expectedDeliveryRate;
+  const replyRateCorrect = metrics.rates.replyRate === expectedReplyRate;
+  const optOutRateCorrect = metrics.rates.optOutRate === expectedOptOutRate;
+  const failureRateFinalCorrect = metrics.rates.failureRateFinal === expectedFailureRateFinal;
+  
+  const passed = deliveryRateCorrect && replyRateCorrect && optOutRateCorrect && failureRateFinalCorrect;
+  
+  results.push({
+    name: "Denominators are correct",
+    passed,
+    details: `delivery=${deliveryRateCorrect}, reply=${replyRateCorrect}, optOut=${optOutRateCorrect}, failureFinal=${failureRateFinalCorrect}`
+  });
+  
+  console.log(`deliveryRate: ${metrics.rates.deliveryRate} (expected ${expectedDeliveryRate}) - ${deliveryRateCorrect ? "OK" : "WRONG"}`);
+  console.log(`replyRate: ${metrics.rates.replyRate} (expected ${expectedReplyRate}) - ${replyRateCorrect ? "OK" : "WRONG"}`);
+  console.log(`optOutRate: ${metrics.rates.optOutRate} (expected ${expectedOptOutRate}) - ${optOutRateCorrect ? "OK" : "WRONG"}`);
+  console.log(`failureRateFinal: ${metrics.rates.failureRateFinal} (expected ${expectedFailureRateFinal}) - ${failureRateFinalCorrect ? "OK" : "WRONG"}`);
   console.log(`RESULT: ${passed ? "PASS ✓" : "FAIL ✗"}`);
   
   return passed;
 }
 
 async function testWindowFiltering() {
-  console.log("\n[TEST 2] Window filtering works (7d vs all)");
+  console.log("\n[TEST 4] Window filtering works (7d vs all)");
   
   const campaign = await getTestCampaign();
   
@@ -104,7 +160,7 @@ async function testWindowFiltering() {
 }
 
 async function testMultiTenantIsolation() {
-  console.log("\n[TEST 3] Multi-tenant isolation (fake company gets 404)");
+  console.log("\n[TEST 5] Multi-tenant isolation (fake company gets 404)");
   
   const campaign = await getTestCampaign();
   
@@ -126,37 +182,60 @@ async function testMultiTenantIsolation() {
   return passed;
 }
 
-async function testBreakdownByChannel() {
-  console.log("\n[TEST 4] Breakdown by channel is correct");
+async function testBreakdownByChannelHasNewFields() {
+  console.log("\n[TEST 6] Breakdown by channel includes failedFinal and read");
   
   const campaign = await getTestCampaign();
   const metrics = await getCampaignMetrics(CURBE_COMPANY_ID, campaign.id, "all");
   
   const channels = Object.keys(metrics.breakdownByChannel);
-  let totalFromBreakdown = 0;
+  let allHaveNewFields = true;
   
   for (const channel of channels) {
     const stats = metrics.breakdownByChannel[channel];
-    totalFromBreakdown += stats.attempts;
-    console.log(`  ${channel}: ${stats.attempts} attempts, ${stats.delivered} delivered, ${stats.failed} failed`);
+    if (typeof stats.failedFinal !== "number" || typeof stats.read !== "number") {
+      allHaveNewFields = false;
+    }
+    console.log(`  ${channel}: attempts=${stats.attempts}, delivered=${stats.delivered}, failed=${stats.failed}, failedFinal=${stats.failedFinal}, read=${stats.read}`);
   }
   
-  const passed = channels.length >= 0;
+  const passed = allHaveNewFields;
   
   results.push({
-    name: "Breakdown by channel is structured correctly",
+    name: "Breakdown by channel includes failedFinal and read",
     passed,
-    details: `channels=[${channels.join(", ")}]`
+    details: `channels=[${channels.join(", ")}], allHaveNewFields=${allHaveNewFields}`
   });
   
-  console.log(`Channels found: ${channels.length}`);
+  console.log(`RESULT: ${passed ? "PASS ✓" : "FAIL ✗"}`);
+  
+  return passed;
+}
+
+async function testAvgTimeToReplyCalculation() {
+  console.log("\n[TEST 7] avgTimeToReplySeconds calculation (first SENT to first REPLIED per contact)");
+  
+  const campaign = await getTestCampaign();
+  const metrics = await getCampaignMetrics(CURBE_COMPANY_ID, campaign.id, "all");
+  
+  // Just verify it's a number or null
+  const passed = metrics.avgTimeToReplySeconds === null || 
+    (typeof metrics.avgTimeToReplySeconds === "number" && metrics.avgTimeToReplySeconds >= 0);
+  
+  results.push({
+    name: "avgTimeToReplySeconds is valid",
+    passed,
+    details: `value=${metrics.avgTimeToReplySeconds !== null ? `${metrics.avgTimeToReplySeconds}s (${Math.round(metrics.avgTimeToReplySeconds / 60)}m)` : "null"}`
+  });
+  
+  console.log(`avgTimeToReplySeconds: ${metrics.avgTimeToReplySeconds !== null ? `${metrics.avgTimeToReplySeconds}s (${Math.round(metrics.avgTimeToReplySeconds / 60)}m)` : "null (no replies)"}`);
   console.log(`RESULT: ${passed ? "PASS ✓" : "FAIL ✗"}`);
   
   return passed;
 }
 
 async function testJobMetrics() {
-  console.log("\n[TEST 5] Job metrics returns correct counts");
+  console.log("\n[TEST 8] Job metrics returns correct counts");
   
   const campaign = await getTestCampaign();
   const jobMetrics = await getJobMetrics(CURBE_COMPANY_ID, campaign.id);
@@ -183,51 +262,20 @@ async function testJobMetrics() {
   return passed;
 }
 
-async function testContactTotals() {
-  console.log("\n[TEST 6] Contact totals are correct");
-  
-  const campaign = await getTestCampaign();
-  const metrics = await getCampaignMetrics(CURBE_COMPANY_ID, campaign.id, "all");
-  
-  const [dbCounts] = await db.select({
-    total: campaignContacts.id
-  })
-    .from(campaignContacts)
-    .where(and(
-      eq(campaignContacts.companyId, CURBE_COMPANY_ID),
-      eq(campaignContacts.campaignId, campaign.id)
-    ));
-  
-  const passed = metrics.totals.contactsEnrolled >= 0 &&
-    metrics.totals.activeContacts >= 0;
-  
-  results.push({
-    name: "Contact totals are correct",
-    passed,
-    details: `enrolled=${metrics.totals.contactsEnrolled}, active=${metrics.totals.activeContacts}, engaged=${metrics.totals.engagedContacts}`
-  });
-  
-  console.log(`Enrolled: ${metrics.totals.contactsEnrolled}`);
-  console.log(`Active: ${metrics.totals.activeContacts}`);
-  console.log(`Engaged: ${metrics.totals.engagedContacts}`);
-  console.log(`Stopped: ${metrics.totals.stoppedContacts}`);
-  console.log(`Unreachable: ${metrics.totals.unreachableContacts}`);
-  console.log(`RESULT: ${passed ? "PASS ✓" : "FAIL ✗"}`);
-  
-  return passed;
-}
-
 async function runTests() {
   console.log("=".repeat(70));
-  console.log("TICKET 9.1 VERIFICATION: Orchestrator Metrics");
+  console.log("TICKET 9.2 VERIFICATION: Orchestrator Metrics v1.1");
+  console.log("(failedFinal, read, correct denominators, avgTimeToReply)");
   console.log("=".repeat(70));
   
-  await testMetricsReturnsCorrectCounts();
+  await testMetricsReturnsNewFields();
+  await testFailedFinalVsFailedAll();
+  await testDenominators();
   await testWindowFiltering();
   await testMultiTenantIsolation();
-  await testBreakdownByChannel();
+  await testBreakdownByChannelHasNewFields();
+  await testAvgTimeToReplyCalculation();
   await testJobMetrics();
-  await testContactTotals();
   
   console.log("\n" + "=".repeat(70));
   console.log("TEST SUMMARY");

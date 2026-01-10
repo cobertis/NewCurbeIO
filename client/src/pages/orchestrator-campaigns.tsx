@@ -78,7 +78,9 @@ interface CampaignMetrics {
   };
   attempts: number;
   delivered: number;
+  read: number;
   failed: number;
+  failedFinal: number;
   replied: number;
   optOut: number;
   rates: {
@@ -86,13 +88,16 @@ interface CampaignMetrics {
     replyRate: number;
     optOutRate: number;
     failureRate: number;
+    failureRateFinal: number;
   };
   avgTimeToReplySeconds: number | null;
   breakdownByChannel: Record<string, {
     attempts: number;
     delivered: number;
+    read: number;
     replied: number;
     failed: number;
+    failedFinal: number;
     optOut: number;
   }>;
 }
@@ -407,7 +412,7 @@ export default function OrchestratorCampaigns() {
                 <LoadingSpinner fullScreen={false} message="Loading metrics..." />
               ) : metricsData ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
                     <div className="text-center p-3 bg-muted/50 rounded-lg">
                       <div className="text-2xl font-bold" data-testid="text-metric-attempts">{metricsData.attempts}</div>
                       <div className="text-sm text-muted-foreground">Attempts</div>
@@ -425,12 +430,24 @@ export default function OrchestratorCampaigns() {
                       <div className="text-sm text-muted-foreground">Opt-outs</div>
                     </div>
                     <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600" data-testid="text-metric-failed">{metricsData.failed}</div>
-                      <div className="text-sm text-muted-foreground">Failures</div>
+                      <div className="text-2xl font-bold text-red-400" data-testid="text-metric-failed">{metricsData.failed}</div>
+                      <div className="text-sm text-muted-foreground">Failed (All)</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold text-red-600" data-testid="text-metric-failed-final">{metricsData.failedFinal}</div>
+                      <div className="text-sm text-muted-foreground">Failed (Final)</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold text-purple-600" data-testid="text-metric-avg-reply">
+                        {metricsData.avgTimeToReplySeconds !== null 
+                          ? `${Math.round(metricsData.avgTimeToReplySeconds / 60)}m` 
+                          : "-"}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Avg Reply Time</div>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div className="text-center p-2 border rounded">
                       <div className="text-lg font-semibold" data-testid="text-rate-delivery">{(metricsData.rates.deliveryRate * 100).toFixed(1)}%</div>
                       <div className="text-xs text-muted-foreground">Delivery Rate</div>
@@ -445,7 +462,11 @@ export default function OrchestratorCampaigns() {
                     </div>
                     <div className="text-center p-2 border rounded">
                       <div className="text-lg font-semibold" data-testid="text-rate-failure">{(metricsData.rates.failureRate * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground">Failure Rate</div>
+                      <div className="text-xs text-muted-foreground">Failure Rate (All)</div>
+                    </div>
+                    <div className="text-center p-2 border rounded">
+                      <div className="text-lg font-semibold text-red-600" data-testid="text-rate-failure-final">{(metricsData.rates.failureRateFinal * 100).toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground">Failure Rate (Final)</div>
                     </div>
                   </div>
 
@@ -460,6 +481,7 @@ export default function OrchestratorCampaigns() {
                             <TableHead className="text-right">Delivered</TableHead>
                             <TableHead className="text-right">Replied</TableHead>
                             <TableHead className="text-right">Failed</TableHead>
+                            <TableHead className="text-right">Final</TableHead>
                             <TableHead className="text-right">Opt-out</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -471,6 +493,7 @@ export default function OrchestratorCampaigns() {
                               <TableCell className="text-right">{stats.delivered}</TableCell>
                               <TableCell className="text-right">{stats.replied}</TableCell>
                               <TableCell className="text-right">{stats.failed}</TableCell>
+                              <TableCell className="text-right text-red-600">{stats.failedFinal}</TableCell>
                               <TableCell className="text-right">{stats.optOut}</TableCell>
                             </TableRow>
                           ))}
