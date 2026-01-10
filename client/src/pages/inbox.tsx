@@ -153,6 +153,7 @@ interface TelnyxConversation {
   id: string;
   phoneNumber: string;
   displayName: string | null;
+  profilePictureUrl: string | null;
   email: string | null;
   jobTitle: string | null;
   organization: string | null;
@@ -2278,8 +2279,8 @@ export default function InboxPage() {
                   <div className="flex items-start gap-3">
                     <div className="relative shrink-0">
                       <Avatar className="h-10 w-10">
-                        {(conversation as any).profilePictureUrl && (
-                          <AvatarImage src={(conversation as any).profilePictureUrl} alt={conversation.displayName || "Profile"} />
+                        {conversation.profilePictureUrl && (
+                          <AvatarImage src={conversation.profilePictureUrl} alt={conversation.displayName || "Profile"} />
                         )}
                         <AvatarFallback className="!bg-sky-100 !text-sky-700 text-sm font-medium">
                           {getInitials(conversation.displayName, conversation.phoneNumber)}
@@ -2368,8 +2369,8 @@ export default function InboxPage() {
                 </Button>
                 <div className="relative shrink-0">
                   <Avatar className="h-10 w-10">
-                    {(selectedConversation as any).profilePictureUrl && (
-                      <AvatarImage src={(selectedConversation as any).profilePictureUrl} alt={selectedConversation.displayName || "Profile"} />
+                    {selectedConversation.profilePictureUrl && (
+                      <AvatarImage src={selectedConversation.profilePictureUrl} alt={selectedConversation.displayName || "Profile"} />
                     )}
                     <AvatarFallback className="!bg-sky-100 !text-sky-700 font-medium">
                       {getInitials(selectedConversation.displayName, selectedConversation.phoneNumber)}
