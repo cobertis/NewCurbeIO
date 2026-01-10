@@ -46901,5 +46901,34 @@ CRITICAL REMINDERS:
     }
   });
 
+
+  // =====================================================
+  // CAMPAIGN ORCHESTRATOR - Policy Engine Endpoints
+  // =====================================================
+  
+  app.get("/api/campaigns/:campaignId/contacts/:contactId/allowed-actions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const companyId = user.companyId;
+      const { campaignId, contactId } = req.params;
+      
+      if (!campaignId || !contactId) {
+        return res.status(400).json({ error: "campaignId and contactId are required" });
+      }
+      
+      const { calculateAllowedActions } = await import("./services/policy-engine");
+      const result = await calculateAllowedActions(companyId, campaignId, contactId);
+      
+      if ("error" in result) {
+        return res.status(result.status).json({ error: result.error });
+      }
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Policy Engine] Error calculating allowed actions:", error);
+      res.status(500).json({ error: error.message || "Failed to calculate allowed actions" });
+    }
+  });
+
   return httpServer;
 }
