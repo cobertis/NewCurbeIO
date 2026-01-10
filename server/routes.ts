@@ -44474,8 +44474,9 @@ CRITICAL REMINDERS:
             
             console.log("[Inbox Instagram] Using token type:", pageAccessToken.startsWith("IGAAM") ? "Instagram Business Token" : "Facebook Page Token");
             // Detect token type and use appropriate API host
+            // Instagram Messaging API always uses graph.facebook.com (not graph.instagram.com)
             const isInstagramBusinessToken = pageAccessToken.startsWith("IGAAM");
-            const apiHost = isInstagramBusinessToken ? "graph.instagram.com" : "graph.facebook.com";
+            const apiHost = "graph.facebook.com"; // Instagram DM API only works with graph.facebook.com
             const recipientIgId = conversation.phoneNumber; // Instagram scoped ID stored in phoneNumber field
 
             // HUMAN_AGENT mode validation: Check 7-day window if enabled
