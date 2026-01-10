@@ -44483,9 +44483,28 @@ CRITICAL REMINDERS:
             if (hasInstagramBusinessScope && igConnection.accessTokenEnc) {
               const igToken = decryptToken(igConnection.accessTokenEnc);
               if (igToken) {
-                pageAccessToken = igToken;
-                useInstagramLoginAPI = true;
-                console.log("[Inbox Instagram] Using Instagram Login API (graph.instagram.com) - token prefix:", igToken.substring(0, 10) + "...");
+                // CRITICAL: Validate token type matches the connection type
+                // Instagram Login tokens start with "IGAAM" or "IGQV" 
+                // Facebook Page tokens start with "EAA"
+                const isInstagramToken = igToken.startsWith("IGAAM") || igToken.startsWith("IGQV") || igToken.startsWith("IG");
+                const isFacebookToken = igToken.startsWith("EAA");
+                
+                if (isInstagramToken) {
+                  pageAccessToken = igToken;
+                  useInstagramLoginAPI = true;
+                  console.log("[Inbox Instagram] Using Instagram Login API (graph.instagram.com) - valid IG token");
+                } else if (isFacebookToken) {
+                  // Token mismatch: scopes say Instagram Login but token is Facebook Page
+                  // This happens when OAuth flow was done incorrectly
+                  console.log("[Inbox Instagram] WARNING: Token mismatch - scopes indicate Instagram Login but token is Facebook type");
+                  console.log("[Inbox Instagram] Will try Facebook Page API as fallback (requires Advanced Access)");
+                  // Don't set useInstagramLoginAPI, will fall through to Facebook API path
+                } else {
+                  // Unknown token type, try it anyway with Instagram API
+                  pageAccessToken = igToken;
+                  useInstagramLoginAPI = true;
+                  console.log("[Inbox Instagram] Using Instagram Login API with unknown token type:", igToken.substring(0, 5) + "...");
+                }
               }
             }
             
