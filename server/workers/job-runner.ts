@@ -582,3 +582,83 @@ export async function runJobsOnce(options: JobRunnerOptions = {}): Promise<JobRu
   
   return result;
 }
+
+/**
+ * Reaper for stuck "processing" voice jobs.
+ * Voice calls that stay in "processing" longer than timeoutMinutes are considered
+ * abandoned (webhook never arrived) and should be marked failed.
+ * 
+ * Decision: Mark as failed (not requeue) because:
+ * 1. If Telnyx webhook never arrived, the call likely failed silently
+ * 2. Retrying would create duplicate calls to the same contact
+ * 3. Better to emit CALL_FAILED and let campaign logic decide next step
+ */
+const VOICE_PROCESSING_TIMEOUT_MINUTES = 10;
+
+export async function reapStuckProcessingJobs(options: {
+  companyId?: string;
+  timeoutMinutes?: number;
+  dryRun?: boolean;
+} = {}): Promise<{ reaped: number; jobs: string[] }> {
+  const { 
+    companyId, 
+    timeoutMinutes = VOICE_PROCESSING_TIMEOUT_MINUTES,
+    dryRun = false 
+  } = options;
+  
+  const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+  
+  const conditions = [
+    eq(orchestratorJobs.status, "processing"),
+    inArray(orchestratorJobs.channel, ["voice", "voicemail"]),
+    lte(orchestratorJobs.startedAt, cutoff)
+  ];
+  
+  if (companyId) {
+    conditions.push(eq(orchestratorJobs.companyId, companyId));
+  }
+  
+  const stuckJobs = await db.select()
+    .from(orchestratorJobs)
+    .where(and(...conditions))
+    .limit(100);
+  
+  if (stuckJobs.length === 0) {
+    return { reaped: 0, jobs: [] };
+  }
+  
+  const jobIds: string[] = [];
+  
+  for (const job of stuckJobs) {
+    jobIds.push(job.id);
+    
+    if (!dryRun) {
+      await markFailed(job.id, `Processing timeout after ${timeoutMinutes} minutes - webhook never received`);
+      
+      if (job.channel === "voice" && job.externalId) {
+        await emitCampaignEvent({
+          companyId: job.companyId,
+          campaignId: job.campaignId,
+          campaignContactId: job.campaignContactId,
+          contactId: job.contactId,
+          eventType: "CALL_FAILED",
+          channel: "voice",
+          provider: "telnyx",
+          externalId: buildEventExternalId(job.externalId, "call_timeout"),
+          payload: {
+            jobId: job.id,
+            reason: "processing_timeout",
+            timeoutMinutes,
+            channel: job.channel
+          }
+        });
+      }
+      
+      console.log(`[Reaper] Marked job ${job.id} as failed (stuck in processing for ${timeoutMinutes}+ minutes)`);
+    } else {
+      console.log(`[Reaper DRY-RUN] Would mark job ${job.id} as failed`);
+    }
+  }
+  
+  return { reaped: jobIds.length, jobs: jobIds };
+}
