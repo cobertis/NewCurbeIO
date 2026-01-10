@@ -44467,10 +44467,15 @@ CRITICAL REMINDERS:
             // This works with Standard Access for accounts you own/manage
             if (igConnection.accessTokenEnc) {
               const igUserToken = decryptToken(igConnection.accessTokenEnc);
+              console.log("[Inbox Instagram] Checking IG connection token - prefix:", igUserToken ? igUserToken.substring(0, 10) + "..." : "null");
               if (igUserToken && igUserToken.startsWith("IGAAM")) {
                 pageAccessToken = igUserToken;
                 console.log("[Inbox Instagram] Using Instagram User Token (IGAAM) for Instagram API with Instagram Login");
+              } else {
+                console.log("[Inbox Instagram] IG connection token is NOT IGAAM type, will try Facebook Page token next");
               }
+            } else {
+              console.log("[Inbox Instagram] No encrypted token found in IG connection");
             }
             
             // Priority 2: Try Facebook Page token from Facebook connection (requires Advanced Access for instagram_manage_messages)
