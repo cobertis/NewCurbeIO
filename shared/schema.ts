@@ -121,6 +121,15 @@ export const companySettings = pgTable("company_settings", {
   // Holiday settings
   holidayCountryCode: text("holiday_country_code").default("US"), // Country code for public holidays (ISO 3166-1 alpha-2)
   
+  // Phone Number Routing Settings
+  telephonySettings: jsonb("telephony_settings").default({
+    defaultSmsNumberId: null, // Default phone number for outbound SMS (telnyx_phone_numbers.id)
+    defaultVoiceNumberId: null, // Default phone number for outbound voice calls (telnyx_phone_numbers.id)
+    webphoneRingNumberIds: [], // Array of phone number IDs that ring on WebPhone for incoming calls
+    smsRoutingMode: "default", // "default" | "per_user" | "round_robin"
+    voiceRoutingMode: "default", // "default" | "per_user" | "round_robin"
+  }),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
