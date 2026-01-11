@@ -3563,6 +3563,8 @@ export const contacts = pgTable("contacts", {
   emailIndex: index("contacts_email_idx").on(table.email),
   phoneIndex: index("contacts_phone_normalized_idx").on(table.phoneNormalized),
   emailBouncedIndex: index("contacts_email_bounced_idx").on(table.emailBounced),
+  // Enroll-by-filter performance indexes
+  companyCreatedAtIndex: index("contacts_company_created_at_idx").on(table.companyId, table.createdAt),
 }));
 
 // Contact Sources - Track where each contact appears (quote, policy, lead, SMS, etc.)
