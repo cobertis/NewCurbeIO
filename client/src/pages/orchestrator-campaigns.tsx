@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -33,6 +34,22 @@ interface OrchestratorCampaign {
   createdAt: string;
   updatedAt: string;
   stats: CampaignStats;
+}
+
+interface SystemRunInfo {
+  completedAt: string | null;
+  status: string;
+  startedAt: string;
+}
+
+interface SystemRunError {
+  id: string;
+  type: string;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  payload: any;
+  createdAt: string;
 }
 
 interface CampaignContact {
@@ -892,6 +909,70 @@ export default function OrchestratorCampaigns() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  {/* Last Runs Section */}
+                  {healthData.lastRuns && Object.keys(healthData.lastRuns).length > 0 && (
+                    <div className="mt-3">
+                      <div className="text-sm font-medium mb-2 text-muted-foreground">Last System Runs</div>
+                      <div className="space-y-1">
+                        {['orchestrator', 'jobs', 'reaper'].map((runType) => {
+                          const run = healthData.lastRuns?.[runType];
+                          if (!run) return null;
+                          return (
+                            <div key={runType} className="text-xs p-2 bg-muted/50 rounded flex items-center justify-between" data-testid={`text-last-run-${runType}`}>
+                              <span className="capitalize font-medium">{runType}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">
+                                  {run.completedAt ? formatDistanceToNow(new Date(run.completedAt), { addSuffix: true }) : 'In progress'}
+                                </span>
+                                <Badge 
+                                  variant={run.status === 'success' ? 'default' : run.status === 'error' ? 'destructive' : 'secondary'}
+                                  className={`text-xs ${run.status === 'success' ? 'bg-green-600' : run.status === 'running' ? 'bg-yellow-500' : ''}`}
+                                  data-testid={`badge-last-run-${runType}`}
+                                >
+                                  {run.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {/* View Recent Errors Dialog */}
+                  {healthData.lastErrors && healthData.lastErrors.length > 0 && (
+                    <div className="mt-3">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full" data-testid="button-view-errors">
+                            <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
+                            View Recent Errors ({healthData.lastErrors.length})
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[80vh]">
+                          <DialogHeader>
+                            <DialogTitle data-testid="text-errors-dialog-title">Recent System Run Errors</DialogTitle>
+                          </DialogHeader>
+                          <ScrollArea className="h-[60vh]">
+                            <div className="space-y-3">
+                              {healthData.lastErrors.map((error) => (
+                                <div key={error.id} className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg" data-testid={`error-item-${error.id}`}>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <Badge variant="destructive" className="capitalize">{error.type}</Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {format(new Date(error.createdAt), "MMM d, yyyy HH:mm:ss")}
+                                    </span>
+                                  </div>
+                                  <div className="text-sm text-red-700 dark:text-red-300 break-all">
+                                    {error.payload?.error || 'Unknown error'}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   )}
                 </div>

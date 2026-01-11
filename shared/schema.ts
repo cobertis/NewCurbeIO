@@ -8200,3 +8200,47 @@ export const insertOrchestratorTaskSchema = createInsertSchema(orchestratorTasks
 
 export type OrchestratorTask = typeof orchestratorTasks.$inferSelect;
 export type InsertOrchestratorTask = z.infer<typeof insertOrchestratorTaskSchema>;
+
+// =====================================================
+// ORCHESTRATOR SYSTEM RUNS (Run history tracking)
+// =====================================================
+
+export const orchestratorSystemRunTypeEnum = pgEnum("orchestrator_system_run_type", [
+  "orchestrator",
+  "jobs",
+  "auto_tuner",
+  "reaper",
+  "webhook_telnyx",
+  "webhook_bridge",
+  "webhook_call_summary"
+]);
+
+export const orchestratorSystemRunStatusEnum = pgEnum("orchestrator_system_run_status", [
+  "running",
+  "success",
+  "error"
+]);
+
+export const orchestratorSystemRuns = pgTable("orchestrator_system_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  type: orchestratorSystemRunTypeEnum("type").notNull(),
+  status: orchestratorSystemRunStatusEnum("status").notNull(),
+  
+  startedAt: timestamp("started_at").notNull(),
+  completedAt: timestamp("completed_at"),
+  
+  payload: jsonb("payload"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyTypeCreatedIdx: index("orchestrator_system_runs_company_type_created_idx").on(table.companyId, table.type, table.createdAt),
+}));
+
+export const insertOrchestratorSystemRunSchema = createInsertSchema(orchestratorSystemRuns).omit({
+  createdAt: true,
+});
+
+export type OrchestratorSystemRun = typeof orchestratorSystemRuns.$inferSelect;
+export type InsertOrchestratorSystemRun = z.infer<typeof insertOrchestratorSystemRunSchema>;

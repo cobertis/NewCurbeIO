@@ -99,7 +99,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes, orchestratorCampaigns, campaignContacts, campaignEvents, orchestratorJobs } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes, orchestratorCampaigns, campaignContacts, campaignEvents, orchestratorJobs, orchestratorSystemRuns } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -47880,11 +47880,20 @@ CRITICAL REMINDERS:
 
   // POST /api/orchestrator/campaigns/:id/run-once - Run orchestrator once for a campaign
   app.post("/api/orchestrator/campaigns/:id/run-once", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const companyId = req.user!.companyId;
-      const campaignId = req.params.id;
-      const { limit = 50 } = req.body;
+    const companyId = req.user!.companyId;
+    const campaignId = req.params.id;
+    const { limit = 50 } = req.body;
 
+    // Create run record
+    const [runRecord] = await db.insert(orchestratorSystemRuns).values({
+      id: crypto.randomUUID(),
+      companyId,
+      type: "orchestrator",
+      status: "running",
+      startedAt: new Date(),
+    }).returning();
+
+    try {
       // Verify campaign belongs to company
       const [campaign] = await db.select()
         .from(orchestratorCampaigns)
@@ -47895,11 +47904,23 @@ CRITICAL REMINDERS:
         .limit(1);
 
       if (!campaign) {
+        await db.update(orchestratorSystemRuns)
+          .set({ status: "error", completedAt: new Date(), payload: { error: "Campaign not found" } })
+          .where(eq(orchestratorSystemRuns.id, runRecord.id));
         return res.status(404).json({ error: "Campaign not found" });
       }
 
       const { runOrchestratorOnce } = await import("./workers/orchestrator-worker");
       const result = await runOrchestratorOnce({ companyId, campaignId, limit });
+
+      // Update run record to success
+      await db.update(orchestratorSystemRuns)
+        .set({ 
+          status: "success", 
+          completedAt: new Date(), 
+          payload: { processed: result.processed, enqueued: result.enqueued, timeouts: result.timeouts, skipped: result.skipped } 
+        })
+        .where(eq(orchestratorSystemRuns.id, runRecord.id));
 
       console.log(`[Orchestrator Control] run-once for campaign ${campaignId}: processed=${result.processed}, enqueued=${result.enqueued}`);
       
@@ -47914,6 +47935,10 @@ CRITICAL REMINDERS:
         }
       });
     } catch (error: any) {
+      // Update run record to error
+      await db.update(orchestratorSystemRuns)
+        .set({ status: "error", completedAt: new Date(), payload: { error: error.message } })
+        .where(eq(orchestratorSystemRuns.id, runRecord.id));
       console.error("[Orchestrator Control] run-once error:", error);
       res.status(500).json({ error: error.message || "Failed to run orchestrator" });
     }
@@ -47921,12 +47946,30 @@ CRITICAL REMINDERS:
 
   // POST /api/orchestrator/jobs/run-once - Run job runner once
   app.post("/api/orchestrator/jobs/run-once", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const companyId = req.user!.companyId;
-      const { limit = 50 } = req.body;
+    const companyId = req.user!.companyId;
+    const { limit = 50 } = req.body;
 
+    // Create run record
+    const [runRecord] = await db.insert(orchestratorSystemRuns).values({
+      id: crypto.randomUUID(),
+      companyId,
+      type: "jobs",
+      status: "running",
+      startedAt: new Date(),
+    }).returning();
+
+    try {
       const { runJobsOnce } = await import("./workers/job-runner");
       const result = await runJobsOnce({ companyId, limit });
+
+      // Update run record to success
+      await db.update(orchestratorSystemRuns)
+        .set({ 
+          status: "success", 
+          completedAt: new Date(), 
+          payload: { processed: result.processed, succeeded: result.succeeded, failed: result.failed, retried: result.retried } 
+        })
+        .where(eq(orchestratorSystemRuns.id, runRecord.id));
 
       console.log(`[Orchestrator Control] jobs run-once: processed=${result.processed}, succeeded=${result.succeeded}, failed=${result.failed}`);
       
@@ -47942,6 +47985,10 @@ CRITICAL REMINDERS:
         }
       });
     } catch (error: any) {
+      // Update run record to error
+      await db.update(orchestratorSystemRuns)
+        .set({ status: "error", completedAt: new Date(), payload: { error: error.message } })
+        .where(eq(orchestratorSystemRuns.id, runRecord.id));
       console.error("[Orchestrator Control] jobs run-once error:", error);
       res.status(500).json({ error: error.message || "Failed to run job runner" });
     }
@@ -47997,12 +48044,39 @@ CRITICAL REMINDERS:
         .orderBy(sql`${campaignAuditLogs.createdAt} DESC`)
         .limit(20);
 
+      // Get last runs per type
+      const lastRunsRaw = await db.select()
+        .from(orchestratorSystemRuns)
+        .where(eq(orchestratorSystemRuns.companyId, companyId))
+        .orderBy(sql`${orchestratorSystemRuns.createdAt} DESC`)
+        .limit(20);
+
+      // Group by type, take most recent
+      const lastRunsByType: Record<string, { completedAt: Date | null; status: string; startedAt: Date }> = {};
+      for (const run of lastRunsRaw) {
+        if (!lastRunsByType[run.type]) {
+          lastRunsByType[run.type] = { completedAt: run.completedAt, status: run.status, startedAt: run.startedAt };
+        }
+      }
+
+      // Get last 10 error runs
+      const lastErrors = await db.select()
+        .from(orchestratorSystemRuns)
+        .where(and(
+          eq(orchestratorSystemRuns.companyId, companyId),
+          eq(orchestratorSystemRuns.status, "error")
+        ))
+        .orderBy(sql`${orchestratorSystemRuns.createdAt} DESC`)
+        .limit(10);
+
       const health = {
         jobsQueued: statusMap["queued"] || 0,
         jobsProcessing: statusMap["processing"] || 0,
         jobsFailed: statusMap["failed"] || 0,
         stuckProcessingVoice: stuckResult?.count || 0,
-        serverTime: new Date().toISOString()
+        serverTime: new Date().toISOString(),
+        lastRuns: lastRunsByType,
+        lastErrors: lastErrors
       };
 
       // Only include audit logs if there are any
@@ -48243,10 +48317,23 @@ CRITICAL REMINDERS:
   // POST /api/orchestrator/system/reap-processing
   // Reaps stuck processing voice jobs
   app.post("/api/orchestrator/system/reap-processing", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const companyId = req.user!.companyId;
-      const { timeoutMinutes = 10, dryRun = false } = req.body;
+    const companyId = req.user!.companyId;
+    const { timeoutMinutes = 10, dryRun = false } = req.body;
 
+    // Create run record only for actual reap operations (not dry run)
+    let runRecord: { id: string } | null = null;
+    if (!dryRun) {
+      const [record] = await db.insert(orchestratorSystemRuns).values({
+        id: crypto.randomUUID(),
+        companyId,
+        type: "reaper",
+        status: "running",
+        startedAt: new Date(),
+      }).returning();
+      runRecord = record;
+    }
+
+    try {
       const { reapStuckProcessingJobs } = await import("./workers/job-runner");
       
       const result = await reapStuckProcessingJobs({
@@ -48272,6 +48359,17 @@ CRITICAL REMINDERS:
         });
       }
 
+      // Update run record to success (only if not dry run)
+      if (runRecord) {
+        await db.update(orchestratorSystemRuns)
+          .set({ 
+            status: "success", 
+            completedAt: new Date(), 
+            payload: { reaped: result.reaped, jobIds: result.jobs, timeoutMinutes } 
+          })
+          .where(eq(orchestratorSystemRuns.id, runRecord.id));
+      }
+
       console.log(`[Bulk Ops] Reap processing: dryRun=${dryRun}, reaped=${result.reaped}`);
 
       res.json({
@@ -48281,6 +48379,12 @@ CRITICAL REMINDERS:
         jobs: result.jobs
       });
     } catch (error: any) {
+      // Update run record to error (only if not dry run)
+      if (runRecord) {
+        await db.update(orchestratorSystemRuns)
+          .set({ status: "error", completedAt: new Date(), payload: { error: error.message } })
+          .where(eq(orchestratorSystemRuns.id, runRecord.id));
+      }
       console.error("[Bulk Ops] Reap processing error:", error);
       res.status(500).json({ error: error.message || "Failed to reap processing jobs" });
     }
