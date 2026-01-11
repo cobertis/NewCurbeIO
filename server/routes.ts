@@ -47195,7 +47195,7 @@ CRITICAL REMINDERS:
         maxAttemptsPerDay: 1,
         maxAttemptsTotal: 3,
         waitSeconds: 86400,
-        quietHours: { enabled: true, start: "20:00", end: "09:00" },
+        quietHours: { enabled: true, startHour: 20, endHour: 9, timezone: "America/New_York" },
         allowedChannels: ["sms", "imessage", "voice", "voicemail"],
       };
 
