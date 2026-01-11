@@ -58,6 +58,7 @@ The backend is built with Express.js and TypeScript, offering a RESTful API with
 - **Enroll API:** POST /api/orchestrator/campaigns/:id/enroll enrolls contacts to a campaign. Multi-tenant safe (verifies campaign and contacts belong to company), idempotent (uses UNIQUE constraint, skips existing enrollments), supports state override and startNow flag for immediate processing. Returns detailed response with created/skippedExisting/errors counts.
 - **Enroll by Filter API:** POST /api/orchestrator/campaigns/:id/enroll-by-filter enrolls contacts matching filter criteria (createdAfter, hasPhone, hasEmail, tag, search, limit). Multi-tenant safe, idempotent, returns matched/attempted/created/skipped counts.
 - **Bulk Ops (Campaign Emergency Controls):** Emergency Stop pauses campaigns and cancels queued jobs, Requeue Failed requeues failed jobs, Stop All Contacts sets active contacts to DO_NOT_CONTACT, Reap Processing clears stuck voice jobs. All endpoints enforce multi-tenant isolation and emit audit logs.
+- **Phone Number Control Panel:** Manage phone number routing settings for SMS and Voice channels. Configure default sender numbers, WebPhone ring numbers (which numbers ring on incoming calls), and routing modes (default, per-user assignment, round-robin). Settings stored in `companySettings.telephonySettings` JSONB field with multi-tenant isolation.
 
 ## External Dependencies
 
