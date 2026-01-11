@@ -2001,16 +2001,12 @@ function Router() {
       <Route path="/campaigns">
         <ProtectedRoute>
           <DashboardLayout>
-            <Campaigns />
+            <OrchestratorCampaigns />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/orchestrator-campaigns">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <OrchestratorCampaigns />
-          </DashboardLayout>
-        </ProtectedRoute>
+        <Redirect to="/campaigns" />
       </Route>
       <Route path="/campaigns/:id/stats">
         <ProtectedRoute>

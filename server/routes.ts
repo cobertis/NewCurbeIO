@@ -47170,7 +47170,51 @@ CRITICAL REMINDERS:
       res.status(500).json({ error: error.message || "Failed to fetch campaigns" });
     }
   });
-  
+
+  // Create campaign endpoint
+  const createCampaignSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    status: z.enum(["draft", "active"]).optional().default("draft"),
+    policyJson: z.object({}).passthrough().optional(),
+  });
+
+  app.post("/api/orchestrator/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const createdBy = req.user?.id;
+
+      const parsed = createCampaignSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid request body" });
+      }
+
+      const { name, status, policyJson } = parsed.data;
+
+      // Safe defaults for policyJson when empty or missing
+      const defaultPolicy = {
+        maxAttemptsPerDay: 1,
+        maxAttemptsTotal: 3,
+        waitSeconds: 86400,
+        quietHours: { enabled: true, start: "20:00", end: "09:00" },
+        allowedChannels: ["sms", "imessage", "voice", "voicemail"],
+      };
+
+      const finalPolicyJson = policyJson && Object.keys(policyJson).length > 0 ? policyJson : defaultPolicy;
+
+      const [campaign] = await db.insert(orchestratorCampaigns).values({
+        companyId,
+        createdBy,
+        name,
+        status,
+        policyJson: finalPolicyJson,
+      }).returning();
+
+      res.status(201).json(campaign);
+    } catch (error: any) {
+      console.error("[Orchestrator] Error creating campaign:", error);
+      res.status(500).json({ error: error.message || "Failed to create campaign" });
+    }
+  });
 
   // Campaign detail endpoint
   app.get("/api/orchestrator/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {

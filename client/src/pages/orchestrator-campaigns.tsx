@@ -14,7 +14,10 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
-import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo, Zap, Activity, AlertTriangle } from "lucide-react";
+import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo, Zap, Activity, AlertTriangle, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CampaignStats {
@@ -289,6 +292,10 @@ export default function OrchestratorCampaigns() {
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [metricsWindow, setMetricsWindow] = useState<string>("7d");
   const [taskStatusFilter, setTaskStatusFilter] = useState<string>("open");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createFormName, setCreateFormName] = useState("");
+  const [createFormStatus, setCreateFormStatus] = useState("draft");
+  const [createFormUseSafeDefaults, setCreateFormUseSafeDefaults] = useState(true);
 
   const { data: campaigns, isLoading: campaignsLoading } = useQuery<OrchestratorCampaign[]>({
     queryKey: ["/api/orchestrator/campaigns"]
@@ -587,6 +594,35 @@ export default function OrchestratorCampaigns() {
     }
   });
 
+  const createCampaignMutation = useMutation({
+    mutationFn: async (data: { name: string; status: string; policyJson: object }) => {
+      return apiRequest("POST", "/api/orchestrator/campaigns", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] });
+      setCreateDialogOpen(false);
+      setCreateFormName("");
+      setCreateFormStatus("draft");
+      setCreateFormUseSafeDefaults(true);
+      toast({ title: "Campaign created", description: "New campaign has been created successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error creating campaign", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const handleCreateCampaign = () => {
+    if (!createFormName.trim()) {
+      toast({ title: "Name required", description: "Please enter a campaign name", variant: "destructive" });
+      return;
+    }
+    createCampaignMutation.mutate({
+      name: createFormName.trim(),
+      status: createFormStatus,
+      policyJson: {}
+    });
+  };
+
   const stopContactMutation = useMutation({
     mutationFn: async (contactId: string) => {
       if (!selectedCampaign) throw new Error("No campaign selected");
@@ -666,15 +702,80 @@ export default function OrchestratorCampaigns() {
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Campaign Orchestrator</h1>
           <p className="text-muted-foreground">Manage outreach campaigns and contact journeys</p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] })}
-          data-testid="button-refresh"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="default" 
+                size="sm"
+                data-testid="button-create-campaign"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Campaign
+              </Button>
+            </DialogTrigger>
+            <DialogContent data-testid="dialog-create-campaign">
+              <DialogHeader>
+                <DialogTitle>Create Campaign</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="campaign-name">Name</Label>
+                  <Input
+                    id="campaign-name"
+                    placeholder="Enter campaign name"
+                    value={createFormName}
+                    onChange={(e) => setCreateFormName(e.target.value)}
+                    data-testid="input-campaign-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="campaign-status">Status</Label>
+                  <Select value={createFormStatus} onValueChange={setCreateFormStatus}>
+                    <SelectTrigger id="campaign-status" data-testid="select-campaign-status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="use-safe-defaults" className="text-sm">Use safe defaults</Label>
+                  <Switch
+                    id="use-safe-defaults"
+                    checked={createFormUseSafeDefaults}
+                    onCheckedChange={setCreateFormUseSafeDefaults}
+                    data-testid="switch-safe-defaults"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleCreateCampaign}
+                  disabled={createCampaignMutation.isPending}
+                  data-testid="button-submit-create-campaign"
+                >
+                  {createCampaignMutation.isPending ? (
+                    <LoadingSpinner fullScreen={false} />
+                  ) : (
+                    "Create"
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] })}
+            data-testid="button-refresh"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {!selectedCampaign ? (
