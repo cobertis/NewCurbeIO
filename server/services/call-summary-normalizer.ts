@@ -254,7 +254,7 @@ export async function processCallSummary(
     };
   }
 
-  const idempotentExternalId = `call_summary:${provider}:${externalId || callControlId || jobExternalId}`;
+  const idempotentExternalId = `call_summary:${provider}:${externalId || callControlId || jobExternalId || context.campaignContactId}`;
 
   const existingEvent = await checkEventExists(context.companyId, idempotentExternalId);
   if (existingEvent) {
