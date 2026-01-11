@@ -8,6 +8,7 @@ import { db } from "../db";
 import { 
   orchestratorJobs, 
   orchestratorCampaigns,
+  orchestratorAssets,
   OrchestratorJob 
 } from "@shared/schema";
 import { eq, and, sql, lte, inArray, isNotNull } from "drizzle-orm";
@@ -480,8 +481,49 @@ async function processVoicemailJob(
     return { success: false, retried: false, error };
   }
   
-  if (!payload.recordingUrl && !payload.textToSpeech) {
-    const error = "Either recordingUrl or textToSpeech is required for voicemail drop";
+  // Asset lookup: if assetId is provided, fetch the asset and use its URL
+  let recordingUrl = payload.recordingUrl;
+  let textToSpeech = payload.textToSpeech;
+  
+  if (payload.assetId && !recordingUrl) {
+    try {
+      const [asset] = await db
+        .select()
+        .from(orchestratorAssets)
+        .where(and(
+          eq(orchestratorAssets.id, payload.assetId),
+          eq(orchestratorAssets.companyId, job.companyId)
+        ));
+      
+      if (!asset) {
+        const error = `Asset not found: ${payload.assetId}`;
+        await markFailed(job.id, error);
+        return { success: false, retried: false, error };
+      }
+      
+      if (asset.status !== "ready") {
+        const error = `Asset not ready (status: ${asset.status}): ${payload.assetId}`;
+        await markFailed(job.id, error);
+        return { success: false, retried: false, error };
+      }
+      
+      const outputJson = asset.outputJson as Record<string, any> || {};
+      recordingUrl = outputJson.asset_url;
+      
+      if (!recordingUrl) {
+        const error = `Asset has no URL: ${payload.assetId}`;
+        await markFailed(job.id, error);
+        return { success: false, retried: false, error };
+      }
+    } catch (err: any) {
+      const error = `Failed to lookup asset: ${err.message}`;
+      await markFailed(job.id, error);
+      return { success: false, retried: false, error };
+    }
+  }
+  
+  if (!recordingUrl && !textToSpeech) {
+    const error = "Either recordingUrl, assetId, or textToSpeech is required for voicemail drop";
     await markFailed(job.id, error);
     return { success: false, retried: false, error };
   }
@@ -492,8 +534,8 @@ async function processVoicemailJob(
     to: payload.to,
     from: payload.from,
     recordingId: payload.recordingId,
-    recordingUrl: payload.recordingUrl,
-    textToSpeech: payload.textToSpeech,
+    recordingUrl: recordingUrl,
+    textToSpeech: textToSpeech,
     companyId: job.companyId,
     metadata: { jobId: job.id, campaignId: job.campaignId }
   });
