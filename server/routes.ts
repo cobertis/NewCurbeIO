@@ -48141,7 +48141,162 @@ CRITICAL REMINDERS:
       res.status(500).json({ error: error.message || "Failed to enroll contacts" });
     }
   });
-  
+
+  // POST /api/orchestrator/campaigns/:id/enroll-by-filter - Enroll contacts matching filter
+  app.post("/api/orchestrator/campaigns/:id/enroll-by-filter", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      const { filter = {}, state = "NEW", startNow = true, priority = 5 } = req.body;
+      const { createdAfter, hasPhone, hasEmail, tag, search, limit = 500 } = filter;
+
+      const validStates = ["NEW", "ATTEMPTING", "ENGAGED", "QUALIFIED", "BOOKED", "NOT_INTERESTED", "STOPPED", "UNREACHABLE", "DO_NOT_CONTACT"];
+      if (!validStates.includes(state)) {
+        return res.status(400).json({ error: `Invalid state. Must be one of: ${validStates.join(", ")}` });
+      }
+
+      // Verify campaign belongs to company
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      // Build filter conditions
+      const conditions: SQL[] = [eq(contacts.companyId, companyId)];
+
+      if (createdAfter) {
+        conditions.push(gte(contacts.createdAt, new Date(createdAfter)));
+      }
+
+      if (hasPhone === true) {
+        conditions.push(isNotNull(contacts.phoneNormalized));
+      }
+
+      if (hasEmail === true) {
+        conditions.push(isNotNull(contacts.email));
+      }
+
+      if (tag && typeof tag === "string") {
+        conditions.push(sql`${contacts.tags} @> ARRAY[${tag}]::text[]`);
+      }
+
+      if (search && typeof search === "string") {
+        const searchPattern = `%${search.toLowerCase()}%`;
+        conditions.push(or(
+          sql`LOWER(${contacts.firstName}) LIKE ${searchPattern}`,
+          sql`LOWER(${contacts.lastName}) LIKE ${searchPattern}`,
+          sql`LOWER(${contacts.email}) LIKE ${searchPattern}`
+        )!);
+      }
+
+      // Query matching contacts
+      const matchedContacts = await db.select({ id: contacts.id })
+        .from(contacts)
+        .where(and(...conditions))
+        .limit(Math.min(limit, 1000));
+
+      const matched = matchedContacts.length;
+
+      if (matched === 0) {
+        return res.json({
+          campaignId,
+          matched: 0,
+          attempted: 0,
+          created: 0,
+          skippedExisting: 0,
+          errors: [],
+          enrollments: []
+        });
+      }
+
+      const contactIds = matchedContacts.map(c => c.id);
+
+      // Check existing enrollments
+      const existingEnrollments = await db.select({ 
+        contactId: campaignContacts.contactId,
+        id: campaignContacts.id 
+      })
+        .from(campaignContacts)
+        .where(and(
+          eq(campaignContacts.campaignId, campaignId),
+          inArray(campaignContacts.contactId, contactIds)
+        ));
+
+      const existingContactIds = new Set(existingEnrollments.map(e => e.contactId));
+
+      const results = {
+        campaignId,
+        matched,
+        attempted: contactIds.length,
+        created: 0,
+        skippedExisting: 0,
+        errors: [] as Array<{ contactId: string; error: string }>,
+        enrollments: [] as Array<{ contactId: string; campaignContactId: string; created: boolean }>
+      };
+
+      const now = new Date();
+      const nextActionAt = startNow ? new Date(now.getTime() - 60000) : null;
+
+      for (const contactId of contactIds) {
+        if (existingContactIds.has(contactId)) {
+          const existing = existingEnrollments.find(e => e.contactId === contactId);
+          results.skippedExisting++;
+          results.enrollments.push({ 
+            contactId, 
+            campaignContactId: existing!.id, 
+            created: false 
+          });
+          continue;
+        }
+
+        try {
+          const [newEnrollment] = await db.insert(campaignContacts)
+            .values({
+              campaignId,
+              contactId,
+              companyId,
+              state: state as any,
+              priority: priority || 5,
+              nextActionAt
+            })
+            .returning({ id: campaignContacts.id });
+
+          results.created++;
+          results.enrollments.push({ 
+            contactId, 
+            campaignContactId: newEnrollment.id, 
+            created: true 
+          });
+        } catch (insertErr: any) {
+          if (insertErr.code === "23505") {
+            results.skippedExisting++;
+            results.enrollments.push({ 
+              contactId, 
+              campaignContactId: "", 
+              created: false 
+            });
+          } else {
+            results.errors.push({ contactId, error: insertErr.message });
+          }
+        }
+      }
+
+      console.log(`[Enroll by Filter] Campaign ${campaignId}: matched=${matched}, attempted=${results.attempted}, created=${results.created}, skipped=${results.skippedExisting}`);
+
+      res.json(results);
+    } catch (error: any) {
+      console.error("[Enroll by Filter] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to enroll contacts by filter" });
+    }
+  });
+
   app.post("/api/webhooks/bridge-delivery", async (req: Request, res: Response) => {
     try {
       // Auth: X-Webhook-Token header or ?secret= query param
