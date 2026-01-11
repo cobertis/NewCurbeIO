@@ -48944,6 +48944,305 @@ CRITICAL REMINDERS:
     }
   });
 
+  // =====================================================
+  // CAMPAIGN ASSET FACTORY ROUTES (ElevenLabs + Heygen)
+  // =====================================================
+
+  const { assetFactoryService } = await import("./services/asset-factory-service");
+  const { elevenLabsService } = await import("./services/elevenlabs-service");
+  const { heygenService } = await import("./services/heygen-service");
+
+  // GET /api/orchestrator/campaigns/:campaignId/assets - List assets for campaign
+  app.get("/api/orchestrator/campaigns/:campaignId/assets", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const { campaignId } = req.params;
+      const type = req.query.type as "audio" | "video" | undefined;
+
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      const assets = await assetFactoryService.listAssets(companyId, campaignId, type);
+      res.json(assets);
+    } catch (error: any) {
+      console.error("[Asset Factory] List assets error:", error);
+      res.status(500).json({ error: error.message || "Failed to list assets" });
+    }
+  });
+
+  // POST /api/orchestrator/campaigns/:campaignId/assets/audio/elevenlabs - Generate audio with ElevenLabs
+  app.post("/api/orchestrator/campaigns/:campaignId/assets/audio/elevenlabs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const userId = req.user!.id;
+      const { campaignId } = req.params;
+      const { name, text, voiceId, model, stability, similarityBoost } = req.body;
+
+      if (!name || !text || !voiceId) {
+        return res.status(400).json({ error: "Missing required fields: name, text, voiceId" });
+      }
+
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      const asset = await assetFactoryService.createAudioAsset(
+        companyId,
+        campaignId,
+        name,
+        { text, voiceId, model, stability, similarityBoost },
+        "elevenlabs",
+        userId
+      );
+
+      await assetFactoryService.updateAssetStatus(asset.id, "generating");
+
+      try {
+        const { url } = await elevenLabsService.generateSpeech(
+          { text, voiceId, modelId: model, stability, similarityBoost },
+          companyId,
+          asset.id
+        );
+
+        const updatedAsset = await assetFactoryService.updateAssetStatus(
+          asset.id,
+          "ready",
+          { assetUrl: url }
+        );
+
+        res.json(updatedAsset);
+      } catch (genError: any) {
+        const errorMessage = genError.message || "Failed to generate audio";
+        
+        if (errorMessage.includes("API key not configured")) {
+          await assetFactoryService.updateAssetStatus(asset.id, "failed", undefined, errorMessage);
+          return res.status(503).json({ error: "ElevenLabs API key not configured" });
+        }
+
+        await assetFactoryService.updateAssetStatus(asset.id, "failed", undefined, errorMessage);
+        res.status(500).json({ error: errorMessage, asset: await assetFactoryService.getAsset(asset.id, companyId) });
+      }
+    } catch (error: any) {
+      console.error("[Asset Factory] ElevenLabs audio generation error:", error);
+      res.status(500).json({ error: error.message || "Failed to create audio asset" });
+    }
+  });
+
+  // POST /api/orchestrator/campaigns/:campaignId/assets/video/heygen - Start video generation with Heygen
+  app.post("/api/orchestrator/campaigns/:campaignId/assets/video/heygen", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const userId = req.user!.id;
+      const { campaignId } = req.params;
+      const { name, script, avatarId, templateId } = req.body;
+
+      if (!name || !script || !avatarId) {
+        return res.status(400).json({ error: "Missing required fields: name, script, avatarId" });
+      }
+
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      const asset = await assetFactoryService.createVideoAsset(
+        companyId,
+        campaignId,
+        name,
+        { script, avatarId, templateId },
+        "heygen",
+        userId
+      );
+
+      await assetFactoryService.updateAssetStatus(asset.id, "generating");
+
+      try {
+        const videoId = await heygenService.createVideo({ script, avatarId, templateId });
+
+        await assetFactoryService.updateAssetInput(asset.id, {
+          script,
+          avatarId,
+          templateId,
+          providerJobId: videoId
+        });
+
+        const updatedAsset = await assetFactoryService.getAsset(asset.id, companyId);
+        res.json(updatedAsset);
+      } catch (genError: any) {
+        const errorMessage = genError.message || "Failed to start video generation";
+        
+        if (errorMessage.includes("API key not configured")) {
+          await assetFactoryService.updateAssetStatus(asset.id, "failed", undefined, errorMessage);
+          return res.status(503).json({ error: "Heygen API key not configured" });
+        }
+
+        await assetFactoryService.updateAssetStatus(asset.id, "failed", undefined, errorMessage);
+        res.status(500).json({ error: errorMessage, asset: await assetFactoryService.getAsset(asset.id, companyId) });
+      }
+    } catch (error: any) {
+      console.error("[Asset Factory] Heygen video generation error:", error);
+      res.status(500).json({ error: error.message || "Failed to create video asset" });
+    }
+  });
+
+  // POST /api/orchestrator/assets/:assetId/refresh - Refresh asset status (poll Heygen)
+  app.post("/api/orchestrator/assets/:assetId/refresh", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const { assetId } = req.params;
+
+      const asset = await assetFactoryService.getAsset(assetId, companyId);
+      
+      if (!asset) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+
+      if (asset.type === "video" && asset.provider === "heygen" && asset.status === "generating") {
+        const inputJson = asset.inputJson as any;
+        const providerJobId = inputJson?.providerJobId;
+
+        if (!providerJobId) {
+          return res.status(400).json({ error: "No provider job ID found for this asset" });
+        }
+
+        try {
+          const status = await heygenService.getVideoStatus(providerJobId);
+
+          if (status.status === "completed" && status.videoUrl) {
+            const updatedAsset = await assetFactoryService.updateAssetStatus(
+              assetId,
+              "ready",
+              { 
+                videoUrl: status.videoUrl,
+                assetUrl: status.videoUrl,
+                duration: status.duration,
+                thumbnailUrl: status.thumbnailUrl
+              }
+            );
+            return res.json(updatedAsset);
+          } else if (status.status === "failed") {
+            const updatedAsset = await assetFactoryService.updateAssetStatus(
+              assetId,
+              "failed",
+              undefined,
+              status.error || "Video generation failed"
+            );
+            return res.json(updatedAsset);
+          } else {
+            return res.json(asset);
+          }
+        } catch (pollError: any) {
+          const errorMessage = pollError.message || "Failed to poll video status";
+          
+          if (errorMessage.includes("API key not configured")) {
+            return res.status(503).json({ error: "Heygen API key not configured" });
+          }
+
+          return res.status(500).json({ error: errorMessage });
+        }
+      }
+
+      res.json(asset);
+    } catch (error: any) {
+      console.error("[Asset Factory] Refresh asset error:", error);
+      res.status(500).json({ error: error.message || "Failed to refresh asset" });
+    }
+  });
+
+  // GET /api/orchestrator/assets/:assetId - Get single asset
+  app.get("/api/orchestrator/assets/:assetId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const { assetId } = req.params;
+
+      const asset = await assetFactoryService.getAsset(assetId, companyId);
+      
+      if (!asset) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+
+      res.json(asset);
+    } catch (error: any) {
+      console.error("[Asset Factory] Get asset error:", error);
+      res.status(500).json({ error: error.message || "Failed to get asset" });
+    }
+  });
+
+  // DELETE /api/orchestrator/assets/:assetId - Delete asset
+  app.delete("/api/orchestrator/assets/:assetId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const { assetId } = req.params;
+
+      const deleted = await assetFactoryService.deleteAsset(assetId, companyId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Asset Factory] Delete asset error:", error);
+      res.status(500).json({ error: error.message || "Failed to delete asset" });
+    }
+  });
+
+  // GET /api/orchestrator/elevenlabs/voices - List ElevenLabs voices
+  app.get("/api/orchestrator/elevenlabs/voices", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const voices = await elevenLabsService.getVoices();
+      res.json(voices);
+    } catch (error: any) {
+      console.error("[Asset Factory] ElevenLabs voices error:", error);
+      
+      if (error.message?.includes("API key not configured")) {
+        return res.status(503).json({ error: "ElevenLabs API key not configured" });
+      }
+
+      res.status(500).json({ error: error.message || "Failed to fetch voices" });
+    }
+  });
+
+  // GET /api/orchestrator/heygen/avatars - List Heygen avatars
+  app.get("/api/orchestrator/heygen/avatars", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const avatars = await heygenService.getAvatars();
+      res.json(avatars);
+    } catch (error: any) {
+      console.error("[Asset Factory] Heygen avatars error:", error);
+      
+      if (error.message?.includes("API key not configured")) {
+        return res.status(503).json({ error: "Heygen API key not configured" });
+      }
+
+      res.status(500).json({ error: error.message || "Failed to fetch avatars" });
+    }
+  });
+
   app.post("/api/webhooks/bridge-delivery", webhookRateLimit("bridge-delivery"), async (req: Request, res: Response) => {
     try {
       // Auth: X-Webhook-Token header or ?secret= query param

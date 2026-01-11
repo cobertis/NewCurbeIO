@@ -339,6 +339,32 @@ export const credentialProvider = {
     return result;
   },
 
+  async getElevenLabs(): Promise<{ apiKey: string }> {
+    const cacheKey = getCacheKey('elevenlabs');
+    const cached = getFromCache<{ apiKey: string }>(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = await secretsService.getCredential("elevenlabs" as ApiProvider, "api_key") || 
+                   process.env.ELEVENLABS_API_KEY || '';
+    
+    const result = { apiKey };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getHeygen(): Promise<{ apiKey: string }> {
+    const cacheKey = getCacheKey('heygen');
+    const cached = getFromCache<{ apiKey: string }>(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = await secretsService.getCredential("heygen" as ApiProvider, "api_key") || 
+                   process.env.HEYGEN_API_KEY || '';
+    
+    const result = { apiKey };
+    setCache(cacheKey, result);
+    return result;
+  },
+
   async get(service: string, key: string): Promise<string> {
     const cacheKey = getCacheKey(service, key);
     const cached = getFromCache<string>(cacheKey);
