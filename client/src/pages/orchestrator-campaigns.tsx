@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
-import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo } from "lucide-react";
+import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo, Zap, Activity, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CampaignStats {
@@ -216,6 +216,37 @@ interface OrchestratorTaskItem {
   };
 }
 
+interface SystemHealth {
+  jobsQueued: number;
+  jobsProcessing: number;
+  jobsFailed: number;
+  stuckProcessingVoice: number;
+  serverTime: string;
+  recentAuditErrors?: Array<{
+    id: string;
+    level: string;
+    message: string;
+    createdAt: string;
+  }>;
+}
+
+interface RunOnceSummary {
+  processed: number;
+  enqueued: number;
+  timeouts: number;
+  skipped: number;
+  errors: string[];
+}
+
+interface RunJobsSummary {
+  processed: number;
+  succeeded: number;
+  failed: number;
+  retried: number;
+  skipped: number;
+  errors: string[];
+}
+
 export default function OrchestratorCampaigns() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -310,6 +341,58 @@ export default function OrchestratorCampaigns() {
       return res.json();
     },
     enabled: !!selectedCampaign
+  });
+
+  const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useQuery<SystemHealth>({
+    queryKey: ["/api/orchestrator/system/health"],
+    queryFn: async () => {
+      const res = await fetch("/api/orchestrator/system/health");
+      if (!res.ok) throw new Error("Failed to fetch health");
+      return res.json();
+    },
+    enabled: !!selectedCampaign,
+    refetchInterval: 15000
+  });
+
+  const runOrchestratorMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedCampaign) throw new Error("No campaign selected");
+      return apiRequest("POST", `/api/orchestrator/campaigns/${selectedCampaign.id}/run-once`, { limit: 50 });
+    },
+    onSuccess: (data: { summary: RunOnceSummary }) => {
+      const s = data.summary;
+      toast({ 
+        title: "Orchestrator completed", 
+        description: `Processed: ${s.processed}, Enqueued: ${s.enqueued}, Timeouts: ${s.timeouts}, Skipped: ${s.skipped}` 
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/system/health"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Orchestrator failed", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const runJobsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/orchestrator/jobs/run-once", { limit: 50 });
+    },
+    onSuccess: (data: { summary: RunJobsSummary }) => {
+      const s = data.summary;
+      toast({ 
+        title: "Jobs runner completed", 
+        description: `Processed: ${s.processed}, Succeeded: ${s.succeeded}, Failed: ${s.failed}, Retried: ${s.retried}` 
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/system/health"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Jobs runner failed", description: error.message, variant: "destructive" });
+    }
   });
 
   const completeTaskMutation = useMutation({
