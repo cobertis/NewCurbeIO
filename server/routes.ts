@@ -48017,6 +48017,129 @@ CRITICAL REMINDERS:
     }
   });
 
+
+  // POST /api/orchestrator/campaigns/:id/enroll - Enroll contacts to a campaign
+  app.post("/api/orchestrator/campaigns/:id/enroll", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      const { contactIds, state = "NEW", startNow = true, priority = 5 } = req.body;
+
+      if (!Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({ error: "contactIds must be a non-empty array" });
+      }
+
+      const validStates = ["NEW", "ATTEMPTING", "ENGAGED", "QUALIFIED", "BOOKED", "NOT_INTERESTED", "STOPPED", "UNREACHABLE", "DO_NOT_CONTACT"];
+      if (!validStates.includes(state)) {
+        return res.status(400).json({ error: `Invalid state. Must be one of: ${validStates.join(", ")}` });
+      }
+
+      // Verify campaign belongs to company
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      // Verify all contacts belong to company
+      const validContacts = await db.select({ id: contacts.id })
+        .from(contacts)
+        .where(and(
+          inArray(contacts.id, contactIds),
+          eq(contacts.companyId, companyId)
+        ));
+
+      const validContactIds = new Set(validContacts.map(c => c.id));
+
+      // Check existing enrollments
+      const existingEnrollments = await db.select({ 
+        contactId: campaignContacts.contactId,
+        id: campaignContacts.id 
+      })
+        .from(campaignContacts)
+        .where(and(
+          eq(campaignContacts.campaignId, campaignId),
+          inArray(campaignContacts.contactId, contactIds)
+        ));
+
+      const existingContactIds = new Set(existingEnrollments.map(e => e.contactId));
+
+      const results = {
+        campaignId,
+        requested: contactIds.length,
+        created: 0,
+        skippedExisting: 0,
+        errors: [] as Array<{ contactId: string; error: string }>,
+        enrollments: [] as Array<{ contactId: string; campaignContactId: string; created: boolean }>
+      };
+
+      const now = new Date();
+      const nextActionAt = startNow ? new Date(now.getTime() - 60000) : null;
+
+      for (const contactId of contactIds) {
+        if (!validContactIds.has(contactId)) {
+          results.errors.push({ contactId, error: "Contact not found or not owned by company" });
+          continue;
+        }
+
+        if (existingContactIds.has(contactId)) {
+          const existing = existingEnrollments.find(e => e.contactId === contactId);
+          results.skippedExisting++;
+          results.enrollments.push({ 
+            contactId, 
+            campaignContactId: existing!.id, 
+            created: false 
+          });
+          continue;
+        }
+
+        try {
+          const [newEnrollment] = await db.insert(campaignContacts)
+            .values({
+              campaignId,
+              contactId,
+              companyId,
+              state: state as any,
+              priority: priority || 5,
+              nextActionAt
+            })
+            .returning({ id: campaignContacts.id });
+
+          results.created++;
+          results.enrollments.push({ 
+            contactId, 
+            campaignContactId: newEnrollment.id, 
+            created: true 
+          });
+        } catch (insertErr: any) {
+          if (insertErr.code === "23505") {
+            const existing = existingEnrollments.find(e => e.contactId === contactId);
+            results.skippedExisting++;
+            results.enrollments.push({ 
+              contactId, 
+              campaignContactId: existing?.id || "", 
+              created: false 
+            });
+          } else {
+            results.errors.push({ contactId, error: insertErr.message });
+          }
+        }
+      }
+
+      console.log(`[Enroll API] Campaign ${campaignId}: requested=${results.requested}, created=${results.created}, skipped=${results.skippedExisting}, errors=${results.errors.length}`);
+
+      res.json(results);
+    } catch (error: any) {
+      console.error("[Enroll API] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to enroll contacts" });
+    }
+  });
   
   app.post("/api/webhooks/bridge-delivery", async (req: Request, res: Response) => {
     try {
