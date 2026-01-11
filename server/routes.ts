@@ -48017,6 +48017,275 @@ CRITICAL REMINDERS:
     }
   });
 
+  // =====================================================
+  // BULK OPS (Campaign Emergency Controls)
+  // =====================================================
+
+  // POST /api/orchestrator/campaigns/:id/emergency-stop
+  // Pauses campaign, cancels queued jobs, emits audit log
+  app.post("/api/orchestrator/campaigns/:id/emergency-stop", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+
+      // Verify campaign belongs to company
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      // 1. Set campaign.status = 'paused' and pausedAt
+      await db.update(orchestratorCampaigns)
+        .set({ 
+          status: "paused", 
+          pausedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(orchestratorCampaigns.id, campaignId));
+
+      // 2. Cancel all queued jobs for this campaign (NOT processing)
+      const cancelResult = await db.update(orchestratorJobs)
+        .set({ 
+          status: "canceled",
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(orchestratorJobs.campaignId, campaignId),
+          eq(orchestratorJobs.status, "queued")
+        ))
+        .returning({ id: orchestratorJobs.id });
+
+      const canceledCount = cancelResult.length;
+
+      // 3. Emit audit log
+      await db.insert(campaignAuditLogs).values({
+        companyId,
+        campaignId,
+        logType: "campaign_emergency_stop",
+        eventType: "EMERGENCY_STOP",
+        actionTaken: `Paused campaign and canceled ${canceledCount} queued jobs`,
+        payload: {
+          canceledJobs: canceledCount,
+          triggeredBy: req.user!.id,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      console.log(`[Bulk Ops] Emergency stop: campaign=${campaignId}, canceledJobs=${canceledCount}`);
+
+      res.json({
+        success: true,
+        campaignId,
+        status: "paused",
+        canceledJobs: canceledCount
+      });
+    } catch (error: any) {
+      console.error("[Bulk Ops] Emergency stop error:", error);
+      res.status(500).json({ error: error.message || "Failed to emergency stop campaign" });
+    }
+  });
+
+  // POST /api/orchestrator/campaigns/:id/requeue-failed-jobs
+  // Requeues failed jobs for a campaign
+  app.post("/api/orchestrator/campaigns/:id/requeue-failed-jobs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      const { limit = 200 } = req.body;
+
+      // Verify campaign belongs to company
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      // Allow requeue even if paused (user might want to prepare before resuming)
+      // Document: requeue works regardless of campaign.status
+
+      // Get failed jobs for this campaign
+      const failedJobs = await db.select({ id: orchestratorJobs.id })
+        .from(orchestratorJobs)
+        .where(and(
+          eq(orchestratorJobs.campaignId, campaignId),
+          eq(orchestratorJobs.status, "failed")
+        ))
+        .limit(Math.min(limit, 1000));
+
+      if (failedJobs.length === 0) {
+        return res.json({
+          success: true,
+          campaignId,
+          requeuedCount: 0,
+          message: "No failed jobs to requeue"
+        });
+      }
+
+      const jobIds = failedJobs.map(j => j.id);
+
+      // Requeue: set status='queued', run_at=now, retry_count=0, error=null
+      await db.update(orchestratorJobs)
+        .set({
+          status: "queued",
+          runAt: new Date(),
+          retryCount: 0,
+          error: null,
+          startedAt: null,
+          completedAt: null,
+          updatedAt: new Date()
+        })
+        .where(inArray(orchestratorJobs.id, jobIds));
+
+      // Emit audit log
+      await db.insert(campaignAuditLogs).values({
+        companyId,
+        campaignId,
+        logType: "campaign_requeue_failed_jobs",
+        eventType: "REQUEUE_FAILED",
+        actionTaken: `Requeued ${jobIds.length} failed jobs`,
+        payload: {
+          requeuedCount: jobIds.length,
+          triggeredBy: req.user!.id,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      console.log(`[Bulk Ops] Requeue failed: campaign=${campaignId}, requeued=${jobIds.length}`);
+
+      res.json({
+        success: true,
+        campaignId,
+        requeuedCount: jobIds.length
+      });
+    } catch (error: any) {
+      console.error("[Bulk Ops] Requeue failed jobs error:", error);
+      res.status(500).json({ error: error.message || "Failed to requeue failed jobs" });
+    }
+  });
+
+  // POST /api/orchestrator/campaigns/:id/stop-all-contacts
+  // Sets all active contacts to DO_NOT_CONTACT
+  app.post("/api/orchestrator/campaigns/:id/stop-all-contacts", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+
+      // Verify campaign belongs to company
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      // Active states that should be stopped
+      const activeStates = ["NEW", "ATTEMPTING", "ENGAGED", "QUALIFIED"];
+
+      // Update all active campaign_contacts to DO_NOT_CONTACT
+      const stopResult = await db.update(campaignContacts)
+        .set({
+          state: "DO_NOT_CONTACT",
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(campaignContacts.campaignId, campaignId),
+          inArray(campaignContacts.state, activeStates as any)
+        ))
+        .returning({ id: campaignContacts.id, contactId: campaignContacts.contactId });
+
+      const stoppedCount = stopResult.length;
+
+      // Emit single audit log for batch (not per-contact to avoid log explosion)
+      await db.insert(campaignAuditLogs).values({
+        companyId,
+        campaignId,
+        logType: "campaign_stop_all_contacts",
+        eventType: "MANUAL_STOP",
+        actionTaken: `Stopped ${stoppedCount} active contacts (set to DO_NOT_CONTACT)`,
+        payload: {
+          stoppedCount,
+          triggeredBy: req.user!.id,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      console.log(`[Bulk Ops] Stop all contacts: campaign=${campaignId}, stopped=${stoppedCount}`);
+
+      res.json({
+        success: true,
+        campaignId,
+        stoppedCount
+      });
+    } catch (error: any) {
+      console.error("[Bulk Ops] Stop all contacts error:", error);
+      res.status(500).json({ error: error.message || "Failed to stop all contacts" });
+    }
+  });
+
+  // POST /api/orchestrator/system/reap-processing
+  // Reaps stuck processing voice jobs
+  app.post("/api/orchestrator/system/reap-processing", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const { timeoutMinutes = 10, dryRun = false } = req.body;
+
+      const { reapStuckProcessingJobs } = await import("./workers/job-runner");
+      
+      const result = await reapStuckProcessingJobs({
+        companyId,
+        timeoutMinutes: Math.max(1, Math.min(timeoutMinutes, 60)), // Cap between 1-60 minutes
+        dryRun
+      });
+
+      // Emit audit log (only if not dry run and something was reaped)
+      if (!dryRun && result.reaped > 0) {
+        await db.insert(campaignAuditLogs).values({
+          companyId,
+          logType: "system_reap_processing",
+          eventType: "REAP_STUCK_JOBS",
+          actionTaken: `Reaped ${result.reaped} stuck processing jobs`,
+          payload: {
+            reaped: result.reaped,
+            jobIds: result.jobs,
+            timeoutMinutes,
+            triggeredBy: req.user!.id,
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+
+      console.log(`[Bulk Ops] Reap processing: dryRun=${dryRun}, reaped=${result.reaped}`);
+
+      res.json({
+        success: true,
+        dryRun,
+        reaped: result.reaped,
+        jobs: result.jobs
+      });
+    } catch (error: any) {
+      console.error("[Bulk Ops] Reap processing error:", error);
+      res.status(500).json({ error: error.message || "Failed to reap processing jobs" });
+    }
+  });
+
 
   // POST /api/orchestrator/campaigns/:id/enroll - Enroll contacts to a campaign
   app.post("/api/orchestrator/campaigns/:id/enroll", requireActiveCompany, async (req: Request, res: Response) => {

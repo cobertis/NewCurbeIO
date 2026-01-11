@@ -57,6 +57,7 @@ The backend is built with Express.js and TypeScript, offering a RESTful API with
 - **Orchestrator Control API:** Manual operation endpoints for campaign orchestration. POST /api/orchestrator/campaigns/:id/run-once runs orchestrator for a specific campaign. POST /api/orchestrator/jobs/run-once runs job runner. GET /api/orchestrator/system/health returns queue stats, stuck jobs, and recent audit errors. All endpoints enforce multi-tenant isolation.
 - **Enroll API:** POST /api/orchestrator/campaigns/:id/enroll enrolls contacts to a campaign. Multi-tenant safe (verifies campaign and contacts belong to company), idempotent (uses UNIQUE constraint, skips existing enrollments), supports state override and startNow flag for immediate processing. Returns detailed response with created/skippedExisting/errors counts.
 - **Enroll by Filter API:** POST /api/orchestrator/campaigns/:id/enroll-by-filter enrolls contacts matching filter criteria (createdAfter, hasPhone, hasEmail, tag, search, limit). Multi-tenant safe, idempotent, returns matched/attempted/created/skipped counts.
+- **Bulk Ops (Campaign Emergency Controls):** Emergency Stop pauses campaigns and cancels queued jobs, Requeue Failed requeues failed jobs, Stop All Contacts sets active contacts to DO_NOT_CONTACT, Reap Processing clears stuck voice jobs. All endpoints enforce multi-tenant isolation and emit audit logs.
 
 ## External Dependencies
 

@@ -395,6 +395,78 @@ export default function OrchestratorCampaigns() {
     }
   });
 
+  // ===== BULK OPS MUTATIONS =====
+  const emergencyStopMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedCampaign) throw new Error("No campaign selected");
+      return apiRequest("POST", `/api/orchestrator/campaigns/${selectedCampaign.id}/emergency-stop`);
+    },
+    onSuccess: (data: { canceledJobs: number }) => {
+      toast({ 
+        title: "Emergency Stop", 
+        description: `Campaign paused, ${data.canceledJobs} queued jobs canceled` 
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/system/health"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Emergency stop failed", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const requeueFailedMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedCampaign) throw new Error("No campaign selected");
+      return apiRequest("POST", `/api/orchestrator/campaigns/${selectedCampaign.id}/requeue-failed-jobs`, { limit: 200 });
+    },
+    onSuccess: (data: { requeuedCount: number }) => {
+      toast({ 
+        title: "Requeue Complete", 
+        description: `${data.requeuedCount} failed jobs requeued` 
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/system/health"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Requeue failed", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const stopAllContactsMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedCampaign) throw new Error("No campaign selected");
+      return apiRequest("POST", `/api/orchestrator/campaigns/${selectedCampaign.id}/stop-all-contacts`);
+    },
+    onSuccess: (data: { stoppedCount: number }) => {
+      toast({ 
+        title: "Contacts Stopped", 
+        description: `${data.stoppedCount} contacts set to DO_NOT_CONTACT` 
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Stop all failed", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const reapProcessingMutation = useMutation({
+    mutationFn: async (dryRun: boolean = false) => {
+      return apiRequest("POST", "/api/orchestrator/system/reap-processing", { timeoutMinutes: 10, dryRun });
+    },
+    onSuccess: (data: { reaped: number; dryRun: boolean }) => {
+      if (data.dryRun) {
+        toast({ title: "Dry Run", description: `Would reap ${data.reaped} stuck jobs` });
+      } else {
+        toast({ title: "Reap Complete", description: `Reaped ${data.reaped} stuck processing jobs` });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/system/health"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Reap failed", description: error.message, variant: "destructive" });
+    }
+  });
+
   const completeTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
       return apiRequest("POST", `/api/orchestrator/tasks/${taskId}/complete`);
@@ -706,9 +778,46 @@ export default function OrchestratorCampaigns() {
                 )}
                 Run Jobs Now
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => requeueFailedMutation.mutate()}
+                disabled={requeueFailedMutation.isPending}
+                data-testid="button-requeue-failed"
+              >
+                {requeueFailedMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <RotateCcw className="h-4 w-4 mr-1" />}
+                Requeue Failed
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (confirm("Stop all active contacts in this campaign? They will be set to DO_NOT_CONTACT.")) {
+                    stopAllContactsMutation.mutate();
+                  }
+                }}
+                disabled={stopAllContactsMutation.isPending}
+                data-testid="button-stop-all-contacts"
+              >
+                {stopAllContactsMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <StopCircle className="h-4 w-4 mr-1" />}
+                Stop All Contacts
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (confirm("EMERGENCY STOP: This will pause the campaign and cancel all queued jobs. Continue?")) {
+                    emergencyStopMutation.mutate();
+                  }
+                }}
+                disabled={emergencyStopMutation.isPending}
+                data-testid="button-emergency-stop"
+              >
+                {emergencyStopMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <AlertCircle className="h-4 w-4 mr-1" />}
+                Emergency Stop
+              </Button>
             </div>
           </div>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between py-3">
               <CardTitle className="text-base" data-testid="text-health-title">System Health</CardTitle>
@@ -742,6 +851,33 @@ export default function OrchestratorCampaigns() {
                       )}
                     </div>
                   </div>
+                  {healthData.stuckProcessingVoice > 0 && (
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => reapProcessingMutation.mutate(true)}
+                        disabled={reapProcessingMutation.isPending}
+                        data-testid="button-reap-dry-run"
+                      >
+                        {reapProcessingMutation.isPending ? <LoadingSpinner fullScreen={false} /> : null}
+                        Preview Reap
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("This will mark stuck voice jobs as failed. Continue?")) {
+                            reapProcessingMutation.mutate(false);
+                          }
+                        }}
+                        disabled={reapProcessingMutation.isPending}
+                        data-testid="button-reap-stuck"
+                      >
+                        Reap Stuck Jobs
+                      </Button>
+                    </div>
+                  )}
                   {healthData.recentAuditErrors && healthData.recentAuditErrors.length > 0 && (
                     <div className="mt-3">
                       <div className="text-sm font-medium mb-2 text-muted-foreground">Recent Errors/Warnings</div>
