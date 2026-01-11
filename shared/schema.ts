@@ -7717,7 +7717,8 @@ export const campaignEventTypeEnum = pgEnum("campaign_event_type", [
   "MANUAL_STOP",
   "TIMEOUT",
   "DECISION_MADE",
-  "ATTEMPT_QUEUED"
+  "ATTEMPT_QUEUED",
+  "CALL_SUMMARY"
 ]);
 
 // Communication Channels
