@@ -8246,3 +8246,58 @@ export const insertOrchestratorSystemRunSchema = createInsertSchema(orchestrator
 
 export type OrchestratorSystemRun = typeof orchestratorSystemRuns.$inferSelect;
 export type InsertOrchestratorSystemRun = z.infer<typeof insertOrchestratorSystemRunSchema>;
+
+// =====================================================
+// ORCHESTRATOR ASSETS (Audio/Video assets for campaigns)
+// =====================================================
+
+export const orchestratorAssetTypeEnum = pgEnum("orchestrator_asset_type", [
+  "audio",
+  "video"
+]);
+
+export const orchestratorAssetProviderEnum = pgEnum("orchestrator_asset_provider", [
+  "elevenlabs",
+  "heygen",
+  "manual"
+]);
+
+export const orchestratorAssetStatusEnum = pgEnum("orchestrator_asset_status", [
+  "draft",
+  "generating",
+  "ready",
+  "failed"
+]);
+
+export const orchestratorAssets = pgTable("orchestrator_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  campaignId: varchar("campaign_id").references(() => orchestratorCampaigns.id, { onDelete: "set null" }),
+  
+  type: orchestratorAssetTypeEnum("type").notNull(),
+  provider: orchestratorAssetProviderEnum("provider").notNull(),
+  status: orchestratorAssetStatusEnum("status").notNull().default("draft"),
+  
+  name: text("name").notNull(),
+  
+  inputJson: jsonb("input_json").notNull().default({}),
+  outputJson: jsonb("output_json").default({}),
+  
+  error: text("error"),
+  
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyCampaignTypeStatusIdx: index("orchestrator_assets_company_campaign_type_status_idx").on(table.companyId, table.campaignId, table.type, table.status),
+  companyStatusIdx: index("orchestrator_assets_company_status_idx").on(table.companyId, table.status),
+}));
+
+export const insertOrchestratorAssetSchema = createInsertSchema(orchestratorAssets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type OrchestratorAsset = typeof orchestratorAssets.$inferSelect;
+export type InsertOrchestratorAsset = z.infer<typeof insertOrchestratorAssetSchema>;
