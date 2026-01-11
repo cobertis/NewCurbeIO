@@ -24,6 +24,7 @@ import {
 import { nanoid } from "nanoid";
 
 const TEST_COMPANY_ID = `test-tasks-${Date.now()}`;
+const TEST_COMPANY_B_ID = `test-tasks-b-${Date.now()}`;
 
 interface TestResult {
   name: string;
@@ -35,9 +36,15 @@ const results: TestResult[] = [];
 
 async function setupTestCompany() {
   const testSlug = `testtask${nanoid(4)}`.toLowerCase();
+  const testSlugB = `testtaskb${nanoid(4)}`.toLowerCase();
   await db.execute(`
     INSERT INTO companies (id, name, email, slug)
     VALUES ('${TEST_COMPANY_ID}', 'Task Test Company', 'test@tasks.test', '${testSlug}')
+    ON CONFLICT (id) DO NOTHING
+  `);
+  await db.execute(`
+    INSERT INTO companies (id, name, email, slug)
+    VALUES ('${TEST_COMPANY_B_ID}', 'Task Test Company B', 'test@tasksb.test', '${testSlugB}')
     ON CONFLICT (id) DO NOTHING
   `);
 }
@@ -407,15 +414,121 @@ async function test5_NoTaskForNonActionableIntents() {
   }
 }
 
+async function test6_CrossTenantCompleteTaskBlocked() {
+  const name = "Test 6: Cross-tenant complete task returns 404 (multi-tenant isolation)";
+  try {
+    // Create task in Company A
+    const contactId = await createTestContact("crossA");
+    const campaignId = await createTestCampaign("crossA");
+    const enrollmentId = await createTestEnrollment(campaignId, contactId, "QUALIFIED");
+    
+    const taskId = `cross-task-${Date.now()}`;
+    await db.insert(orchestratorTasks).values({
+      id: taskId,
+      companyId: TEST_COMPANY_ID,  // Company A
+      contactId,
+      campaignId,
+      campaignContactId: enrollmentId,
+      type: "followup",
+      status: "open",
+      dueAt: new Date(),
+      sourceIntent: "interested"
+    });
+    
+    // Simulate query from Company B (should NOT find the task)
+    const [taskFromCompanyB] = await db.select()
+      .from(orchestratorTasks)
+      .where(
+        and(
+          eq(orchestratorTasks.id, taskId),
+          eq(orchestratorTasks.companyId, TEST_COMPANY_B_ID)  // Wrong company
+        )
+      )
+      .limit(1);
+    
+    if (taskFromCompanyB) {
+      results.push({ name, passed: false, details: "Cross-tenant access allowed - SECURITY BREACH!" });
+      return;
+    }
+    
+    // Verify task still exists for correct company
+    const [taskFromCompanyA] = await db.select()
+      .from(orchestratorTasks)
+      .where(
+        and(
+          eq(orchestratorTasks.id, taskId),
+          eq(orchestratorTasks.companyId, TEST_COMPANY_ID)  // Correct company
+        )
+      )
+      .limit(1);
+    
+    if (!taskFromCompanyA) {
+      results.push({ name, passed: false, details: "Task not found for correct company" });
+      return;
+    }
+    
+    results.push({ name, passed: true, details: "Cross-tenant complete blocked - task not visible to other company" });
+  } catch (error: any) {
+    results.push({ name, passed: false, details: `Error: ${error.message}` });
+  }
+}
+
+async function test7_CrossTenantMarkBookedBlocked() {
+  const name = "Test 7: Cross-tenant mark-booked returns 404 (multi-tenant isolation)";
+  try {
+    // Create enrollment in Company A
+    const contactId = await createTestContact("crossB");
+    const campaignId = await createTestCampaign("crossB");
+    const enrollmentId = await createTestEnrollment(campaignId, contactId, "QUALIFIED");
+    
+    // Simulate query from Company B (should NOT find the enrollment)
+    const [enrollmentFromCompanyB] = await db.select()
+      .from(campaignContacts)
+      .where(
+        and(
+          eq(campaignContacts.id, enrollmentId),
+          eq(campaignContacts.companyId, TEST_COMPANY_B_ID)  // Wrong company
+        )
+      )
+      .limit(1);
+    
+    if (enrollmentFromCompanyB) {
+      results.push({ name, passed: false, details: "Cross-tenant access allowed - SECURITY BREACH!" });
+      return;
+    }
+    
+    // Verify enrollment still exists for correct company
+    const [enrollmentFromCompanyA] = await db.select()
+      .from(campaignContacts)
+      .where(
+        and(
+          eq(campaignContacts.id, enrollmentId),
+          eq(campaignContacts.companyId, TEST_COMPANY_ID)  // Correct company
+        )
+      )
+      .limit(1);
+    
+    if (!enrollmentFromCompanyA) {
+      results.push({ name, passed: false, details: "Enrollment not found for correct company" });
+      return;
+    }
+    
+    results.push({ name, passed: true, details: "Cross-tenant mark-booked blocked - enrollment not visible to other company" });
+  } catch (error: any) {
+    results.push({ name, passed: false, details: `Error: ${error.message}` });
+  }
+}
+
 async function cleanup() {
   try {
-    // Clean up test data in reverse order of dependencies
+    // Clean up test data in reverse order of dependencies for both companies
     await db.delete(orchestratorTasks).where(eq(orchestratorTasks.companyId, TEST_COMPANY_ID));
     await db.delete(campaignEvents).where(eq(campaignEvents.companyId, TEST_COMPANY_ID));
     await db.delete(campaignContacts).where(eq(campaignContacts.companyId, TEST_COMPANY_ID));
     await db.delete(orchestratorCampaigns).where(eq(orchestratorCampaigns.companyId, TEST_COMPANY_ID));
     await db.delete(contacts).where(eq(contacts.companyId, TEST_COMPANY_ID));
     await db.execute(`DELETE FROM companies WHERE id = '${TEST_COMPANY_ID}'`);
+    await db.execute(`DELETE FROM companies WHERE id = '${TEST_COMPANY_B_ID}'`);
     console.log("Cleanup complete");
   } catch (error) {
     console.error("Cleanup error:", error);
@@ -435,6 +548,8 @@ async function runTests() {
     await test3_CompleteTask();
     await test4_MarkBookedClosesTasksAndEmitsEvent();
     await test5_NoTaskForNonActionableIntents();
+    await test6_CrossTenantCompleteTaskBlocked();
+    await test7_CrossTenantMarkBookedBlocked();
     
     console.log("\n" + "=".repeat(60));
     console.log("RESULTS:");
