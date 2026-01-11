@@ -32,11 +32,14 @@ import {
 const DEFAULT_MAX_RETRIES = 2;
 const VOICE_MAX_RETRIES = 1;
 const VOICEMAIL_MAX_RETRIES = 1;
+const ASSET_NOT_READY_MAX_RETRIES = 6; // Max retries when asset is not ready (1 hour total with 10min intervals)
 
 const RETRY_DELAYS_MS = [
   5 * 60 * 1000,    // retry 1: 5 minutes
   30 * 60 * 1000    // retry 2: 30 minutes
 ];
+
+const ASSET_NOT_READY_DELAY_MS = 10 * 60 * 1000; // 10 minutes for asset not ready retries
 
 const MESSAGE_CHANNELS = ["imessage", "sms", "mms"] as const;
 const VOICE_CHANNELS = ["voice", "voicemail"] as const;
@@ -140,6 +143,79 @@ async function scheduleRetry(job: OrchestratorJob, error: string): Promise<void>
       updatedAt: new Date()
     })
     .where(eq(orchestratorJobs.id, job.id));
+}
+
+async function scheduleAssetRetry(job: OrchestratorJob, error: string): Promise<void> {
+  const newRetryCount = job.retryCount + 1;
+  const newRunAt = new Date(Date.now() + ASSET_NOT_READY_DELAY_MS);
+  
+  await db.update(orchestratorJobs)
+    .set({
+      status: "queued",
+      retryCount: newRetryCount,
+      runAt: newRunAt,
+      error,
+      startedAt: null,
+      completedAt: null,
+      updatedAt: new Date()
+    })
+    .where(eq(orchestratorJobs.id, job.id));
+}
+
+async function emitVoicemailFailedAttempt(
+  job: OrchestratorJob, 
+  reason: string, 
+  assetId: string, 
+  assetStatus: string, 
+  attemptNumber: number
+): Promise<void> {
+  if (!job.externalId) return;
+  
+  await emitCampaignEvent({
+    companyId: job.companyId,
+    campaignId: job.campaignId,
+    campaignContactId: job.campaignContactId,
+    contactId: job.contactId,
+    eventType: "VOICEMAIL_FAILED",
+    channel: "voicemail",
+    provider: "telnyx",
+    externalId: buildEventExternalId(job.externalId, `voicemail_failed_attempt_${attemptNumber}`),
+    payload: {
+      jobId: job.id,
+      reason,
+      assetId,
+      status: assetStatus,
+      final: false,
+      attemptNumber
+    }
+  });
+}
+
+async function emitVoicemailFailedFinal(
+  job: OrchestratorJob, 
+  reason: string, 
+  assetId?: string, 
+  assetStatus?: string
+): Promise<void> {
+  if (!job.externalId) return;
+  
+  await emitCampaignEvent({
+    companyId: job.companyId,
+    campaignId: job.campaignId,
+    campaignContactId: job.campaignContactId,
+    contactId: job.contactId,
+    eventType: "VOICEMAIL_FAILED",
+    channel: "voicemail",
+    provider: "telnyx",
+    externalId: buildEventExternalId(job.externalId, "voicemail_failed"),
+    payload: {
+      jobId: job.id,
+      reason,
+      assetId,
+      status: assetStatus,
+      final: true
+    }
+  });
 }
 
 async function getMaxRetries(job: OrchestratorJob): Promise<number> {
@@ -501,18 +577,39 @@ async function processVoicemailJob(
         return { success: false, retried: false, error };
       }
       
-      if (asset.status !== "ready") {
-        const error = `Asset not ready (status: ${asset.status}): ${payload.assetId}`;
+      // Handle different asset statuses
+      if (asset.status === "draft" || asset.status === "generating") {
+        // Asset is still being generated - retry later
+        if (job.retryCount < ASSET_NOT_READY_MAX_RETRIES) {
+          const error = `Asset not ready (status: ${asset.status}): ${payload.assetId}`;
+          await scheduleAssetRetry(job, error);
+          await emitVoicemailFailedAttempt(job, "asset_not_ready", payload.assetId, asset.status, job.retryCount + 1);
+          return { success: false, retried: true, error };
+        } else {
+          // Max retries exceeded for asset not ready
+          const error = `Asset still not ready after ${ASSET_NOT_READY_MAX_RETRIES} retries (status: ${asset.status}): ${payload.assetId}`;
+          await markFailed(job.id, error);
+          await emitVoicemailFailedFinal(job, "asset_not_ready_max_retries", payload.assetId, asset.status);
+          return { success: false, retried: false, error };
+        }
+      }
+      
+      if (asset.status === "failed") {
+        // Asset generation failed - fail the job immediately
+        const error = `Asset generation failed: ${payload.assetId}`;
         await markFailed(job.id, error);
+        await emitVoicemailFailedFinal(job, "asset_failed", payload.assetId, "failed");
         return { success: false, retried: false, error };
       }
       
+      // asset.status === "ready"
       const outputJson = asset.outputJson as Record<string, any> || {};
-      recordingUrl = outputJson.asset_url;
+      recordingUrl = outputJson.asset_url || outputJson.assetUrl;
       
       if (!recordingUrl) {
         const error = `Asset has no URL: ${payload.assetId}`;
         await markFailed(job.id, error);
+        await emitVoicemailFailedFinal(job, "asset_no_url", payload.assetId, "ready");
         return { success: false, retried: false, error };
       }
     } catch (err: any) {

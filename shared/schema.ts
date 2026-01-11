@@ -7714,6 +7714,7 @@ export const campaignEventTypeEnum = pgEnum("campaign_event_type", [
   "CALL_BUSY",
   "CALL_FAILED",
   "VOICEMAIL_DROPPED",
+  "VOICEMAIL_FAILED",
   "RVM_DROPPED",
   "RVM_FAILED",
   "OPT_OUT",
