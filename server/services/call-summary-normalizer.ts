@@ -11,6 +11,7 @@ import {
   campaignEvents, 
   campaignContacts, 
   contactSuppressions,
+  contactConsents,
   CampaignEvent,
   CampaignContact
 } from "@shared/schema";
@@ -183,6 +184,7 @@ async function updateSuppressionForDoNotCall(
   contactId: string,
   campaignId: string
 ): Promise<void> {
+  // 1) Update contact_suppressions with status='dnc'
   const [existingSuppression] = await db.select()
     .from(contactSuppressions)
     .where(eq(contactSuppressions.contactId, contactId))
@@ -196,7 +198,7 @@ async function updateSuppressionForDoNotCall(
 
     await db.update(contactSuppressions)
       .set({
-        suppressionStatus: "opted_out",
+        suppressionStatus: "dnc",
         reason: "do_not_call intent from call summary",
         triggeredBy: "webhook",
         triggerSource: "call_summary_normalizer",
@@ -209,12 +211,50 @@ async function updateSuppressionForDoNotCall(
       .values({
         contactId,
         companyId,
-        suppressionStatus: "opted_out",
+        suppressionStatus: "dnc",
         reason: "do_not_call intent from call summary",
         triggeredBy: "webhook",
         triggerSource: "call_summary_normalizer",
         affectedCampaigns: [campaignId]
       });
+  }
+
+  // 2) Upsert contact_consents for voice and voicemail as opt_out
+  const channels = ["voice", "voicemail"] as const;
+  for (const channel of channels) {
+    const [existing] = await db.select()
+      .from(contactConsents)
+      .where(
+        and(
+          eq(contactConsents.contactId, contactId),
+          eq(contactConsents.channel, channel)
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      await db.update(contactConsents)
+        .set({
+          previousStatus: existing.status,
+          status: "opt_out",
+          source: "call_summary",
+          sourceTimestamp: new Date(),
+          sourceMeta: { intent: "do_not_call", trigger: "call_summary_normalizer" },
+          updatedAt: new Date()
+        })
+        .where(eq(contactConsents.id, existing.id));
+    } else {
+      await db.insert(contactConsents)
+        .values({
+          contactId,
+          companyId,
+          channel,
+          status: "opt_out",
+          source: "call_summary",
+          sourceTimestamp: new Date(),
+          sourceMeta: { intent: "do_not_call", trigger: "call_summary_normalizer" }
+        });
+    }
   }
 }
 

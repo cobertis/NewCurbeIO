@@ -15,7 +15,8 @@ import {
   orchestratorCampaigns,
   contacts,
   companies,
-  contactSuppressions
+  contactSuppressions,
+  contactConsents
 } from "@shared/schema";
 import { eq, and, like } from "drizzle-orm";
 import { 
@@ -107,6 +108,7 @@ async function createCallPlacedEvent(
 async function cleanupTestData() {
   await db.delete(campaignEvents).where(eq(campaignEvents.companyId, TEST_COMPANY_ID));
   await db.delete(contactSuppressions).where(eq(contactSuppressions.companyId, TEST_COMPANY_ID));
+  await db.delete(contactConsents).where(eq(contactConsents.companyId, TEST_COMPANY_ID));
   await db.delete(campaignContacts).where(eq(campaignContacts.companyId, TEST_COMPANY_ID));
   await db.delete(orchestratorCampaigns).where(eq(orchestratorCampaigns.companyId, TEST_COMPANY_ID));
   await db.delete(contacts).where(eq(contacts.companyId, TEST_COMPANY_ID));
@@ -181,7 +183,7 @@ async function test1_InterestedToQualified() {
 }
 
 async function test2_DoNotCallToSuppression() {
-  console.log("\n[TEST 2] do_not_call -> DO_NOT_CONTACT + suppression updated");
+  console.log("\n[TEST 2] do_not_call -> DO_NOT_CONTACT + dnc + voice/voicemail opt_out");
   
   try {
     await cleanupTestData();
@@ -210,28 +212,40 @@ async function test2_DoNotCallToSuppression() {
       .where(eq(contactSuppressions.contactId, contactId))
       .limit(1);
     
+    // Check voice and voicemail consents
+    const consents = await db.select()
+      .from(contactConsents)
+      .where(eq(contactConsents.contactId, contactId));
+    
+    const voiceConsent = consents.find(c => c.channel === "voice");
+    const voicemailConsent = consents.find(c => c.channel === "voicemail");
+    
     const passed = 
       result.action === "created" && 
       updatedEnrollment?.state === "DO_NOT_CONTACT" &&
-      suppression?.suppressionStatus === "opted_out";
+      suppression?.suppressionStatus === "dnc" &&
+      voiceConsent?.status === "opt_out" &&
+      voicemailConsent?.status === "opt_out";
     
     results.push({
-      name: "do_not_call -> DO_NOT_CONTACT + suppression updated",
+      name: "do_not_call -> DO_NOT_CONTACT + dnc + voice/voicemail opt_out",
       passed,
-      details: `action=${result.action}, state=${updatedEnrollment?.state}, suppressionStatus=${suppression?.suppressionStatus}`
+      details: `action=${result.action}, state=${updatedEnrollment?.state}, suppressionStatus=${suppression?.suppressionStatus}, voice=${voiceConsent?.status}, voicemail=${voicemailConsent?.status}`
     });
     
     console.log(`  Result action: ${result.action}`);
     console.log(`  State updated: ATTEMPTING -> ${updatedEnrollment?.state}`);
-    console.log(`  Suppression status: ${suppression?.suppressionStatus}`);
+    console.log(`  Suppression status: ${suppression?.suppressionStatus} (expected: dnc)`);
     console.log(`  Suppression reason: ${suppression?.reason}`);
+    console.log(`  Voice consent: ${voiceConsent?.status} (expected: opt_out)`);
+    console.log(`  Voicemail consent: ${voicemailConsent?.status} (expected: opt_out)`);
     console.log(`RESULT: ${passed ? "PASS ✓" : "FAIL ✗"}\n`);
     
     return passed;
   } catch (e) {
     console.log(`RESULT: FAIL ✗ - Error: ${e}\n`);
     results.push({
-      name: "do_not_call -> DO_NOT_CONTACT + suppression updated",
+      name: "do_not_call -> DO_NOT_CONTACT + dnc + voice/voicemail opt_out",
       passed: false,
       details: `Error: ${e}`
     });
