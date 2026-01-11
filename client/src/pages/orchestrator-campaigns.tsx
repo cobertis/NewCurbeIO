@@ -765,7 +765,7 @@ export default function OrchestratorCampaigns() {
 
   return (
     <TooltipProvider>
-      <div className="container mx-auto p-4 space-y-4">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Campaign Control Center</h1>
