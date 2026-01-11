@@ -669,13 +669,101 @@ export default function OrchestratorCampaigns() {
         </Card>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => setSelectedCampaign(null)} data-testid="button-back">
-              Back to Campaigns
-            </Button>
-            <h2 className="text-xl font-semibold" data-testid="text-campaign-detail-name">{selectedCampaign.name}</h2>
-            {getStatusBadge(selectedCampaign.status)}
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="outline" onClick={() => setSelectedCampaign(null)} data-testid="button-back">
+                Back to Campaigns
+              </Button>
+              <h2 className="text-xl font-semibold" data-testid="text-campaign-detail-name">{selectedCampaign.name}</h2>
+              {getStatusBadge(selectedCampaign.status)}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => runOrchestratorMutation.mutate()}
+                disabled={runOrchestratorMutation.isPending}
+                data-testid="button-run-orchestrator"
+              >
+                {runOrchestratorMutation.isPending ? (
+                  <LoadingSpinner fullScreen={false} />
+                ) : (
+                  <Zap className="h-4 w-4 mr-1" />
+                )}
+                Run Orchestrator Now
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runJobsMutation.mutate()}
+                disabled={runJobsMutation.isPending}
+                data-testid="button-run-jobs"
+              >
+                {runJobsMutation.isPending ? (
+                  <LoadingSpinner fullScreen={false} />
+                ) : (
+                  <Activity className="h-4 w-4 mr-1" />
+                )}
+                Run Jobs Now
+              </Button>
+            </div>
           </div>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between py-3">
+              <CardTitle className="text-base" data-testid="text-health-title">System Health</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => refetchHealth()} disabled={healthLoading} data-testid="button-refresh-health">
+                <RefreshCw className={`h-4 w-4 ${healthLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {healthLoading && !healthData ? (
+                <LoadingSpinner fullScreen={false} message="Loading health..." />
+              ) : healthData ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold" data-testid="text-health-queued">{healthData.jobsQueued}</div>
+                      <div className="text-sm text-muted-foreground">Queued</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600" data-testid="text-health-processing">{healthData.jobsProcessing}</div>
+                      <div className="text-sm text-muted-foreground">Processing</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold text-red-600" data-testid="text-health-failed">{healthData.jobsFailed}</div>
+                      <div className="text-sm text-muted-foreground">Failed</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg relative">
+                      <div className="text-2xl font-bold" data-testid="text-health-stuck">{healthData.stuckProcessingVoice}</div>
+                      <div className="text-sm text-muted-foreground">Stuck Voice</div>
+                      {healthData.stuckProcessingVoice > 0 && (
+                        <AlertTriangle className="h-4 w-4 text-orange-500 absolute top-2 right-2" />
+                      )}
+                    </div>
+                  </div>
+                  {healthData.recentAuditErrors && healthData.recentAuditErrors.length > 0 && (
+                    <div className="mt-3">
+                      <div className="text-sm font-medium mb-2 text-muted-foreground">Recent Errors/Warnings</div>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {healthData.recentAuditErrors.slice(0, 5).map((err) => (
+                          <div key={err.id} className="text-xs p-2 bg-red-50 dark:bg-red-900/20 rounded flex items-start gap-2">
+                            <Badge variant={err.level === "error" ? "destructive" : "secondary"} className="text-xs shrink-0">
+                              {err.level}
+                            </Badge>
+                            <span className="flex-1 break-all">{err.message}</span>
+                            <span className="text-muted-foreground shrink-0">{format(new Date(err.createdAt), "HH:mm")}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">Unable to load health data</div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
