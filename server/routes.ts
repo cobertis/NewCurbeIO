@@ -99,7 +99,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes, orchestratorCampaigns, campaignContacts, campaignEvents, orchestratorJobs, orchestratorSystemRuns } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, waWebhookEvents, fbWebhookEvents, oauthStates, callLogs, voicemails, notifications, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, recordingAnnouncementMedia, imessageConversations as imessageConversationsTable, imessageMessages as imessageMessagesTable, customInboxes, orchestratorCampaigns, campaignContacts, campaignEvents, orchestratorJobs, orchestratorSystemRuns, orchestratorTasks } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -47250,6 +47250,47 @@ CRITICAL REMINDERS:
         ))
         .groupBy(campaignEvents.campaignId, campaignEvents.eventType, campaignEvents.channel);
       
+      // Batch query: Count open tasks per campaign
+      const tasksCounts = await db.select({
+        campaignId: orchestratorTasks.campaignId,
+        openCount: sql<number>`count(*)`,
+      })
+        .from(orchestratorTasks)
+        .where(and(
+          inArray(orchestratorTasks.campaignId, campaignIds),
+          eq(orchestratorTasks.status, 'open')
+        ))
+        .groupBy(orchestratorTasks.campaignId);
+      
+      const tasksCountMap = new Map(tasksCounts.map(t => [t.campaignId, Number(t.openCount) || 0]));
+      
+      // Batch query: Get most recent DECISION_MADE event per campaign
+      const decisionEvents = await db.select({
+        campaignId: campaignEvents.campaignId,
+        payload: campaignEvents.payload,
+        createdAt: campaignEvents.createdAt,
+      })
+        .from(campaignEvents)
+        .where(and(
+          inArray(campaignEvents.campaignId, campaignIds),
+          eq(campaignEvents.eventType, 'DECISION_MADE')
+        ))
+        .orderBy(desc(campaignEvents.createdAt));
+      
+      // Get first (most recent) DECISION_MADE per campaign
+      const lastDecisionMap = new Map<string, { channel: string | null; confidence: number | null; fallbackUsed: boolean | null; createdAt: Date }>();
+      for (const de of decisionEvents) {
+        if (!lastDecisionMap.has(de.campaignId)) {
+          const payload = de.payload as Record<string, any> | null;
+          lastDecisionMap.set(de.campaignId, {
+            channel: payload?.channel ?? null,
+            confidence: payload?.confidence ?? null,
+            fallbackUsed: payload?.fallbackUsed ?? null,
+            createdAt: de.createdAt,
+          });
+        }
+      }
+      
       // Transform into summary per campaign
       const summaryMap = new Map<string, {
         campaignId: string;
@@ -47259,20 +47300,26 @@ CRITICAL REMINDERS:
         optOut: number;
         failedFinal: number;
         voice: { callPlaced: number; callAnswered: number; answerRate: number };
+        tasksOpenCount: number;
+        lastDecision: { channel: string | null; confidence: number | null; fallbackUsed: boolean | null; createdAt: Date } | null;
       }>();
       
+      // Initialize all campaigns (some might have no events yet)
+      for (const cid of campaignIds) {
+        summaryMap.set(cid, {
+          campaignId: cid,
+          attempts: 0,
+          delivered: 0,
+          replied: 0,
+          optOut: 0,
+          failedFinal: 0,
+          voice: { callPlaced: 0, callAnswered: 0, answerRate: 0 },
+          tasksOpenCount: tasksCountMap.get(cid) || 0,
+          lastDecision: lastDecisionMap.get(cid) || null,
+        });
+      }
+      
       for (const m of metrics) {
-        if (!summaryMap.has(m.campaignId)) {
-          summaryMap.set(m.campaignId, {
-            campaignId: m.campaignId,
-            attempts: 0,
-            delivered: 0,
-            replied: 0,
-            optOut: 0,
-            failedFinal: 0,
-            voice: { callPlaced: 0, callAnswered: 0, answerRate: 0 },
-          });
-        }
         const s = summaryMap.get(m.campaignId)!;
         const count = Number(m.count) || 0;
         
@@ -47700,6 +47747,8 @@ CRITICAL REMINDERS:
         campaignId: campaignEvents.campaignId,
         campaignName: orchestratorCampaigns.name,
         createdAt: campaignEvents.createdAt,
+        externalId: campaignEvents.externalId,
+        payload: campaignEvents.payload,
       })
         .from(campaignEvents)
         .leftJoin(orchestratorCampaigns, eq(campaignEvents.campaignId, orchestratorCampaigns.id))
@@ -47707,13 +47756,44 @@ CRITICAL REMINDERS:
         .orderBy(desc(campaignEvents.createdAt))
         .limit(limit);
       
-      res.json(events);
+      // Sanitize events to remove PII - only keep safe payload fields
+      const SAFE_PAYLOAD_FIELDS = ['channel', 'confidence', 'fallbackUsed', 'waitSeconds', 'reason', 'isFinal', 'final', 'errorCode'];
+      
+      const sanitizedEvents = events.map(event => {
+        const sanitizedPayload: Record<string, any> = {};
+        if (event.payload && typeof event.payload === 'object') {
+          const payload = event.payload as Record<string, any>;
+          for (const field of SAFE_PAYLOAD_FIELDS) {
+            if (field in payload) {
+              sanitizedPayload[field] = payload[field];
+            }
+          }
+        }
+        
+        // Mask externalId/jobId - only keep last 8 characters
+        const maskedExternalId = event.externalId && event.externalId.length > 8 
+          ? '...' + event.externalId.slice(-8) 
+          : event.externalId;
+        
+        return {
+          id: event.id,
+          eventType: event.eventType,
+          channel: event.channel,
+          provider: event.provider,
+          campaignId: event.campaignId,
+          campaignName: event.campaignName,
+          createdAt: event.createdAt,
+          externalId: maskedExternalId,
+          payload: sanitizedPayload,
+        };
+      });
+      
+      res.json(sanitizedEvents);
     } catch (error: any) {
       console.error("[Orchestrator Activity] Error:", error);
       res.status(500).json({ error: error.message || "Failed to fetch activity" });
     }
   });
-
 
   // GET /api/orchestrator/campaigns/:id/auto-tune - Get latest auto-tune recommendation
   app.get("/api/orchestrator/campaigns/:id/auto-tune", requireActiveCompany, async (req: Request, res: Response) => {
