@@ -32877,6 +32877,49 @@ CRITICAL REMINDERS:
       console.error("[TelnyxCallEvents] Error:", error.message);
     }
   });
+
+  // POST /api/webhooks/call-summary - Handle post-call summary webhooks (Ticket 12.1)
+  app.post("/api/webhooks/call-summary", async (req: Request, res: Response) => {
+    try {
+      const webhookToken = req.headers["x-webhook-token"] as string;
+      const expectedToken = process.env.CALL_SUMMARY_WEBHOOK_TOKEN;
+      
+      if (!expectedToken) {
+        console.warn("[CallSummary] CALL_SUMMARY_WEBHOOK_TOKEN not configured");
+        return res.status(500).json({ error: "Webhook not configured" });
+      }
+      
+      if (!webhookToken || webhookToken !== expectedToken) {
+        console.warn("[CallSummary] Invalid or missing webhook token");
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const { processCallSummary, CallSummaryWebhookSchema } = await import("./services/call-summary-normalizer");
+      
+      const parseResult = CallSummaryWebhookSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        console.warn("[CallSummary] Invalid payload:", parseResult.error.errors);
+        return res.status(400).json({ error: "Invalid payload", details: parseResult.error.errors });
+      }
+      
+      const result = await processCallSummary(parseResult.data);
+      
+      if (result.action === "not_found") {
+        console.log("[CallSummary] Not found: " + result.message);
+        return res.status(404).json({ action: result.action, message: result.message });
+      }
+      
+      console.log("[CallSummary] Processed: action=" + result.action + ", intent=" + parseResult.data.intent);
+      res.status(200).json({
+        action: result.action,
+        stateUpdate: result.stateUpdate,
+        message: result.message
+      });
+    } catch (error: any) {
+      console.error("[CallSummary] Error:", error.message);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
   // ==================== VOICEMAIL API ====================
 
   
