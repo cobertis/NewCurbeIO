@@ -47689,6 +47689,190 @@ CRITICAL REMINDERS:
 
   // =====================================================
   // CAMPAIGN ORCHESTRATOR - Bridge Delivery Status Webhook
+
+  // =====================================================
+  // CAMPAIGN ORCHESTRATOR - Tasks API
+  // =====================================================
+
+  // GET /api/orchestrator/campaigns/:id/tasks - Get campaign tasks
+  app.get("/api/orchestrator/campaigns/:id/tasks", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      const status = req.query.status as string | undefined;
+      
+      const { verifyCampaignAccess } = await import("./services/orchestrator-metrics");
+      
+      const hasAccess = await verifyCampaignAccess(companyId, campaignId);
+      if (!hasAccess) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+      
+      const { orchestratorTasks, contacts, campaignContacts } = await import("@shared/schema");
+      const { eq, and, desc } = await import("drizzle-orm");
+      
+      let conditions = [
+        eq(orchestratorTasks.companyId, companyId),
+        eq(orchestratorTasks.campaignId, campaignId)
+      ];
+      
+      if (status === "open" || status === "done") {
+        conditions.push(eq(orchestratorTasks.status, status));
+      }
+      
+      const tasks = await db.select({
+        task: orchestratorTasks,
+        contact: {
+          id: contacts.id,
+          firstName: contacts.firstName,
+          lastName: contacts.lastName,
+          email: contacts.email,
+          phone: contacts.phone
+        },
+        campaignContact: {
+          state: campaignContacts.state
+        }
+      })
+        .from(orchestratorTasks)
+        .leftJoin(contacts, eq(orchestratorTasks.contactId, contacts.id))
+        .leftJoin(campaignContacts, eq(orchestratorTasks.campaignContactId, campaignContacts.id))
+        .where(and(...conditions))
+        .orderBy(desc(orchestratorTasks.dueAt));
+      
+      res.json({ tasks });
+    } catch (error: any) {
+      console.error("[Orchestrator Tasks] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to get tasks" });
+    }
+  });
+
+  // POST /api/orchestrator/tasks/:id/complete - Complete a task
+  app.post("/api/orchestrator/tasks/:id/complete", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const userId = req.user!.id;
+      const taskId = req.params.id;
+      
+      const { orchestratorTasks } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+      
+      // Verify task belongs to company (security: derive companyId from authenticated user)
+      const [task] = await db.select()
+        .from(orchestratorTasks)
+        .where(
+          and(
+            eq(orchestratorTasks.id, taskId),
+            eq(orchestratorTasks.companyId, companyId)
+          )
+        )
+        .limit(1);
+      
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      
+      if (task.status === "done") {
+        return res.status(400).json({ error: "Task already completed" });
+      }
+      
+      const [updated] = await db.update(orchestratorTasks)
+        .set({
+          status: "done",
+          completedAt: new Date(),
+          completedBy: userId,
+          updatedAt: new Date()
+        })
+        .where(eq(orchestratorTasks.id, taskId))
+        .returning();
+      
+      res.json({ task: updated });
+    } catch (error: any) {
+      console.error("[Orchestrator Task Complete] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to complete task" });
+    }
+  });
+
+  // POST /api/orchestrator/campaign-contacts/:id/mark-booked - Mark contact as booked
+  app.post("/api/orchestrator/campaign-contacts/:id/mark-booked", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const userId = req.user!.id;
+      const campaignContactId = req.params.id;
+      const { notes } = req.body;
+      
+      const { campaignContacts, orchestratorTasks } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const { emitCampaignEvent } = await import("./services/campaign-events");
+      
+      // Verify enrollment belongs to company
+      const [enrollment] = await db.select()
+        .from(campaignContacts)
+        .where(
+          and(
+            eq(campaignContacts.id, campaignContactId),
+            eq(campaignContacts.companyId, companyId)
+          )
+        )
+        .limit(1);
+      
+      if (!enrollment) {
+        return res.status(404).json({ error: "Campaign contact not found" });
+      }
+      
+      const stateBefore = enrollment.state;
+      
+      // Update state to BOOKED
+      const [updated] = await db.update(campaignContacts)
+        .set({
+          state: "BOOKED",
+          updatedAt: new Date()
+        })
+        .where(eq(campaignContacts.id, campaignContactId))
+        .returning();
+      
+      // Complete any open tasks for this campaign contact
+      await db.update(orchestratorTasks)
+        .set({
+          status: "done",
+          completedAt: new Date(),
+          completedBy: userId,
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(orchestratorTasks.campaignContactId, campaignContactId),
+            eq(orchestratorTasks.status, "open")
+          )
+        );
+      
+      // Emit BOOKED event
+      await emitCampaignEvent({
+        companyId,
+        campaignId: enrollment.campaignId,
+        campaignContactId,
+        contactId: enrollment.contactId,
+        eventType: "BOOKED",
+        channel: "voice",
+        provider: "manual",
+        payload: {
+          stateBefore,
+          bookedBy: userId,
+          notes: notes || null
+        }
+      });
+      
+      res.json({ 
+        campaignContact: updated,
+        stateUpdate: {
+          before: stateBefore,
+          after: "BOOKED"
+        }
+      });
+    } catch (error: any) {
+      console.error("[Orchestrator Mark Booked] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to mark as booked" });
+    }
+  });
   // =====================================================
   
   app.post("/api/webhooks/bridge-delivery", async (req: Request, res: Response) => {

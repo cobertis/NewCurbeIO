@@ -12,8 +12,10 @@ import {
   campaignContacts, 
   contactSuppressions,
   contactConsents,
+  orchestratorTasks,
   CampaignEvent,
-  CampaignContact
+  CampaignContact,
+  OrchestratorTask
 } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -64,6 +66,7 @@ export interface ProcessCallSummaryResult {
     before: string;
     after: string;
   };
+  task?: OrchestratorTask;
   message?: string;
 }
 
@@ -386,7 +389,74 @@ export async function processCallSummary(
     };
   }
 
+  // Create task for actionable intents
+  const task = await createTaskForIntent(
+    intent,
+    context,
+    eventResult.event.id
+  );
+  if (task) {
+    result.task = task;
+    console.log(`[CallSummaryNormalizer] Created ${task.type} task ${task.id.slice(0,8)} for contact ${context.contactId.slice(0,8)}`);
+  }
+
   console.log(`[CallSummaryNormalizer] Processed call summary - intent=${intent}, action=${result.action}`);
 
   return result;
+}
+
+async function createTaskForIntent(
+  intent: CallSummaryIntent,
+  context: ResolvedCallContext,
+  sourceEventId: string
+): Promise<OrchestratorTask | null> {
+  let taskType: "callback" | "followup" | "appointment" | null = null;
+  let dueAt = new Date();
+
+  if (intent === "interested") {
+    taskType = "followup";
+    // Due immediately
+  } else if (intent === "callback") {
+    taskType = "callback";
+    // Due in 24 hours
+    dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  }
+
+  if (!taskType) {
+    return null;
+  }
+
+  const [task] = await db.insert(orchestratorTasks)
+    .values({
+      companyId: context.companyId,
+      contactId: context.contactId,
+      campaignId: context.campaignId,
+      campaignContactId: context.campaignContactId,
+      type: taskType,
+      status: "open",
+      dueAt,
+      sourceEventId,
+      sourceIntent: intent,
+      payload: {}
+    })
+    .returning();
+
+  // Emit TASK_CREATED event
+  await emitCampaignEvent({
+    companyId: context.companyId,
+    campaignId: context.campaignId,
+    campaignContactId: context.campaignContactId,
+    contactId: context.contactId,
+    eventType: "TASK_CREATED",
+    channel: context.channel || "voice",
+    provider: "system",
+    payload: {
+      taskId: task.id,
+      taskType,
+      sourceIntent: intent,
+      dueAt: dueAt.toISOString()
+    }
+  });
+
+  return task;
 }
