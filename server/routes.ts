@@ -47874,6 +47874,149 @@ CRITICAL REMINDERS:
     }
   });
   // =====================================================
+  // =====================================================
+  // CAMPAIGN ORCHESTRATOR - Control API (Run Now + Health)
+  // =====================================================
+
+  // POST /api/orchestrator/campaigns/:id/run-once - Run orchestrator once for a campaign
+  app.post("/api/orchestrator/campaigns/:id/run-once", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const campaignId = req.params.id;
+      const { limit = 50 } = req.body;
+
+      // Verify campaign belongs to company
+      const [campaign] = await db.select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ))
+        .limit(1);
+
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      const { runOrchestratorOnce } = await import("./workers/orchestrator-worker");
+      const result = await runOrchestratorOnce({ companyId, campaignId, limit });
+
+      console.log(`[Orchestrator Control] run-once for campaign ${campaignId}: processed=${result.processed}, enqueued=${result.enqueued}`);
+      
+      res.json({
+        success: true,
+        summary: {
+          processed: result.processed,
+          enqueued: result.enqueued,
+          timeouts: result.timeouts,
+          skipped: result.skipped,
+          errors: result.errors
+        }
+      });
+    } catch (error: any) {
+      console.error("[Orchestrator Control] run-once error:", error);
+      res.status(500).json({ error: error.message || "Failed to run orchestrator" });
+    }
+  });
+
+  // POST /api/orchestrator/jobs/run-once - Run job runner once
+  app.post("/api/orchestrator/jobs/run-once", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const { limit = 50 } = req.body;
+
+      const { runJobsOnce } = await import("./workers/job-runner");
+      const result = await runJobsOnce({ companyId, limit });
+
+      console.log(`[Orchestrator Control] jobs run-once: processed=${result.processed}, succeeded=${result.succeeded}, failed=${result.failed}`);
+      
+      res.json({
+        success: true,
+        summary: {
+          processed: result.processed,
+          succeeded: result.succeeded,
+          failed: result.failed,
+          retried: result.retried,
+          skipped: result.skipped,
+          errors: result.errors
+        }
+      });
+    } catch (error: any) {
+      console.error("[Orchestrator Control] jobs run-once error:", error);
+      res.status(500).json({ error: error.message || "Failed to run job runner" });
+    }
+  });
+
+  // GET /api/orchestrator/system/health - System health check
+  app.get("/api/orchestrator/system/health", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const { sql } = await import("drizzle-orm");
+
+      // Count jobs by status for this company
+      const jobCounts = await db.select({
+        status: orchestratorJobs.status,
+        count: sql<number>`count(*)::int`
+      })
+        .from(orchestratorJobs)
+        .innerJoin(orchestratorCampaigns, eq(orchestratorJobs.campaignId, orchestratorCampaigns.id))
+        .where(eq(orchestratorCampaigns.companyId, companyId))
+        .groupBy(orchestratorJobs.status);
+
+      const statusMap: Record<string, number> = {};
+      for (const row of jobCounts) {
+        statusMap[row.status] = row.count;
+      }
+
+      // Stuck processing voice jobs (processing + startedAt older than 10 minutes)
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const [stuckResult] = await db.select({
+        count: sql<number>`count(*)::int`
+      })
+        .from(orchestratorJobs)
+        .innerJoin(orchestratorCampaigns, eq(orchestratorJobs.campaignId, orchestratorCampaigns.id))
+        .where(and(
+          eq(orchestratorCampaigns.companyId, companyId),
+          eq(orchestratorJobs.status, "processing"),
+          sql`${orchestratorJobs.startedAt} < ${tenMinutesAgo}`
+        ));
+
+      // Get latest 20 error/warning audit logs if they exist
+      const { campaignAuditLogs } = await import("@shared/schema");
+      const auditLogs = await db.select({
+        id: campaignAuditLogs.id,
+        level: campaignAuditLogs.level,
+        message: campaignAuditLogs.message,
+        createdAt: campaignAuditLogs.createdAt
+      })
+        .from(campaignAuditLogs)
+        .where(and(
+          eq(campaignAuditLogs.companyId, companyId),
+          sql`${campaignAuditLogs.level} IN ('error', 'warning')`
+        ))
+        .orderBy(sql`${campaignAuditLogs.createdAt} DESC`)
+        .limit(20);
+
+      const health = {
+        jobsQueued: statusMap["queued"] || 0,
+        jobsProcessing: statusMap["processing"] || 0,
+        jobsFailed: statusMap["failed"] || 0,
+        stuckProcessingVoice: stuckResult?.count || 0,
+        serverTime: new Date().toISOString()
+      };
+
+      // Only include audit logs if there are any
+      if (auditLogs.length > 0) {
+        (health as any).recentAuditErrors = auditLogs;
+      }
+
+      res.json(health);
+    } catch (error: any) {
+      console.error("[Orchestrator Health] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to get system health" });
+    }
+  });
+
   
   app.post("/api/webhooks/bridge-delivery", async (req: Request, res: Response) => {
     try {

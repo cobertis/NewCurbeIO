@@ -33,6 +33,7 @@ const DEFAULT_WAIT_SECONDS = 86400;
 
 interface WorkerOptions {
   companyId?: string;
+  campaignId?: string;
   limit?: number;
 }
 
@@ -105,11 +106,32 @@ async function releaseLock(campaignContactId: string): Promise<void> {
     .where(eq(campaignContacts.id, campaignContactId));
 }
 
-async function getDueContacts(companyId: string | undefined, limit: number): Promise<Array<{
+async function getDueContacts(companyId: string | undefined, campaignId: string | undefined, limit: number): Promise<Array<{
   contact: CampaignContact;
   campaign: OrchestratorCampaign;
 }>> {
   const now = new Date();
+  
+  const conditions = [
+    eq(orchestratorCampaigns.status, "active"),
+    inArray(campaignContacts.state, ["NEW", "ATTEMPTING"]),
+    or(
+      isNull(campaignContacts.nextActionAt),
+      lte(campaignContacts.nextActionAt, now)
+    ),
+    or(
+      isNull(campaignContacts.lockedUntil),
+      lte(campaignContacts.lockedUntil, now)
+    )
+  ];
+  
+  if (companyId) {
+    conditions.push(eq(campaignContacts.companyId, companyId));
+  }
+  
+  if (campaignId) {
+    conditions.push(eq(campaignContacts.campaignId, campaignId));
+  }
   
   let query = db
     .select({
@@ -121,19 +143,7 @@ async function getDueContacts(companyId: string | undefined, limit: number): Pro
       orchestratorCampaigns,
       eq(campaignContacts.campaignId, orchestratorCampaigns.id)
     )
-    .where(and(
-      eq(orchestratorCampaigns.status, "active"),
-      inArray(campaignContacts.state, ["NEW", "ATTEMPTING"]),
-      or(
-        isNull(campaignContacts.nextActionAt),
-        lte(campaignContacts.nextActionAt, now)
-      ),
-      or(
-        isNull(campaignContacts.lockedUntil),
-        lte(campaignContacts.lockedUntil, now)
-      ),
-      ...(companyId ? [eq(campaignContacts.companyId, companyId)] : [])
-    ))
+    .where(and(...conditions))
     .orderBy(desc(campaignContacts.priority), asc(campaignContacts.nextActionAt))
     .limit(limit);
   
@@ -412,7 +422,7 @@ async function processContact(
 }
 
 export async function runOrchestratorOnce(options: WorkerOptions = {}): Promise<WorkerResult> {
-  const { companyId, limit = 50 } = options;
+  const { companyId, campaignId, limit = 50 } = options;
   const workerId = `orchestrator-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   
   const result: WorkerResult = {
@@ -423,7 +433,7 @@ export async function runOrchestratorOnce(options: WorkerOptions = {}): Promise<
     errors: []
   };
   
-  const dueContacts = await getDueContacts(companyId, limit);
+  const dueContacts = await getDueContacts(companyId, campaignId, limit);
   
   for (const { contact, campaign } of dueContacts) {
     result.processed++;
