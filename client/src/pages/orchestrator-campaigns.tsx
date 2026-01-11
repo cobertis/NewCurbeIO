@@ -14,11 +14,13 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
-import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo, Zap, Activity, AlertTriangle, Plus, Eye, Target, UserCheck, Ban, Layers, ArrowLeft, Settings, MoreVertical, Cog } from "lucide-react";
+import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo, Zap, Activity, AlertTriangle, Plus, Eye, Target, UserCheck, Ban, Layers, ArrowLeft, Settings, MoreVertical, Cog, FileAudio, Video, Trash2, ExternalLink } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -274,6 +276,32 @@ interface RunJobsSummary {
   errors: string[];
 }
 
+interface CampaignAsset {
+  id: string;
+  campaignId: string;
+  name: string;
+  type: "audio" | "video";
+  provider: string;
+  status: "draft" | "generating" | "ready" | "failed";
+  url: string | null;
+  metadata: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ElevenLabsVoice {
+  voice_id: string;
+  name: string;
+  category?: string;
+  labels?: Record<string, string>;
+}
+
+interface HeygenAvatar {
+  avatar_id: string;
+  avatar_name: string;
+  preview_image_url?: string;
+}
+
 export default function OrchestratorCampaigns() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -288,6 +316,16 @@ export default function OrchestratorCampaigns() {
   const [createFormStatus, setCreateFormStatus] = useState("draft");
   const [createFormUseSafeDefaults, setCreateFormUseSafeDefaults] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [audioDialogOpen, setAudioDialogOpen] = useState(false);
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
+  const [audioFormName, setAudioFormName] = useState("");
+  const [audioFormText, setAudioFormText] = useState("");
+  const [audioFormVoiceId, setAudioFormVoiceId] = useState("");
+  const [audioFormStability, setAudioFormStability] = useState([0.5]);
+  const [audioFormSimilarityBoost, setAudioFormSimilarityBoost] = useState([0.75]);
+  const [videoFormName, setVideoFormName] = useState("");
+  const [videoFormScript, setVideoFormScript] = useState("");
+  const [videoFormAvatarId, setVideoFormAvatarId] = useState("");
 
   const { data: campaigns, isLoading: campaignsLoading } = useQuery<OrchestratorCampaign[]>({
     queryKey: ["/api/orchestrator/campaigns"]
@@ -428,6 +466,37 @@ export default function OrchestratorCampaigns() {
     lastDecision: { channel: string | null; confidence: number | null; fallbackUsed: boolean | null; createdAt: string } | null;
   }[]>({
     queryKey: ["/api/orchestrator/campaigns/summary", { window: "7d" }]
+  });
+
+  const { data: assetsData, isLoading: assetsLoading, refetch: refetchAssets } = useQuery<{ assets: CampaignAsset[] }>({
+    queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "assets"],
+    queryFn: async () => {
+      if (!selectedCampaign) return { assets: [] };
+      const res = await fetch(`/api/orchestrator/campaigns/${selectedCampaign.id}/assets`);
+      if (!res.ok) throw new Error("Failed to fetch assets");
+      return res.json();
+    },
+    enabled: !!selectedCampaign
+  });
+
+  const { data: voicesData, isLoading: voicesLoading } = useQuery<{ voices: ElevenLabsVoice[] }>({
+    queryKey: ["/api/orchestrator/elevenlabs/voices"],
+    queryFn: async () => {
+      const res = await fetch("/api/orchestrator/elevenlabs/voices");
+      if (!res.ok) throw new Error("Failed to fetch voices");
+      return res.json();
+    },
+    enabled: audioDialogOpen
+  });
+
+  const { data: avatarsData, isLoading: avatarsLoading } = useQuery<{ avatars: HeygenAvatar[] }>({
+    queryKey: ["/api/orchestrator/heygen/avatars"],
+    queryFn: async () => {
+      const res = await fetch("/api/orchestrator/heygen/avatars");
+      if (!res.ok) throw new Error("Failed to fetch avatars");
+      return res.json();
+    },
+    enabled: videoDialogOpen
   });
 
   const runOrchestratorMutation = useMutation({
@@ -679,6 +748,111 @@ export default function OrchestratorCampaigns() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   });
+
+  const createAudioAssetMutation = useMutation({
+    mutationFn: async (data: { name: string; text: string; voiceId: string; stability?: number; similarityBoost?: number }) => {
+      if (!selectedCampaign) throw new Error("No campaign selected");
+      return apiRequest("POST", `/api/orchestrator/campaigns/${selectedCampaign.id}/assets/audio/elevenlabs`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "assets"] });
+      setAudioDialogOpen(false);
+      setAudioFormName("");
+      setAudioFormText("");
+      setAudioFormVoiceId("");
+      setAudioFormStability([0.5]);
+      setAudioFormSimilarityBoost([0.75]);
+      toast({ title: "Audio asset created", description: "Audio generation has started" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error creating audio", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const createVideoAssetMutation = useMutation({
+    mutationFn: async (data: { name: string; script: string; avatarId: string }) => {
+      if (!selectedCampaign) throw new Error("No campaign selected");
+      return apiRequest("POST", `/api/orchestrator/campaigns/${selectedCampaign.id}/assets/video/heygen`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "assets"] });
+      setVideoDialogOpen(false);
+      setVideoFormName("");
+      setVideoFormScript("");
+      setVideoFormAvatarId("");
+      toast({ title: "Video asset created", description: "Video generation has started" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error creating video", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const refreshAssetMutation = useMutation({
+    mutationFn: async (assetId: string) => {
+      return apiRequest("POST", `/api/orchestrator/assets/${assetId}/refresh`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "assets"] });
+      toast({ title: "Asset refreshed" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error refreshing asset", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const deleteAssetMutation = useMutation({
+    mutationFn: async (assetId: string) => {
+      return apiRequest("DELETE", `/api/orchestrator/assets/${assetId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "assets"] });
+      toast({ title: "Asset deleted" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error deleting asset", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const handleCreateAudioAsset = () => {
+    if (!audioFormName.trim() || !audioFormText.trim() || !audioFormVoiceId) {
+      toast({ title: "Missing fields", description: "Please fill in all required fields", variant: "destructive" });
+      return;
+    }
+    createAudioAssetMutation.mutate({
+      name: audioFormName.trim(),
+      text: audioFormText.trim(),
+      voiceId: audioFormVoiceId,
+      stability: audioFormStability[0],
+      similarityBoost: audioFormSimilarityBoost[0]
+    });
+  };
+
+  const handleCreateVideoAsset = () => {
+    if (!videoFormName.trim() || !videoFormScript.trim() || !videoFormAvatarId) {
+      toast({ title: "Missing fields", description: "Please fill in all required fields", variant: "destructive" });
+      return;
+    }
+    createVideoAssetMutation.mutate({
+      name: videoFormName.trim(),
+      script: videoFormScript.trim(),
+      avatarId: videoFormAvatarId
+    });
+  };
+
+  const getAssetStatusBadge = (status: string) => {
+    switch (status) {
+      case "ready":
+        return <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/20" data-testid="badge-asset-ready">Ready</Badge>;
+      case "generating":
+        return <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/20" data-testid="badge-asset-generating">Generating</Badge>;
+      case "failed":
+        return <Badge variant="destructive" data-testid="badge-asset-failed">Failed</Badge>;
+      case "draft":
+        return <Badge variant="outline" data-testid="badge-asset-draft">Draft</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   const getStatusBadge = (status: string, compact = false) => {
     const baseClass = compact ? "text-xs px-2 py-0.5" : "";
@@ -1419,7 +1593,7 @@ export default function OrchestratorCampaigns() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="overview" className="gap-1.5">
                   <Settings className="h-3.5 w-3.5" />
                   Overview
@@ -1439,6 +1613,10 @@ export default function OrchestratorCampaigns() {
                 <TabsTrigger value="auto-tune" className="gap-1.5">
                   <Sliders className="h-3.5 w-3.5" />
                   Auto-Tune
+                </TabsTrigger>
+                <TabsTrigger value="compose" className="gap-1.5" data-testid="tab-compose">
+                  <FileAudio className="h-3.5 w-3.5" />
+                  Compose
                 </TabsTrigger>
               </TabsList>
 
@@ -1925,9 +2103,296 @@ export default function OrchestratorCampaigns() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              <TabsContent value="compose" className="mt-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between py-3">
+                    <CardTitle className="text-base flex items-center gap-2" data-testid="text-compose-title">
+                      <FileAudio className="h-4 w-4" />
+                      Campaign Assets ({assetsData?.assets?.length || 0})
+                    </CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" data-testid="button-create-asset">
+                          <Plus className="h-4 w-4 mr-1" />
+                          Create Asset
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setAudioDialogOpen(true)} data-testid="menu-create-audio">
+                          <FileAudio className="h-4 w-4 mr-2" />
+                          Audio (ElevenLabs)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setVideoDialogOpen(true)} data-testid="menu-create-video">
+                          <Video className="h-4 w-4 mr-2" />
+                          Video (Heygen)
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </CardHeader>
+                  <CardContent>
+                    {assetsLoading ? (
+                      <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+                      </div>
+                    ) : !assetsData?.assets || assetsData.assets.length === 0 ? (
+                      <div className="text-center py-8">
+                        <FileAudio className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-muted-foreground">No assets yet</p>
+                        <p className="text-sm text-muted-foreground">Create audio or video assets for your campaign</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {assetsData.assets.map((asset) => (
+                          <div 
+                            key={asset.id} 
+                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors"
+                            data-testid={`asset-row-${asset.id}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {asset.type === "audio" ? (
+                                <FileAudio className="h-5 w-5 text-blue-500" />
+                              ) : (
+                                <Video className="h-5 w-5 text-purple-500" />
+                              )}
+                              <div>
+                                <div className="font-medium" data-testid={`text-asset-name-${asset.id}`}>{asset.name}</div>
+                                <div className="text-xs text-muted-foreground capitalize">{asset.provider}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="capitalize text-xs" data-testid={`badge-asset-type-${asset.id}`}>
+                                {asset.type}
+                              </Badge>
+                              {getAssetStatusBadge(asset.status)}
+                              
+                              {asset.status === "ready" && asset.type === "audio" && asset.url && (
+                                <audio controls className="h-8 w-36" data-testid={`audio-player-${asset.id}`}>
+                                  <source src={asset.url} type="audio/mpeg" />
+                                </audio>
+                              )}
+                              
+                              {asset.status === "ready" && asset.type === "video" && asset.url && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  asChild
+                                  data-testid={`button-view-video-${asset.id}`}
+                                >
+                                  <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="h-4 w-4 mr-1" />
+                                    View
+                                  </a>
+                                </Button>
+                              )}
+                              
+                              {asset.status === "generating" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => refreshAssetMutation.mutate(asset.id)}
+                                  disabled={refreshAssetMutation.isPending}
+                                  data-testid={`button-refresh-asset-${asset.id}`}
+                                >
+                                  {refreshAssetMutation.isPending ? (
+                                    <LoadingSpinner fullScreen={false} />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+                              
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm("Delete this asset?")) {
+                                    deleteAssetMutation.mutate(asset.id);
+                                  }
+                                }}
+                                disabled={deleteAssetMutation.isPending}
+                                data-testid={`button-delete-asset-${asset.id}`}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           </div>
         )}
+
+        <Dialog open={audioDialogOpen} onOpenChange={setAudioDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileAudio className="h-5 w-5" />
+                Create Audio Asset (ElevenLabs)
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="audio-name">Name</Label>
+                <Input
+                  id="audio-name"
+                  value={audioFormName}
+                  onChange={(e) => setAudioFormName(e.target.value)}
+                  placeholder="e.g., Intro Message"
+                  data-testid="input-audio-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="audio-text">Script / Text</Label>
+                <Textarea
+                  id="audio-text"
+                  value={audioFormText}
+                  onChange={(e) => setAudioFormText(e.target.value)}
+                  placeholder="Enter the text to be converted to speech..."
+                  rows={4}
+                  data-testid="textarea-audio-text"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Voice</Label>
+                {voicesLoading ? (
+                  <Skeleton className="h-10" />
+                ) : (
+                  <Select value={audioFormVoiceId} onValueChange={setAudioFormVoiceId}>
+                    <SelectTrigger data-testid="select-voice">
+                      <SelectValue placeholder="Select a voice" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {voicesData?.voices?.map((voice) => (
+                        <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                          {voice.name} {voice.category && `(${voice.category})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Stability: {audioFormStability[0].toFixed(2)}</Label>
+                <Slider
+                  value={audioFormStability}
+                  onValueChange={setAudioFormStability}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  data-testid="slider-stability"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Similarity Boost: {audioFormSimilarityBoost[0].toFixed(2)}</Label>
+                <Slider
+                  value={audioFormSimilarityBoost}
+                  onValueChange={setAudioFormSimilarityBoost}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  data-testid="slider-similarity"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setAudioDialogOpen(false)} data-testid="button-cancel-audio">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateAudioAsset}
+                  disabled={createAudioAssetMutation.isPending}
+                  data-testid="button-submit-audio"
+                >
+                  {createAudioAssetMutation.isPending ? (
+                    <>
+                      <LoadingSpinner fullScreen={false} />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Audio"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={videoDialogOpen} onOpenChange={setVideoDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Video className="h-5 w-5" />
+                Create Video Asset (Heygen)
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="video-name">Name</Label>
+                <Input
+                  id="video-name"
+                  value={videoFormName}
+                  onChange={(e) => setVideoFormName(e.target.value)}
+                  placeholder="e.g., Welcome Video"
+                  data-testid="input-video-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="video-script">Script</Label>
+                <Textarea
+                  id="video-script"
+                  value={videoFormScript}
+                  onChange={(e) => setVideoFormScript(e.target.value)}
+                  placeholder="Enter the script for the avatar to speak..."
+                  rows={4}
+                  data-testid="textarea-video-script"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Avatar</Label>
+                {avatarsLoading ? (
+                  <Skeleton className="h-10" />
+                ) : (
+                  <Select value={videoFormAvatarId} onValueChange={setVideoFormAvatarId}>
+                    <SelectTrigger data-testid="select-avatar">
+                      <SelectValue placeholder="Select an avatar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {avatarsData?.avatars?.map((avatar) => (
+                        <SelectItem key={avatar.avatar_id} value={avatar.avatar_id}>
+                          {avatar.avatar_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setVideoDialogOpen(false)} data-testid="button-cancel-video">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateVideoAsset}
+                  disabled={createVideoAssetMutation.isPending}
+                  data-testid="button-submit-video"
+                >
+                  {createVideoAssetMutation.isPending ? (
+                    <>
+                      <LoadingSpinner fullScreen={false} />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Video"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Sheet open={timelineOpen} onOpenChange={setTimelineOpen}>
           <SheetContent className="w-[500px] sm:max-w-[500px]">
