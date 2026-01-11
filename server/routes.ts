@@ -7733,6 +7733,176 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(400).json({ message: error.message || "Invalid request" });
     }
   });
+
+  // ===================================================================
+  // PHONE NUMBER ROUTING SETTINGS
+  // ===================================================================
+
+  // GET /api/company-settings/phone-number-routing - Get phone number routing settings
+  app.get("/api/company-settings/phone-number-routing", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin" && user.role !== "admin") {
+        return res.status(403).json({ message: "Only admins can view phone routing settings" });
+      }
+
+      const companyId = user.companyId;
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID required" });
+      }
+
+      let settings = await storage.getCompanySettings(companyId);
+      if (!settings) {
+        settings = await storage.createCompanySettings({
+          companyId,
+          primaryColor: "#2196F3",
+          secondaryColor: "#1976D2",
+          features: {},
+          emailSettings: {},
+        });
+      }
+
+      const phoneNumbers = await db.select()
+        .from(telnyxPhoneNumbers)
+        .where(
+          and(
+            eq(telnyxPhoneNumbers.companyId, companyId),
+            eq(telnyxPhoneNumbers.status, "active")
+          )
+        )
+        .orderBy(asc(telnyxPhoneNumbers.phoneNumber));
+
+      const voiceCapableNumbers = phoneNumbers.filter(pn => 
+        pn.capabilities && pn.capabilities.includes("voice")
+      );
+      const smsCapableNumbers = phoneNumbers.filter(pn => 
+        pn.capabilities && pn.capabilities.includes("sms")
+      );
+
+      const telephonySettings = (settings.telephonySettings as any) || {
+        defaultSmsNumberId: null,
+        defaultVoiceNumberId: null,
+        webphoneRingNumberIds: [],
+        smsRoutingMode: "default",
+        voiceRoutingMode: "default",
+      };
+
+      return res.json({
+        telephonySettings,
+        phoneNumbers: phoneNumbers.map(pn => ({
+          id: pn.id,
+          phoneNumber: pn.phoneNumber,
+          displayName: pn.displayName,
+          capabilities: pn.capabilities || [],
+        })),
+        voiceCapableNumbers: voiceCapableNumbers.map(pn => ({
+          id: pn.id,
+          phoneNumber: pn.phoneNumber,
+          displayName: pn.displayName,
+        })),
+        smsCapableNumbers: smsCapableNumbers.map(pn => ({
+          id: pn.id,
+          phoneNumber: pn.phoneNumber,
+          displayName: pn.displayName,
+        })),
+      });
+    } catch (error: any) {
+      console.error("[Phone Routing] Error fetching settings:", error);
+      return res.status(500).json({ message: error.message || "Failed to fetch phone routing settings" });
+    }
+  });
+
+  // PUT /api/company-settings/phone-number-routing - Update phone number routing settings
+  app.put("/api/company-settings/phone-number-routing", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin" && user.role !== "admin") {
+        return res.status(403).json({ message: "Only admins can update phone routing settings" });
+      }
+
+      const companyId = user.companyId;
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID required" });
+      }
+
+      const { 
+        defaultSmsNumberId, 
+        defaultVoiceNumberId, 
+        webphoneRingNumberIds, 
+        smsRoutingMode, 
+        voiceRoutingMode 
+      } = req.body;
+
+      const validRoutingModes = ["default", "per_user", "round_robin"];
+      if (smsRoutingMode && !validRoutingModes.includes(smsRoutingMode)) {
+        return res.status(400).json({ message: "Invalid SMS routing mode" });
+      }
+      if (voiceRoutingMode && !validRoutingModes.includes(voiceRoutingMode)) {
+        return res.status(400).json({ message: "Invalid voice routing mode" });
+      }
+
+      if (webphoneRingNumberIds !== undefined && !Array.isArray(webphoneRingNumberIds)) {
+        return res.status(400).json({ message: "webphoneRingNumberIds must be an array" });
+      }
+
+      const companyPhoneNumbers = await db.select({ id: telnyxPhoneNumbers.id })
+        .from(telnyxPhoneNumbers)
+        .where(
+          and(
+            eq(telnyxPhoneNumbers.companyId, companyId),
+            eq(telnyxPhoneNumbers.status, "active")
+          )
+        );
+      const validPhoneNumberIds = new Set(companyPhoneNumbers.map(pn => pn.id));
+
+      if (defaultSmsNumberId && !validPhoneNumberIds.has(defaultSmsNumberId)) {
+        return res.status(400).json({ message: "Invalid SMS number ID" });
+      }
+      if (defaultVoiceNumberId && !validPhoneNumberIds.has(defaultVoiceNumberId)) {
+        return res.status(400).json({ message: "Invalid voice number ID" });
+      }
+      if (webphoneRingNumberIds) {
+        for (const numberId of webphoneRingNumberIds) {
+          if (!validPhoneNumberIds.has(numberId)) {
+            return res.status(400).json({ message: `Invalid phone number ID: ${numberId}` });
+          }
+        }
+      }
+
+      let settings = await storage.getCompanySettings(companyId);
+      if (!settings) {
+        settings = await storage.createCompanySettings({
+          companyId,
+          primaryColor: "#2196F3",
+          secondaryColor: "#1976D2",
+          features: {},
+          emailSettings: {},
+        });
+      }
+
+      const existingTelephonySettings = (settings.telephonySettings as any) || {};
+      const newTelephonySettings = {
+        ...existingTelephonySettings,
+        defaultSmsNumberId: defaultSmsNumberId !== undefined ? defaultSmsNumberId : existingTelephonySettings.defaultSmsNumberId,
+        defaultVoiceNumberId: defaultVoiceNumberId !== undefined ? defaultVoiceNumberId : existingTelephonySettings.defaultVoiceNumberId,
+        webphoneRingNumberIds: webphoneRingNumberIds !== undefined ? webphoneRingNumberIds : existingTelephonySettings.webphoneRingNumberIds,
+        smsRoutingMode: smsRoutingMode !== undefined ? smsRoutingMode : existingTelephonySettings.smsRoutingMode,
+        voiceRoutingMode: voiceRoutingMode !== undefined ? voiceRoutingMode : existingTelephonySettings.voiceRoutingMode,
+      };
+
+      const updatedSettings = await storage.updateCompanySettings(companyId, {
+        telephonySettings: newTelephonySettings,
+      });
+
+      return res.json({
+        success: true,
+        telephonySettings: updatedSettings?.telephonySettings || newTelephonySettings,
+      });
+    } catch (error: any) {
+      console.error("[Phone Routing] Error updating settings:", error);
+      return res.status(500).json({ message: error.message || "Failed to update phone routing settings" });
+    }
+  });
   // Get user preferences
   app.get("/api/settings/preferences", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
