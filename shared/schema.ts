@@ -7718,7 +7718,9 @@ export const campaignEventTypeEnum = pgEnum("campaign_event_type", [
   "TIMEOUT",
   "DECISION_MADE",
   "ATTEMPT_QUEUED",
-  "CALL_SUMMARY"
+  "CALL_SUMMARY",
+  "BOOKED",
+  "TASK_CREATED"
 ]);
 
 // Communication Channels
@@ -8141,3 +8143,60 @@ export const insertOrchestratorJobSchema = createInsertSchema(orchestratorJobs).
 
 export type OrchestratorJob = typeof orchestratorJobs.$inferSelect;
 export type InsertOrchestratorJob = z.infer<typeof insertOrchestratorJobSchema>;
+
+// =====================================================
+// ORCHESTRATOR TASKS (System-generated tasks from call outcomes)
+// =====================================================
+
+export const orchestratorTaskTypeEnum = pgEnum("orchestrator_task_type", [
+  "callback",
+  "followup",
+  "appointment"
+]);
+
+export const orchestratorTaskStatusEnum = pgEnum("orchestrator_task_status", [
+  "open",
+  "done"
+]);
+
+export const orchestratorTasks = pgTable("orchestrator_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  campaignId: varchar("campaign_id").notNull().references(() => orchestratorCampaigns.id, { onDelete: "cascade" }),
+  campaignContactId: varchar("campaign_contact_id").notNull().references(() => campaignContacts.id, { onDelete: "cascade" }),
+  
+  // Task details
+  type: orchestratorTaskTypeEnum("type").notNull(),
+  status: orchestratorTaskStatusEnum("status").notNull().default("open"),
+  
+  // Scheduling
+  dueAt: timestamp("due_at").notNull(),
+  completedAt: timestamp("completed_at"),
+  completedBy: varchar("completed_by").references(() => users.id),
+  
+  // Source tracking
+  sourceEventId: varchar("source_event_id"),
+  sourceIntent: text("source_intent"), // interested, callback, etc.
+  
+  // Additional data
+  payload: jsonb("payload").notNull().default({}),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyStatusDueIdx: index("orchestrator_tasks_company_status_due_idx").on(table.companyId, table.status, table.dueAt),
+  campaignContactIdx: index("orchestrator_tasks_campaign_contact_idx").on(table.campaignContactId),
+  campaignIdStatusIdx: index("orchestrator_tasks_campaign_status_idx").on(table.campaignId, table.status),
+}));
+
+export const insertOrchestratorTaskSchema = createInsertSchema(orchestratorTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  completedBy: true,
+});
+
+export type OrchestratorTask = typeof orchestratorTasks.$inferSelect;
+export type InsertOrchestratorTask = z.infer<typeof insertOrchestratorTaskSchema>;
