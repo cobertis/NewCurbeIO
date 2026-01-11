@@ -144,6 +144,7 @@ import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-se
 import { getTelnyxMasterApiKey, releasePhoneNumber } from "./services/telnyx-numbers-service";
 import { pbxService } from "./services/pbx-service";
 import { AiOpenAIService } from "./services/ai-openai-service";
+import { webhookRateLimit } from "./middleware/rate-limit";
 import { registerWalletRoutes } from "./wallet-routes";
 import { registerAiDeskRoutes } from "./ai-desk-routes";
 import { objectStorage, objectStorageClient , ObjectStorageService } from "./objectStorage";
@@ -32857,7 +32858,7 @@ CRITICAL REMINDERS:
   });
 
   // POST /api/webhooks/telnyx/call-events - Handle outbound call events for orchestrator (Ticket 11.2)
-  app.post("/api/webhooks/telnyx/call-events", async (req: Request, res: Response) => {
+  app.post("/api/webhooks/telnyx/call-events", webhookRateLimit("telnyx-call-events"), async (req: Request, res: Response) => {
     res.status(200).json({ received: true });
     
     try {
@@ -32879,7 +32880,7 @@ CRITICAL REMINDERS:
   });
 
   // POST /api/webhooks/call-summary - Handle post-call summary webhooks (Ticket 12.1)
-  app.post("/api/webhooks/call-summary", async (req: Request, res: Response) => {
+  app.post("/api/webhooks/call-summary", webhookRateLimit("call-summary"), async (req: Request, res: Response) => {
     try {
       const webhookToken = req.headers["x-webhook-token"] as string;
       const expectedToken = process.env.CALL_SUMMARY_WEBHOOK_TOKEN;
@@ -47067,7 +47068,7 @@ CRITICAL REMINDERS:
   // CAMPAIGN ORCHESTRATOR - Inbound Message Webhook
   // =====================================================
   
-  app.post("/api/webhooks/inbound-message", async (req: Request, res: Response) => {
+  app.post("/api/webhooks/inbound-message", webhookRateLimit("inbound-message"), async (req: Request, res: Response) => {
     try {
       const webhookToken = process.env.INBOUND_WEBHOOK_TOKEN;
       if (!webhookToken) {
@@ -48695,7 +48696,7 @@ CRITICAL REMINDERS:
     }
   });
 
-  app.post("/api/webhooks/bridge-delivery", async (req: Request, res: Response) => {
+  app.post("/api/webhooks/bridge-delivery", webhookRateLimit("bridge-delivery"), async (req: Request, res: Response) => {
     try {
       // Auth: X-Webhook-Token header or ?secret= query param
       const webhookToken = process.env.TELNYX_WEBHOOK_TOKEN;
