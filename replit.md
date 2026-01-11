@@ -53,6 +53,7 @@ The backend is built with Express.js and TypeScript, offering a RESTful API with
 - **Telnyx Call Webhook Handler:** Processes Telnyx call events and finalizes orchestrator jobs, mapping Telnyx events to normalized outcomes (`answered`, `no_answer`, `busy`, `failed`). Includes multi-tenant isolation.
 - **Voice Analytics:** Integrates voice-specific metrics into campaign performance tracking, including call counts, answer rates, and failures, displayed in the campaign detail page and A/B test variant tables.
 - **Call Outcome Normalizer:** Post-call summary webhook handler that normalizes voice call outcomes to semantic intents (e.g., `interested` → QUALIFIED, `not_interested` → STOPPED) and updates contact states accordingly.
+- **Action Routing (Tasks):** System-generated tasks from call outcomes with orchestrator_tasks table. Interested intent creates followup tasks (due immediately), callback intent creates callback tasks (due in 24h). API endpoints for listing tasks, completing tasks, and marking contacts as BOOKED (state transition). Tasks UI section in campaign detail view with filter, complete, and mark-booked actions.
 
 ## External Dependencies
 
