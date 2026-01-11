@@ -32862,7 +32862,7 @@ CRITICAL REMINDERS:
     
     try {
       const webhookToken = req.headers["x-webhook-token"] as string;
-      const expectedToken = process.env.BRIDGE_WEBHOOK_TOKEN;
+      const expectedToken = process.env.TELNYX_WEBHOOK_TOKEN;
       
       if (!webhookToken || webhookToken !== expectedToken) {
         console.warn("[TelnyxCallEvents] Invalid or missing webhook token");
@@ -47651,7 +47651,7 @@ CRITICAL REMINDERS:
   app.post("/api/webhooks/bridge-delivery", async (req: Request, res: Response) => {
     try {
       // Auth: X-Webhook-Token header or ?secret= query param
-      const webhookToken = process.env.BRIDGE_WEBHOOK_TOKEN;
+      const webhookToken = process.env.TELNYX_WEBHOOK_TOKEN;
       if (!webhookToken) {
         console.error("[Bridge Delivery] BRIDGE_WEBHOOK_TOKEN not configured");
         return res.status(500).json({ error: "Webhook token not configured" });
