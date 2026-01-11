@@ -233,6 +233,20 @@ interface OrchestratorTaskItem {
   };
 }
 
+interface SystemRunInfo {
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+interface SystemRunError {
+  id: string;
+  type: string;
+  status: string;
+  createdAt: string;
+  payload: any;
+}
+
 interface SystemHealth {
   jobsQueued: number;
   jobsProcessing: number;
@@ -245,6 +259,8 @@ interface SystemHealth {
     message: string;
     createdAt: string;
   }>;
+  lastRuns?: Record<string, SystemRunInfo>;
+  lastErrors?: SystemRunError[];
 }
 
 interface RunOnceSummary {
@@ -912,34 +928,38 @@ export default function OrchestratorCampaigns() {
                     </div>
                   )}
                   {/* Last Runs Section */}
-                  {healthData.lastRuns && Object.keys(healthData.lastRuns).length > 0 && (
-                    <div className="mt-3">
-                      <div className="text-sm font-medium mb-2 text-muted-foreground">Last System Runs</div>
-                      <div className="space-y-1">
-                        {['orchestrator', 'jobs', 'reaper'].map((runType) => {
-                          const run = healthData.lastRuns?.[runType];
-                          if (!run) return null;
-                          return (
-                            <div key={runType} className="text-xs p-2 bg-muted/50 rounded flex items-center justify-between" data-testid={`text-last-run-${runType}`}>
-                              <span className="capitalize font-medium">{runType}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">
-                                  {run.completedAt ? formatDistanceToNow(new Date(run.completedAt), { addSuffix: true }) : 'In progress'}
-                                </span>
-                                <Badge 
-                                  variant={run.status === 'success' ? 'default' : run.status === 'error' ? 'destructive' : 'secondary'}
-                                  className={`text-xs ${run.status === 'success' ? 'bg-green-600' : run.status === 'running' ? 'bg-yellow-500' : ''}`}
-                                  data-testid={`badge-last-run-${runType}`}
-                                >
-                                  {run.status}
-                                </Badge>
-                              </div>
+                  <div className="mt-3">
+                    <div className="text-sm font-medium mb-2 text-muted-foreground">Last System Runs</div>
+                    <div className="space-y-1">
+                      {['orchestrator', 'jobs', 'auto_tuner', 'reaper'].map((runType) => {
+                        const run = healthData.lastRuns?.[runType];
+                        const displayName = runType === 'auto_tuner' ? 'Auto-Tuner' : runType;
+                        return (
+                          <div key={runType} className="text-xs p-2 bg-muted/50 rounded flex items-center justify-between" data-testid={`text-last-run-${runType}`}>
+                            <span className="capitalize font-medium">{displayName}</span>
+                            <div className="flex items-center gap-2">
+                              {run ? (
+                                <>
+                                  <span className="text-muted-foreground">
+                                    {run.completedAt ? formatDistanceToNow(new Date(run.completedAt), { addSuffix: true }) : 'In progress'}
+                                  </span>
+                                  <Badge 
+                                    variant={run.status === 'success' ? 'default' : run.status === 'error' ? 'destructive' : 'secondary'}
+                                    className={`text-xs ${run.status === 'success' ? 'bg-green-600' : run.status === 'running' ? 'bg-yellow-500' : ''}`}
+                                    data-testid={`badge-last-run-${runType}`}
+                                  >
+                                    {run.status}
+                                  </Badge>
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground italic">Never run</span>
+                              )}
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
                   {/* View Recent Errors Dialog */}
                   {healthData.lastErrors && healthData.lastErrors.length > 0 && (
                     <div className="mt-3">

@@ -47580,9 +47580,11 @@ CRITICAL REMINDERS:
 
   // POST /api/orchestrator/campaigns/:id/auto-tune/apply - Apply allocation recommendation
   app.post("/api/orchestrator/campaigns/:id/auto-tune/apply", requireActiveCompany, async (req: Request, res: Response) => {
+    const companyId = req.user!.companyId;
+    const campaignId = req.params.id;
+    let runRecordId: string | null = null;
+    
     try {
-      const companyId = req.user!.companyId;
-      const campaignId = req.params.id;
       const { snapshotId, mode, blendFactor } = req.body;
       
       if (!snapshotId) {
@@ -47592,6 +47594,16 @@ CRITICAL REMINDERS:
       if (!mode || !["replace", "blend"].includes(mode)) {
         return res.status(400).json({ error: "mode must be 'replace' or 'blend'" });
       }
+      
+      // Log run start
+      const [runRecord] = await db.insert(orchestratorSystemRuns).values({
+        id: crypto.randomUUID(),
+        companyId,
+        type: "auto_tuner",
+        status: "running",
+        startedAt: new Date(),
+      }).returning();
+      runRecordId = runRecord.id;
       
       const { applyAllocationRecommendation } = await import("./services/orchestrator-auto-tuner");
       
@@ -47603,9 +47615,22 @@ CRITICAL REMINDERS:
         mode === "blend" ? (blendFactor || 0.5) : undefined
       );
       
+      // Log run success
+      await db.update(orchestratorSystemRuns)
+        .set({ status: "success", completedAt: new Date(), payload: { campaignId, mode, snapshotId } })
+        .where(eq(orchestratorSystemRuns.id, runRecordId));
+      
       res.json(result);
     } catch (error: any) {
       console.error("[Orchestrator Auto-Tune Apply] Error:", error);
+      
+      // Log run error
+      if (runRecordId) {
+        await db.update(orchestratorSystemRuns)
+          .set({ status: "error", completedAt: new Date(), payload: { error: error.message } })
+          .where(eq(orchestratorSystemRuns.id, runRecordId));
+      }
+      
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
