@@ -32855,6 +32855,28 @@ CRITICAL REMINDERS:
       res.status(500).json({ error: "Voicemail processing failed" });
     }
   });
+
+  // POST /api/webhooks/telnyx/call-events - Handle outbound call events for orchestrator (Ticket 11.2)
+  app.post("/api/webhooks/telnyx/call-events", async (req: Request, res: Response) => {
+    res.status(200).json({ received: true });
+    
+    try {
+      const webhookToken = req.headers["x-webhook-token"] as string;
+      const expectedToken = process.env.BRIDGE_WEBHOOK_TOKEN;
+      
+      if (!webhookToken || webhookToken !== expectedToken) {
+        console.warn("[TelnyxCallEvents] Invalid or missing webhook token");
+        return;
+      }
+      
+      const { processCallWebhook, TelnyxWebhookPayload } = await import("./services/telnyx-call-webhook");
+      const result = await processCallWebhook(req.body as TelnyxWebhookPayload);
+      
+      console.log(`[TelnyxCallEvents] Processed: action=${result.action}, job=${result.jobId?.slice(0,8) || "N/A"}`);
+    } catch (error: any) {
+      console.error("[TelnyxCallEvents] Error:", error.message);
+    }
+  });
   // ==================== VOICEMAIL API ====================
 
   
