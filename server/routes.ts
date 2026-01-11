@@ -11808,7 +11808,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Access denied" });
     }
     const { contactIds } = req.body;
-    if (!Array.isArray(contactIds) || contactIds.length === 0) {
+    if (!Array.isArray(rawContactIds) || contactIds.length === 0) {
       return res.status(400).json({ message: "Invalid contact IDs" });
     }
     try {
@@ -11890,7 +11890,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Access denied" });
     }
     const { operation, contactIds, listId, fromListId, toListId } = req.body;
-    if (!Array.isArray(contactIds) || contactIds.length === 0) {
+    if (!Array.isArray(rawContactIds) || contactIds.length === 0) {
       return res.status(400).json({ message: "Invalid contact IDs" });
     }
     try {
@@ -48023,9 +48023,10 @@ CRITICAL REMINDERS:
     try {
       const companyId = req.user!.companyId;
       const campaignId = req.params.id;
-      const { contactIds, state = "NEW", startNow = true, priority = 5 } = req.body;
+      const { contactIds: rawContactIds, state = "NEW", startNow = true, priority = 5 } = req.body;
+      const contactIds = [...new Set(rawContactIds)]; // Dedupe contact IDs
 
-      if (!Array.isArray(contactIds) || contactIds.length === 0) {
+      if (!Array.isArray(rawContactIds) || contactIds.length === 0) {
         return res.status(400).json({ error: "contactIds must be a non-empty array" });
       }
 
