@@ -11808,7 +11808,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Access denied" });
     }
     const { contactIds } = req.body;
-    if (!Array.isArray(rawContactIds) || contactIds.length === 0) {
+    if (!Array.isArray(contactIds) || contactIds.length === 0) {
       return res.status(400).json({ message: "Invalid contact IDs" });
     }
     try {
@@ -11890,7 +11890,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Access denied" });
     }
     const { operation, contactIds, listId, fromListId, toListId } = req.body;
-    if (!Array.isArray(rawContactIds) || contactIds.length === 0) {
+    if (!Array.isArray(contactIds) || contactIds.length === 0) {
       return res.status(400).json({ message: "Invalid contact IDs" });
     }
     try {
