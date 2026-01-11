@@ -374,14 +374,20 @@ export default function OrchestratorCampaigns() {
     enabled: !!selectedCampaign
   });
 
-  const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useQuery<SystemHealth>({
+  const { data: healthData, isLoading: healthLoading, error: healthError, refetch: refetchHealth } = useQuery<SystemHealth>({
     queryKey: ["/api/orchestrator/system/health"],
     queryFn: async () => {
-      const res = await fetch("/api/orchestrator/system/health");
-      if (!res.ok) throw new Error("Failed to fetch health");
+      const res = await fetch("/api/orchestrator/system/health", { credentials: "include" });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: res.statusText }));
+        if (res.status === 401) throw new Error("Not authenticated");
+        if (res.status === 403) throw new Error("Access denied");
+        throw new Error(errorData.error || errorData.message || `Error ${res.status}`);
+      }
       return res.json();
     },
-    refetchInterval: 15000
+    refetchInterval: 15000,
+    retry: false
   });
 
   const { data: activityData, isLoading: activityLoading } = useQuery<{
@@ -1123,7 +1129,9 @@ export default function OrchestratorCampaigns() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Unable to load health data</p>
+                    <p className="text-xs text-muted-foreground">
+                      {healthError ? (healthError as Error).message : "Unable to load health data"}
+                    </p>
                   )}
                 </CardContent>
               </Card>
@@ -1405,7 +1413,9 @@ export default function OrchestratorCampaigns() {
                         )}
                       </div>
                     ) : (
-                      <div className="text-sm text-muted-foreground">Unable to load health data</div>
+                      <div className="text-sm text-muted-foreground">
+                        {healthError ? (healthError as Error).message : "Unable to load health data"}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
