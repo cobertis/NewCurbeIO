@@ -47216,6 +47216,91 @@ CRITICAL REMINDERS:
     }
   });
 
+  // Campaign summary endpoint (aggregated metrics, avoid N+1)
+  app.get("/api/orchestrator/campaigns/summary", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const window = (req.query.window as string) || "7d";
+      
+      // Calculate date cutoff based on window
+      const days = window === "7d" ? 7 : window === "30d" ? 30 : 7;
+      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      
+      // Get all campaigns for this company
+      const campaigns = await db.select({ id: orchestratorCampaigns.id })
+        .from(orchestratorCampaigns)
+        .where(eq(orchestratorCampaigns.companyId, companyId));
+      
+      const campaignIds = campaigns.map(c => c.id);
+      if (campaignIds.length === 0) {
+        return res.json([]);
+      }
+      
+      // Aggregate metrics per campaign from campaign_events
+      const metrics = await db.select({
+        campaignId: campaignEvents.campaignId,
+        eventType: campaignEvents.eventType,
+        channel: campaignEvents.channel,
+        count: sql<number>`count(*)`,
+      })
+        .from(campaignEvents)
+        .where(and(
+          inArray(campaignEvents.campaignId, campaignIds),
+          gte(campaignEvents.createdAt, cutoff)
+        ))
+        .groupBy(campaignEvents.campaignId, campaignEvents.eventType, campaignEvents.channel);
+      
+      // Transform into summary per campaign
+      const summaryMap = new Map<string, {
+        campaignId: string;
+        attempts: number;
+        delivered: number;
+        replied: number;
+        optOut: number;
+        failedFinal: number;
+        voice: { callPlaced: number; callAnswered: number; answerRate: number };
+      }>();
+      
+      for (const m of metrics) {
+        if (!summaryMap.has(m.campaignId)) {
+          summaryMap.set(m.campaignId, {
+            campaignId: m.campaignId,
+            attempts: 0,
+            delivered: 0,
+            replied: 0,
+            optOut: 0,
+            failedFinal: 0,
+            voice: { callPlaced: 0, callAnswered: 0, answerRate: 0 },
+          });
+        }
+        const s = summaryMap.get(m.campaignId)!;
+        const count = Number(m.count) || 0;
+        
+        // Map event types
+        if (m.eventType === 'ATTEMPT_QUEUED') s.attempts += count;
+        if (m.eventType === 'MESSAGE_DELIVERED' || m.eventType === 'MESSAGE_READ') s.delivered += count;
+        if (m.eventType === 'REPLY_RECEIVED') s.replied += count;
+        if (m.eventType === 'OPT_OUT') s.optOut += count;
+        if (m.eventType === 'FAILED_FINAL') s.failedFinal += count;
+        if (m.eventType === 'CALL_PLACED') s.voice.callPlaced += count;
+        if (m.eventType === 'CALL_ANSWERED') s.voice.callAnswered += count;
+      }
+      
+      // Calculate answer rates
+      for (const s of summaryMap.values()) {
+        if (s.voice.callPlaced > 0) {
+          s.voice.answerRate = Math.round((s.voice.callAnswered / s.voice.callPlaced) * 100);
+        }
+      }
+      
+      res.json(Array.from(summaryMap.values()));
+    } catch (error: any) {
+      console.error("[Orchestrator Summary] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch summary" });
+    }
+  });
+
+
   // Campaign detail endpoint
   app.get("/api/orchestrator/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -47600,6 +47685,35 @@ CRITICAL REMINDERS:
       res.status(500).json({ error: error.message || "Failed to get job metrics" });
     }
   });
+
+  // GET /api/orchestrator/activity - Live activity feed
+  app.get("/api/orchestrator/activity", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      
+      const events = await db.select({
+        id: campaignEvents.id,
+        eventType: campaignEvents.eventType,
+        channel: campaignEvents.channel,
+        provider: campaignEvents.provider,
+        campaignId: campaignEvents.campaignId,
+        campaignName: orchestratorCampaigns.name,
+        createdAt: campaignEvents.createdAt,
+      })
+        .from(campaignEvents)
+        .leftJoin(orchestratorCampaigns, eq(campaignEvents.campaignId, orchestratorCampaigns.id))
+        .where(eq(campaignEvents.companyId, companyId))
+        .orderBy(desc(campaignEvents.createdAt))
+        .limit(limit);
+      
+      res.json(events);
+    } catch (error: any) {
+      console.error("[Orchestrator Activity] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch activity" });
+    }
+  });
+
 
   // GET /api/orchestrator/campaigns/:id/auto-tune - Get latest auto-tune recommendation
   app.get("/api/orchestrator/campaigns/:id/auto-tune", requireActiveCompany, async (req: Request, res: Response) => {

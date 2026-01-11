@@ -384,6 +384,31 @@ export default function OrchestratorCampaigns() {
     refetchInterval: 15000
   });
 
+  const { data: activityData, isLoading: activityLoading } = useQuery<{
+    id: string;
+    eventType: string;
+    channel: string | null;
+    provider: string | null;
+    campaignId: string;
+    campaignName: string | null;
+    createdAt: string;
+  }[]>({
+    queryKey: ["/api/orchestrator/activity"],
+    refetchInterval: 10000
+  });
+
+  const { data: summaryData } = useQuery<{
+    campaignId: string;
+    attempts: number;
+    delivered: number;
+    replied: number;
+    optOut: number;
+    failedFinal: number;
+    voice: { callPlaced: number; callAnswered: number; answerRate: number };
+  }[]>({
+    queryKey: ["/api/orchestrator/campaigns/summary", { window: "7d" }]
+  });
+
   const runOrchestratorMutation = useMutation({
     mutationFn: async () => {
       if (!selectedCampaign) throw new Error("No campaign selected");
@@ -681,6 +706,35 @@ export default function OrchestratorCampaigns() {
     }
   };
 
+  const getEventIcon = (eventType: string) => {
+    switch (eventType) {
+      case 'DECISION_MADE': return <Zap className="h-3.5 w-3.5 text-purple-500" />;
+      case 'ATTEMPT_QUEUED': return <Clock className="h-3.5 w-3.5 text-blue-500" />;
+      case 'MESSAGE_DELIVERED': return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
+      case 'MESSAGE_FAILED': return <XCircle className="h-3.5 w-3.5 text-red-500" />;
+      case 'CALL_PLACED': 
+      case 'CALL_ANSWERED': return <Phone className="h-3.5 w-3.5 text-emerald-500" />;
+      case 'CALL_NO_ANSWER':
+      case 'CALL_BUSY':
+      case 'CALL_FAILED': return <Phone className="h-3.5 w-3.5 text-orange-500" />;
+      case 'REPLY_RECEIVED': return <MessageSquare className="h-3.5 w-3.5 text-blue-500" />;
+      case 'OPT_OUT': return <Ban className="h-3.5 w-3.5 text-red-500" />;
+      case 'TASK_CREATED': return <ListTodo className="h-3.5 w-3.5 text-amber-500" />;
+      case 'BOOKED': return <Calendar className="h-3.5 w-3.5 text-green-500" />;
+      default: return <Activity className="h-3.5 w-3.5 text-gray-500" />;
+    }
+  };
+
+  const formatEventType = (type: string) => {
+    return type.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+  };
+
+  const getSummaryForCampaign = (campaignId: string) => {
+    return summaryData?.find(s => s.campaignId === campaignId);
+  };
+
+  const hasAlerts = (healthData?.stuckProcessingVoice ?? 0) > 0 || (healthData?.lastErrors?.length ?? 0) > 0;
+
   const kpiData = {
     activeCampaigns: campaigns?.filter(c => c.status === "active").length || 0,
     totalContacts: campaigns?.reduce((acc, c) => acc + (c.stats?.total || 0), 0) || 0,
@@ -790,275 +844,377 @@ export default function OrchestratorCampaigns() {
         </div>
 
         {!selectedCampaign ? (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              <Card className="p-3 transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-emerald-500/10">
-                    <Target className="h-4 w-4 text-emerald-600" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" data-testid="layout-main-grid">
+            {/* Left column - Campaigns list (2/3 width) */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* KPI cards row */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <Card className="p-3 transition-all duration-200 hover:shadow-md" data-testid="card-kpi-active">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-emerald-500/10">
+                      <Target className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Active</p>
+                      <p className="text-lg font-semibold" data-testid="kpi-active-campaigns">{kpiData.activeCampaigns}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Active Campaigns</p>
-                    <p className="text-lg font-semibold" data-testid="kpi-active-campaigns">{kpiData.activeCampaigns}</p>
+                </Card>
+                <Card className="p-3 transition-all duration-200 hover:shadow-md" data-testid="card-kpi-contacts">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-blue-500/10">
+                      <Users className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Contacts</p>
+                      <p className="text-lg font-semibold" data-testid="kpi-total-contacts">{kpiData.totalContacts.toLocaleString()}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-              <Card className="p-3 transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <Users className="h-4 w-4 text-blue-600" />
+                </Card>
+                <Card className="p-3 transition-all duration-200 hover:shadow-md" data-testid="card-kpi-attempting">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-amber-500/10">
+                      <Activity className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Attempting</p>
+                      <p className="text-lg font-semibold" data-testid="kpi-attempting">{kpiData.attempting.toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total Contacts</p>
-                    <p className="text-lg font-semibold" data-testid="kpi-total-contacts">{kpiData.totalContacts.toLocaleString()}</p>
+                </Card>
+                <Card className="p-3 transition-all duration-200 hover:shadow-md" data-testid="card-kpi-engaged">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-green-500/10">
+                      <UserCheck className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Engaged</p>
+                      <p className="text-lg font-semibold" data-testid="kpi-engaged">{kpiData.engaged.toLocaleString()}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-              <Card className="p-3 transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-amber-500/10">
-                    <Activity className="h-4 w-4 text-amber-600" />
+                </Card>
+                <Card className="p-3 transition-all duration-200 hover:shadow-md" data-testid="card-kpi-dnc">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-red-500/10">
+                      <Ban className="h-4 w-4 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">DNC/Stop</p>
+                      <p className="text-lg font-semibold" data-testid="kpi-dnc-stopped">{kpiData.dncStopped.toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Attempting</p>
-                    <p className="text-lg font-semibold" data-testid="kpi-attempting">{kpiData.attempting.toLocaleString()}</p>
+                </Card>
+                <Card className="p-3 transition-all duration-200 hover:shadow-md" data-testid="card-kpi-queued">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-purple-500/10">
+                      <Layers className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Queued</p>
+                      <p className="text-lg font-semibold" data-testid="kpi-jobs-queued">{kpiData.jobsQueued}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-              <Card className="p-3 transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-green-500/10">
-                    <UserCheck className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Engaged</p>
-                    <p className="text-lg font-semibold" data-testid="kpi-engaged">{kpiData.engaged.toLocaleString()}</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-3 transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-red-500/10">
-                    <Ban className="h-4 w-4 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">DNC/Stopped</p>
-                    <p className="text-lg font-semibold" data-testid="kpi-dnc-stopped">{kpiData.dncStopped.toLocaleString()}</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-3 transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-purple-500/10">
-                    <Layers className="h-4 w-4 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Jobs Queued</p>
-                    <p className="text-lg font-semibold" data-testid="kpi-jobs-queued">{kpiData.jobsQueued}</p>
-                  </div>
-                </div>
+                </Card>
+              </div>
+
+              {/* Campaigns table */}
+              <Card data-testid="card-campaigns-table">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-base">Campaigns</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {!campaigns || campaigns.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No campaigns found</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Contacts</TableHead>
+                          <TableHead className="text-right">Attempts</TableHead>
+                          <TableHead className="text-right">Delivered</TableHead>
+                          <TableHead className="text-right">Replied</TableHead>
+                          <TableHead className="text-right">Voice %</TableHead>
+                          <TableHead>Funnel</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {campaigns.map((campaign) => {
+                          const total = campaign.stats?.total || 1;
+                          const attemptingPct = ((campaign.stats?.attempting || 0) / total) * 100;
+                          const engagedPct = ((campaign.stats?.engaged || 0) / total) * 100;
+                          const dncPct = ((campaign.stats?.dnc || 0) / total) * 100;
+                          const summary = getSummaryForCampaign(campaign.id);
+                          return (
+                            <TableRow 
+                              key={campaign.id} 
+                              className="cursor-pointer hover:bg-muted/50 transition-colors"
+                              data-testid={`row-campaign-${campaign.id}`}
+                            >
+                              <TableCell 
+                                className="font-medium" 
+                                onClick={() => setSelectedCampaign(campaign)}
+                                data-testid={`text-campaign-name-${campaign.id}`}
+                              >
+                                {campaign.name}
+                              </TableCell>
+                              <TableCell onClick={() => setSelectedCampaign(campaign)}>
+                                {getStatusBadge(campaign.status, true)}
+                              </TableCell>
+                              <TableCell onClick={() => setSelectedCampaign(campaign)} className="text-right">
+                                <span className="font-medium">{campaign.stats?.total || 0}</span>
+                              </TableCell>
+                              <TableCell onClick={() => setSelectedCampaign(campaign)} className="text-right text-sm text-muted-foreground" data-testid={`text-attempts-${campaign.id}`}>
+                                {summary?.attempts ?? '-'}
+                              </TableCell>
+                              <TableCell onClick={() => setSelectedCampaign(campaign)} className="text-right text-sm text-muted-foreground" data-testid={`text-delivered-${campaign.id}`}>
+                                {summary?.delivered ?? '-'}
+                              </TableCell>
+                              <TableCell onClick={() => setSelectedCampaign(campaign)} className="text-right text-sm text-muted-foreground" data-testid={`text-replied-${campaign.id}`}>
+                                {summary?.replied ?? '-'}
+                              </TableCell>
+                              <TableCell onClick={() => setSelectedCampaign(campaign)} className="text-right text-sm text-muted-foreground" data-testid={`text-voice-${campaign.id}`}>
+                                {summary?.voice?.callPlaced ? `${(summary.voice.answerRate * 100).toFixed(0)}%` : '-'}
+                              </TableCell>
+                              <TableCell onClick={() => setSelectedCampaign(campaign)}>
+                                <div className="flex items-center gap-1 w-20">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="h-2 rounded-sm bg-amber-400" style={{ width: `${attemptingPct}%`, minWidth: attemptingPct > 0 ? '4px' : '0' }} />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Attempting: {campaign.stats?.attempting || 0}</p></TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="h-2 rounded-sm bg-emerald-500" style={{ width: `${engagedPct}%`, minWidth: engagedPct > 0 ? '4px' : '0' }} />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Engaged: {campaign.stats?.engaged || 0}</p></TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="h-2 rounded-sm bg-red-400" style={{ width: `${dncPct}%`, minWidth: dncPct > 0 ? '4px' : '0' }} />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>DNC: {campaign.stats?.dnc || 0}</p></TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  {campaign.status === "active" && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 hover:bg-amber-500/10"
+                                          onClick={(e) => { e.stopPropagation(); pauseMutation.mutate(campaign.id); }}
+                                          disabled={pauseMutation.isPending}
+                                          data-testid={`button-pause-${campaign.id}`}
+                                        >
+                                          <Pause className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent><p>Pause</p></TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  {campaign.status === "paused" && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 hover:bg-emerald-500/10"
+                                          onClick={(e) => { e.stopPropagation(); resumeMutation.mutate(campaign.id); }}
+                                          disabled={resumeMutation.isPending}
+                                          data-testid={`button-resume-${campaign.id}`}
+                                        >
+                                          <Play className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent><p>Resume</p></TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0"
+                                        onClick={() => setSelectedCampaign(campaign)}
+                                        data-testid={`button-view-${campaign.id}`}
+                                      >
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Open</p></TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
               </Card>
             </div>
 
-            {healthData && (
-              <Card className="p-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <span className="text-sm font-medium text-muted-foreground">System Health:</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Orchestrator:</span>
-                      {getRunStatusBadge(healthData.lastRuns?.orchestrator)}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Jobs:</span>
-                      {getRunStatusBadge(healthData.lastRuns?.jobs)}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Auto-Tuner:</span>
-                      {getRunStatusBadge(healthData.lastRuns?.auto_tuner)}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Reaper:</span>
-                      {getRunStatusBadge(healthData.lastRuns?.reaper)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {healthData.jobsFailed > 0 && (
-                      <Badge variant="destructive" className="text-xs">{healthData.jobsFailed} failed</Badge>
-                    )}
-                    {healthData.stuckProcessingVoice > 0 && (
-                      <Badge className="bg-orange-500/15 text-orange-700 text-xs">{healthData.stuckProcessingVoice} stuck</Badge>
-                    )}
-                    {healthData.lastErrors && healthData.lastErrors.length > 0 && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Badge variant="destructive" className="text-xs cursor-pointer hover:bg-destructive/80" data-testid="button-view-errors">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            {healthData.lastErrors.length} errors
-                          </Badge>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[80vh]">
-                          <DialogHeader>
-                            <DialogTitle data-testid="text-errors-dialog-title">Recent System Run Errors</DialogTitle>
-                          </DialogHeader>
-                          <ScrollArea className="h-[60vh]">
-                            <div className="space-y-3">
-                              {healthData.lastErrors.map((error) => (
-                                <div key={error.id} className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg" data-testid={`error-item-${error.id}`}>
-                                  <div className="flex items-center justify-between mb-2">
-                                    <Badge variant="destructive" className="capitalize">{error.type}</Badge>
-                                    <span className="text-xs text-muted-foreground">
-                                      {format(new Date(error.createdAt), "MMM d, yyyy HH:mm:ss")}
-                                    </span>
-                                  </div>
-                                  <div className="text-sm text-red-700 dark:text-red-300 break-all">
-                                    {error.payload?.error || 'Unknown error'}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </DialogContent>
-                      </Dialog>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={() => refetchHealth()} className="h-7 w-7 p-0">
+            {/* Right column - Mission Control (1/3 width, sticky) */}
+            <div className="lg:sticky lg:top-4 space-y-4 h-fit" data-testid="panel-mission-control">
+              {/* System Health card */}
+              <Card data-testid="card-system-health">
+                <CardHeader className="py-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium">System Health</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => refetchHealth()} className="h-7 w-7 p-0" data-testid="button-refresh-health">
                       <RefreshCw className={`h-3 w-3 ${healthLoading ? 'animate-spin' : ''}`} />
                     </Button>
                   </div>
-                </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {healthLoading && !healthData ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                    </div>
+                  ) : healthData ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2 text-center">
+                        <div className="p-2 bg-muted/50 rounded-lg">
+                          <div className="text-lg font-bold" data-testid="text-health-queued">{healthData.jobsQueued}</div>
+                          <div className="text-xs text-muted-foreground">Queued</div>
+                        </div>
+                        <div className="p-2 bg-muted/50 rounded-lg">
+                          <div className="text-lg font-bold text-blue-600" data-testid="text-health-processing">{healthData.jobsProcessing}</div>
+                          <div className="text-xs text-muted-foreground">Processing</div>
+                        </div>
+                        <div className="p-2 bg-muted/50 rounded-lg">
+                          <div className="text-lg font-bold text-red-600" data-testid="text-health-failed">{healthData.jobsFailed}</div>
+                          <div className="text-xs text-muted-foreground">Failed</div>
+                        </div>
+                        <div className="p-2 bg-muted/50 rounded-lg relative">
+                          <div className="text-lg font-bold" data-testid="text-health-stuck">{healthData.stuckProcessingVoice}</div>
+                          <div className="text-xs text-muted-foreground">Stuck Voice</div>
+                          {healthData.stuckProcessingVoice > 0 && (
+                            <AlertTriangle className="h-3 w-3 text-orange-500 absolute top-1 right-1" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Orchestrator:</span>
+                          {getRunStatusBadge(healthData.lastRuns?.orchestrator)}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Jobs:</span>
+                          {getRunStatusBadge(healthData.lastRuns?.jobs)}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Auto-Tuner:</span>
+                          {getRunStatusBadge(healthData.lastRuns?.auto_tuner)}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Reaper:</span>
+                          {getRunStatusBadge(healthData.lastRuns?.reaper)}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Unable to load health data</p>
+                  )}
+                </CardContent>
               </Card>
-            )}
 
-            <Card>
-              <CardHeader className="py-3">
-                <CardTitle className="text-base">Campaigns</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {!campaigns || campaigns.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No campaigns found</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Contacts</TableHead>
-                        <TableHead>Funnel</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {campaigns.map((campaign) => {
-                        const total = campaign.stats?.total || 1;
-                        const attemptingPct = ((campaign.stats?.attempting || 0) / total) * 100;
-                        const engagedPct = ((campaign.stats?.engaged || 0) / total) * 100;
-                        const dncPct = ((campaign.stats?.dnc || 0) / total) * 100;
-                        return (
-                          <TableRow 
-                            key={campaign.id} 
-                            className="cursor-pointer hover:bg-muted/50 transition-colors"
-                            data-testid={`row-campaign-${campaign.id}`}
-                          >
-                            <TableCell 
-                              className="font-medium" 
-                              onClick={() => setSelectedCampaign(campaign)}
-                              data-testid={`text-campaign-name-${campaign.id}`}
-                            >
-                              {campaign.name}
-                            </TableCell>
-                            <TableCell onClick={() => setSelectedCampaign(campaign)}>
-                              {getStatusBadge(campaign.status, true)}
-                            </TableCell>
-                            <TableCell onClick={() => setSelectedCampaign(campaign)}>
-                              <span className="font-medium">{campaign.stats?.total || 0}</span>
-                            </TableCell>
-                            <TableCell onClick={() => setSelectedCampaign(campaign)}>
-                              <div className="flex items-center gap-1 w-24">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="h-2 rounded-sm bg-amber-400" style={{ width: `${attemptingPct}%`, minWidth: attemptingPct > 0 ? '4px' : '0' }} />
-                                  </TooltipTrigger>
-                                  <TooltipContent><p>Attempting: {campaign.stats?.attempting || 0}</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="h-2 rounded-sm bg-emerald-500" style={{ width: `${engagedPct}%`, minWidth: engagedPct > 0 ? '4px' : '0' }} />
-                                  </TooltipTrigger>
-                                  <TooltipContent><p>Engaged: {campaign.stats?.engaged || 0}</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="h-2 rounded-sm bg-red-400" style={{ width: `${dncPct}%`, minWidth: dncPct > 0 ? '4px' : '0' }} />
-                                  </TooltipTrigger>
-                                  <TooltipContent><p>DNC: {campaign.stats?.dnc || 0}</p></TooltipContent>
-                                </Tooltip>
+              {/* Live Activity Feed */}
+              <Card data-testid="card-live-activity">
+                <CardHeader className="py-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium">Live Activity</CardTitle>
+                    <Badge variant="outline" className="text-xs">Last 20</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {activityLoading ? (
+                    <div className="p-3 space-y-2">
+                      {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[300px]">
+                      <div className="divide-y">
+                        {activityData?.map((event) => (
+                          <div key={event.id} className="px-3 py-2 hover:bg-muted/50 transition-colors" data-testid={`activity-item-${event.id}`}>
+                            <div className="flex items-center gap-2">
+                              {getEventIcon(event.eventType)}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium truncate">{formatEventType(event.eventType)}</p>
+                                <p className="text-xs text-muted-foreground truncate">{event.campaignName}</p>
                               </div>
-                            </TableCell>
-                            <TableCell onClick={() => setSelectedCampaign(campaign)} className="text-sm text-muted-foreground">
-                              {formatDistanceToNow(new Date(campaign.createdAt), { addSuffix: true })}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
-                                {campaign.status === "active" && (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-amber-500/10"
-                                        onClick={(e) => { e.stopPropagation(); pauseMutation.mutate(campaign.id); }}
-                                        disabled={pauseMutation.isPending}
-                                        data-testid={`button-pause-${campaign.id}`}
-                                      >
-                                        <Pause className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Pause</p></TooltipContent>
-                                  </Tooltip>
-                                )}
-                                {campaign.status === "paused" && (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-emerald-500/10"
-                                        onClick={(e) => { e.stopPropagation(); resumeMutation.mutate(campaign.id); }}
-                                        disabled={resumeMutation.isPending}
-                                        data-testid={`button-resume-${campaign.id}`}
-                                      >
-                                        <Play className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Resume</p></TooltipContent>
-                                  </Tooltip>
-                                )}
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0"
-                                      onClick={() => setSelectedCampaign(campaign)}
-                                      data-testid={`button-view-${campaign.id}`}
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent><p>Open</p></TooltipContent>
-                                </Tooltip>
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        {!activityData?.length && (
+                          <p className="text-sm text-muted-foreground text-center py-8">No recent activity</p>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Alerts card - only show if there are alerts */}
+              {hasAlerts && (
+                <Card className="border-orange-200 dark:border-orange-900" data-testid="card-alerts">
+                  <CardContent className="py-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm font-medium flex-1">
+                        {healthData?.stuckProcessingVoice && healthData.stuckProcessingVoice > 0 && `${healthData.stuckProcessingVoice} stuck voice jobs`}
+                        {healthData?.stuckProcessingVoice && healthData.stuckProcessingVoice > 0 && healthData?.lastErrors && healthData.lastErrors.length > 0 && ' | '}
+                        {healthData?.lastErrors && healthData.lastErrors.length > 0 && `${healthData.lastErrors.length} errors`}
+                      </span>
+                      {healthData?.lastErrors && healthData.lastErrors.length > 0 && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs" data-testid="button-view-errors">
+                              View
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl max-h-[80vh]">
+                            <DialogHeader>
+                              <DialogTitle data-testid="text-errors-dialog-title">Recent System Run Errors</DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="h-[60vh]">
+                              <div className="space-y-3">
+                                {healthData.lastErrors.map((error) => (
+                                  <div key={error.id} className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg" data-testid={`error-item-${error.id}`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <Badge variant="destructive" className="capitalize">{error.type}</Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        {format(new Date(error.createdAt), "MMM d, yyyy HH:mm:ss")}
+                                      </span>
+                                    </div>
+                                    <div className="text-sm text-red-700 dark:text-red-300 break-all">
+                                      {error.payload?.error || 'Unknown error'}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </>
+                            </ScrollArea>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
