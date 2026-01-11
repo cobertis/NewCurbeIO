@@ -14,11 +14,15 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
-import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo, Zap, Activity, AlertTriangle, Plus } from "lucide-react";
+import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo, Zap, Activity, AlertTriangle, Plus, Eye, Target, UserCheck, Ban, Layers, ArrowLeft, Settings } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CampaignStats {
   total: number;
@@ -236,20 +240,6 @@ interface OrchestratorTaskItem {
   };
 }
 
-interface SystemRunInfo {
-  status: string;
-  startedAt: string;
-  completedAt: string | null;
-}
-
-interface SystemRunError {
-  id: string;
-  type: string;
-  status: string;
-  createdAt: string;
-  payload: any;
-}
-
 interface SystemHealth {
   jobsQueued: number;
   jobsProcessing: number;
@@ -296,6 +286,7 @@ export default function OrchestratorCampaigns() {
   const [createFormName, setCreateFormName] = useState("");
   const [createFormStatus, setCreateFormStatus] = useState("draft");
   const [createFormUseSafeDefaults, setCreateFormUseSafeDefaults] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const { data: campaigns, isLoading: campaignsLoading } = useQuery<OrchestratorCampaign[]>({
     queryKey: ["/api/orchestrator/campaigns"]
@@ -390,7 +381,6 @@ export default function OrchestratorCampaigns() {
       if (!res.ok) throw new Error("Failed to fetch health");
       return res.json();
     },
-    enabled: !!selectedCampaign,
     refetchInterval: 15000
   });
 
@@ -435,7 +425,6 @@ export default function OrchestratorCampaigns() {
     }
   });
 
-  // ===== BULK OPS MUTATIONS =====
   const emergencyStopMutation = useMutation({
     mutationFn: async () => {
       if (!selectedCampaign) throw new Error("No campaign selected");
@@ -640,18 +629,19 @@ export default function OrchestratorCampaigns() {
     }
   });
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, compact = false) => {
+    const baseClass = compact ? "text-xs px-2 py-0.5" : "";
     switch (status) {
       case "active":
-        return <Badge className="bg-green-500" data-testid="badge-status-active">Active</Badge>;
+        return <Badge className={`bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/25 ${baseClass}`} data-testid="badge-status-active">Active</Badge>;
       case "paused":
-        return <Badge variant="secondary" data-testid="badge-status-paused">Paused</Badge>;
+        return <Badge className={`bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/25 ${baseClass}`} data-testid="badge-status-paused">Paused</Badge>;
       case "draft":
-        return <Badge variant="outline" data-testid="badge-status-draft">Draft</Badge>;
+        return <Badge variant="outline" className={`bg-muted/50 ${baseClass}`} data-testid="badge-status-draft">Draft</Badge>;
       case "completed":
-        return <Badge className="bg-blue-500" data-testid="badge-status-completed">Completed</Badge>;
+        return <Badge className={`bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/20 ${baseClass}`} data-testid="badge-status-completed">Completed</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className={baseClass}>{status}</Badge>;
     }
   };
 
@@ -660,9 +650,9 @@ export default function OrchestratorCampaigns() {
       case "NEW":
         return <Badge variant="outline" data-testid="badge-state-new">New</Badge>;
       case "ATTEMPTING":
-        return <Badge className="bg-yellow-500" data-testid="badge-state-attempting">Attempting</Badge>;
+        return <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/20" data-testid="badge-state-attempting">Attempting</Badge>;
       case "ENGAGED":
-        return <Badge className="bg-green-500" data-testid="badge-state-engaged">Engaged</Badge>;
+        return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20" data-testid="badge-state-engaged">Engaged</Badge>;
       case "STOPPED":
         return <Badge variant="secondary" data-testid="badge-state-stopped">Stopped</Badge>;
       case "DO_NOT_CONTACT":
@@ -691,385 +681,221 @@ export default function OrchestratorCampaigns() {
     }
   };
 
+  const kpiData = {
+    activeCampaigns: campaigns?.filter(c => c.status === "active").length || 0,
+    totalContacts: campaigns?.reduce((acc, c) => acc + (c.stats?.total || 0), 0) || 0,
+    attempting: campaigns?.reduce((acc, c) => acc + (c.stats?.attempting || 0), 0) || 0,
+    engaged: campaigns?.reduce((acc, c) => acc + (c.stats?.engaged || 0), 0) || 0,
+    dncStopped: campaigns?.reduce((acc, c) => acc + (c.stats?.dnc || 0) + (c.stats?.stopped || 0), 0) || 0,
+    jobsQueued: healthData?.jobsQueued || 0
+  };
+
+  const getRunStatusBadge = (run: SystemRunInfo | undefined) => {
+    if (!run) return <span className="text-xs text-muted-foreground italic">Never</span>;
+    const statusClass = run.status === 'success' ? 'bg-emerald-500/15 text-emerald-700' : 
+                        run.status === 'error' ? 'bg-red-500/15 text-red-700' : 
+                        'bg-yellow-500/15 text-yellow-700';
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">
+          {run.completedAt ? formatDistanceToNow(new Date(run.completedAt), { addSuffix: true }) : 'Running'}
+        </span>
+        <Badge className={`${statusClass} text-xs px-1.5 py-0`} data-testid={`badge-run-status`}>{run.status}</Badge>
+      </div>
+    );
+  };
+
   if (campaignsLoading) {
     return <LoadingSpinner fullScreen={true} message="Loading campaigns..." />;
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Campaign Orchestrator</h1>
-          <p className="text-muted-foreground">Manage outreach campaigns and contact journeys</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                variant="default" 
-                size="sm"
-                data-testid="button-create-campaign"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Campaign
-              </Button>
-            </DialogTrigger>
-            <DialogContent data-testid="dialog-create-campaign">
-              <DialogHeader>
-                <DialogTitle>Create Campaign</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="campaign-name">Name</Label>
-                  <Input
-                    id="campaign-name"
-                    placeholder="Enter campaign name"
-                    value={createFormName}
-                    onChange={(e) => setCreateFormName(e.target.value)}
-                    data-testid="input-campaign-name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="campaign-status">Status</Label>
-                  <Select value={createFormStatus} onValueChange={setCreateFormStatus}>
-                    <SelectTrigger id="campaign-status" data-testid="select-campaign-status">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="use-safe-defaults" className="text-sm">Use safe defaults</Label>
-                  <Switch
-                    id="use-safe-defaults"
-                    checked={createFormUseSafeDefaults}
-                    onCheckedChange={setCreateFormUseSafeDefaults}
-                    data-testid="switch-safe-defaults"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleCreateCampaign}
-                  disabled={createCampaignMutation.isPending}
-                  data-testid="button-submit-create-campaign"
-                >
-                  {createCampaignMutation.isPending ? (
-                    <LoadingSpinner fullScreen={false} />
-                  ) : (
-                    "Create"
-                  )}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] })}
-            data-testid="button-refresh"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      {!selectedCampaign ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Campaigns</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!campaigns || campaigns.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No campaigns found</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Attempting</TableHead>
-                    <TableHead>Engaged</TableHead>
-                    <TableHead>DNC</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {campaigns.map((campaign) => (
-                    <TableRow 
-                      key={campaign.id} 
-                      className="cursor-pointer hover:bg-muted/50"
-                      data-testid={`row-campaign-${campaign.id}`}
-                    >
-                      <TableCell 
-                        className="font-medium" 
-                        onClick={() => setSelectedCampaign(campaign)}
-                        data-testid={`text-campaign-name-${campaign.id}`}
-                      >
-                        {campaign.name}
-                      </TableCell>
-                      <TableCell onClick={() => setSelectedCampaign(campaign)}>
-                        {getStatusBadge(campaign.status)}
-                      </TableCell>
-                      <TableCell onClick={() => setSelectedCampaign(campaign)}>
-                        {campaign.stats?.total || 0}
-                      </TableCell>
-                      <TableCell onClick={() => setSelectedCampaign(campaign)}>
-                        {campaign.stats?.attempting || 0}
-                      </TableCell>
-                      <TableCell onClick={() => setSelectedCampaign(campaign)}>
-                        {campaign.stats?.engaged || 0}
-                      </TableCell>
-                      <TableCell onClick={() => setSelectedCampaign(campaign)}>
-                        {campaign.stats?.dnc || 0}
-                      </TableCell>
-                      <TableCell onClick={() => setSelectedCampaign(campaign)}>
-                        {formatDistanceToNow(new Date(campaign.createdAt), { addSuffix: true })}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {campaign.status === "active" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); pauseMutation.mutate(campaign.id); }}
-                              disabled={pauseMutation.isPending}
-                              data-testid={`button-pause-${campaign.id}`}
-                            >
-                              <Pause className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {campaign.status === "paused" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); resumeMutation.mutate(campaign.id); }}
-                              disabled={resumeMutation.isPending}
-                              data-testid={`button-resume-${campaign.id}`}
-                            >
-                              <Play className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedCampaign(campaign)}
-                            data-testid={`button-view-${campaign.id}`}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" onClick={() => setSelectedCampaign(null)} data-testid="button-back">
-                Back to Campaigns
-              </Button>
-              <h2 className="text-xl font-semibold" data-testid="text-campaign-detail-name">{selectedCampaign.name}</h2>
-              {getStatusBadge(selectedCampaign.status)}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => runOrchestratorMutation.mutate()}
-                disabled={runOrchestratorMutation.isPending}
-                data-testid="button-run-orchestrator"
-              >
-                {runOrchestratorMutation.isPending ? (
-                  <LoadingSpinner fullScreen={false} />
-                ) : (
-                  <Zap className="h-4 w-4 mr-1" />
-                )}
-                Run Orchestrator Now
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => runJobsMutation.mutate()}
-                disabled={runJobsMutation.isPending}
-                data-testid="button-run-jobs"
-              >
-                {runJobsMutation.isPending ? (
-                  <LoadingSpinner fullScreen={false} />
-                ) : (
-                  <Activity className="h-4 w-4 mr-1" />
-                )}
-                Run Jobs Now
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => requeueFailedMutation.mutate()}
-                disabled={requeueFailedMutation.isPending}
-                data-testid="button-requeue-failed"
-              >
-                {requeueFailedMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <RotateCcw className="h-4 w-4 mr-1" />}
-                Requeue Failed
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (confirm("Stop all active contacts in this campaign? They will be set to DO_NOT_CONTACT.")) {
-                    stopAllContactsMutation.mutate();
-                  }
-                }}
-                disabled={stopAllContactsMutation.isPending}
-                data-testid="button-stop-all-contacts"
-              >
-                {stopAllContactsMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <StopCircle className="h-4 w-4 mr-1" />}
-                Stop All Contacts
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  if (confirm("EMERGENCY STOP: This will pause the campaign and cancel all queued jobs. Continue?")) {
-                    emergencyStopMutation.mutate();
-                  }
-                }}
-                disabled={emergencyStopMutation.isPending}
-                data-testid="button-emergency-stop"
-              >
-                {emergencyStopMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <AlertCircle className="h-4 w-4 mr-1" />}
-                Emergency Stop
-              </Button>
-            </div>
+    <TooltipProvider>
+      <div className="container mx-auto p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Campaign Control Center</h1>
+            <p className="text-sm text-muted-foreground">Manage outreach campaigns and contact journeys</p>
           </div>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between py-3">
-              <CardTitle className="text-base" data-testid="text-health-title">System Health</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => refetchHealth()} disabled={healthLoading} data-testid="button-refresh-health">
-                <RefreshCw className={`h-4 w-4 ${healthLoading ? 'animate-spin' : ''}`} />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {healthLoading && !healthData ? (
-                <LoadingSpinner fullScreen={false} message="Loading health..." />
-              ) : healthData ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold" data-testid="text-health-queued">{healthData.jobsQueued}</div>
-                      <div className="text-sm text-muted-foreground">Queued</div>
+          <div className="flex items-center gap-2">
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  size="sm"
+                  className="transition-all duration-200"
+                  data-testid="button-create-campaign"
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Create Campaign
+                </Button>
+              </DialogTrigger>
+              <DialogContent data-testid="dialog-create-campaign">
+                <DialogHeader>
+                  <DialogTitle>Create Campaign</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="campaign-name">Name</Label>
+                    <Input
+                      id="campaign-name"
+                      placeholder="Enter campaign name"
+                      value={createFormName}
+                      onChange={(e) => setCreateFormName(e.target.value)}
+                      data-testid="input-campaign-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="campaign-status">Status</Label>
+                    <Select value={createFormStatus} onValueChange={setCreateFormStatus}>
+                      <SelectTrigger id="campaign-status" data-testid="select-campaign-status">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="use-safe-defaults" className="text-sm">Use safe defaults</Label>
+                    <Switch
+                      id="use-safe-defaults"
+                      checked={createFormUseSafeDefaults}
+                      onCheckedChange={setCreateFormUseSafeDefaults}
+                      data-testid="switch-safe-defaults"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleCreateCampaign}
+                    disabled={createCampaignMutation.isPending}
+                    data-testid="button-submit-create-campaign"
+                  >
+                    {createCampaignMutation.isPending ? <LoadingSpinner fullScreen={false} /> : "Create"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] })}
+              className="transition-all duration-200"
+              data-testid="button-refresh"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {!selectedCampaign ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              <Card className="p-3 transition-all duration-200 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                    <Target className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Active Campaigns</p>
+                    <p className="text-lg font-semibold" data-testid="kpi-active-campaigns">{kpiData.activeCampaigns}</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-3 transition-all duration-200 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <Users className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Contacts</p>
+                    <p className="text-lg font-semibold" data-testid="kpi-total-contacts">{kpiData.totalContacts.toLocaleString()}</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-3 transition-all duration-200 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-amber-500/10">
+                    <Activity className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Attempting</p>
+                    <p className="text-lg font-semibold" data-testid="kpi-attempting">{kpiData.attempting.toLocaleString()}</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-3 transition-all duration-200 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-green-500/10">
+                    <UserCheck className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Engaged</p>
+                    <p className="text-lg font-semibold" data-testid="kpi-engaged">{kpiData.engaged.toLocaleString()}</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-3 transition-all duration-200 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-red-500/10">
+                    <Ban className="h-4 w-4 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">DNC/Stopped</p>
+                    <p className="text-lg font-semibold" data-testid="kpi-dnc-stopped">{kpiData.dncStopped.toLocaleString()}</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-3 transition-all duration-200 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-purple-500/10">
+                    <Layers className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Jobs Queued</p>
+                    <p className="text-lg font-semibold" data-testid="kpi-jobs-queued">{kpiData.jobsQueued}</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {healthData && (
+              <Card className="p-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <span className="text-sm font-medium text-muted-foreground">System Health:</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Orchestrator:</span>
+                      {getRunStatusBadge(healthData.lastRuns?.orchestrator)}
                     </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600" data-testid="text-health-processing">{healthData.jobsProcessing}</div>
-                      <div className="text-sm text-muted-foreground">Processing</div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Jobs:</span>
+                      {getRunStatusBadge(healthData.lastRuns?.jobs)}
                     </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600" data-testid="text-health-failed">{healthData.jobsFailed}</div>
-                      <div className="text-sm text-muted-foreground">Failed</div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Auto-Tuner:</span>
+                      {getRunStatusBadge(healthData.lastRuns?.auto_tuner)}
                     </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg relative">
-                      <div className="text-2xl font-bold" data-testid="text-health-stuck">{healthData.stuckProcessingVoice}</div>
-                      <div className="text-sm text-muted-foreground">Stuck Voice</div>
-                      {healthData.stuckProcessingVoice > 0 && (
-                        <AlertTriangle className="h-4 w-4 text-orange-500 absolute top-2 right-2" />
-                      )}
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Reaper:</span>
+                      {getRunStatusBadge(healthData.lastRuns?.reaper)}
                     </div>
                   </div>
-                  {healthData.stuckProcessingVoice > 0 && (
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => reapProcessingMutation.mutate(true)}
-                        disabled={reapProcessingMutation.isPending}
-                        data-testid="button-reap-dry-run"
-                      >
-                        {reapProcessingMutation.isPending ? <LoadingSpinner fullScreen={false} /> : null}
-                        Preview Reap
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm("This will mark stuck voice jobs as failed. Continue?")) {
-                            reapProcessingMutation.mutate(false);
-                          }
-                        }}
-                        disabled={reapProcessingMutation.isPending}
-                        data-testid="button-reap-stuck"
-                      >
-                        Reap Stuck Jobs
-                      </Button>
-                    </div>
-                  )}
-                  {healthData.recentAuditErrors && healthData.recentAuditErrors.length > 0 && (
-                    <div className="mt-3">
-                      <div className="text-sm font-medium mb-2 text-muted-foreground">Recent Errors/Warnings</div>
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {healthData.recentAuditErrors.slice(0, 5).map((err) => (
-                          <div key={err.id} className="text-xs p-2 bg-red-50 dark:bg-red-900/20 rounded flex items-start gap-2">
-                            <Badge variant={err.level === "error" ? "destructive" : "secondary"} className="text-xs shrink-0">
-                              {err.level}
-                            </Badge>
-                            <span className="flex-1 break-all">{err.message}</span>
-                            <span className="text-muted-foreground shrink-0">{format(new Date(err.createdAt), "HH:mm")}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Last Runs Section */}
-                  <div className="mt-3">
-                    <div className="text-sm font-medium mb-2 text-muted-foreground">Last System Runs</div>
-                    <div className="space-y-1">
-                      {['orchestrator', 'jobs', 'auto_tuner', 'reaper'].map((runType) => {
-                        const run = healthData.lastRuns?.[runType];
-                        const displayName = runType === 'auto_tuner' ? 'Auto-Tuner' : runType;
-                        return (
-                          <div key={runType} className="text-xs p-2 bg-muted/50 rounded flex items-center justify-between" data-testid={`text-last-run-${runType}`}>
-                            <span className="capitalize font-medium">{displayName}</span>
-                            <div className="flex items-center gap-2">
-                              {run ? (
-                                <>
-                                  <span className="text-muted-foreground">
-                                    {run.completedAt ? formatDistanceToNow(new Date(run.completedAt), { addSuffix: true }) : 'In progress'}
-                                  </span>
-                                  <Badge 
-                                    variant={run.status === 'success' ? 'default' : run.status === 'error' ? 'destructive' : 'secondary'}
-                                    className={`text-xs ${run.status === 'success' ? 'bg-green-600' : run.status === 'running' ? 'bg-yellow-500' : ''}`}
-                                    data-testid={`badge-last-run-${runType}`}
-                                  >
-                                    {run.status}
-                                  </Badge>
-                                </>
-                              ) : (
-                                <span className="text-muted-foreground italic">Never run</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  {/* View Recent Errors Dialog */}
-                  {healthData.lastErrors && healthData.lastErrors.length > 0 && (
-                    <div className="mt-3">
+                  <div className="flex items-center gap-2">
+                    {healthData.jobsFailed > 0 && (
+                      <Badge variant="destructive" className="text-xs">{healthData.jobsFailed} failed</Badge>
+                    )}
+                    {healthData.stuckProcessingVoice > 0 && (
+                      <Badge className="bg-orange-500/15 text-orange-700 text-xs">{healthData.stuckProcessingVoice} stuck</Badge>
+                    )}
+                    {healthData.lastErrors && healthData.lastErrors.length > 0 && (
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-full" data-testid="button-view-errors">
-                            <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
-                            View Recent Errors ({healthData.lastErrors.length})
-                          </Button>
+                          <Badge variant="destructive" className="text-xs cursor-pointer hover:bg-destructive/80" data-testid="button-view-errors">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {healthData.lastErrors.length} errors
+                          </Badge>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl max-h-[80vh]">
                           <DialogHeader>
@@ -1094,663 +920,852 @@ export default function OrchestratorCampaigns() {
                           </ScrollArea>
                         </DialogContent>
                       </Dialog>
-                    </div>
-                  )}
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => refetchHealth()} className="h-7 w-7 p-0">
+                      <RefreshCw className={`h-3 w-3 ${healthLoading ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">Unable to load health data</div>
-              )}
-            </CardContent>
-          </Card>
+              </Card>
+            )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle data-testid="text-metrics-title">Metrics</CardTitle>
-              <Select value={metricsWindow} onValueChange={setMetricsWindow}>
-                <SelectTrigger className="w-32" data-testid="select-metrics-window">
-                  <SelectValue placeholder="Window" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d">Last 7 days</SelectItem>
-                  <SelectItem value="30d">Last 30 days</SelectItem>
-                  <SelectItem value="all">All time</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardHeader>
-            <CardContent>
-              {metricsLoading ? (
-                <LoadingSpinner fullScreen={false} message="Loading metrics..." />
-              ) : metricsData ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold" data-testid="text-metric-attempts">{metricsData.attempts}</div>
-                      <div className="text-sm text-muted-foreground">Attempts</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600" data-testid="text-metric-delivered">{metricsData.delivered}</div>
-                      <div className="text-sm text-muted-foreground">Delivered</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600" data-testid="text-metric-replied">{metricsData.replied}</div>
-                      <div className="text-sm text-muted-foreground">Replies</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600" data-testid="text-metric-optout">{metricsData.optOut}</div>
-                      <div className="text-sm text-muted-foreground">Opt-outs</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-400" data-testid="text-metric-failed">{metricsData.failed}</div>
-                      <div className="text-sm text-muted-foreground">Failed (All)</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600" data-testid="text-metric-failed-final">{metricsData.failedFinal}</div>
-                      <div className="text-sm text-muted-foreground">Failed (Final)</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600" data-testid="text-metric-avg-reply">
-                        {metricsData.avgTimeToReplySeconds !== null 
-                          ? `${Math.round(metricsData.avgTimeToReplySeconds / 60)}m` 
-                          : "-"}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Avg Reply Time</div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div className="text-center p-2 border rounded">
-                      <div className="text-lg font-semibold" data-testid="text-rate-delivery">{(metricsData.rates.deliveryRate * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground">Delivery Rate</div>
-                    </div>
-                    <div className="text-center p-2 border rounded">
-                      <div className="text-lg font-semibold" data-testid="text-rate-reply">{(metricsData.rates.replyRate * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground">Reply Rate</div>
-                    </div>
-                    <div className="text-center p-2 border rounded">
-                      <div className="text-lg font-semibold" data-testid="text-rate-optout">{(metricsData.rates.optOutRate * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground">Opt-out Rate</div>
-                    </div>
-                    <div className="text-center p-2 border rounded">
-                      <div className="text-lg font-semibold" data-testid="text-rate-failure">{(metricsData.rates.failureRate * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground">Failure Rate (All)</div>
-                    </div>
-                    <div className="text-center p-2 border rounded">
-                      <div className="text-lg font-semibold text-red-600" data-testid="text-rate-failure-final">{(metricsData.rates.failureRateFinal * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground">Failure Rate (Final)</div>
-                    </div>
-                  </div>
+            <Card>
+              <CardHeader className="py-3">
+                <CardTitle className="text-base">Campaigns</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {!campaigns || campaigns.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No campaigns found</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Contacts</TableHead>
+                        <TableHead>Funnel</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {campaigns.map((campaign) => {
+                        const total = campaign.stats?.total || 1;
+                        const attemptingPct = ((campaign.stats?.attempting || 0) / total) * 100;
+                        const engagedPct = ((campaign.stats?.engaged || 0) / total) * 100;
+                        const dncPct = ((campaign.stats?.dnc || 0) / total) * 100;
+                        return (
+                          <TableRow 
+                            key={campaign.id} 
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            data-testid={`row-campaign-${campaign.id}`}
+                          >
+                            <TableCell 
+                              className="font-medium" 
+                              onClick={() => setSelectedCampaign(campaign)}
+                              data-testid={`text-campaign-name-${campaign.id}`}
+                            >
+                              {campaign.name}
+                            </TableCell>
+                            <TableCell onClick={() => setSelectedCampaign(campaign)}>
+                              {getStatusBadge(campaign.status, true)}
+                            </TableCell>
+                            <TableCell onClick={() => setSelectedCampaign(campaign)}>
+                              <span className="font-medium">{campaign.stats?.total || 0}</span>
+                            </TableCell>
+                            <TableCell onClick={() => setSelectedCampaign(campaign)}>
+                              <div className="flex items-center gap-1 w-24">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="h-2 rounded-sm bg-amber-400" style={{ width: `${attemptingPct}%`, minWidth: attemptingPct > 0 ? '4px' : '0' }} />
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Attempting: {campaign.stats?.attempting || 0}</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="h-2 rounded-sm bg-emerald-500" style={{ width: `${engagedPct}%`, minWidth: engagedPct > 0 ? '4px' : '0' }} />
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Engaged: {campaign.stats?.engaged || 0}</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="h-2 rounded-sm bg-red-400" style={{ width: `${dncPct}%`, minWidth: dncPct > 0 ? '4px' : '0' }} />
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>DNC: {campaign.stats?.dnc || 0}</p></TooltipContent>
+                                </Tooltip>
+                              </div>
+                            </TableCell>
+                            <TableCell onClick={() => setSelectedCampaign(campaign)} className="text-sm text-muted-foreground">
+                              {formatDistanceToNow(new Date(campaign.createdAt), { addSuffix: true })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                {campaign.status === "active" && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 hover:bg-amber-500/10"
+                                        onClick={(e) => { e.stopPropagation(); pauseMutation.mutate(campaign.id); }}
+                                        disabled={pauseMutation.isPending}
+                                        data-testid={`button-pause-${campaign.id}`}
+                                      >
+                                        <Pause className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Pause</p></TooltipContent>
+                                  </Tooltip>
+                                )}
+                                {campaign.status === "paused" && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 hover:bg-emerald-500/10"
+                                        onClick={(e) => { e.stopPropagation(); resumeMutation.mutate(campaign.id); }}
+                                        disabled={resumeMutation.isPending}
+                                        data-testid={`button-resume-${campaign.id}`}
+                                      >
+                                        <Play className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Resume</p></TooltipContent>
+                                  </Tooltip>
+                                )}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => setSelectedCampaign(campaign)}
+                                      data-testid={`button-view-${campaign.id}`}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Open</p></TooltipContent>
+                                </Tooltip>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedCampaign(null)} data-testid="button-back" className="gap-1.5">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                <Separator orientation="vertical" className="h-6" />
+                <h2 className="text-lg font-semibold" data-testid="text-campaign-detail-name">{selectedCampaign.name}</h2>
+                {getStatusBadge(selectedCampaign.status)}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      onClick={() => runOrchestratorMutation.mutate()}
+                      disabled={runOrchestratorMutation.isPending}
+                      data-testid="button-run-orchestrator"
+                      className="gap-1.5"
+                    >
+                      {runOrchestratorMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <Zap className="h-4 w-4" />}
+                      Run Orchestrator
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Process pending contacts now</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => runJobsMutation.mutate()}
+                      disabled={runJobsMutation.isPending}
+                      data-testid="button-run-jobs"
+                      className="gap-1.5"
+                    >
+                      {runJobsMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <Activity className="h-4 w-4" />}
+                      Run Jobs
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Execute queued jobs now</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => requeueFailedMutation.mutate()}
+                      disabled={requeueFailedMutation.isPending}
+                      data-testid="button-requeue-failed"
+                      className="gap-1.5"
+                    >
+                      {requeueFailedMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <RotateCcw className="h-4 w-4" />}
+                      Requeue Failed
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Retry failed jobs</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("Stop all active contacts in this campaign? They will be set to DO_NOT_CONTACT.")) {
+                          stopAllContactsMutation.mutate();
+                        }
+                      }}
+                      disabled={stopAllContactsMutation.isPending}
+                      data-testid="button-stop-all-contacts"
+                    >
+                      {stopAllContactsMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <StopCircle className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Stop all contacts</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("EMERGENCY STOP: This will pause the campaign and cancel all queued jobs. Continue?")) {
+                          emergencyStopMutation.mutate();
+                        }
+                      }}
+                      disabled={emergencyStopMutation.isPending}
+                      data-testid="button-emergency-stop"
+                    >
+                      {emergencyStopMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <AlertCircle className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Emergency Stop</p></TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
 
-                  {metricsData.voice && metricsData.voice.callPlaced > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="font-medium flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        Voice Performance
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                        <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-2xl font-bold" data-testid="text-voice-placed">{metricsData.voice.callPlaced}</div>
-                          <div className="text-sm text-muted-foreground">Calls Placed</div>
-                        </div>
-                        <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-2xl font-bold text-green-600" data-testid="text-voice-answered">{metricsData.voice.callAnswered}</div>
-                          <div className="text-sm text-muted-foreground">Answered</div>
-                        </div>
-                        <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-2xl font-bold text-yellow-600" data-testid="text-voice-noanswer">{metricsData.voice.callNoAnswer}</div>
-                          <div className="text-sm text-muted-foreground">No Answer</div>
-                        </div>
-                        <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-2xl font-bold text-orange-600" data-testid="text-voice-busy">{metricsData.voice.callBusy}</div>
-                          <div className="text-sm text-muted-foreground">Busy</div>
-                        </div>
-                        <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-2xl font-bold text-red-600" data-testid="text-voice-failed">{metricsData.voice.callFailed}</div>
-                          <div className="text-sm text-muted-foreground">Failed</div>
-                        </div>
-                        <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-2xl font-bold text-purple-600" data-testid="text-voice-voicemail">{metricsData.voice.voicemailDropped}</div>
-                          <div className="text-sm text-muted-foreground">Voicemails</div>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="text-center p-2 border rounded">
-                          <div className="text-lg font-semibold text-green-600" data-testid="text-voice-answer-rate">{(metricsData.voice.rates.answerRate * 100).toFixed(1)}%</div>
-                          <div className="text-xs text-muted-foreground">Answer Rate</div>
-                        </div>
-                        <div className="text-center p-2 border rounded">
-                          <div className="text-lg font-semibold text-yellow-600" data-testid="text-voice-noanswer-rate">{(metricsData.voice.rates.noAnswerRate * 100).toFixed(1)}%</div>
-                          <div className="text-xs text-muted-foreground">No Answer Rate</div>
-                        </div>
-                        <div className="text-center p-2 border rounded">
-                          <div className="text-lg font-semibold text-orange-600" data-testid="text-voice-busy-rate">{(metricsData.voice.rates.busyRate * 100).toFixed(1)}%</div>
-                          <div className="text-xs text-muted-foreground">Busy Rate</div>
-                        </div>
-                        <div className="text-center p-2 border rounded">
-                          <div className="text-lg font-semibold text-red-600" data-testid="text-voice-failure-rate">{(metricsData.voice.rates.callFailureRate * 100).toFixed(1)}%</div>
-                          <div className="text-xs text-muted-foreground">Call Failure Rate</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="overview" className="gap-1.5">
+                  <Settings className="h-3.5 w-3.5" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="contacts" className="gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  Contacts
+                </TabsTrigger>
+                <TabsTrigger value="tasks" className="gap-1.5">
+                  <ListTodo className="h-3.5 w-3.5" />
+                  Tasks
+                </TabsTrigger>
+                <TabsTrigger value="metrics" className="gap-1.5">
+                  <Activity className="h-3.5 w-3.5" />
+                  Metrics
+                </TabsTrigger>
+                <TabsTrigger value="auto-tune" className="gap-1.5">
+                  <Sliders className="h-3.5 w-3.5" />
+                  Auto-Tune
+                </TabsTrigger>
+              </TabsList>
 
-                  {Object.keys(metricsData.breakdownByChannel).length > 0 && (
-                    <div>
-                      <h4 className="font-medium mb-2">Breakdown by Channel</h4>
+              <TabsContent value="overview" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                  {[
+                    { label: "Total", value: selectedCampaign.stats?.total || 0, color: "" },
+                    { label: "New", value: selectedCampaign.stats?.new || 0, color: "text-blue-600" },
+                    { label: "Attempting", value: selectedCampaign.stats?.attempting || 0, color: "text-amber-600" },
+                    { label: "Engaged", value: selectedCampaign.stats?.engaged || 0, color: "text-emerald-600" },
+                    { label: "Stopped", value: selectedCampaign.stats?.stopped || 0, color: "text-gray-600" },
+                    { label: "DNC", value: selectedCampaign.stats?.dnc || 0, color: "text-red-600" },
+                    { label: "Unreachable", value: selectedCampaign.stats?.unreachable || 0, color: "text-orange-600" },
+                  ].map((stat) => (
+                    <Card key={stat.label} className="p-3 text-center transition-all duration-200 hover:shadow-md">
+                      <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+                      <div className="text-xs text-muted-foreground">{stat.label}</div>
+                    </Card>
+                  ))}
+                </div>
+
+                <Card>
+                  <CardHeader className="py-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base" data-testid="text-health-title">System Health</CardTitle>
+                      <Button variant="ghost" size="sm" onClick={() => refetchHealth()} disabled={healthLoading} data-testid="button-refresh-health" className="h-8 w-8 p-0">
+                        <RefreshCw className={`h-4 w-4 ${healthLoading ? 'animate-spin' : ''}`} />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {healthLoading && !healthData ? (
+                      <div className="grid grid-cols-4 gap-3">
+                        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+                      </div>
+                    ) : healthData ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="text-center p-3 bg-muted/50 rounded-lg">
+                            <div className="text-2xl font-bold" data-testid="text-health-queued">{healthData.jobsQueued}</div>
+                            <div className="text-xs text-muted-foreground">Queued</div>
+                          </div>
+                          <div className="text-center p-3 bg-muted/50 rounded-lg">
+                            <div className="text-2xl font-bold text-blue-600" data-testid="text-health-processing">{healthData.jobsProcessing}</div>
+                            <div className="text-xs text-muted-foreground">Processing</div>
+                          </div>
+                          <div className="text-center p-3 bg-muted/50 rounded-lg">
+                            <div className="text-2xl font-bold text-red-600" data-testid="text-health-failed">{healthData.jobsFailed}</div>
+                            <div className="text-xs text-muted-foreground">Failed</div>
+                          </div>
+                          <div className="text-center p-3 bg-muted/50 rounded-lg relative">
+                            <div className="text-2xl font-bold" data-testid="text-health-stuck">{healthData.stuckProcessingVoice}</div>
+                            <div className="text-xs text-muted-foreground">Stuck Voice</div>
+                            {healthData.stuckProcessingVoice > 0 && (
+                              <AlertTriangle className="h-4 w-4 text-orange-500 absolute top-2 right-2" />
+                            )}
+                          </div>
+                        </div>
+                        {healthData.stuckProcessingVoice > 0 && (
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => reapProcessingMutation.mutate(true)} disabled={reapProcessingMutation.isPending} data-testid="button-reap-dry-run">
+                              Preview Reap
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={() => { if (confirm("This will mark stuck voice jobs as failed. Continue?")) reapProcessingMutation.mutate(false); }} disabled={reapProcessingMutation.isPending} data-testid="button-reap-stuck">
+                              Reap Stuck Jobs
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">Unable to load health data</div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base" data-testid="text-job-health-title">Job Health</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {jobMetricsLoading ? (
+                      <div className="grid grid-cols-5 gap-3">
+                        {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+                      </div>
+                    ) : jobMetricsData ? (
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-yellow-600" data-testid="text-jobs-queued">{jobMetricsData.queuedCount}</div>
+                          <div className="text-xs text-muted-foreground">Queued</div>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-blue-600" data-testid="text-jobs-processing">{jobMetricsData.processingCount}</div>
+                          <div className="text-xs text-muted-foreground">Processing</div>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-red-600" data-testid="text-jobs-failed">{jobMetricsData.failedCount}</div>
+                          <div className="text-xs text-muted-foreground">Failed</div>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold" data-testid="text-jobs-avgretries">{jobMetricsData.avgRetryCount}</div>
+                          <div className="text-xs text-muted-foreground">Avg Retries</div>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold" data-testid="text-jobs-oldest">
+                            {jobMetricsData.oldestQueuedAgeSec !== null ? `${Math.round(jobMetricsData.oldestQueuedAgeSec / 60)}m` : "-"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Oldest Queued</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">No job metrics available</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="contacts" className="mt-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between py-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Contacts ({contactsData?.contacts?.length || 0})
+                    </CardTitle>
+                    <Select value={stateFilter} onValueChange={setStateFilter}>
+                      <SelectTrigger className="w-40" data-testid="select-state-filter">
+                        <SelectValue placeholder="Filter by state" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All States</SelectItem>
+                        <SelectItem value="NEW">New</SelectItem>
+                        <SelectItem value="ATTEMPTING">Attempting</SelectItem>
+                        <SelectItem value="ENGAGED">Engaged</SelectItem>
+                        <SelectItem value="STOPPED">Stopped</SelectItem>
+                        <SelectItem value="DO_NOT_CONTACT">Do Not Contact</SelectItem>
+                        <SelectItem value="UNREACHABLE">Unreachable</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {contactsLoading ? (
+                      <div className="p-4 space-y-2">
+                        {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12" />)}
+                      </div>
+                    ) : !contactsData?.contacts || contactsData.contacts.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">No contacts found</p>
+                    ) : (
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Channel</TableHead>
-                            <TableHead className="text-right">Attempts</TableHead>
-                            <TableHead className="text-right">Delivered</TableHead>
-                            <TableHead className="text-right">Replied</TableHead>
-                            <TableHead className="text-right">Failed</TableHead>
-                            <TableHead className="text-right">Final</TableHead>
-                            <TableHead className="text-right">Opt-out</TableHead>
+                            <TableHead>Contact</TableHead>
+                            <TableHead>State</TableHead>
+                            <TableHead>Next Action</TableHead>
+                            <TableHead>Attempts</TableHead>
+                            <TableHead>Fatigue</TableHead>
+                            <TableHead>Updated</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {Object.entries(metricsData.breakdownByChannel).map(([channel, stats]) => (
-                            <TableRow key={channel} data-testid={`row-channel-${channel}`}>
-                              <TableCell className="font-medium capitalize">{channel}</TableCell>
-                              <TableCell className="text-right">{stats.attempts}</TableCell>
-                              <TableCell className="text-right">{stats.delivered}</TableCell>
-                              <TableCell className="text-right">{stats.replied}</TableCell>
-                              <TableCell className="text-right">{stats.failed}</TableCell>
-                              <TableCell className="text-right text-red-600">{stats.failedFinal}</TableCell>
-                              <TableCell className="text-right">{stats.optOut}</TableCell>
+                          {contactsData.contacts.map((contact) => (
+                            <TableRow 
+                              key={contact.id} 
+                              className="cursor-pointer hover:bg-muted/50 transition-colors"
+                              onClick={() => { setSelectedContact(contact); setTimelineOpen(true); }}
+                              data-testid={`row-contact-${contact.id}`}
+                            >
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium" data-testid={`text-contact-name-${contact.id}`}>
+                                    {contact.firstName} {contact.lastName}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {contact.phone || contact.email || "No contact info"}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>{getStateBadge(contact.state)}</TableCell>
+                              <TableCell>
+                                {contact.nextActionAt ? (
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <Clock className="h-3 w-3" />
+                                    {format(new Date(contact.nextActionAt), "MMM d, h:mm a")}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>{contact.attemptsTotal || 0}</TableCell>
+                              <TableCell>{contact.fatigueScore?.toFixed(2) || "-"}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(contact.updatedAt), { addSuffix: true })}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
-                  )}
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                  {metricsData.metricsByVariant && Object.keys(metricsData.metricsByVariant).length > 0 && (
-                    <div>
-                      <h4 className="font-medium mb-2">Metrics by Variant (A/B Test)</h4>
-                      {(() => {
-                        const hasVoiceData = Object.values(metricsData.metricsByVariant).some(v => v.voice && v.voice.callPlaced > 0);
-                        return (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Variant</TableHead>
-                                <TableHead className="text-right">Attempts</TableHead>
-                                <TableHead className="text-right">Delivered</TableHead>
-                                <TableHead className="text-right">Replied</TableHead>
-                                <TableHead className="text-right">Opt-out</TableHead>
-                                <TableHead className="text-right">Delivery %</TableHead>
-                                <TableHead className="text-right">Reply %</TableHead>
-                                {hasVoiceData && <TableHead className="text-right">Calls</TableHead>}
-                                {hasVoiceData && <TableHead className="text-right">Answer %</TableHead>}
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {Object.entries(metricsData.metricsByVariant).map(([variant, stats]) => (
-                                <TableRow key={variant} data-testid={`row-variant-${variant}`}>
-                                  <TableCell className="font-medium capitalize">{variant}</TableCell>
-                                  <TableCell className="text-right">{stats.attempts}</TableCell>
-                                  <TableCell className="text-right">{stats.delivered}</TableCell>
-                                  <TableCell className="text-right">{stats.replied}</TableCell>
-                                  <TableCell className="text-right">{stats.optOut}</TableCell>
-                                  <TableCell className="text-right">{(stats.rates.deliveryRate * 100).toFixed(1)}%</TableCell>
-                                  <TableCell className="text-right">{(stats.rates.replyRate * 100).toFixed(1)}%</TableCell>
-                                  {hasVoiceData && <TableCell className="text-right">{stats.voice?.callPlaced || 0}</TableCell>}
-                                  {hasVoiceData && <TableCell className="text-right text-green-600">{stats.voice ? (stats.voice.answerRate * 100).toFixed(1) + '%' : '-'}</TableCell>}
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No metrics available</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle data-testid="text-job-health-title">Job Health</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {jobMetricsLoading ? (
-                <LoadingSpinner fullScreen={false} message="Loading job health..." />
-              ) : jobMetricsData ? (
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-2xl font-bold text-yellow-600" data-testid="text-jobs-queued">{jobMetricsData.queuedCount}</div>
-                    <div className="text-sm text-muted-foreground">Queued</div>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600" data-testid="text-jobs-processing">{jobMetricsData.processingCount}</div>
-                    <div className="text-sm text-muted-foreground">Processing</div>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600" data-testid="text-jobs-failed">{jobMetricsData.failedCount}</div>
-                    <div className="text-sm text-muted-foreground">Failed</div>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-2xl font-bold" data-testid="text-jobs-avgretries">{jobMetricsData.avgRetryCount}</div>
-                    <div className="text-sm text-muted-foreground">Avg Retries</div>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-2xl font-bold" data-testid="text-jobs-oldest">
-                      {jobMetricsData.oldestQueuedAgeSec !== null 
-                        ? `${Math.round(jobMetricsData.oldestQueuedAgeSec / 60)}m` 
-                        : "-"}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Oldest Queued</div>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No job metrics available</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2" data-testid="text-auto-tune-title">
-                <Sliders className="h-5 w-5" />
-                Auto-Tune (A/B Optimization)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {autoTuneLoading ? (
-                <LoadingSpinner fullScreen={false} message="Loading auto-tune..." />
-              ) : autoTuneData && 'id' in autoTuneData ? (
-                <div className="space-y-4">
-                  {autoTuneData.coverageWarnings && autoTuneData.coverageWarnings.length > 0 && (
-                    <Alert variant="default">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>Coverage Warnings:</strong>
-                        <ul className="mt-1 list-disc list-inside">
-                          {autoTuneData.coverageWarnings.map((w, i) => (
-                            <li key={i}>{w.variant}: {w.message}</li>
-                          ))}
-                        </ul>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-medium mb-2">Recommended Allocation</h4>
-                      <div className="space-y-1">
-                        {Object.entries(autoTuneData.allocationsJson).map(([variant, alloc]) => (
-                          <div key={variant} className="flex justify-between text-sm" data-testid={`text-alloc-${variant}`}>
-                            <span className="capitalize">{variant}</span>
-                            <span className="font-mono">{(alloc * 100).toFixed(0)}%</span>
-                          </div>
-                        ))}
+              <TabsContent value="tasks" className="mt-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between py-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ListTodo className="h-4 w-4" />
+                      Tasks ({tasksData?.tasks?.length || 0})
+                    </CardTitle>
+                    <Select value={taskStatusFilter} onValueChange={setTaskStatusFilter}>
+                      <SelectTrigger className="w-28" data-testid="select-task-status-filter">
+                        <SelectValue placeholder="Filter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="done">Done</SelectItem>
+                        <SelectItem value="all">All</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {tasksLoading ? (
+                      <div className="p-4 space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12" />)}
                       </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium mb-2">Variant Metrics</h4>
-                      <div className="space-y-1">
-                        {autoTuneData.metricsSnapshotJson.map(m => (
-                          <div key={m.variant} className="flex justify-between text-sm">
-                            <span className="capitalize">{m.variant}</span>
-                            <span className="text-muted-foreground">
-                              {m.attempts} attempts, reward: {m.reward.toFixed(1)}
+                    ) : !tasksData?.tasks || tasksData.tasks.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">No tasks found</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Contact Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Source Intent</TableHead>
+                            <TableHead>Due At</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {tasksData.tasks.map((item) => (
+                            <TableRow key={item.task.id} className="hover:bg-muted/50 transition-colors" data-testid={`row-task-${item.task.id}`}>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{item.contact.firstName} {item.contact.lastName}</div>
+                                  <div className="text-xs text-muted-foreground">{item.contact.phone || item.contact.email || "No contact info"}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="capitalize text-xs">
+                                  {item.task.type === "callback" ? (
+                                    <span className="flex items-center gap-1"><Phone className="h-3 w-3" />Callback</span>
+                                  ) : (
+                                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Follow-up</span>
+                                  )}
+                                </Badge>
+                              </TableCell>
+                              <TableCell><span className="text-xs">{item.task.sourceIntent || "-"}</span></TableCell>
+                              <TableCell>
+                                {item.task.dueAt ? (
+                                  <div className="flex items-center gap-1 text-xs"><Clock className="h-3 w-3" />{format(new Date(item.task.dueAt), "MMM d, h:mm a")}</div>
+                                ) : <span className="text-muted-foreground">-</span>}
+                              </TableCell>
+                              <TableCell>
+                                {item.task.status === "open" ? (
+                                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 text-xs">Open</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-green-100 text-green-800 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Done</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {item.task.status === "open" && (
+                                  <div className="flex gap-1">
+                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => completeTaskMutation.mutate(item.task.id)} disabled={completeTaskMutation.isPending} data-testid={`button-complete-task-${item.task.id}`}>
+                                      <CheckCircle className="h-3 w-3 mr-1" />Complete
+                                    </Button>
+                                    <Button size="sm" className="h-7 text-xs" onClick={() => markBookedMutation.mutate(item.campaignContact.id)} disabled={markBookedMutation.isPending} data-testid={`button-mark-booked-${item.campaignContact.id}`}>
+                                      Mark Booked
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="metrics" className="mt-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between py-3">
+                    <CardTitle className="text-base" data-testid="text-metrics-title">Metrics</CardTitle>
+                    <Select value={metricsWindow} onValueChange={setMetricsWindow}>
+                      <SelectTrigger className="w-32" data-testid="select-metrics-window">
+                        <SelectValue placeholder="Window" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7d">Last 7 days</SelectItem>
+                        <SelectItem value="30d">Last 30 days</SelectItem>
+                        <SelectItem value="all">All time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </CardHeader>
+                  <CardContent>
+                    {metricsLoading ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-7 gap-3">{[...Array(7)].map((_, i) => <Skeleton key={i} className="h-16" />)}</div>
+                        <div className="grid grid-cols-5 gap-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+                      </div>
+                    ) : metricsData ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                          <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold" data-testid="text-metric-attempts">{metricsData.attempts}</div><div className="text-xs text-muted-foreground">Attempts</div></div>
+                          <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-green-600" data-testid="text-metric-delivered">{metricsData.delivered}</div><div className="text-xs text-muted-foreground">Delivered</div></div>
+                          <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-blue-600" data-testid="text-metric-replied">{metricsData.replied}</div><div className="text-xs text-muted-foreground">Replies</div></div>
+                          <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-orange-600" data-testid="text-metric-optout">{metricsData.optOut}</div><div className="text-xs text-muted-foreground">Opt-outs</div></div>
+                          <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-red-400" data-testid="text-metric-failed">{metricsData.failed}</div><div className="text-xs text-muted-foreground">Failed (All)</div></div>
+                          <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-red-600" data-testid="text-metric-failed-final">{metricsData.failedFinal}</div><div className="text-xs text-muted-foreground">Failed (Final)</div></div>
+                          <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-purple-600" data-testid="text-metric-avg-reply">{metricsData.avgTimeToReplySeconds !== null ? `${Math.round(metricsData.avgTimeToReplySeconds / 60)}m` : "-"}</div><div className="text-xs text-muted-foreground">Avg Reply Time</div></div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                          <div className="text-center p-2 border rounded"><div className="text-lg font-semibold" data-testid="text-rate-delivery">{(metricsData.rates.deliveryRate * 100).toFixed(1)}%</div><div className="text-xs text-muted-foreground">Delivery Rate</div></div>
+                          <div className="text-center p-2 border rounded"><div className="text-lg font-semibold" data-testid="text-rate-reply">{(metricsData.rates.replyRate * 100).toFixed(1)}%</div><div className="text-xs text-muted-foreground">Reply Rate</div></div>
+                          <div className="text-center p-2 border rounded"><div className="text-lg font-semibold" data-testid="text-rate-optout">{(metricsData.rates.optOutRate * 100).toFixed(1)}%</div><div className="text-xs text-muted-foreground">Opt-out Rate</div></div>
+                          <div className="text-center p-2 border rounded"><div className="text-lg font-semibold" data-testid="text-rate-failure">{(metricsData.rates.failureRate * 100).toFixed(1)}%</div><div className="text-xs text-muted-foreground">Failure Rate (All)</div></div>
+                          <div className="text-center p-2 border rounded"><div className="text-lg font-semibold text-red-600" data-testid="text-rate-failure-final">{(metricsData.rates.failureRateFinal * 100).toFixed(1)}%</div><div className="text-xs text-muted-foreground">Failure Rate (Final)</div></div>
+                        </div>
+                        {metricsData.voice && metricsData.voice.callPlaced > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="font-medium flex items-center gap-2"><Phone className="h-4 w-4" />Voice Performance</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                              <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold" data-testid="text-voice-placed">{metricsData.voice.callPlaced}</div><div className="text-xs text-muted-foreground">Calls Placed</div></div>
+                              <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-green-600" data-testid="text-voice-answered">{metricsData.voice.callAnswered}</div><div className="text-xs text-muted-foreground">Answered</div></div>
+                              <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-yellow-600" data-testid="text-voice-noanswer">{metricsData.voice.callNoAnswer}</div><div className="text-xs text-muted-foreground">No Answer</div></div>
+                              <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-orange-600" data-testid="text-voice-busy">{metricsData.voice.callBusy}</div><div className="text-xs text-muted-foreground">Busy</div></div>
+                              <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-red-600" data-testid="text-voice-failed">{metricsData.voice.callFailed}</div><div className="text-xs text-muted-foreground">Failed</div></div>
+                              <div className="text-center p-3 bg-muted/50 rounded-lg"><div className="text-2xl font-bold text-purple-600" data-testid="text-voice-voicemail">{metricsData.voice.voicemailDropped}</div><div className="text-xs text-muted-foreground">Voicemails</div></div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <div className="text-center p-2 border rounded"><div className="text-lg font-semibold text-green-600" data-testid="text-voice-answer-rate">{(metricsData.voice.rates.answerRate * 100).toFixed(1)}%</div><div className="text-xs text-muted-foreground">Answer Rate</div></div>
+                              <div className="text-center p-2 border rounded"><div className="text-lg font-semibold text-yellow-600" data-testid="text-voice-noanswer-rate">{(metricsData.voice.rates.noAnswerRate * 100).toFixed(1)}%</div><div className="text-xs text-muted-foreground">No Answer Rate</div></div>
+                              <div className="text-center p-2 border rounded"><div className="text-lg font-semibold text-orange-600" data-testid="text-voice-busy-rate">{(metricsData.voice.rates.busyRate * 100).toFixed(1)}%</div><div className="text-xs text-muted-foreground">Busy Rate</div></div>
+                              <div className="text-center p-2 border rounded"><div className="text-lg font-semibold text-red-600" data-testid="text-voice-failure-rate">{(metricsData.voice.rates.callFailureRate * 100).toFixed(1)}%</div><div className="text-xs text-muted-foreground">Call Failure Rate</div></div>
+                            </div>
+                          </div>
+                        )}
+                        {Object.keys(metricsData.breakdownByChannel).length > 0 && (
+                          <div>
+                            <h4 className="font-medium mb-2">Breakdown by Channel</h4>
+                            <Table>
+                              <TableHeader><TableRow><TableHead>Channel</TableHead><TableHead className="text-right">Attempts</TableHead><TableHead className="text-right">Delivered</TableHead><TableHead className="text-right">Replied</TableHead><TableHead className="text-right">Failed</TableHead><TableHead className="text-right">Final</TableHead><TableHead className="text-right">Opt-out</TableHead></TableRow></TableHeader>
+                              <TableBody>
+                                {Object.entries(metricsData.breakdownByChannel).map(([channel, stats]) => (
+                                  <TableRow key={channel} data-testid={`row-channel-${channel}`}>
+                                    <TableCell className="font-medium capitalize">{channel}</TableCell>
+                                    <TableCell className="text-right">{stats.attempts}</TableCell>
+                                    <TableCell className="text-right">{stats.delivered}</TableCell>
+                                    <TableCell className="text-right">{stats.replied}</TableCell>
+                                    <TableCell className="text-right">{stats.failed}</TableCell>
+                                    <TableCell className="text-right text-red-600">{stats.failedFinal}</TableCell>
+                                    <TableCell className="text-right">{stats.optOut}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                        {metricsData.metricsByVariant && Object.keys(metricsData.metricsByVariant).length > 0 && (
+                          <div>
+                            <h4 className="font-medium mb-2">Metrics by Variant (A/B Test)</h4>
+                            {(() => {
+                              const hasVoiceData = Object.values(metricsData.metricsByVariant).some(v => v.voice && v.voice.callPlaced > 0);
+                              return (
+                                <Table>
+                                  <TableHeader><TableRow><TableHead>Variant</TableHead><TableHead className="text-right">Attempts</TableHead><TableHead className="text-right">Delivered</TableHead><TableHead className="text-right">Replied</TableHead><TableHead className="text-right">Opt-out</TableHead><TableHead className="text-right">Delivery %</TableHead><TableHead className="text-right">Reply %</TableHead>{hasVoiceData && <TableHead className="text-right">Calls</TableHead>}{hasVoiceData && <TableHead className="text-right">Answer %</TableHead>}</TableRow></TableHeader>
+                                  <TableBody>
+                                    {Object.entries(metricsData.metricsByVariant).map(([variant, stats]) => (
+                                      <TableRow key={variant} data-testid={`row-variant-${variant}`}>
+                                        <TableCell className="font-medium capitalize">{variant}</TableCell>
+                                        <TableCell className="text-right">{stats.attempts}</TableCell>
+                                        <TableCell className="text-right">{stats.delivered}</TableCell>
+                                        <TableCell className="text-right">{stats.replied}</TableCell>
+                                        <TableCell className="text-right">{stats.optOut}</TableCell>
+                                        <TableCell className="text-right">{(stats.rates.deliveryRate * 100).toFixed(1)}%</TableCell>
+                                        <TableCell className="text-right">{(stats.rates.replyRate * 100).toFixed(1)}%</TableCell>
+                                        {hasVoiceData && <TableCell className="text-right">{stats.voice?.callPlaced || 0}</TableCell>}
+                                        {hasVoiceData && <TableCell className="text-right text-green-600">{stats.voice ? (stats.voice.answerRate * 100).toFixed(1) + '%' : '-'}</TableCell>}
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">No metrics available</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="auto-tune" className="mt-4">
+                <Card>
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base flex items-center gap-2" data-testid="text-auto-tune-title">
+                      <Sliders className="h-4 w-4" />
+                      Auto-Tune (A/B Optimization)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {autoTuneLoading ? (
+                      <div className="space-y-3">
+                        <Skeleton className="h-16" />
+                        <div className="grid grid-cols-2 gap-4">
+                          <Skeleton className="h-24" />
+                          <Skeleton className="h-24" />
+                        </div>
+                      </div>
+                    ) : autoTuneData && 'id' in autoTuneData ? (
+                      <div className="space-y-4">
+                        {autoTuneData.coverageWarnings && autoTuneData.coverageWarnings.length > 0 && (
+                          <Alert variant="default">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                              <strong>Coverage Warnings:</strong>
+                              <ul className="mt-1 list-disc list-inside">
+                                {autoTuneData.coverageWarnings.map((w, i) => (
+                                  <li key={i}>{w.variant}: {w.message}</li>
+                                ))}
+                              </ul>
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="font-medium mb-2">Recommended Allocation</h4>
+                            <div className="space-y-1">
+                              {Object.entries(autoTuneData.allocationsJson).map(([variant, alloc]) => (
+                                <div key={variant} className="flex justify-between text-sm" data-testid={`text-alloc-${variant}`}>
+                                  <span className="capitalize">{variant}</span>
+                                  <span className="font-mono">{(alloc * 100).toFixed(0)}%</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-medium mb-2">Variant Metrics</h4>
+                            <div className="space-y-1">
+                              {autoTuneData.metricsSnapshotJson.map(m => (
+                                <div key={m.variant} className="flex justify-between text-sm">
+                                  <span className="capitalize">{m.variant}</span>
+                                  <span className="text-muted-foreground">{m.attempts} attempts, reward: {m.reward.toFixed(1)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Computed: {format(new Date(autoTuneData.computedAt), "MMM d, h:mm a")} ({autoTuneData.window} window)
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => applyMutation.mutate({ snapshotId: autoTuneData.id, mode: "replace" })} disabled={applyMutation.isPending} data-testid="button-apply-replace">
+                            {applyMutation.isPending ? "Applying..." : "Apply (Replace)"}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => applyMutation.mutate({ snapshotId: autoTuneData.id, mode: "blend", blendFactor: 0.5 })} disabled={applyMutation.isPending} data-testid="button-apply-blend">
+                            Apply (50% Blend)
+                          </Button>
+                          {lastApplyData && 'id' in lastApplyData && (
+                            <Button size="sm" variant="ghost" onClick={() => rollbackMutation.mutate(lastApplyData.id)} disabled={rollbackMutation.isPending} data-testid="button-rollback">
+                              <RotateCcw className="h-4 w-4 mr-1" />
+                              {rollbackMutation.isPending ? "Rolling back..." : "Rollback"}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">No auto-tune recommendations available</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
+
+        <Sheet open={timelineOpen} onOpenChange={setTimelineOpen}>
+          <SheetContent className="w-[500px] sm:max-w-[500px]">
+            <SheetHeader>
+              <SheetTitle className="flex items-center justify-between">
+                <span data-testid="text-timeline-title">
+                  {selectedContact?.firstName} {selectedContact?.lastName} - Timeline
+                </span>
+                {selectedContact && !["DO_NOT_CONTACT", "STOPPED"].includes(selectedContact.state) && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => stopContactMutation.mutate(selectedContact.id)}
+                    disabled={stopContactMutation.isPending}
+                    data-testid="button-stop-contact"
+                  >
+                    <StopCircle className="h-4 w-4 mr-2" />
+                    Stop Contact
+                  </Button>
+                )}
+              </SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 space-y-2">
+              {selectedContact && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                  {getStateBadge(selectedContact.state)}
+                  <span>Attempts: {selectedContact.attemptsTotal || 0}</span>
+                  {selectedContact.stoppedReason && (
+                    <span>Reason: {selectedContact.stoppedReason}</span>
+                  )}
+                </div>
+              )}
+              <Separator />
+              <ScrollArea className="h-[calc(100vh-200px)]">
+                {timelineLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20" />)}
+                  </div>
+                ) : !timelineData?.timeline || timelineData.timeline.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No timeline events</p>
+                ) : (
+                  <div className="space-y-3 pr-4">
+                    {timelineData.timeline.map((item) => (
+                      <div
+                        key={`${item.type}-${item.id}`}
+                        className="border rounded-lg p-3 space-y-1 transition-colors hover:bg-muted/30"
+                        data-testid={`timeline-item-${item.id}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {item.type === "event" ? (
+                              <Badge variant="outline" className="text-xs">Event</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">Job</Badge>
+                            )}
+                            {getChannelIcon(item.channel)}
+                            <span className="font-medium text-sm">
+                              {item.type === "event" ? item.eventType : item.status}
                             </span>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-xs text-muted-foreground">
-                    Computed: {format(new Date(autoTuneData.computedAt), "MMM d, h:mm a")} ({autoTuneData.window} window)
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => applyMutation.mutate({ snapshotId: autoTuneData.id, mode: "replace" })}
-                      disabled={applyMutation.isPending}
-                      data-testid="button-apply-replace"
-                    >
-                      {applyMutation.isPending ? "Applying..." : "Apply (Replace)"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => applyMutation.mutate({ snapshotId: autoTuneData.id, mode: "blend", blendFactor: 0.5 })}
-                      disabled={applyMutation.isPending}
-                      data-testid="button-apply-blend"
-                    >
-                      Apply (50% Blend)
-                    </Button>
-                    {lastApplyData && 'id' in lastApplyData && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => rollbackMutation.mutate(lastApplyData.id)}
-                        disabled={rollbackMutation.isPending}
-                        data-testid="button-rollback"
-                      >
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        {rollbackMutation.isPending ? "Rolling back..." : "Rollback"}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No auto-tune recommendations available</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <ListTodo className="h-5 w-5" />
-                Tasks ({tasksData?.tasks?.length || 0})
-              </CardTitle>
-              <Select value={taskStatusFilter} onValueChange={setTaskStatusFilter}>
-                <SelectTrigger className="w-32" data-testid="select-task-status-filter">
-                  <SelectValue placeholder="Filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
-                  <SelectItem value="all">All</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardHeader>
-            <CardContent>
-              {tasksLoading ? (
-                <LoadingSpinner fullScreen={false} message="Loading tasks..." />
-              ) : !tasksData?.tasks || tasksData.tasks.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No tasks found</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Contact Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Source Intent</TableHead>
-                      <TableHead>Due At</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tasksData.tasks.map((item) => (
-                      <TableRow 
-                        key={item.task.id}
-                        data-testid={`row-task-${item.task.id}`}
-                      >
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {item.contact.firstName} {item.contact.lastName}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {item.contact.phone || item.contact.email || "No contact info"}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">
-                            {item.task.type === "callback" ? (
-                              <span className="flex items-center gap-1">
-                                <Phone className="h-3 w-3" />
-                                Callback
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                Follow-up
-                              </span>
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{item.task.sourceIntent || "-"}</span>
-                        </TableCell>
-                        <TableCell>
-                          {item.task.dueAt ? (
-                            <div className="flex items-center gap-1 text-sm">
-                              <Clock className="h-3 w-3" />
-                              {format(new Date(item.task.dueAt), "MMM d, h:mm a")}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {item.task.status === "open" ? (
-                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Open</Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-green-100 text-green-800">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Done
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {item.task.status === "open" && (
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => completeTaskMutation.mutate(item.task.id)}
-                                disabled={completeTaskMutation.isPending}
-                                data-testid={`button-complete-task-${item.task.id}`}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Complete
-                              </Button>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => markBookedMutation.mutate(item.campaignContact.id)}
-                                disabled={markBookedMutation.isPending}
-                                data-testid={`button-mark-booked-${item.campaignContact.id}`}
-                              >
-                                Mark Booked
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Contacts ({contactsData?.contacts?.length || 0})
-              </CardTitle>
-              <Select value={stateFilter} onValueChange={setStateFilter}>
-                <SelectTrigger className="w-48" data-testid="select-state-filter">
-                  <SelectValue placeholder="Filter by state" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All States</SelectItem>
-                  <SelectItem value="NEW">New</SelectItem>
-                  <SelectItem value="ATTEMPTING">Attempting</SelectItem>
-                  <SelectItem value="ENGAGED">Engaged</SelectItem>
-                  <SelectItem value="STOPPED">Stopped</SelectItem>
-                  <SelectItem value="DO_NOT_CONTACT">Do Not Contact</SelectItem>
-                  <SelectItem value="UNREACHABLE">Unreachable</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardHeader>
-            <CardContent>
-              {contactsLoading ? (
-                <LoadingSpinner fullScreen={false} message="Loading contacts..." />
-              ) : !contactsData?.contacts || contactsData.contacts.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No contacts found</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>State</TableHead>
-                      <TableHead>Next Action</TableHead>
-                      <TableHead>Attempts</TableHead>
-                      <TableHead>Fatigue</TableHead>
-                      <TableHead>Updated</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {contactsData.contacts.map((contact) => (
-                      <TableRow 
-                        key={contact.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => { setSelectedContact(contact); setTimelineOpen(true); }}
-                        data-testid={`row-contact-${contact.id}`}
-                      >
-                        <TableCell>
-                          <div>
-                            <div className="font-medium" data-testid={`text-contact-name-${contact.id}`}>
-                              {contact.firstName} {contact.lastName}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {contact.phone || contact.email || "No contact info"}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStateBadge(contact.state)}</TableCell>
-                        <TableCell>
-                          {contact.nextActionAt ? (
-                            <div className="flex items-center gap-1 text-sm">
-                              <Clock className="h-3 w-3" />
-                              {format(new Date(contact.nextActionAt), "MMM d, h:mm a")}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{contact.attemptsTotal || 0}</TableCell>
-                        <TableCell>{contact.fatigueScore?.toFixed(2) || "-"}</TableCell>
-                        <TableCell>
-                          {formatDistanceToNow(new Date(contact.updatedAt), { addSuffix: true })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      <Sheet open={timelineOpen} onOpenChange={setTimelineOpen}>
-        <SheetContent className="w-[500px] sm:max-w-[500px]">
-          <SheetHeader>
-            <SheetTitle className="flex items-center justify-between">
-              <span data-testid="text-timeline-title">
-                {selectedContact?.firstName} {selectedContact?.lastName} - Timeline
-              </span>
-              {selectedContact && !["DO_NOT_CONTACT", "STOPPED"].includes(selectedContact.state) && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => stopContactMutation.mutate(selectedContact.id)}
-                  disabled={stopContactMutation.isPending}
-                  data-testid="button-stop-contact"
-                >
-                  <StopCircle className="h-4 w-4 mr-2" />
-                  Stop Contact
-                </Button>
-              )}
-            </SheetTitle>
-          </SheetHeader>
-          
-          <div className="mt-4 space-y-2">
-            {selectedContact && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                {getStateBadge(selectedContact.state)}
-                <span>Attempts: {selectedContact.attemptsTotal || 0}</span>
-                {selectedContact.stoppedReason && (
-                  <span>Reason: {selectedContact.stoppedReason}</span>
-                )}
-              </div>
-            )}
-            
-            <Separator />
-            
-            <ScrollArea className="h-[calc(100vh-200px)]">
-              {timelineLoading ? (
-                <LoadingSpinner fullScreen={false} message="Loading timeline..." />
-              ) : !timelineData?.timeline || timelineData.timeline.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No timeline events</p>
-              ) : (
-                <div className="space-y-3 pr-4">
-                  {timelineData.timeline.map((item) => (
-                    <div
-                      key={`${item.type}-${item.id}`}
-                      className="border rounded-lg p-3 space-y-1"
-                      data-testid={`timeline-item-${item.id}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {item.type === "event" ? (
-                            <Badge variant="outline" className="text-xs">Event</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">Job</Badge>
-                          )}
-                          {getChannelIcon(item.channel)}
-                          <span className="font-medium text-sm">
-                            {item.type === "event" ? item.eventType : item.status}
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(item.createdAt), "MMM d, h:mm a")}
                           </span>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(item.createdAt), "MMM d, h:mm a")}
-                        </span>
+                        {item.type === "event" && item.payload && (
+                          <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2 mt-1">
+                            {typeof item.payload === "object" 
+                              ? JSON.stringify(item.payload).substring(0, 100) 
+                              : String(item.payload).substring(0, 100)}
+                            {(typeof item.payload === "object" ? JSON.stringify(item.payload) : String(item.payload)).length > 100 && "..."}
+                          </div>
+                        )}
+                        {item.type === "job" && (
+                          <div className="text-xs space-y-1">
+                            {item.runAt && (
+                              <div className="text-muted-foreground">
+                                Scheduled: {format(new Date(item.runAt), "MMM d, h:mm a")}
+                              </div>
+                            )}
+                            {item.retryCount !== undefined && (
+                              <div className="text-muted-foreground">
+                                Retries: {item.retryCount}/{item.maxRetries}
+                              </div>
+                            )}
+                            {item.lastError && (
+                              <div className="text-red-500">
+                                Error: {item.lastError.substring(0, 100)}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      
-                      {item.type === "event" && item.payload && (
-                        <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2 mt-1">
-                          {typeof item.payload === "object" 
-                            ? JSON.stringify(item.payload).substring(0, 100) 
-                            : String(item.payload).substring(0, 100)}
-                          {(typeof item.payload === "object" ? JSON.stringify(item.payload) : String(item.payload)).length > 100 && "..."}
-                        </div>
-                      )}
-                      
-                      {item.type === "job" && (
-                        <div className="text-xs space-y-1">
-                          {item.runAt && (
-                            <div className="text-muted-foreground">
-                              Scheduled: {format(new Date(item.runAt), "MMM d, h:mm a")}
-                            </div>
-                          )}
-                          {item.retryCount !== undefined && (
-                            <div className="text-muted-foreground">
-                              Retries: {item.retryCount}/{item.maxRetries}
-                            </div>
-                          )}
-                          {item.lastError && (
-                            <div className="text-red-500">
-                              Error: {item.lastError.substring(0, 100)}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    </TooltipProvider>
   );
 }
