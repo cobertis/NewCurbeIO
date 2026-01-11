@@ -48235,14 +48235,24 @@ CRITICAL REMINDERS:
         .orderBy(sql`${orchestratorSystemRuns.createdAt} DESC`)
         .limit(20);
 
-      // Group by type, take most recent
-      const lastRunsByType: Record<string, { completedAt: Date | null; status: string; startedAt: Date }> = {};
+      // Initialize with all expected keys as null (never-run state)
+      const defaultRunInfo = { completedAt: null, status: "never", startedAt: null };
+      const lastRunsByType: Record<string, { completedAt: Date | null; status: string; startedAt: Date | null }> = {
+        orchestrator: { ...defaultRunInfo },
+        jobs: { ...defaultRunInfo },
+        auto_tuner: { ...defaultRunInfo },
+        reaper: { ...defaultRunInfo },
+        webhook_telnyx: { ...defaultRunInfo },
+        webhook_bridge: { ...defaultRunInfo },
+        webhook_call_summary: { ...defaultRunInfo }
+      };
+      
+      // Merge actual runs (most recent per type)
       for (const run of lastRunsRaw) {
-        if (!lastRunsByType[run.type]) {
+        if (lastRunsByType[run.type]?.status === "never") {
           lastRunsByType[run.type] = { completedAt: run.completedAt, status: run.status, startedAt: run.startedAt };
         }
       }
-
       // Get last 10 error runs
       const lastErrors = await db.select()
         .from(orchestratorSystemRuns)

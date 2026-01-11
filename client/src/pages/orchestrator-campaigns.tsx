@@ -1692,13 +1692,13 @@ export default function OrchestratorCampaigns() {
                             </div>
                           </div>
                         )}
-                        {Object.keys(metricsData.breakdownByChannel).length > 0 && (
+                        {Object.keys(metricsData.breakdownByChannel || {}).length > 0 && (
                           <div>
                             <h4 className="font-medium mb-2">Breakdown by Channel</h4>
                             <Table>
                               <TableHeader><TableRow><TableHead>Channel</TableHead><TableHead className="text-right">Attempts</TableHead><TableHead className="text-right">Delivered</TableHead><TableHead className="text-right">Replied</TableHead><TableHead className="text-right">Failed</TableHead><TableHead className="text-right">Final</TableHead><TableHead className="text-right">Opt-out</TableHead></TableRow></TableHeader>
                               <TableBody>
-                                {Object.entries(metricsData.breakdownByChannel).map(([channel, stats]) => (
+                                {Object.entries(metricsData.breakdownByChannel || {}).map(([channel, stats]) => (
                                   <TableRow key={channel} data-testid={`row-channel-${channel}`}>
                                     <TableCell className="font-medium capitalize">{channel}</TableCell>
                                     <TableCell className="text-right">{stats.attempts}</TableCell>
@@ -1713,16 +1713,16 @@ export default function OrchestratorCampaigns() {
                             </Table>
                           </div>
                         )}
-                        {metricsData.metricsByVariant && Object.keys(metricsData.metricsByVariant).length > 0 && (
+                        {(metricsData.metricsByVariant || null) && Object.keys(metricsData.metricsByVariant || {}).length > 0 && (
                           <div>
                             <h4 className="font-medium mb-2">Metrics by Variant (A/B Test)</h4>
                             {(() => {
-                              const hasVoiceData = Object.values(metricsData.metricsByVariant).some(v => v.voice && v.voice.callPlaced > 0);
+                              const hasVoiceData = Object.values(metricsData.metricsByVariant || {}).some(v => v.voice && v.voice.callPlaced > 0);
                               return (
                                 <Table>
                                   <TableHeader><TableRow><TableHead>Variant</TableHead><TableHead className="text-right">Attempts</TableHead><TableHead className="text-right">Delivered</TableHead><TableHead className="text-right">Replied</TableHead><TableHead className="text-right">Opt-out</TableHead><TableHead className="text-right">Delivery %</TableHead><TableHead className="text-right">Reply %</TableHead>{hasVoiceData && <TableHead className="text-right">Calls</TableHead>}{hasVoiceData && <TableHead className="text-right">Answer %</TableHead>}</TableRow></TableHeader>
                                   <TableBody>
-                                    {Object.entries(metricsData.metricsByVariant).map(([variant, stats]) => (
+                                    {Object.entries(metricsData.metricsByVariant || {}).map(([variant, stats]) => (
                                       <TableRow key={variant} data-testid={`row-variant-${variant}`}>
                                         <TableCell className="font-medium capitalize">{variant}</TableCell>
                                         <TableCell className="text-right">{stats.attempts}</TableCell>
@@ -1785,7 +1785,7 @@ export default function OrchestratorCampaigns() {
                           <div>
                             <h4 className="font-medium mb-2">Recommended Allocation</h4>
                             <div className="space-y-1">
-                              {Object.entries(autoTuneData.allocationsJson).map(([variant, alloc]) => (
+                              {Object.entries(autoTuneData.allocationsJson || {}).map(([variant, alloc]) => (
                                 <div key={variant} className="flex justify-between text-sm" data-testid={`text-alloc-${variant}`}>
                                   <span className="capitalize">{variant}</span>
                                   <span className="font-mono">{(alloc * 100).toFixed(0)}%</span>
@@ -1796,7 +1796,7 @@ export default function OrchestratorCampaigns() {
                           <div>
                             <h4 className="font-medium mb-2">Variant Metrics</h4>
                             <div className="space-y-1">
-                              {autoTuneData.metricsSnapshotJson.map(m => (
+                              {(autoTuneData.metricsSnapshotJson || []).map(m => (
                                 <div key={m.variant} className="flex justify-between text-sm">
                                   <span className="capitalize">{m.variant}</span>
                                   <span className="text-muted-foreground">{m.attempts} attempts, reward: {m.reward.toFixed(1)}</span>
