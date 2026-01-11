@@ -66,3 +66,6 @@ PUBLIC_OBJECT_SEARCH_PATHS = "/curbe-media"
 INBOUND_WEBHOOK_TOKEN = "test-inbound-token-12345"
 
 [userenv.production]
+
+[userenv.development]
+CALL_SUMMARY_WEBHOOK_TOKEN = "demo-webhook-token-12345"
