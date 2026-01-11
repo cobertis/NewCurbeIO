@@ -67,6 +67,31 @@ interface TimelineItem {
   createdAt: string;
 }
 
+interface VariantVoiceMetrics {
+  callPlaced: number;
+  callAnswered: number;
+  callNoAnswer: number;
+  callBusy: number;
+  callFailed: number;
+  voicemailDropped: number;
+  answerRate: number;
+}
+
+interface VoiceMetrics {
+  callPlaced: number;
+  callAnswered: number;
+  callNoAnswer: number;
+  callBusy: number;
+  callFailed: number;
+  voicemailDropped: number;
+  rates: {
+    answerRate: number;
+    noAnswerRate: number;
+    busyRate: number;
+    callFailureRate: number;
+  };
+}
+
 interface VariantMetrics {
   attempts: number;
   delivered: number;
@@ -80,6 +105,7 @@ interface VariantMetrics {
     failureRateFinal: number;
   };
   avgTimeToReplySeconds: number | null;
+  voice?: VariantVoiceMetrics;
 }
 
 interface CampaignMetrics {
@@ -107,6 +133,7 @@ interface CampaignMetrics {
     failureRateFinal: number;
   };
   avgTimeToReplySeconds: number | null;
+  voice: VoiceMetrics;
   breakdownByChannel: Record<string, {
     attempts: number;
     delivered: number;
@@ -115,6 +142,13 @@ interface CampaignMetrics {
     failed: number;
     failedFinal: number;
     optOut: number;
+    callPlaced?: number;
+    callAnswered?: number;
+    callNoAnswer?: number;
+    callBusy?: number;
+    callFailed?: number;
+    voicemailDropped?: number;
+    answerRate?: number;
   }>;
   metricsByVariant: Record<string, VariantMetrics>;
 }
@@ -573,6 +607,59 @@ export default function OrchestratorCampaigns() {
                     </div>
                   </div>
 
+                  {metricsData.voice && metricsData.voice.callPlaced > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        Voice Performance
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold" data-testid="text-voice-placed">{metricsData.voice.callPlaced}</div>
+                          <div className="text-sm text-muted-foreground">Calls Placed</div>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-green-600" data-testid="text-voice-answered">{metricsData.voice.callAnswered}</div>
+                          <div className="text-sm text-muted-foreground">Answered</div>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-yellow-600" data-testid="text-voice-noanswer">{metricsData.voice.callNoAnswer}</div>
+                          <div className="text-sm text-muted-foreground">No Answer</div>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-orange-600" data-testid="text-voice-busy">{metricsData.voice.callBusy}</div>
+                          <div className="text-sm text-muted-foreground">Busy</div>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-red-600" data-testid="text-voice-failed">{metricsData.voice.callFailed}</div>
+                          <div className="text-sm text-muted-foreground">Failed</div>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-purple-600" data-testid="text-voice-voicemail">{metricsData.voice.voicemailDropped}</div>
+                          <div className="text-sm text-muted-foreground">Voicemails</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="text-center p-2 border rounded">
+                          <div className="text-lg font-semibold text-green-600" data-testid="text-voice-answer-rate">{(metricsData.voice.rates.answerRate * 100).toFixed(1)}%</div>
+                          <div className="text-xs text-muted-foreground">Answer Rate</div>
+                        </div>
+                        <div className="text-center p-2 border rounded">
+                          <div className="text-lg font-semibold text-yellow-600" data-testid="text-voice-noanswer-rate">{(metricsData.voice.rates.noAnswerRate * 100).toFixed(1)}%</div>
+                          <div className="text-xs text-muted-foreground">No Answer Rate</div>
+                        </div>
+                        <div className="text-center p-2 border rounded">
+                          <div className="text-lg font-semibold text-orange-600" data-testid="text-voice-busy-rate">{(metricsData.voice.rates.busyRate * 100).toFixed(1)}%</div>
+                          <div className="text-xs text-muted-foreground">Busy Rate</div>
+                        </div>
+                        <div className="text-center p-2 border rounded">
+                          <div className="text-lg font-semibold text-red-600" data-testid="text-voice-failure-rate">{(metricsData.voice.rates.callFailureRate * 100).toFixed(1)}%</div>
+                          <div className="text-xs text-muted-foreground">Call Failure Rate</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {Object.keys(metricsData.breakdownByChannel).length > 0 && (
                     <div>
                       <h4 className="font-medium mb-2">Breakdown by Channel</h4>
@@ -608,32 +695,41 @@ export default function OrchestratorCampaigns() {
                   {metricsData.metricsByVariant && Object.keys(metricsData.metricsByVariant).length > 0 && (
                     <div>
                       <h4 className="font-medium mb-2">Metrics by Variant (A/B Test)</h4>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Variant</TableHead>
-                            <TableHead className="text-right">Attempts</TableHead>
-                            <TableHead className="text-right">Delivered</TableHead>
-                            <TableHead className="text-right">Replied</TableHead>
-                            <TableHead className="text-right">Opt-out</TableHead>
-                            <TableHead className="text-right">Delivery %</TableHead>
-                            <TableHead className="text-right">Reply %</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {Object.entries(metricsData.metricsByVariant).map(([variant, stats]) => (
-                            <TableRow key={variant} data-testid={`row-variant-${variant}`}>
-                              <TableCell className="font-medium capitalize">{variant}</TableCell>
-                              <TableCell className="text-right">{stats.attempts}</TableCell>
-                              <TableCell className="text-right">{stats.delivered}</TableCell>
-                              <TableCell className="text-right">{stats.replied}</TableCell>
-                              <TableCell className="text-right">{stats.optOut}</TableCell>
-                              <TableCell className="text-right">{(stats.rates.deliveryRate * 100).toFixed(1)}%</TableCell>
-                              <TableCell className="text-right">{(stats.rates.replyRate * 100).toFixed(1)}%</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      {(() => {
+                        const hasVoiceData = Object.values(metricsData.metricsByVariant).some(v => v.voice && v.voice.callPlaced > 0);
+                        return (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Variant</TableHead>
+                                <TableHead className="text-right">Attempts</TableHead>
+                                <TableHead className="text-right">Delivered</TableHead>
+                                <TableHead className="text-right">Replied</TableHead>
+                                <TableHead className="text-right">Opt-out</TableHead>
+                                <TableHead className="text-right">Delivery %</TableHead>
+                                <TableHead className="text-right">Reply %</TableHead>
+                                {hasVoiceData && <TableHead className="text-right">Calls</TableHead>}
+                                {hasVoiceData && <TableHead className="text-right">Answer %</TableHead>}
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {Object.entries(metricsData.metricsByVariant).map(([variant, stats]) => (
+                                <TableRow key={variant} data-testid={`row-variant-${variant}`}>
+                                  <TableCell className="font-medium capitalize">{variant}</TableCell>
+                                  <TableCell className="text-right">{stats.attempts}</TableCell>
+                                  <TableCell className="text-right">{stats.delivered}</TableCell>
+                                  <TableCell className="text-right">{stats.replied}</TableCell>
+                                  <TableCell className="text-right">{stats.optOut}</TableCell>
+                                  <TableCell className="text-right">{(stats.rates.deliveryRate * 100).toFixed(1)}%</TableCell>
+                                  <TableCell className="text-right">{(stats.rates.replyRate * 100).toFixed(1)}%</TableCell>
+                                  {hasVoiceData && <TableCell className="text-right">{stats.voice?.callPlaced || 0}</TableCell>}
+                                  {hasVoiceData && <TableCell className="text-right text-green-600">{stats.voice ? (stats.voice.answerRate * 100).toFixed(1) + '%' : '-'}</TableCell>}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

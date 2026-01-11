@@ -4,7 +4,7 @@ import { eq, and, sql, gte, count } from "drizzle-orm";
 import { ATTEMPT_EVENT_TYPES } from "../constants/orchestrator";
 
 /**
- * Campaign Metrics v1.1
+ * Campaign Metrics v1.2 (Voice Analytics v1)
  * 
  * DENOMINATORS:
  * - deliveryRate = delivered / attempts
@@ -18,7 +18,44 @@ import { ATTEMPT_EVENT_TYPES } from "../constants/orchestrator";
  * 
  * REPLY LATENCY:
  * - avgTimeToReplySeconds = average of (first MESSAGE_REPLIED - first MESSAGE_SENT) per campaign_contact_id
+ * 
+ * VOICE METRICS (v1.2):
+ * - callPlaced = CALL_PLACED events (voice attempts)
+ * - callAnswered = CALL_ANSWERED events
+ * - callNoAnswer = CALL_NO_ANSWER events
+ * - callBusy = CALL_BUSY events
+ * - callFailed = CALL_FAILED events
+ * - voicemailDropped = VOICEMAIL_DROPPED events
+ * - answerRate = callAnswered / callPlaced
+ * - noAnswerRate = callNoAnswer / callPlaced
+ * - busyRate = callBusy / callPlaced
+ * - callFailureRate = callFailed / callPlaced
  */
+
+export interface VoiceMetrics {
+  callPlaced: number;
+  callAnswered: number;
+  callNoAnswer: number;
+  callBusy: number;
+  callFailed: number;
+  voicemailDropped: number;
+  rates: {
+    answerRate: number;
+    noAnswerRate: number;
+    busyRate: number;
+    callFailureRate: number;
+  };
+}
+
+export interface VariantVoiceMetrics {
+  callPlaced: number;
+  callAnswered: number;
+  callNoAnswer: number;
+  callBusy: number;
+  callFailed: number;
+  voicemailDropped: number;
+  answerRate: number;
+}
 
 export interface VariantMetrics {
   attempts: number;
@@ -33,6 +70,24 @@ export interface VariantMetrics {
     failureRateFinal: number;
   };
   avgTimeToReplySeconds: number | null;
+  voice?: VariantVoiceMetrics;
+}
+
+export interface ChannelBreakdown {
+  attempts: number;
+  delivered: number;
+  read: number;
+  replied: number;
+  failed: number;
+  failedFinal: number;
+  optOut: number;
+  callPlaced?: number;
+  callAnswered?: number;
+  callNoAnswer?: number;
+  callBusy?: number;
+  callFailed?: number;
+  voicemailDropped?: number;
+  answerRate?: number;
 }
 
 export interface CampaignMetrics {
@@ -60,15 +115,8 @@ export interface CampaignMetrics {
     failureRateFinal: number;
   };
   avgTimeToReplySeconds: number | null;
-  breakdownByChannel: Record<string, {
-    attempts: number;
-    delivered: number;
-    read: number;
-    replied: number;
-    failed: number;
-    failedFinal: number;
-    optOut: number;
-  }>;
+  voice: VoiceMetrics;
+  breakdownByChannel: Record<string, ChannelBreakdown>;
   metricsByVariant: Record<string, VariantMetrics>;
 }
 
@@ -160,15 +208,14 @@ export async function getCampaignMetrics(
   let replied = 0;
   let optOut = 0;
 
-  const breakdownByChannel: Record<string, {
-    attempts: number;
-    delivered: number;
-    read: number;
-    replied: number;
-    failed: number;
-    failedFinal: number;
-    optOut: number;
-  }> = {};
+  let callPlaced = 0;
+  let callAnswered = 0;
+  let callNoAnswer = 0;
+  let callBusy = 0;
+  let callFailed = 0;
+  let voicemailDropped = 0;
+
+  const breakdownByChannel: Record<string, ChannelBreakdown> = {};
 
   for (const row of eventCounts) {
     const channel = row.channel || "unknown";
@@ -214,6 +261,37 @@ export async function getCampaignMetrics(
         optOut += cnt;
         breakdownByChannel[channel].optOut += cnt;
         break;
+      case "CALL_PLACED":
+        callPlaced += cnt;
+        breakdownByChannel[channel].callPlaced = (breakdownByChannel[channel].callPlaced || 0) + cnt;
+        break;
+      case "CALL_ANSWERED":
+        callAnswered += cnt;
+        breakdownByChannel[channel].callAnswered = (breakdownByChannel[channel].callAnswered || 0) + cnt;
+        break;
+      case "CALL_NO_ANSWER":
+        callNoAnswer += cnt;
+        breakdownByChannel[channel].callNoAnswer = (breakdownByChannel[channel].callNoAnswer || 0) + cnt;
+        break;
+      case "CALL_BUSY":
+        callBusy += cnt;
+        breakdownByChannel[channel].callBusy = (breakdownByChannel[channel].callBusy || 0) + cnt;
+        break;
+      case "CALL_FAILED":
+        callFailed += cnt;
+        breakdownByChannel[channel].callFailed = (breakdownByChannel[channel].callFailed || 0) + cnt;
+        break;
+      case "VOICEMAIL_DROPPED":
+        voicemailDropped += cnt;
+        breakdownByChannel[channel].voicemailDropped = (breakdownByChannel[channel].voicemailDropped || 0) + cnt;
+        break;
+    }
+  }
+
+  for (const channel of Object.keys(breakdownByChannel)) {
+    const ch = breakdownByChannel[channel];
+    if (ch.callPlaced && ch.callPlaced > 0) {
+      ch.answerRate = Math.round((ch.callAnswered || 0) / ch.callPlaced * 100) / 100;
     }
   }
 
@@ -314,12 +392,27 @@ export async function getCampaignMetrics(
       failedFinalByVariant[row.variant || "control"] = Number(row.cnt);
     }
     
-    const variantData: Record<string, { attempts: number; delivered: number; replied: number; optOut: number }> = {};
+    interface VariantDataItem {
+      attempts: number;
+      delivered: number;
+      replied: number;
+      optOut: number;
+      callPlaced: number;
+      callAnswered: number;
+      callNoAnswer: number;
+      callBusy: number;
+      callFailed: number;
+      voicemailDropped: number;
+    }
+    const variantData: Record<string, VariantDataItem> = {};
     
     for (const row of (variantEventCounts.rows || []) as any[]) {
       const v = row.variant || "control";
       if (!variantData[v]) {
-        variantData[v] = { attempts: 0, delivered: 0, replied: 0, optOut: 0 };
+        variantData[v] = { 
+          attempts: 0, delivered: 0, replied: 0, optOut: 0,
+          callPlaced: 0, callAnswered: 0, callNoAnswer: 0, callBusy: 0, callFailed: 0, voicemailDropped: 0
+        };
       }
       
       const cnt = Number(row.cnt);
@@ -331,10 +424,26 @@ export async function getCampaignMetrics(
       if (et === "MESSAGE_DELIVERED") variantData[v].delivered += cnt;
       if (et === "MESSAGE_REPLIED") variantData[v].replied += cnt;
       if (et === "OPT_OUT") variantData[v].optOut += cnt;
+      if (et === "CALL_PLACED") variantData[v].callPlaced += cnt;
+      if (et === "CALL_ANSWERED") variantData[v].callAnswered += cnt;
+      if (et === "CALL_NO_ANSWER") variantData[v].callNoAnswer += cnt;
+      if (et === "CALL_BUSY") variantData[v].callBusy += cnt;
+      if (et === "CALL_FAILED") variantData[v].callFailed += cnt;
+      if (et === "VOICEMAIL_DROPPED") variantData[v].voicemailDropped += cnt;
     }
     
     for (const [v, d] of Object.entries(variantData)) {
       const ff = failedFinalByVariant[v] || 0;
+      const variantVoice: VariantVoiceMetrics | undefined = d.callPlaced > 0 ? {
+        callPlaced: d.callPlaced,
+        callAnswered: d.callAnswered,
+        callNoAnswer: d.callNoAnswer,
+        callBusy: d.callBusy,
+        callFailed: d.callFailed,
+        voicemailDropped: d.voicemailDropped,
+        answerRate: Math.round((d.callAnswered / d.callPlaced) * 100) / 100
+      } : undefined;
+      
       metricsByVariant[v] = {
         attempts: d.attempts,
         delivered: d.delivered,
@@ -347,12 +456,28 @@ export async function getCampaignMetrics(
           optOutRate: d.delivered > 0 ? Math.round((d.optOut / d.delivered) * 100) / 100 : 0,
           failureRateFinal: d.attempts > 0 ? Math.round((ff / d.attempts) * 100) / 100 : 0
         },
-        avgTimeToReplySeconds: null
+        avgTimeToReplySeconds: null,
+        voice: variantVoice
       };
     }
   } catch (e) {
     // Ignore variant metrics errors
   }
+
+  const voice: VoiceMetrics = {
+    callPlaced,
+    callAnswered,
+    callNoAnswer,
+    callBusy,
+    callFailed,
+    voicemailDropped,
+    rates: {
+      answerRate: callPlaced > 0 ? Math.round((callAnswered / callPlaced) * 100) / 100 : 0,
+      noAnswerRate: callPlaced > 0 ? Math.round((callNoAnswer / callPlaced) * 100) / 100 : 0,
+      busyRate: callPlaced > 0 ? Math.round((callBusy / callPlaced) * 100) / 100 : 0,
+      callFailureRate: callPlaced > 0 ? Math.round((callFailed / callPlaced) * 100) / 100 : 0
+    }
+  };
 
   return {
     campaignId,
@@ -379,6 +504,7 @@ export async function getCampaignMetrics(
       failureRateFinal
     },
     avgTimeToReplySeconds,
+    voice,
     breakdownByChannel,
     metricsByVariant
   };
