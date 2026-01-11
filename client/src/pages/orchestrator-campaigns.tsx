@@ -397,6 +397,18 @@ export default function OrchestratorCampaigns() {
     provider: string | null;
     campaignId: string;
     campaignName: string | null;
+    externalId: string | null;
+    payload: {
+      channel?: string;
+      confidence?: number;
+      fallbackUsed?: boolean;
+      waitSeconds?: number;
+      reason?: string;
+      isFinal?: boolean;
+      final?: boolean;
+      errorCode?: string;
+      jobId?: string;
+    } | null;
     createdAt: string;
   }[]>({
     queryKey: ["/api/orchestrator/activity"],
@@ -411,6 +423,8 @@ export default function OrchestratorCampaigns() {
     optOut: number;
     failedFinal: number;
     voice: { callPlaced: number; callAnswered: number; answerRate: number };
+    tasksOpenCount: number;
+    lastDecision: { channel: string | null; confidence: number | null; fallbackUsed: boolean | null; createdAt: string } | null;
   }[]>({
     queryKey: ["/api/orchestrator/campaigns/summary", { window: "7d" }]
   });
@@ -1152,20 +1166,54 @@ export default function OrchestratorCampaigns() {
                   ) : (
                     <ScrollArea className="h-[300px]">
                       <div className="divide-y">
-                        {activityData?.map((event) => (
+                        {activityData?.map((event) => {
+                          const payload = event.payload || {};
+                          const getEventSubtitle = () => {
+                            if (event.eventType === 'DECISION_MADE') {
+                              const parts = [];
+                              if (payload.channel) parts.push(payload.channel.toUpperCase());
+                              if (payload.confidence !== undefined) parts.push(`${Math.round(payload.confidence * 100)}% conf`);
+                              if (payload.waitSeconds) parts.push(`wait ${payload.waitSeconds}s`);
+                              return parts.join(' • ') || 'AI Decision';
+                            }
+                            if (event.eventType === 'ATTEMPT_QUEUED') {
+                              const parts = [];
+                              if (event.channel) parts.push(event.channel.toUpperCase());
+                              if (payload.jobId) parts.push(`#${payload.jobId}`);
+                              return parts.join(' • ') || event.campaignName;
+                            }
+                            if (event.eventType === 'MESSAGE_FAILED' || event.eventType === 'FAILED_FINAL') {
+                              const isFinal = payload.isFinal || payload.final;
+                              return isFinal ? 'Final failure' : 'Attempt failed';
+                            }
+                            return event.campaignName;
+                          };
+                          const getEventBadge = () => {
+                            if (event.eventType === 'DECISION_MADE') {
+                              return payload.fallbackUsed 
+                                ? <Badge variant="outline" className="text-[10px] px-1 py-0 bg-orange-50 text-orange-700 border-orange-200">Fallback</Badge>
+                                : <Badge variant="outline" className="text-[10px] px-1 py-0 bg-purple-50 text-purple-700 border-purple-200">AI</Badge>;
+                            }
+                            return null;
+                          };
+                          return (
                           <div key={event.id} className="px-3 py-2 hover:bg-muted/50 transition-colors" data-testid={`activity-item-${event.id}`}>
                             <div className="flex items-center gap-2">
                               {getEventIcon(event.eventType)}
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium truncate">{formatEventType(event.eventType)}</p>
-                                <p className="text-xs text-muted-foreground truncate">{event.campaignName}</p>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-xs font-medium truncate">{formatEventType(event.eventType)}</p>
+                                  {getEventBadge()}
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">{getEventSubtitle()}</p>
                               </div>
                               <span className="text-xs text-muted-foreground whitespace-nowrap">
                                 {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
                               </span>
                             </div>
                           </div>
-                        ))}
+                        )
+                        })}
                         {!activityData?.length && (
                           <p className="text-sm text-muted-foreground text-center py-8">No recent activity</p>
                         )}
