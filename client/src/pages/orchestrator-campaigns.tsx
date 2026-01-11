@@ -14,7 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
-import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo, Zap, Activity, AlertTriangle, Plus, Eye, Target, UserCheck, Ban, Layers, ArrowLeft, Settings } from "lucide-react";
+import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo, Zap, Activity, AlertTriangle, Plus, Eye, Target, UserCheck, Ban, Layers, ArrowLeft, Settings, MoreVertical, Cog } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -430,20 +431,25 @@ export default function OrchestratorCampaigns() {
   });
 
   const runOrchestratorMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedCampaign) throw new Error("No campaign selected");
-      return apiRequest("POST", `/api/orchestrator/campaigns/${selectedCampaign.id}/run-once`, { limit: 50 });
+    mutationFn: async (campaignId?: string) => {
+      const id = campaignId || selectedCampaign?.id;
+      if (!id) throw new Error("No campaign selected");
+      return { campaignId: id, ...(await apiRequest("POST", `/api/orchestrator/campaigns/${id}/run-once`, { limit: 50 })) };
     },
-    onSuccess: (data: { summary: RunOnceSummary }) => {
+    onSuccess: (data: { summary: RunOnceSummary; campaignId: string }) => {
       const s = data.summary;
+      const id = data.campaignId;
       toast({ 
         title: "Orchestrator completed", 
         description: `Processed: ${s.processed}, Enqueued: ${s.enqueued}, Timeouts: ${s.timeouts}, Skipped: ${s.skipped}` 
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns/summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/activity"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/system/health"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", id, "contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", id, "metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", id, "tasks"] });
     },
     onError: (error: any) => {
       toast({ title: "Orchestrator failed", description: error.message, variant: "destructive" });
@@ -1022,6 +1028,21 @@ export default function OrchestratorCampaigns() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-1">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 hover:bg-purple-500/10"
+                                        onClick={(e) => { e.stopPropagation(); runOrchestratorMutation.mutate(campaign.id); }}
+                                        disabled={runOrchestratorMutation.isPending}
+                                        data-testid={`button-run-orchestrator-${campaign.id}`}
+                                      >
+                                        <Zap className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Run Orchestrator</p></TooltipContent>
+                                  </Tooltip>
                                   {campaign.status === "active" && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -1070,6 +1091,33 @@ export default function OrchestratorCampaigns() {
                                     </TooltipTrigger>
                                     <TooltipContent><p>Open</p></TooltipContent>
                                   </Tooltip>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0"
+                                        onClick={(e) => e.stopPropagation()}
+                                        data-testid={`button-more-${campaign.id}`}
+                                      >
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); runJobsMutation.mutate(); }} data-testid={`menu-run-jobs-${campaign.id}`}>
+                                        <Cog className="h-4 w-4 mr-2" />
+                                        Run Jobs
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem 
+                                        onClick={(e) => { e.stopPropagation(); setSelectedCampaign(campaign); }} 
+                                        data-testid={`menu-manage-${campaign.id}`}
+                                      >
+                                        <Settings className="h-4 w-4 mr-2" />
+                                        Manage Campaign
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </TableCell>
                             </TableRow>
