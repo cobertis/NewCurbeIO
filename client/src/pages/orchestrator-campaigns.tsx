@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
-import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw } from "lucide-react";
+import { Play, Pause, StopCircle, RefreshCw, Users, Clock, ChevronRight, AlertCircle, CheckCircle, XCircle, Mail, MessageSquare, Phone, Sliders, RotateCcw, Calendar, ListTodo } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CampaignStats {
@@ -193,6 +193,29 @@ interface LastApply {
   createdAt: string;
 }
 
+interface OrchestratorTaskItem {
+  task: {
+    id: string;
+    type: string;
+    status: string;
+    dueAt: string | null;
+    completedAt: string | null;
+    sourceIntent: string | null;
+    payload: any;
+  };
+  contact: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+  };
+  campaignContact: {
+    id: string;
+    state: string;
+  };
+}
+
 export default function OrchestratorCampaigns() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -201,6 +224,7 @@ export default function OrchestratorCampaigns() {
   const [selectedContact, setSelectedContact] = useState<CampaignContact | null>(null);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [metricsWindow, setMetricsWindow] = useState<string>("7d");
+  const [taskStatusFilter, setTaskStatusFilter] = useState<string>("open");
 
   const { data: campaigns, isLoading: campaignsLoading } = useQuery<OrchestratorCampaign[]>({
     queryKey: ["/api/orchestrator/campaigns"]
@@ -273,6 +297,46 @@ export default function OrchestratorCampaigns() {
       return res.json();
     },
     enabled: !!selectedCampaign
+  });
+
+  const { data: tasksData, isLoading: tasksLoading } = useQuery<{ tasks: OrchestratorTaskItem[] }>({
+    queryKey: ['/api/orchestrator/campaigns', selectedCampaign?.id, 'tasks', taskStatusFilter],
+    queryFn: async () => {
+      if (!selectedCampaign) return { tasks: [] };
+      const params = new URLSearchParams();
+      if (taskStatusFilter !== "all") params.set("status", taskStatusFilter);
+      const res = await fetch(`/api/orchestrator/campaigns/${selectedCampaign.id}/tasks?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch tasks");
+      return res.json();
+    },
+    enabled: !!selectedCampaign
+  });
+
+  const completeTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      return apiRequest("POST", `/api/orchestrator/tasks/${taskId}/complete`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/orchestrator/campaigns', selectedCampaign?.id, 'tasks'] });
+      toast({ title: "Task completed" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const markBookedMutation = useMutation({
+    mutationFn: async (campaignContactId: string) => {
+      return apiRequest("POST", `/api/orchestrator/campaign-contacts/${campaignContactId}/mark-booked`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/orchestrator/campaigns', selectedCampaign?.id, 'tasks'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orchestrator/campaigns", selectedCampaign?.id, "contacts"] });
+      toast({ title: "Contact marked as booked" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   });
 
   const applyMutation = useMutation({
@@ -870,6 +934,127 @@ export default function OrchestratorCampaigns() {
                 </div>
               ) : (
                 <p className="text-muted-foreground text-center py-4">No auto-tune recommendations available</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <ListTodo className="h-5 w-5" />
+                Tasks ({tasksData?.tasks?.length || 0})
+              </CardTitle>
+              <Select value={taskStatusFilter} onValueChange={setTaskStatusFilter}>
+                <SelectTrigger className="w-32" data-testid="select-task-status-filter">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent>
+              {tasksLoading ? (
+                <LoadingSpinner fullScreen={false} message="Loading tasks..." />
+              ) : !tasksData?.tasks || tasksData.tasks.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No tasks found</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Contact Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Source Intent</TableHead>
+                      <TableHead>Due At</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tasksData.tasks.map((item) => (
+                      <TableRow 
+                        key={item.task.id}
+                        data-testid={`row-task-${item.task.id}`}
+                      >
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {item.contact.firstName} {item.contact.lastName}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {item.contact.phone || item.contact.email || "No contact info"}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">
+                            {item.task.type === "callback" ? (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                Callback
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Follow-up
+                              </span>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{item.task.sourceIntent || "-"}</span>
+                        </TableCell>
+                        <TableCell>
+                          {item.task.dueAt ? (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Clock className="h-3 w-3" />
+                              {format(new Date(item.task.dueAt), "MMM d, h:mm a")}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.task.status === "open" ? (
+                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Open</Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-100 text-green-800">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Done
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.task.status === "open" && (
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => completeTaskMutation.mutate(item.task.id)}
+                                disabled={completeTaskMutation.isPending}
+                                data-testid={`button-complete-task-${item.task.id}`}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Complete
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => markBookedMutation.mutate(item.campaignContact.id)}
+                                disabled={markBookedMutation.isPending}
+                                data-testid={`button-mark-booked-${item.campaignContact.id}`}
+                              >
+                                Mark Booked
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
