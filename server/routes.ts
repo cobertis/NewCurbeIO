@@ -48309,12 +48309,19 @@ CRITICAL REMINDERS:
         .limit(20);
 
       // Get last runs per type
-      const lastRunsRaw = await db.select()
+      const lastRunsRaw = await db.select({
+        id: orchestratorSystemRuns.id,
+        type: orchestratorSystemRuns.type,
+        status: orchestratorSystemRuns.status,
+        startedAt: orchestratorSystemRuns.startedAt,
+        completedAt: orchestratorSystemRuns.completedAt,
+        payload: orchestratorSystemRuns.payload,
+        createdAt: orchestratorSystemRuns.createdAt
+      })
         .from(orchestratorSystemRuns)
         .where(eq(orchestratorSystemRuns.companyId, companyId))
         .orderBy(sql`${orchestratorSystemRuns.createdAt} DESC`)
         .limit(20);
-
       // Initialize with all expected keys as null (never-run state)
       const defaultRunInfo = { completedAt: null, status: "never", startedAt: null };
       const lastRunsByType: Record<string, { completedAt: Date | null; status: string; startedAt: Date | null }> = {
@@ -48334,7 +48341,15 @@ CRITICAL REMINDERS:
         }
       }
       // Get last 10 error runs
-      const lastErrors = await db.select()
+      const lastErrors = await db.select({
+        id: orchestratorSystemRuns.id,
+        type: orchestratorSystemRuns.type,
+        status: orchestratorSystemRuns.status,
+        startedAt: orchestratorSystemRuns.startedAt,
+        completedAt: orchestratorSystemRuns.completedAt,
+        payload: orchestratorSystemRuns.payload,
+        createdAt: orchestratorSystemRuns.createdAt
+      })
         .from(orchestratorSystemRuns)
         .where(and(
           eq(orchestratorSystemRuns.companyId, companyId),
