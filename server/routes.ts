@@ -49211,6 +49211,50 @@ CRITICAL REMINDERS:
     }
   });
 
+
+  // PATCH /api/orchestrator/campaigns/:campaignId/policy - Update campaign policy/channelSettings
+  app.patch("/api/orchestrator/campaigns/:campaignId/policy", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user!.companyId;
+      const { campaignId } = req.params;
+      const { policyJson } = req.body;
+
+      if (!policyJson || typeof policyJson !== 'object') {
+        return res.status(400).json({ error: "policyJson is required and must be an object" });
+      }
+
+      // Verify campaign belongs to company
+      const [existingCampaign] = await db
+        .select()
+        .from(orchestratorCampaigns)
+        .where(and(
+          eq(orchestratorCampaigns.id, campaignId),
+          eq(orchestratorCampaigns.companyId, companyId)
+        ));
+
+      if (!existingCampaign) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      // Merge existing policy with new updates
+      const currentPolicy = existingCampaign.policyJson as Record<string, unknown> || {};
+      const mergedPolicy = { ...currentPolicy, ...policyJson };
+
+      const [updated] = await db
+        .update(orchestratorCampaigns)
+        .set({ 
+          policyJson: mergedPolicy,
+          updatedAt: new Date() 
+        })
+        .where(eq(orchestratorCampaigns.id, campaignId))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Orchestrator] Update campaign policy error:", error);
+      res.status(500).json({ error: error.message || "Failed to update campaign policy" });
+    }
+  });
   // GET /api/orchestrator/elevenlabs/voices - List ElevenLabs voices
   app.get("/api/orchestrator/elevenlabs/voices", requireActiveCompany, async (req: Request, res: Response) => {
     try {
